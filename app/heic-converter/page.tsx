@@ -1,8 +1,13 @@
 "use client"
 
-import ConverterTool from "@/components/converter-tool"
+import ConverterTool from "./components/converter-tool"
 import Footer from "@/components/footer"
 import HeroSection from "@/components/hero-section"
+import AiFeatures from "@/components/ai-features"
+import ToolGuide from "./components/tool-guide"
+import FormatComparison from "@/components/format-comparison"
+import FaqSection from "./components/faq-section"
+import SecuritySection from "./components/security-section"
 
 export default function HeicConverterPage() {
   // Function to scroll to converter section
@@ -20,6 +25,7 @@ export default function HeicConverterPage() {
       aiSection.scrollIntoView({ behavior: 'smooth' });
     }
   };
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -41,6 +47,21 @@ export default function HeicConverterPage() {
           <ConverterTool />
         </div>
       </section>
+
+      {/* AI Features Section */}
+      <AiFeatures />
+
+      {/* Format Comparison */}
+      <FormatComparison />
+
+      {/* Tool Guide */}
+      <ToolGuide />
+
+      {/* FAQ Section */}
+      <FaqSection />
+
+      {/* Security Section */}
+      <SecuritySection />
 
       {/* Footer */}
       <Footer />

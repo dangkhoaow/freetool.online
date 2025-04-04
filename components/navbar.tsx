@@ -40,9 +40,6 @@ export default function Navbar() {
             <Link href="#features" className="text-gray-700 hover:text-primary transition-colors">
               Features
             </Link>
-            <Link href="#ai-optimization" className="text-gray-700 hover:text-primary transition-colors">
-              AI Optimization
-            </Link>
             <Link href="#guide" className="text-gray-700 hover:text-primary transition-colors">
               How It Works
             </Link>
@@ -81,13 +78,6 @@ export default function Navbar() {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Features
-            </Link>
-            <Link
-              href="#ai-optimization"
-              className="text-gray-700 hover:text-primary transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              AI Optimization
             </Link>
             <Link
               href="#guide"

@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import UploadSection from "@/components/upload-section"
-import SettingsPanel from "@/components/settings-panel"
-import ProcessingSection from "@/components/processing-section"
-import OutputGallery from "@/components/output-gallery"
+import UploadSection from "./upload-section"
+import SettingsPanel from "./settings-panel"
+import ProcessingSection from "./processing-section"
+import OutputGallery from "./output-gallery"
 
 export default function ConverterTool() {
   // State for managing the conversion flow

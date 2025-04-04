@@ -27,11 +27,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#ai-optimization" className="hover:text-white transition-colors">
-                  AI Optimization
-                </Link>
-              </li>
-              <li>
                 <Link href="#guide" className="hover:text-white transition-colors">
                   How It Works
                 </Link>
