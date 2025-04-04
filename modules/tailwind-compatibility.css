@@ -1,0 +1,420 @@
+/* Tailwind Compatibility Module
+ * Classes to ensure compatibility with Tailwind CSS naming conventions
+ */
+
+/* This module provides aliases for our custom classes to match Tailwind CSS naming conventions */
+
+/* Spacing */
+.p-0\.5 {
+  padding: var(--spacing-0-5);
+}
+.p-1\.5 {
+  padding: var(--spacing-1-5);
+}
+.p-2\.5 {
+  padding: var(--spacing-2-5);
+}
+.p-3\.5 {
+  padding: var(--spacing-3-5);
+}
+
+.px-0\.5 {
+  padding-left: var(--spacing-0-5);
+  padding-right: var(--spacing-0-5);
+}
+.px-1\.5 {
+  padding-left: var(--spacing-1-5);
+  padding-right: var(--spacing-1-5);
+}
+.px-2\.5 {
+  padding-left: var(--spacing-2-5);
+  padding-right: var(--spacing-2-5);
+}
+.px-3\.5 {
+  padding-left: var(--spacing-3-5);
+  padding-right: var(--spacing-3-5);
+}
+
+.py-0\.5 {
+  padding-top: var(--spacing-0-5);
+  padding-bottom: var(--spacing-0-5);
+}
+.py-1\.5 {
+  padding-top: var(--spacing-1-5);
+  padding-bottom: var(--spacing-1-5);
+}
+.py-2\.5 {
+  padding-top: var(--spacing-2-5);
+  padding-bottom: var(--spacing-2-5);
+}
+.py-3\.5 {
+  padding-top: var(--spacing-3-5);
+  padding-bottom: var(--spacing-3-5);
+}
+
+.pt-0\.5 {
+  padding-top: var(--spacing-0-5);
+}
+.pt-1\.5 {
+  padding-top: var(--spacing-1-5);
+}
+.pt-2\.5 {
+  padding-top: var(--spacing-2-5);
+}
+.pt-3\.5 {
+  padding-top: var(--spacing-3-5);
+}
+
+.pr-0\.5 {
+  padding-right: var(--spacing-0-5);
+}
+.pr-1\.5 {
+  padding-right: var(--spacing-1-5);
+}
+.pr-2\.5 {
+  padding-right: var(--spacing-2-5);
+}
+.pr-3\.5 {
+  padding-right: var(--spacing-3-5);
+}
+
+.pb-0\.5 {
+  padding-bottom: var(--spacing-0-5);
+}
+.pb-1\.5 {
+  padding-bottom: var(--spacing-1-5);
+}
+.pb-2\.5 {
+  padding-bottom: var(--spacing-2-5);
+}
+.pb-3\.5 {
+  padding-bottom: var(--spacing-3-5);
+}
+
+.pl-0\.5 {
+  padding-left: var(--spacing-0-5);
+}
+.pl-1\.5 {
+  padding-left: var(--spacing-1-5);
+}
+.pl-2\.5 {
+  padding-left: var(--spacing-2-5);
+}
+.pl-3\.5 {
+  padding-left: var(--spacing-3-5);
+}
+
+/* Similar classes for margin (m-*) */
+
+/* Width and Height */
+.w-0\.5 {
+  width: var(--spacing-0-5);
+}
+.w-1\.5 {
+  width: var(--spacing-1-5);
+}
+.w-2\.5 {
+  width: var(--spacing-2-5);
+}
+.w-3\.5 {
+  width: var(--spacing-3-5);
+}
+
+.h-0\.5 {
+  height: var(--spacing-0-5);
+}
+.h-1\.5 {
+  height: var(--spacing-1-5);
+}
+.h-2\.5 {
+  height: var(--spacing-2-5);
+}
+.h-3\.5 {
+  height: var(--spacing-3-5);
+}
+
+/* Gap */
+.gap-0\.5 {
+  gap: var(--spacing-0-5);
+}
+.gap-1\.5 {
+  gap: var(--spacing-1-5);
+}
+.gap-2\.5 {
+  gap: var(--spacing-2-5);
+}
+.gap-3\.5 {
+  gap: var(--spacing-3-5);
+}
+
+.gap-x-0\.5 {
+  column-gap: var(--spacing-0-5);
+}
+.gap-x-1\.5 {
+  column-gap: var(--spacing-1-5);
+}
+.gap-x-2\.5 {
+  column-gap: var(--spacing-2-5);
+}
+.gap-x-3\.5 {
+  column-gap: var(--spacing-3-5);
+}
+
+.gap-y-0\.5 {
+  row-gap: var(--spacing-0-5);
+}
+.gap-y-1\.5 {
+  row-gap: var(--spacing-1-5);
+}
+.gap-y-2\.5 {
+  row-gap: var(--spacing-2-5);
+}
+.gap-y-3\.5 {
+  row-gap: var(--spacing-3-5);
+}
+
+/* Space Between */
+.space-x-0\.5 > * + * {
+  margin-left: var(--spacing-0-5);
+}
+.space-x-1\.5 > * + * {
+  margin-left: var(--spacing-1-5);
+}
+.space-x-2\.5 > * + * {
+  margin-left: var(--spacing-2-5);
+}
+.space-x-3\.5 > * + * {
+  margin-left: var(--spacing-3-5);
+}
+
+.space-y-0\.5 > * + * {
+  margin-top: var(--spacing-0-5);
+}
+.space-y-1\.5 > * + * {
+  margin-top: var(--spacing-1-5);
+}
+.space-y-2\.5 > * + * {
+  margin-top: var(--spacing-2-5);
+}
+.space-y-3\.5 > * + * {
+  margin-top: var(--spacing-3-5);
+}
+
+/* Inset */
+.inset-0\.5 {
+  top: var(--spacing-0-5);
+  right: var(--spacing-0-5);
+  bottom: var(--spacing-0-5);
+  left: var(--spacing-0-5);
+}
+.inset-1\.5 {
+  top: var(--spacing-1-5);
+  right: var(--spacing-1-5);
+  bottom: var(--spacing-1-5);
+  left: var(--spacing-1-5);
+}
+.inset-2\.5 {
+  top: var(--spacing-2-5);
+  right: var(--spacing-2-5);
+  bottom: var(--spacing-2-5);
+  left: var(--spacing-2-5);
+}
+.inset-3\.5 {
+  top: var(--spacing-3-5);
+  right: var(--spacing-3-5);
+  bottom: var(--spacing-3-5);
+  left: var(--spacing-3-5);
+}
+
+/* Translate */
+.translate-x-0\.5 {
+  --tw-translate-x: var(--spacing-0-5);
+}
+.translate-x-1\.5 {
+  --tw-translate-x: var(--spacing-1-5);
+}
+.translate-x-2\.5 {
+  --tw-translate-x: var(--spacing-2-5);
+}
+.translate-x-3\.5 {
+  --tw-translate-x: var(--spacing-3-5);
+}
+
+.translate-y-0\.5 {
+  --tw-translate-y: var(--spacing-0-5);
+}
+.translate-y-1\.5 {
+  --tw-translate-y: var(--spacing-1-5);
+}
+.translate-y-2\.5 {
+  --tw-translate-y: var(--spacing-2-5);
+}
+.translate-y-3\.5 {
+  --tw-translate-y: var(--spacing-3-5);
+}
+
+/* Colors */
+.text-blue-50 {
+  color: hsl(210, 100%, 98%);
+}
+.text-blue-100 {
+  color: hsl(210, 100%, 95%);
+}
+.text-blue-200 {
+  color: hsl(210, 100%, 90%);
+}
+.text-blue-300 {
+  color: hsl(210, 100%, 80%);
+}
+.text-blue-400 {
+  color: hsl(210, 100%, 70%);
+}
+.text-blue-500 {
+  color: hsl(210, 100%, 60%);
+}
+.text-blue-600 {
+  color: hsl(210, 100%, 50%);
+}
+.text-blue-700 {
+  color: hsl(210, 100%, 40%);
+}
+.text-blue-800 {
+  color: hsl(210, 100%, 30%);
+}
+.text-blue-900 {
+  color: hsl(210, 100%, 20%);
+}
+.text-blue-950 {
+  color: hsl(210, 100%, 10%);
+}
+
+/* Similar classes for bg-blue-*, border-blue-*, etc. */
+
+/* Similar classes for other Tailwind colors: gray, red, yellow, green, etc. */
+
+/* Flex */
+.flex-1 {
+  flex: 1 1 0%;
+}
+.flex-auto {
+  flex: 1 1 auto;
+}
+.flex-initial {
+  flex: 0 1 auto;
+}
+.flex-none {
+  flex: none;
+}
+
+/* Grid */
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.grid-cols-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.grid-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.grid-cols-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.grid-cols-8 {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+.grid-cols-9 {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+.grid-cols-10 {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+}
+.grid-cols-11 {
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+}
+.grid-cols-12 {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.grid-cols-none {
+  grid-template-columns: none;
+}
+
+/* Tailwind-specific utilities */
+.antialiased {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.subpixel-antialiased {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+/* Tailwind-specific form styles */
+.form-input {
+  @extend .form-input;
+}
+.form-textarea {
+  @extend .form-textarea;
+}
+.form-select {
+  @extend .form-select;
+}
+.form-checkbox {
+  @extend .form-checkbox;
+}
+.form-radio {
+  @extend .form-radio;
+}
+
+/* Tailwind-specific accessibility utilities */
+.sr-only {
+  @extend .sr-only;
+}
+.not-sr-only {
+  @extend .not-sr-only;
+}
+
+/* Tailwind-specific container */
+.container {
+  @extend .container;
+}
+
+/* Tailwind-specific responsive utilities */
+@media (min-width: 640px) {
+  .sm\:container {
+    @extend .sm\:container;
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:container {
+    @extend .md\:container;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:container {
+    @extend .lg\:container;
+  }
+}
+
+@media (min-width: 1280px) {
+  .xl\:container {
+    @extend .xl\:container;
+  }
+}
+
+@media (min-width: 1536px) {
+  .\32xl\:container {
+    @extend .\32xl\:container;
+  }
+}
+

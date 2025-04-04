@@ -1,0 +1,306 @@
+/* Responsive Module
+ * Media queries for responsive design
+ */
+
+/* Small (sm) */
+@media (min-width: 640px) {
+  .sm\:container {
+    width: 100%;
+    max-width: var(--container-sm);
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: var(--container-padding);
+    padding-left: var(--container-padding);
+  }
+
+  /* Add responsive variants for all utility classes */
+  .sm\:block {
+    display: block;
+  }
+  .sm\:inline-block {
+    display: inline-block;
+  }
+  .sm\:inline {
+    display: inline;
+  }
+  .sm\:flex {
+    display: flex;
+  }
+  .sm\:inline-flex {
+    display: inline-flex;
+  }
+  .sm\:table {
+    display: table;
+  }
+  .sm\:grid {
+    display: grid;
+  }
+  .sm\:hidden {
+    display: none;
+  }
+
+  /* Add more responsive variants as needed */
+}
+
+/* Medium (md) */
+@media (min-width: 768px) {
+  .md\:container {
+    width: 100%;
+    max-width: var(--container-md);
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: var(--container-padding);
+    padding-left: var(--container-padding);
+  }
+
+  /* Add responsive variants for all utility classes */
+  .md\:block {
+    display: block;
+  }
+  .md\:inline-block {
+    display: inline-block;
+  }
+  .md\:inline {
+    display: inline;
+  }
+  .md\:flex {
+    display: flex;
+  }
+  .md\:inline-flex {
+    display: inline-flex;
+  }
+  .md\:table {
+    display: table;
+  }
+  .md\:grid {
+    display: grid;
+  }
+  .md\:hidden {
+    display: none;
+  }
+
+  /* Add more responsive variants as needed */
+}
+
+/* Large (lg) */
+@media (min-width: 1024px) {
+  .lg\:container {
+    width: 100%;
+    max-width: var(--container-lg);
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: var(--container-padding);
+    padding-left: var(--container-padding);
+  }
+
+  /* Add responsive variants for all utility classes */
+  .lg\:block {
+    display: block;
+  }
+  .lg\:inline-block {
+    display: inline-block;
+  }
+  .lg\:inline {
+    display: inline;
+  }
+  .lg\:flex {
+    display: flex;
+  }
+  .lg\:inline-flex {
+    display: inline-flex;
+  }
+  .lg\:table {
+    display: table;
+  }
+  .lg\:grid {
+    display: grid;
+  }
+  .lg\:hidden {
+    display: none;
+  }
+
+  /* Add more responsive variants as needed */
+}
+
+/* Extra Large (xl) */
+@media (min-width: 1280px) {
+  .xl\:container {
+    width: 100%;
+    max-width: var(--container-xl);
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: var(--container-padding);
+    padding-left: var(--container-padding);
+  }
+
+  /* Add responsive variants for all utility classes */
+  .xl\:block {
+    display: block;
+  }
+  .xl\:inline-block {
+    display: inline-block;
+  }
+  .xl\:inline {
+    display: inline;
+  }
+  .xl\:flex {
+    display: flex;
+  }
+  .xl\:inline-flex {
+    display: inline-flex;
+  }
+  .xl\:table {
+    display: table;
+  }
+  .xl\:grid {
+    display: grid;
+  }
+  .xl\:hidden {
+    display: none;
+  }
+
+  /* Add more responsive variants as needed */
+}
+
+/* 2 Extra Large (2xl) */
+@media (min-width: 1536px) {
+  .\32xl\:container {
+    width: 100%;
+    max-width: var(--container-2xl);
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: var(--container-padding);
+    padding-left: var(--container-padding);
+  }
+
+  /* Add responsive variants for all utility classes */
+  .\32xl\:block {
+    display: block;
+  }
+  .\32xl\:inline-block {
+    display: inline-block;
+  }
+  .\32xl\:inline {
+    display: inline;
+  }
+  .\32xl\:flex {
+    display: flex;
+  }
+  .\32xl\:inline-flex {
+    display: inline-flex;
+  }
+  .\32xl\:table {
+    display: table;
+  }
+  .\32xl\:grid {
+    display: grid;
+  }
+  .\32xl\:hidden {
+    display: none;
+  }
+
+  /* Add more responsive variants as needed */
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .dark\:bg-gray-900 {
+    background-color: var(--color-gray-900);
+  }
+  .dark\:bg-gray-800 {
+    background-color: var(--color-gray-800);
+  }
+  .dark\:text-white {
+    color: var(--color-white);
+  }
+  .dark\:text-gray-100 {
+    color: var(--color-gray-100);
+  }
+  .dark\:border-gray-700 {
+    border-color: var(--color-gray-700);
+  }
+
+  /* Add more dark mode variants as needed */
+}
+
+/* Print */
+@media print {
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\:block {
+    display: block !important;
+  }
+  .print\:inline {
+    display: inline !important;
+  }
+  .print\:inline-block {
+    display: inline-block !important;
+  }
+
+  /* Add more print variants as needed */
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .motion-reduce\:transform-none {
+    transform: none !important;
+  }
+  .motion-reduce\:transition-none {
+    transition: none !important;
+  }
+
+  /* Add more reduced motion variants as needed */
+}
+
+/* High Contrast */
+@media (prefers-contrast: more) {
+  .contrast-more\:border {
+    border-width: 1px !important;
+  }
+  .contrast-more\:border-black {
+    border-color: black !important;
+  }
+
+  /* Add more high contrast variants as needed */
+}
+
+/* Landscape */
+@media (orientation: landscape) {
+  .landscape\:flex-row {
+    flex-direction: row;
+  }
+
+  /* Add more landscape variants as needed */
+}
+
+/* Portrait */
+@media (orientation: portrait) {
+  .portrait\:flex-col {
+    flex-direction: column;
+  }
+
+  /* Add more portrait variants as needed */
+}
+
+/* Hover */
+@media (hover: hover) {
+  .hover\:bg-primary:hover {
+    background-color: var(--color-primary);
+  }
+  .hover\:text-white:hover {
+    color: var(--color-white);
+  }
+
+  /* Add more hover variants as needed */
+}
+
+/* No Hover */
+@media (hover: none) {
+  .no-hover\:bg-primary {
+    background-color: var(--color-primary);
+  }
+
+  /* Add more no-hover variants as needed */
+}
+

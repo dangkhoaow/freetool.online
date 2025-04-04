@@ -1,0 +1,366 @@
+/* Shadows Module
+ * Classes for controlling box shadows
+ */
+
+/* Box Shadow */
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+.shadow {
+  box-shadow: var(--shadow);
+}
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+.shadow-xl {
+  box-shadow: var(--shadow-xl);
+}
+.shadow-2xl {
+  box-shadow: var(--shadow-2xl);
+}
+.shadow-inner {
+  box-shadow: var(--shadow-inner);
+}
+.shadow-none {
+  box-shadow: var(--shadow-none);
+}
+
+/* Shadow Color */
+.shadow-transparent {
+  --shadow-color: transparent;
+}
+.shadow-current {
+  --shadow-color: currentColor;
+}
+.shadow-black {
+  --shadow-color: var(--color-black);
+}
+.shadow-white {
+  --shadow-color: var(--color-white);
+}
+
+.shadow-primary {
+  --shadow-color: var(--color-primary);
+}
+.shadow-secondary {
+  --shadow-color: var(--color-secondary);
+}
+.shadow-success {
+  --shadow-color: var(--color-success);
+}
+.shadow-warning {
+  --shadow-color: var(--color-warning);
+}
+.shadow-danger {
+  --shadow-color: var(--color-danger);
+}
+.shadow-info {
+  --shadow-color: var(--color-info);
+}
+
+.shadow-gray-50 {
+  --shadow-color: var(--color-gray-50);
+}
+.shadow-gray-100 {
+  --shadow-color: var(--color-gray-100);
+}
+.shadow-gray-200 {
+  --shadow-color: var(--color-gray-200);
+}
+.shadow-gray-300 {
+  --shadow-color: var(--color-gray-300);
+}
+.shadow-gray-400 {
+  --shadow-color: var(--color-gray-400);
+}
+.shadow-gray-500 {
+  --shadow-color: var(--color-gray-500);
+}
+.shadow-gray-600 {
+  --shadow-color: var(--color-gray-600);
+}
+.shadow-gray-700 {
+  --shadow-color: var(--color-gray-700);
+}
+.shadow-gray-800 {
+  --shadow-color: var(--color-gray-800);
+}
+.shadow-gray-900 {
+  --shadow-color: var(--color-gray-900);
+}
+.shadow-gray-950 {
+  --shadow-color: var(--color-gray-950);
+}
+
+/* Shadow Opacity */
+.shadow-opacity-0 {
+  --shadow-opacity: 0;
+}
+.shadow-opacity-5 {
+  --shadow-opacity: 0.05;
+}
+.shadow-opacity-10 {
+  --shadow-opacity: 0.1;
+}
+.shadow-opacity-20 {
+  --shadow-opacity: 0.2;
+}
+.shadow-opacity-25 {
+  --shadow-opacity: 0.25;
+}
+.shadow-opacity-30 {
+  --shadow-opacity: 0.3;
+}
+.shadow-opacity-40 {
+  --shadow-opacity: 0.4;
+}
+.shadow-opacity-50 {
+  --shadow-opacity: 0.5;
+}
+.shadow-opacity-60 {
+  --shadow-opacity: 0.6;
+}
+.shadow-opacity-70 {
+  --shadow-opacity: 0.7;
+}
+.shadow-opacity-75 {
+  --shadow-opacity: 0.75;
+}
+.shadow-opacity-80 {
+  --shadow-opacity: 0.8;
+}
+.shadow-opacity-90 {
+  --shadow-opacity: 0.9;
+}
+.shadow-opacity-95 {
+  --shadow-opacity: 0.95;
+}
+.shadow-opacity-100 {
+  --shadow-opacity: 1;
+}
+
+/* Drop Shadow */
+.drop-shadow-sm {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.05));
+}
+.drop-shadow {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.06));
+}
+.drop-shadow-md {
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.06));
+}
+.drop-shadow-lg {
+  filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04)) drop-shadow(0 4px 3px rgba(0, 0, 0, 0.1));
+}
+.drop-shadow-xl {
+  filter: drop-shadow(0 20px 13px rgba(0, 0, 0, 0.03)) drop-shadow(0 8px 5px rgba(0, 0, 0, 0.08));
+}
+.drop-shadow-2xl {
+  filter: drop-shadow(0 25px 25px rgba(0, 0, 0, 0.15));
+}
+.drop-shadow-none {
+  filter: drop-shadow(0 0 #0000);
+}
+
+/* Ring */
+.ring-0 {
+  --ring-offset-shadow: var(--ring-inset) 0 0 0 var(--ring-offset-width) var(--ring-offset-color);
+  --ring-shadow: var(--ring-inset) 0 0 0 calc(0px + var(--ring-offset-width)) var(--ring-color);
+  box-shadow: var(--ring-offset-shadow), var(--ring-shadow), var(--shadow, 0 0 #0000);
+}
+.ring-1 {
+  --ring-offset-shadow: var(--ring-inset) 0 0 0 var(--ring-offset-width) var(--ring-offset-color);
+  --ring-shadow: var(--ring-inset) 0 0 0 calc(1px + var(--ring-offset-width)) var(--ring-color);
+  box-shadow: var(--ring-offset-shadow), var(--ring-shadow), var(--shadow, 0 0 #0000);
+}
+.ring-2 {
+  --ring-offset-shadow: var(--ring-inset) 0 0 0 var(--ring-offset-width) var(--ring-offset-color);
+  --ring-shadow: var(--ring-inset) 0 0 0 calc(2px + var(--ring-offset-width)) var(--ring-color);
+  box-shadow: var(--ring-offset-shadow), var(--ring-shadow), var(--shadow, 0 0 #0000);
+}
+.ring-4 {
+  --ring-offset-shadow: var(--ring-inset) 0 0 0 var(--ring-offset-width) var(--ring-offset-color);
+  --ring-shadow: var(--ring-inset) 0 0 0 calc(4px + var(--ring-offset-width)) var(--ring-color);
+  box-shadow: var(--ring-offset-shadow), var(--ring-shadow), var(--shadow, 0 0 #0000);
+}
+.ring-8 {
+  --ring-offset-shadow: var(--ring-inset) 0 0 0 var(--ring-offset-width) var(--ring-offset-color);
+  --ring-shadow: var(--ring-inset) 0 0 0 calc(8px + var(--ring-offset-width)) var(--ring-color);
+  box-shadow: var(--ring-offset-shadow), var(--ring-shadow), var(--shadow, 0 0 #0000);
+}
+.ring {
+  --ring-offset-shadow: var(--ring-inset) 0 0 0 var(--ring-offset-width) var(--ring-offset-color);
+  --ring-shadow: var(--ring-inset) 0 0 0 calc(3px + var(--ring-offset-width)) var(--ring-color);
+  box-shadow: var(--ring-offset-shadow), var(--ring-shadow), var(--shadow, 0 0 #0000);
+}
+.ring-inset {
+  --ring-inset: inset;
+}
+
+/* Ring Color */
+.ring-transparent {
+  --ring-color: transparent;
+}
+.ring-current {
+  --ring-color: currentColor;
+}
+.ring-black {
+  --ring-color: var(--color-black);
+}
+.ring-white {
+  --ring-color: var(--color-white);
+}
+
+.ring-primary {
+  --ring-color: var(--color-primary);
+}
+.ring-secondary {
+  --ring-color: var(--color-secondary);
+}
+.ring-success {
+  --ring-color: var(--color-success);
+}
+.ring-warning {
+  --ring-color: var(--color-warning);
+}
+.ring-danger {
+  --ring-color: var(--color-danger);
+}
+.ring-info {
+  --ring-color: var(--color-info);
+}
+
+.ring-gray-50 {
+  --ring-color: var(--color-gray-50);
+}
+.ring-gray-100 {
+  --ring-color: var(--color-gray-100);
+}
+.ring-gray-200 {
+  --ring-color: var(--color-gray-200);
+}
+.ring-gray-300 {
+  --ring-color: var(--color-gray-300);
+}
+.ring-gray-400 {
+  --ring-color: var(--color-gray-400);
+}
+.ring-gray-500 {
+  --ring-color: var(--color-gray-500);
+}
+.ring-gray-600 {
+  --ring-color: var(--color-gray-600);
+}
+.ring-gray-700 {
+  --ring-color: var(--color-gray-700);
+}
+.ring-gray-800 {
+  --ring-color: var(--color-gray-800);
+}
+.ring-gray-900 {
+  --ring-color: var(--color-gray-900);
+}
+.ring-gray-950 {
+  --ring-color: var(--color-gray-950);
+}
+
+/* Ring Opacity */
+.ring-opacity-0 {
+  --ring-opacity: 0;
+}
+.ring-opacity-5 {
+  --ring-opacity: 0.05;
+}
+.ring-opacity-10 {
+  --ring-opacity: 0.1;
+}
+.ring-opacity-20 {
+  --ring-opacity: 0.2;
+}
+.ring-opacity-25 {
+  --ring-opacity: 0.25;
+}
+.ring-opacity-30 {
+  --ring-opacity: 0.3;
+}
+.ring-opacity-40 {
+  --ring-opacity: 0.4;
+}
+.ring-opacity-50 {
+  --ring-opacity: 0.5;
+}
+.ring-opacity-60 {
+  --ring-opacity: 0.6;
+}
+.ring-opacity-70 {
+  --ring-opacity: 0.7;
+}
+.ring-opacity-75 {
+  --ring-opacity: 0.75;
+}
+.ring-opacity-80 {
+  --ring-opacity: 0.8;
+}
+.ring-opacity-90 {
+  --ring-opacity: 0.9;
+}
+.ring-opacity-95 {
+  --ring-opacity: 0.95;
+}
+.ring-opacity-100 {
+  --ring-opacity: 1;
+}
+
+/* Ring Offset Width */
+.ring-offset-0 {
+  --ring-offset-width: 0px;
+}
+.ring-offset-1 {
+  --ring-offset-width: 1px;
+}
+.ring-offset-2 {
+  --ring-offset-width: 2px;
+}
+.ring-offset-4 {
+  --ring-offset-width: 4px;
+}
+.ring-offset-8 {
+  --ring-offset-width: 8px;
+}
+
+/* Ring Offset Color */
+.ring-offset-transparent {
+  --ring-offset-color: transparent;
+}
+.ring-offset-current {
+  --ring-offset-color: currentColor;
+}
+.ring-offset-black {
+  --ring-offset-color: var(--color-black);
+}
+.ring-offset-white {
+  --ring-offset-color: var(--color-white);
+}
+
+.ring-offset-primary {
+  --ring-offset-color: var(--color-primary);
+}
+.ring-offset-secondary {
+  --ring-offset-color: var(--color-secondary);
+}
+.ring-offset-success {
+  --ring-offset-color: var(--color-success);
+}
+.ring-offset-warning {
+  --ring-offset-color: var(--color-warning);
+}
+.ring-offset-danger {
+  --ring-offset-color: var(--color-danger);
+}
+.ring-offset-info {
+  --ring-offset-color: var(--color-info);
+}
+

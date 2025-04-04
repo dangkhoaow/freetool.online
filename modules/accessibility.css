@@ -1,0 +1,141 @@
+/* Accessibility Module
+ * Classes for improving accessibility
+ */
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.not-sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Focus Visible */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Focus Within */
+.focus-within:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Focus */
+.focus:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Keyboard Focus */
+.focus-keyboard:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Skip Link */
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  background-color: var(--color-background);
+  color: var(--color-primary);
+  padding: var(--spacing-2) var(--spacing-4);
+  z-index: 100;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--spacing-4);
+  left: var(--spacing-4);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .motion-reduce {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.motion-safe {
+  @media (prefers-reduced-motion: reduce) {
+    transition-property: none !important;
+    animation: none !important;
+  }
+}
+
+/* High Contrast */
+@media (forced-colors: active) {
+  .high-contrast {
+    border: 1px solid transparent;
+  }
+}
+
+/* Aria Attributes */
+[aria-busy="true"] {
+  cursor: progress;
+}
+
+[aria-disabled="true"],
+[disabled] {
+  cursor: not-allowed;
+}
+
+[aria-hidden="true"] {
+  display: none;
+}
+
+/* Contrast */
+.contrast-more {
+  @media (prefers-contrast: more) {
+    border: 1px solid transparent;
+  }
+}
+
+/* Forced Colors */
+@media (forced-colors: active) {
+  .forced-colors {
+    forced-color-adjust: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-visible {
+    display: block !important;
+  }
+
+  .print-transparent {
+    background-color: transparent !important;
+    color: #000 !important;
+  }
+
+  .print-black {
+    color: #000 !important;
+  }
+}
+

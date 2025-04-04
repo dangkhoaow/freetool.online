@@ -1,0 +1,391 @@
+/* Colors Module
+ * Classes for controlling background colors, text colors, and border colors
+ */
+
+/* Background Colors */
+.bg-transparent {
+  background-color: transparent;
+}
+.bg-current {
+  background-color: currentColor;
+}
+.bg-black {
+  background-color: var(--color-black);
+}
+.bg-white {
+  background-color: var(--color-white);
+}
+
+.bg-primary {
+  background-color: var(--color-primary);
+}
+.bg-secondary {
+  background-color: var(--color-secondary);
+}
+.bg-success {
+  background-color: var(--color-success);
+}
+.bg-warning {
+  background-color: var(--color-warning);
+}
+.bg-danger {
+  background-color: var(--color-danger);
+}
+.bg-info {
+  background-color: var(--color-info);
+}
+
+.bg-gray-50 {
+  background-color: var(--color-gray-50);
+}
+.bg-gray-100 {
+  background-color: var(--color-gray-100);
+}
+.bg-gray-200 {
+  background-color: var(--color-gray-200);
+}
+.bg-gray-300 {
+  background-color: var(--color-gray-300);
+}
+.bg-gray-400 {
+  background-color: var(--color-gray-400);
+}
+.bg-gray-500 {
+  background-color: var(--color-gray-500);
+}
+.bg-gray-600 {
+  background-color: var(--color-gray-600);
+}
+.bg-gray-700 {
+  background-color: var(--color-gray-700);
+}
+.bg-gray-800 {
+  background-color: var(--color-gray-800);
+}
+.bg-gray-900 {
+  background-color: var(--color-gray-900);
+}
+.bg-gray-950 {
+  background-color: var(--color-gray-950);
+}
+
+/* Background Opacity */
+.bg-opacity-0 {
+  --bg-opacity: 0;
+}
+.bg-opacity-5 {
+  --bg-opacity: 0.05;
+}
+.bg-opacity-10 {
+  --bg-opacity: 0.1;
+}
+.bg-opacity-20 {
+  --bg-opacity: 0.2;
+}
+.bg-opacity-25 {
+  --bg-opacity: 0.25;
+}
+.bg-opacity-30 {
+  --bg-opacity: 0.3;
+}
+.bg-opacity-40 {
+  --bg-opacity: 0.4;
+}
+.bg-opacity-50 {
+  --bg-opacity: 0.5;
+}
+.bg-opacity-60 {
+  --bg-opacity: 0.6;
+}
+.bg-opacity-70 {
+  --bg-opacity: 0.7;
+}
+.bg-opacity-75 {
+  --bg-opacity: 0.75;
+}
+.bg-opacity-80 {
+  --bg-opacity: 0.8;
+}
+.bg-opacity-90 {
+  --bg-opacity: 0.9;
+}
+.bg-opacity-95 {
+  --bg-opacity: 0.95;
+}
+.bg-opacity-100 {
+  --bg-opacity: 1;
+}
+
+/* Background Blend Mode */
+.bg-blend-normal {
+  background-blend-mode: normal;
+}
+.bg-blend-multiply {
+  background-blend-mode: multiply;
+}
+.bg-blend-screen {
+  background-blend-mode: screen;
+}
+.bg-blend-overlay {
+  background-blend-mode: overlay;
+}
+.bg-blend-darken {
+  background-blend-mode: darken;
+}
+.bg-blend-lighten {
+  background-blend-mode: lighten;
+}
+.bg-blend-color-dodge {
+  background-blend-mode: color-dodge;
+}
+.bg-blend-color-burn {
+  background-blend-mode: color-burn;
+}
+.bg-blend-hard-light {
+  background-blend-mode: hard-light;
+}
+.bg-blend-soft-light {
+  background-blend-mode: soft-light;
+}
+.bg-blend-difference {
+  background-blend-mode: difference;
+}
+.bg-blend-exclusion {
+  background-blend-mode: exclusion;
+}
+.bg-blend-hue {
+  background-blend-mode: hue;
+}
+.bg-blend-saturation {
+  background-blend-mode: saturation;
+}
+.bg-blend-color {
+  background-blend-mode: color;
+}
+.bg-blend-luminosity {
+  background-blend-mode: luminosity;
+}
+
+/* Background Attachment */
+.bg-fixed {
+  background-attachment: fixed;
+}
+.bg-local {
+  background-attachment: local;
+}
+.bg-scroll {
+  background-attachment: scroll;
+}
+
+/* Background Clip */
+.bg-clip-border {
+  background-clip: border-box;
+}
+.bg-clip-padding {
+  background-clip: padding-box;
+}
+.bg-clip-content {
+  background-clip: content-box;
+}
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Background Origin */
+.bg-origin-border {
+  background-origin: border-box;
+}
+.bg-origin-padding {
+  background-origin: padding-box;
+}
+.bg-origin-content {
+  background-origin: content-box;
+}
+
+/* Background Position */
+.bg-bottom {
+  background-position: bottom;
+}
+.bg-center {
+  background-position: center;
+}
+.bg-left {
+  background-position: left;
+}
+.bg-left-bottom {
+  background-position: left bottom;
+}
+.bg-left-top {
+  background-position: left top;
+}
+.bg-right {
+  background-position: right;
+}
+.bg-right-bottom {
+  background-position: right bottom;
+}
+.bg-right-top {
+  background-position: right top;
+}
+.bg-top {
+  background-position: top;
+}
+
+/* Background Repeat */
+.bg-repeat {
+  background-repeat: repeat;
+}
+.bg-no-repeat {
+  background-repeat: no-repeat;
+}
+.bg-repeat-x {
+  background-repeat: repeat-x;
+}
+.bg-repeat-y {
+  background-repeat: repeat-y;
+}
+.bg-repeat-round {
+  background-repeat: round;
+}
+.bg-repeat-space {
+  background-repeat: space;
+}
+
+/* Background Size */
+.bg-auto {
+  background-size: auto;
+}
+.bg-cover {
+  background-size: cover;
+}
+.bg-contain {
+  background-size: contain;
+}
+
+/* Background Image */
+.bg-none {
+  background-image: none;
+}
+.bg-gradient-to-t {
+  background-image: linear-gradient(to top, var(--gradient-stops));
+}
+.bg-gradient-to-tr {
+  background-image: linear-gradient(to top right, var(--gradient-stops));
+}
+.bg-gradient-to-r {
+  background-image: linear-gradient(to right, var(--gradient-stops));
+}
+.bg-gradient-to-br {
+  background-image: linear-gradient(to bottom right, var(--gradient-stops));
+}
+.bg-gradient-to-b {
+  background-image: linear-gradient(to bottom, var(--gradient-stops));
+}
+.bg-gradient-to-bl {
+  background-image: linear-gradient(to bottom left, var(--gradient-stops));
+}
+.bg-gradient-to-l {
+  background-image: linear-gradient(to left, var(--gradient-stops));
+}
+.bg-gradient-to-tl {
+  background-image: linear-gradient(to top left, var(--gradient-stops));
+}
+
+/* Gradient Color Stops */
+.from-transparent {
+  --gradient-from: transparent;
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-current {
+  --gradient-from: currentColor;
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-black {
+  --gradient-from: var(--color-black);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-white {
+  --gradient-from: var(--color-white);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-primary {
+  --gradient-from: var(--color-primary);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-secondary {
+  --gradient-from: var(--color-secondary);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-success {
+  --gradient-from: var(--color-success);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-warning {
+  --gradient-from: var(--color-warning);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-danger {
+  --gradient-from: var(--color-danger);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+.from-info {
+  --gradient-from: var(--color-info);
+  --gradient-stops: var(--gradient-from), var(--gradient-to, rgba(0, 0, 0, 0));
+}
+
+/* Similar classes for via-* and to-* gradient color stops */
+
+/* Mix Blend Mode */
+.mix-blend-normal {
+  mix-blend-mode: normal;
+}
+.mix-blend-multiply {
+  mix-blend-mode: multiply;
+}
+.mix-blend-screen {
+  mix-blend-mode: screen;
+}
+.mix-blend-overlay {
+  mix-blend-mode: overlay;
+}
+.mix-blend-darken {
+  mix-blend-mode: darken;
+}
+.mix-blend-lighten {
+  mix-blend-mode: lighten;
+}
+.mix-blend-color-dodge {
+  mix-blend-mode: color-dodge;
+}
+.mix-blend-color-burn {
+  mix-blend-mode: color-burn;
+}
+.mix-blend-hard-light {
+  mix-blend-mode: hard-light;
+}
+.mix-blend-soft-light {
+  mix-blend-mode: soft-light;
+}
+.mix-blend-difference {
+  mix-blend-mode: difference;
+}
+.mix-blend-exclusion {
+  mix-blend-mode: exclusion;
+}
+.mix-blend-hue {
+  mix-blend-mode: hue;
+}
+.mix-blend-saturation {
+  mix-blend-mode: saturation;
+}
+.mix-blend-color {
+  mix-blend-mode: color;
+}
+.mix-blend-luminosity {
+  mix-blend-mode: luminosity;
+}
+.mix-blend-plus-lighter {
+  mix-blend-mode: plus-lighter;
+}
+

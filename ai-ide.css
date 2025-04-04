@@ -1,0 +1,61 @@
+/* AI-Driven IDE CSS Framework
+ * A comprehensive CSS framework designed for AI analysis and correction
+ * Version: 1.0.0
+ */
+
+/* Import all modules */
+@import "modules/variables.css";
+@import "modules/reset.css";
+@import "modules/base.css";
+@import "modules/layout.css";
+@import "modules/spacing.css";
+@import "modules/typography.css";
+@import "modules/colors.css";
+@import "modules/borders.css";
+@import "modules/shadows.css";
+@import "modules/forms.css";
+@import "modules/accessibility.css";
+@import "modules/utilities.css";
+@import "modules/responsive.css";
+@import "modules/tailwind-compatibility.css";
+@import "ai-ide-analyzer.css";
+
+/* Framework Documentation
+ * This framework is designed to be analyzed by AI to detect and correct CSS issues
+ * Each module is structured with consistent naming conventions and clear documentation
+ * AI parsers can use these patterns to identify missing classes or inconsistencies
+ */
+
+/* AI Analysis Metadata */
+:root {
+  --ai-framework-version: "1.0.0";
+  --ai-framework-modules: "variables,reset,base,layout,spacing,typography,colors,borders,shadows,forms,accessibility,utilities,responsive,tailwind-compatibility";
+  --ai-analysis-patterns: "prefix-based,semantic-grouping,responsive-patterns,component-patterns,utility-patterns";
+}
+
+/* AI Debugging Helpers */
+.ai-debug-outline * {
+  outline: 1px solid rgba(255, 0, 0, 0.2);
+}
+
+.ai-debug-grid {
+  background: linear-gradient(to bottom, rgba(0, 0, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 8px;
+}
+
+.ai-debug-spacing * {
+  --ai-debug-padding: rgba(0, 255, 0, 0.2);
+  --ai-debug-margin: rgba(255, 0, 0, 0.2);
+  background:
+    linear-gradient(to right, var(--ai-debug-padding), var(--ai-debug-padding)) 0 0,
+    linear-gradient(to right, var(--ai-debug-padding), var(--ai-debug-padding)) 0 100%,
+    linear-gradient(to left, var(--ai-debug-padding), var(--ai-debug-padding)) 100% 0,
+    linear-gradient(to left, var(--ai-debug-padding), var(--ai-debug-padding)) 100% 100%,
+    linear-gradient(to bottom, var(--ai-debug-padding), var(--ai-debug-padding)) 0 0,
+    linear-gradient(to bottom, var(--ai-debug-padding), var(--ai-debug-padding)) 100% 0,
+    linear-gradient(to top, var(--ai-debug-padding), var(--ai-debug-padding)) 0 100%,
+    linear-gradient(to top, var(--ai-debug-padding), var(--ai-debug-padding)) 100% 100%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+}
+

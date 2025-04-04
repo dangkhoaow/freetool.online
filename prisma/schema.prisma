@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(PUBLISHER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  pages           Page[]
+  images          Image[]
+  workflowHistory WorkflowHistory[]
+
+  @@map("users")
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String   @default("")
+  status    Status   @default(DRAFT)
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  parent          Page?            @relation("PageToPage", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Page[]           @relation("PageToPage")
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  createdById     String
+  workflowHistory WorkflowHistory[]
+
+  @@map("pages")
+}
+
+model Image {
+  id               String   @id @default(cuid())
+  filename         String
+  originalFilename String
+  path             String
+  mimeType         String
+  size             Int
+  altText          String?
+  uploadedAt       DateTime @default(now())
+
+  // Relations
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+
+  @@map("images")
+}
+
+model Theme {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  version     String
+  themeData   Json
+  status      ThemeStatus  @default(INSTALLED)
+  installedAt DateTime     @default(now())
+
+  @@map("themes")
+}
+
+model WorkflowHistory {
+  id        String   @id @default(cuid())
+  pageId    String
+  action    Action
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  page        Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  performedBy User   @relation(fields: [performedById], references: [id])
+  performedById String
+
+  @@map("workflow_history")
+}
+
+enum Role {
+  ADMIN
+  APPROVER
+  PUBLISHER
+}
+
+enum Status {
+  DRAFT
+  PENDING
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum ThemeStatus {
+  INSTALLED
+  ACTIVE
+}
+
+enum Action {
+  SUBMIT
+  APPROVE
+  REJECT
+  PUBLISH
+}
+

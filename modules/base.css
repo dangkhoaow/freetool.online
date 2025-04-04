@@ -1,0 +1,230 @@
+/* Base Module
+ * Foundational styles for common HTML elements
+ * Provides consistent styling that AI can analyze for correctness
+ */
+
+/* Document */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-gray-900);
+  background-color: var(--color-white);
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-4);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+h1 {
+  font-size: var(--font-size-4xl);
+}
+
+h2 {
+  font-size: var(--font-size-3xl);
+}
+
+h3 {
+  font-size: var(--font-size-2xl);
+}
+
+h4 {
+  font-size: var(--font-size-xl);
+}
+
+h5 {
+  font-size: var(--font-size-lg);
+}
+
+h6 {
+  font-size: var(--font-size-base);
+}
+
+/* Paragraphs */
+p {
+  margin-top: 0;
+  margin-bottom: var(--spacing-4);
+}
+
+/* Lists */
+ul,
+ol {
+  margin-top: 0;
+  margin-bottom: var(--spacing-4);
+  padding-left: var(--spacing-5);
+}
+
+ul {
+  list-style-type: disc;
+}
+
+ol {
+  list-style-type: decimal;
+}
+
+li {
+  margin-bottom: var(--spacing-2);
+}
+
+/* Links */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-duration-150) var(--transition-timing-in-out);
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Blockquotes */
+blockquote {
+  margin: 0 0 var(--spacing-4);
+  padding: var(--spacing-4);
+  border-left: 4px solid var(--color-gray-300);
+  background-color: var(--color-gray-100);
+  font-style: italic;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Code */
+code,
+pre {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-md);
+}
+
+code {
+  padding: var(--spacing-0-5) var(--spacing-1);
+}
+
+pre {
+  margin: 0 0 var(--spacing-4);
+  padding: var(--spacing-4);
+  overflow-x: auto;
+}
+
+pre code {
+  padding: 0;
+  background-color: transparent;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  margin-bottom: var(--spacing-4);
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--color-gray-200);
+  text-align: left;
+}
+
+th {
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--color-gray-100);
+}
+
+/* Horizontal Rule */
+hr {
+  margin: var(--spacing-6) 0;
+  border: 0;
+  border-top: 1px solid var(--color-gray-200);
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+figure {
+  margin: 0 0 var(--spacing-4);
+}
+
+figcaption {
+  margin-top: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-primary-light);
+  color: var(--color-white);
+}
+
+/* Dark Mode */
+.dark body {
+  color: var(--color-gray-300);
+  background-color: var(--color-gray-900);
+}
+
+.dark a {
+  color: var(--color-primary-light);
+}
+
+.dark a:hover {
+  color: var(--color-primary);
+}
+
+.dark blockquote {
+  border-left-color: var(--color-gray-700);
+  background-color: var(--color-gray-800);
+}
+
+.dark code,
+.dark pre {
+  background-color: var(--color-gray-800);
+}
+
+.dark th,
+.dark td {
+  border-bottom-color: var(--color-gray-700);
+}
+
+.dark th {
+  background-color: var(--color-gray-800);
+}
+
+.dark hr {
+  border-top-color: var(--color-gray-700);
+}
+
+/* AI Analysis Metadata */
+:root {
+  --ai-base-elements: "html,body,headings,paragraphs,lists,links,blockquotes,code,tables,hr,images";
+  --ai-base-version: "1.0.0";
+}
+
