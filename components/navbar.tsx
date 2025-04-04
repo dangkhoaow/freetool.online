@@ -4,10 +4,14 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
+import { usePathname } from "next/navigation"
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+  
+  const isHomePage = pathname === "/"
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,29 +32,63 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-              HEIC Converter
+              FreeTool.Online
             </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
-              Converter
-            </Link>
-            <Link href="#features" className="text-gray-700 hover:text-primary transition-colors">
-              Features
-            </Link>
-            <Link href="#guide" className="text-gray-700 hover:text-primary transition-colors">
-              How It Works
-            </Link>
-            <Link href="#faq" className="text-gray-700 hover:text-primary transition-colors">
-              FAQ
-            </Link>
+            {isHomePage ? (
+              /* Home page navigation */
+              <>
+                <Link href="#tools" className="text-gray-700 hover:text-primary transition-colors">
+                  Tools
+                </Link>
+                <Link href="#features" className="text-gray-700 hover:text-primary transition-colors">
+                  Features
+                </Link>
+              </>
+            ) : pathname.includes('/heic-converter') ? (
+              /* HEIC converter page navigation */
+              <>
+                <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
+                  Converter
+                </Link>
+                <Link href="#ai-features" className="text-gray-700 hover:text-primary transition-colors">
+                  Features
+                </Link>
+                <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
+                  All Tools
+                </Link>
+              </>
+            ) : pathname.includes('/gif-to-frames') ? (
+              /* GIF to Frames page navigation */
+              <>
+                <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
+                  Converter
+                </Link>
+                <Link href="#features" className="text-gray-700 hover:text-primary transition-colors">
+                  Features
+                </Link>
+                <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
+                  All Tools
+                </Link>
+              </>
+            ) : (
+              /* Default navigation */
+              <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
+                Home
+              </Link>
+            )}
           </nav>
 
           <div className="hidden md:block">
             <Button asChild>
-              <a href="#converter">Start Converting</a>
+              {isHomePage ? (
+                <Link href="#tools">Explore Tools</Link>
+              ) : (
+                <a href="#converter">Start Converting</a>
+              )}
             </Button>
           </div>
 
@@ -65,39 +103,69 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white border-t mt-2">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link
-              href="#converter"
-              className="text-gray-700 hover:text-primary transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Converter
-            </Link>
-            <Link
-              href="#features"
-              className="text-gray-700 hover:text-primary transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Features
-            </Link>
-            <Link
-              href="#guide"
-              className="text-gray-700 hover:text-primary transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              How It Works
-            </Link>
-            <Link
-              href="#faq"
-              className="text-gray-700 hover:text-primary transition-colors py-2"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              FAQ
-            </Link>
-            <Button className="w-full" asChild>
-              <a href="#converter" onClick={() => setIsMobileMenuOpen(false)}>
-                Start Converting
-              </a>
-            </Button>
+            {isHomePage ? (
+              /* Home page mobile navigation */
+              <>
+                <Link
+                  href="#tools"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Tools
+                </Link>
+                <Link
+                  href="#features"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Features
+                </Link>
+                <Button className="w-full" asChild>
+                  <Link href="#tools" onClick={() => setIsMobileMenuOpen(false)}>
+                    Explore Tools
+                  </Link>
+                </Button>
+              </>
+            ) : pathname.includes('/heic-converter') || pathname.includes('/gif-to-frames') ? (
+              /* Tool page mobile navigation */
+              <>
+                <Link
+                  href="#converter"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Converter
+                </Link>
+                <Link
+                  href="#features"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Features
+                </Link>
+                <Link
+                  href="/"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  All Tools
+                </Link>
+                <Button className="w-full" asChild>
+                  <a href="#converter" onClick={() => setIsMobileMenuOpen(false)}>
+                    Start Converting
+                  </a>
+                </Button>
+              </>
+            ) : (
+              /* Default mobile navigation */
+              <Link
+                href="/"
+                className="text-gray-700 hover:text-primary transition-colors py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+            )}
           </div>
         </div>
       )}
