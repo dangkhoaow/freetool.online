@@ -50,16 +50,19 @@ export default function Home() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* HEIC Converter */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
-              <div className="h-40 bg-gradient-to-r from-blue-50 to-cyan-50 flex items-center justify-center">
-                <Image className="h-16 w-16 text-blue-500" />
-              </div>
-              <div className="p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+            <div className="h-40 bg-gradient-to-r from-blue-50 to-cyan-50 flex items-center justify-center">
+              <Image className="h-16 w-16 text-blue-500" />
+            </div>
+            <div className="p-6 flex flex-col flex-grow">
+              <div className="flex-grow">
                 <h3 className="text-xl font-bold mb-2">HEIC Converter</h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600">
                   Convert HEIC images from your iPhone to JPG, PNG, WEBP, or PDF formats with our AI-powered
                   optimization.
                 </p>
+              </div>
+              <div className="mt-4">
                 <Button asChild className="w-full">
                   <Link href="/heic-converter" className="flex items-center justify-center gap-2">
                     Use Tool <ArrowRight className="h-4 w-4" />
@@ -67,42 +70,25 @@ export default function Home() {
                 </Button>
               </div>
             </div>
+          </div>
 
             {/* GIF to Frames */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
-              <div className="h-40 bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-center">
-                <Film className="h-16 w-16 text-purple-500" />
-              </div>
-              <div className="p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+            <div className="h-40 bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-center">
+              <Film className="h-16 w-16 text-purple-500" />
+            </div>
+            <div className="p-6 flex flex-col flex-grow">
+              <div className="flex-grow">
                 <h3 className="text-xl font-bold mb-2">GIF to Frames</h3>
-                <p className="text-gray-600 mb-4">
+                <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                  Coming Soon
+                </span>
+                <p className="text-gray-600">
                   Extract individual frames from animated GIFs. Choose your output format and frames per second for
                   perfect results.
                 </p>
-                <Button asChild className="w-full">
-                  <Link href="/gif-to-frames" className="flex items-center justify-center gap-2">
-                    Use Tool <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
               </div>
-            </div>
-
-            {/* Coming Soon */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
-              <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 flex items-center justify-center">
-                <FileType className="h-16 w-16 text-green-500" />
-              </div>
-              <div className="p-6">
-                <div className="flex items-center mb-2">
-                  <h3 className="text-xl font-bold">PDF Tools</h3>
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
-                    Coming Soon
-                  </span>
-                </div>
-                <p className="text-gray-600 mb-4">
-                  Merge, split, compress, and convert PDF files with ease. Powerful PDF manipulation without installing
-                  any software.
-                </p>
+              <div className="mt-4">
                 <Button asChild className="w-full" variant="outline">
                   <Link href="#" className="flex items-center justify-center gap-2">
                     Coming Soon <ArrowRight className="h-4 w-4" />
@@ -110,6 +96,35 @@ export default function Home() {
                 </Button>
               </div>
             </div>
+          </div>
+
+            {/* Coming Soon */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+            <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 flex items-center justify-center">
+              <FileType className="h-16 w-16 text-green-500" />
+            </div>
+            <div className="p-6 flex flex-col flex-grow">
+              <div className="flex-grow">
+                <div className="flex items-center mb-2">
+                  <h3 className="text-xl font-bold">PDF Tools</h3>
+                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                    Coming Soon
+                  </span>
+                </div>
+                <p className="text-gray-600">
+                  Merge, split, compress, and convert PDF files with ease. Powerful PDF manipulation without installing
+                  any software.
+                </p>
+              </div>
+              <div className="mt-4">
+                <Button asChild className="w-full" variant="outline">
+                  <Link href="#" className="flex items-center justify-center gap-2">
+                    Coming Soon <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
           </div>
         </div>
       </section>
