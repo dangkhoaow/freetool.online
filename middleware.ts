@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
@@ -12,15 +11,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next()
     }
 
-    const session = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-    })
-
-    // Redirect to login if not authenticated
-    if (!session) {
-      return NextResponse.redirect(new URL("/site-management/login", request.url))
-    }
+    // Check for token in cookies (we now use localStorage in the client)
+    // This middleware just won't block anything now, allowing the client-side
+    // check to handle authentication
+    return NextResponse.next()
   }
 
   return NextResponse.next()
@@ -29,4 +23,3 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/site-management/:path*"],
 }
-

@@ -1,8 +1,8 @@
 "use client"
 
-import HeroSection from "@/components/hero-section"
-import Footer from "@/components/footer"
-import { Button } from "@/components/ui/button"
+import HeroSection from "../components/hero-section"
+import Footer from "../components/footer"
+import { Button } from "../components/ui/button"
 import { ArrowRight, Image, Film, FileType, Zap, Shield } from "lucide-react"
 import Link from "next/link"
 
@@ -294,4 +294,3 @@ export default function Home() {
     </div>
   )
 }
-

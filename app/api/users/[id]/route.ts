@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { hash } from "bcrypt"
+import { auth } from "@/lib/auth"
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -41,12 +41,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!session?.user?.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
     // Check if user has admin role or is updating their own data
@@ -54,17 +56,30 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    const { name, email, password, role } = await req.json()
+    const { password, ...userData } = await request.json()
+
+    if (password) {
+      const response = await fetch('/api/auth/hash-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+      
+      const { hashedPassword } = await response.json();
+      userData.password = hashedPassword;
+    }
 
     // Validate required fields
-    if (!name || !email) {
+    if (!userData.name || !userData.email) {
       return NextResponse.json({ error: "Name and email are required" }, { status: 400 })
     }
 
     // Check if email already exists on a different user
     const existingUser = await db.user.findFirst({
       where: {
-        email,
+        email: userData.email,
         id: {
           not: params.id,
         },
@@ -75,28 +90,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: "Email already exists" }, { status: 400 })
     }
 
-    // Prepare update data
-    const updateData: any = {
-      name,
-      email,
-    }
-
     // Only admin can change roles
-    if (session.user.role === "ADMIN" && role) {
-      updateData.role = role
+    if (session.user.role === "ADMIN" && userData.role) {
+      // No change needed
     }
 
-    // Update password if provided
-    if (password) {
-      updateData.password = await hash(password, 10)
-    }
-
-    // Update the user
     const user = await db.user.update({
-      where: {
-        id: params.id,
-      },
-      data: updateData,
+      where: { id: params.id },
+      data: userData,
       select: {
         id: true,
         name: true,
@@ -108,8 +109,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     return NextResponse.json(user)
   } catch (error) {
-    console.error("Error updating user:", error)
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 })
+    console.error('[USER_UPDATE]', error)
+    return new NextResponse("Internal Error", { status: 500 })
   }
 }
 
@@ -152,4 +153,3 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 })
   }
 }
-

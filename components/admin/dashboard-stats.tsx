@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { FileText, ImageIcon, Users, Palette } from "lucide-react"
 
 interface DashboardStatsProps {
@@ -57,4 +57,3 @@ export default function DashboardStats({ pagesCount, imagesCount, usersCount, th
     </div>
   )
 }
-

@@ -1,11 +1,58 @@
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { db } from "@/lib/db"
-import { compare } from "bcrypt"
+import { db } from "./db"
+import { getServerSession } from "next-auth/next"
+
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/auth/verify-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password, hashedPassword }),
+    });
+    
+    const result = await response.json();
+    return result.valid;
+  } catch (error) {
+    console.error('Error verifying password:', error);
+    return false;
+  }
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  try {
+    const response = await fetch('/api/auth/hash-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    });
+    
+    const result = await response.json();
+    return result.hashedPassword;
+  } catch (error) {
+    console.error('Error hashing password:', error);
+    throw error;
+  }
+}
+
+export const auth = async () => {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) {
+    throw new Error('Not authenticated')
+  }
+  return { userId: session.user.id }
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
+  },
+  pages: {
+    signIn: "/auth/signin",
   },
   providers: [
     CredentialsProvider({
@@ -29,7 +76,7 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const isPasswordValid = await compare(credentials.password, user.password)
+        const isPasswordValid = await verifyPassword(credentials.password, user.password)
 
         if (!isPasswordValid) {
           return null
@@ -37,8 +84,8 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id,
-          name: user.name,
           email: user.email,
+          name: user.name,
           role: user.role,
         }
       },
@@ -53,15 +100,11 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (token) {
+      if (session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string
       }
       return session
     },
   },
-  pages: {
-    signIn: "/site-management/login",
-  },
 }
-

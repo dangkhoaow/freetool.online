@@ -74,6 +74,16 @@ export default function Navbar() {
                   All Tools
                 </Link>
               </>
+            ) : pathname.startsWith('/admin') ? (
+              /* Admin page navigation */
+              <>
+                <Link href="/admin/dashboard" className="text-gray-700 hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+                <Link href="/admin/settings" className="text-gray-700 hover:text-primary transition-colors">
+                  Settings
+                </Link>
+              </>
             ) : (
               /* Default navigation */
               <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
@@ -156,6 +166,24 @@ export default function Navbar() {
                   </a>
                 </Button>
               </>
+            ) : pathname.startsWith('/admin') ? (
+              /* Admin page mobile navigation */
+              <>
+                <Link
+                  href="/admin/dashboard"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/admin/settings"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+              </>
             ) : (
               /* Default mobile navigation */
               <Link
@@ -172,4 +200,3 @@ export default function Navbar() {
     </header>
   )
 }
-

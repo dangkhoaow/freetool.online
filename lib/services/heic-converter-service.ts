@@ -11,6 +11,7 @@ const API_BASE_URL = 'http://localhost:3001';
 const HEIC_CONVERSION_ENDPOINT = `${API_BASE_URL}/api/heic-converter`;
 const FILES_ENDPOINT = `${API_BASE_URL}/api/files`;
 const JOB_STATUS_ENDPOINT = `${API_BASE_URL}/api/jobs/status`;
+const SETTINGS_ENDPOINT = `${API_BASE_URL}/api/settings/max-files`;
 
 // Define conversion job type
 export interface ConversionJob {
@@ -61,6 +62,7 @@ export interface ConversionSettings {
 class HeicConverterService {
   private socket: Socket | null = null;
   private userId: string = '';
+  private maxFiles: number = 15; // Default limit
 
   constructor() {
     // Only access localStorage in browser environment
@@ -71,6 +73,25 @@ class HeicConverterService {
     } else {
       // During SSR, assign a temporary ID
       this.userId = 'server-side';
+    }
+    this.getMaxFilesLimit(); // Fetch max files setting on initialization
+  }
+
+  // Fetch max files setting from the server
+  private async getMaxFilesLimit() {
+    try {
+      if (!isBrowser) return;
+      
+      const response = await fetch(SETTINGS_ENDPOINT);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.maxFiles) {
+          this.maxFiles = data.maxFiles;
+          console.log(`Max files per job set to: ${this.maxFiles}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching max files setting:', error);
     }
   }
 
@@ -114,32 +135,50 @@ class HeicConverterService {
 
   // Create a conversion job
   async convertFiles(files: File[], settings: ConversionSettings): Promise<string> {
-    // Ensure we're in a browser environment
-    if (!isBrowser) {
-      throw new Error('This method can only be called in a browser environment');
-    }
-    // Create a FormData object to send files
-    const formData = new FormData();
-    
-    // Add each file to the FormData
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-
-    // Add conversion settings
-    formData.append('outputFormat', settings.outputFormat);
-    formData.append('quality', settings.quality.toString());
-    formData.append('preserveExif', settings.preserveExif.toString());
-    
-    // Add PDF options if the output format is PDF
-    if (settings.outputFormat === 'pdf') {
-      formData.append('pdfOptions', JSON.stringify(settings.pdfOptions));
-    }
-
-    // Add priority (can be used for premium features later)
-    formData.append('priority', '1');
-
     try {
+      // Ensure we're in a browser environment
+      if (!isBrowser) {
+        throw new Error('This method can only be called in a browser environment');
+      }
+      
+      // Check if there are too many files
+      if (files.length > this.maxFiles) {
+        throw new Error(`Too many files. Maximum allowed is ${this.maxFiles}.`);
+      }
+      
+      // Create a FormData object to send files
+      const formData = new FormData();
+      
+      // Clear the FormData first to ensure no stale data
+      
+      // Add each file to the FormData one by one
+      for (let i = 0; i <files.length; i++) {
+        formData.append('files', files[i]);
+        console.log(`Adding file ${i+1}/${files.length}: ${files[i].name} (${files[i].size} bytes)`);
+      }
+
+      // Add conversion settings
+      formData.append('outputFormat', settings.outputFormat);
+      formData.append('quality', settings.quality.toString());
+      formData.append('preserveExif', settings.preserveExif.toString());
+      
+      // Add PDF options if the output format is PDF
+      if (settings.outputFormat === 'pdf') {
+        formData.append('pdfOptions', JSON.stringify(settings.pdfOptions));
+      }
+
+      // Add priority (can be used for premium features later)
+      formData.append('priority', '1');
+
+      // Log the body formdata for debugging
+      console.log('Sending request with FormData:', Array.from(formData.entries()).map(entry => {
+        // Don't log the file content, just name and size
+        if (entry[1] instanceof File) {
+          return [`${entry[0]}`, `File: ${(entry[1] as File).name} (${(entry[1] as File).size} bytes)`];
+        }
+        return entry;
+      }));
+
       const response = await fetch(HEIC_CONVERSION_ENDPOINT, {
         method: 'POST',
         headers: {

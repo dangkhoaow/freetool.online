@@ -181,11 +181,51 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     }
   }
 
+  // Handle downloading combined PDF
+  const handleDownloadCombinedPdf = async () => {
+    if (!job?.combinedPdfUrl) {
+      toast({
+        title: "Download Failed",
+        description: "Combined PDF not available",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    try {
+      setIsDownloading(true)
+      const converterService = getHeicConverterService();
+      await converterService.downloadFile(job.combinedPdfUrl, 'combined.pdf')
+      toast({
+        title: "Download Complete",
+        description: "Combined PDF has been downloaded"
+      })
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "An error occurred during download",
+        variant: "destructive"
+      })
+      console.error("Download error:", error)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   // In a real implementation, this would show actual conversion results
 
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Converted Images</h3>
+
+      {/* Debug output for combined PDF URL */}
+      {isPdfFormat && job?.files && job?.files.length > 1 && (
+        <div className="bg-gray-100 p-3 mb-3 text-xs font-mono">
+          <p>Debug: CombinedPdfUrl available: {job?.combinedPdfUrl ? 'YES' : 'NO'}</p>
+          <p>Files count: {job?.files?.length}</p>
+          <p>Job status: {job?.status}</p>
+        </div>
+      )}
 
       <div className="bg-green-50 border border-green-100 rounded-lg p-4 mb-6 flex items-center">
         <div className="bg-green-100 rounded-full p-1 mr-3">
@@ -226,6 +266,26 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
               </>
             )}
           </Button>
+          {isPdfFormat && job?.files && job?.files.length > 1 && (
+            <Button 
+              size="sm"
+              variant="secondary"
+              onClick={handleDownloadCombinedPdf}
+              disabled={isDownloading || !job?.combinedPdfUrl}
+            >
+              {isDownloading ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Combined PDF
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 

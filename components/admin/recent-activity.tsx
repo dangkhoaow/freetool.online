@@ -1,6 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { formatDistanceToNow } from "date-fns"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "../ui/badge"
 import Link from "next/link"
 
 interface RecentActivityProps {
@@ -57,4 +57,3 @@ export default function RecentActivity({ recentPages }: RecentActivityProps) {
     </Card>
   )
 }
-
