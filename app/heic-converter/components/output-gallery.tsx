@@ -7,12 +7,29 @@ import Image from "next/image"
 import { ConversionJob, getHeicConverterService } from "@/lib/services/heic-converter-service"
 import { useToast } from "@/components/ui/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useAuth } from "@/lib/auth"
 
 interface OutputGalleryProps {
   files: File[]
   settings: any
   onReset: () => void
-  job: ConversionJob | null
+  job: {
+    jobId: string
+    userId: string
+    files: Array<{
+      name: string
+      size: number
+      type: string
+      lastModified: number
+      path: string
+      convertedName: string
+      status: 'processing' | 'completed' | 'failed'
+    }>
+    outputFormat: string
+    status: 'processing' | 'completed' | 'failed'
+    completedAt: string
+    combinedPdfUrl?: string
+  } | null
   jobId: string | null
 }
 
@@ -29,6 +46,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
   const [isDownloading, setIsDownloading] = useState(false)
   const [previewImage, setPreviewImage] = useState<any | null>(null)
   const { toast } = useToast()
+  const converterService = getHeicConverterService(); // Get the service instance
+  const token = localStorage.getItem('userId') || 'anonymous'; // Use userId as token
 
   // Use actual converted files from the job if available, otherwise fall back to placeholders
   const isPdfFormat = settings.outputFormat === 'pdf';
@@ -38,73 +57,48 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     // Extract job ID and base name for better URL construction
     const currentJobId = jobId;
     
-    // Get the base filename without extension - match the backend logic
-    const originalName = file.originalName || '';
+    // Adapt to the new API response structure
+    const originalName = file.name || ''; // Use name instead of originalName
     const convertedName = file.convertedName || '';
     console.log('Original name:', originalName);
     console.log('Converted name:', convertedName);
     
-    // Extract just the filename part without path or extension - exactly like backend does
+    // Extract just the filename part without path or extension
     const fileBaseName = originalName.split('/').pop()?.split('.')[0] || '';
     console.log('Extracted base name:', fileBaseName);
     
     // Construct URLs for display and download
     let displayUrl, downloadUrl;
     
-    // For thumbnails/display URL
-    if (file.thumbnailUrl) {
-      displayUrl = file.thumbnailUrl;
-      console.log('Using provided thumbnailUrl:', displayUrl);
-    } else if (file.convertedPath) {
-      // Try to extract the job directory from the convertedPath
-      // First decode the URL-encoded path
-      const decodedPath = decodeURIComponent(file.convertedPath);
-      console.log('Decoded path:', decodedPath);
-      
-      // Extract the job directory using regex
-      const jobDirMatch = decodedPath.match(/converted\/([^\/]+)/);
-      
-      if (jobDirMatch && jobDirMatch[1]) {
-        const jobDir = jobDirMatch[1];
-        console.log('Extracted job directory:', jobDir);
-        
-        // Use the convertedName without extension for the thumbnail
-        // Or extract it from the originalName if convertedName is not available
-        let thumbnailBase;
-        if (convertedName) {
-          thumbnailBase = convertedName.split('.')[0];
-        } else {
-          thumbnailBase = fileBaseName;
-        }
-        
-        console.log('Thumbnail base filename:', thumbnailBase);
-        displayUrl = `http://localhost:3001/api/files/converted/${jobDir}/thumbnails/${thumbnailBase}.jpg`;
-        console.log('Final thumbnail URL:', displayUrl);
-      } else {
-        // Fallback to placeholder
-        displayUrl = "/placeholder.svg?height=200&width=300";
-      }
-      
-      // For download URL, use the actual converted file path
-      downloadUrl = `http://localhost:3001/api/files/${file.convertedPath}`;
+    // For display URL (thumbnail) with authentication token
+    if (currentJobId && convertedName) {
+      // Construct thumbnail URL from jobId and convertedName with /uploads prefix and token
+      const thumbnailBase = convertedName.split('.')[0];
+      displayUrl = `http://localhost:3001/api/files/uploads/converted/${currentJobId}/thumbnails/${thumbnailBase}.jpg?token=user_${token}`;
+      console.log('Constructed thumbnail URL with auth:', displayUrl);
     } else {
-      // No path available, use placeholder
+      // Fallback to placeholder
       displayUrl = "/placeholder.svg?height=200&width=300";
+    }
+    
+    // For download URL with authentication token
+    if (currentJobId && convertedName) {
+      // Construct download URL from jobId and convertedName with /uploads prefix and token
+      downloadUrl = `http://localhost:3001/api/files/uploads/converted/${currentJobId}/${convertedName}?token=user_${token}`;
+      console.log('Constructed download URL with auth:', downloadUrl);
+    } else {
       downloadUrl = null;
     }
     
-    console.log('Display URL:', displayUrl);
-    console.log('Download URL:', downloadUrl);
-    
     return {
       id: index + 1,
-      name: file.convertedName || file.originalName.replace(".heic", `.${settings.outputFormat}`),
+      name: convertedName || originalName.replace(".heic", `.${settings.outputFormat}`),
       size: file.size ? (file.size / 1024 / 1024).toFixed(2) + " MB" : "Unknown",
-      url: displayUrl, // Use thumbnail/placeholder for display
-      downloadUrl: downloadUrl, // Use actual file URL for download
-      originalName: file.originalName,
+      url: displayUrl,
+      downloadUrl: downloadUrl,
+      originalName: originalName,
       status: file.status,
-      convertedPath: file.convertedPath,
+      convertedPath: null, // No longer needed with the new URL construction
     };
   }) || 
   // Fallback to local files
@@ -132,7 +126,6 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      const converterService = getHeicConverterService();
       await converterService.downloadFile(image.downloadUrl, image.name)
       toast({
         title: "Download Complete",
@@ -163,7 +156,6 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      const converterService = getHeicConverterService();
       await converterService.downloadAllAsZip(jobId, settings.outputFormat)
       toast({
         title: "Download Complete",
@@ -194,7 +186,6 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      const converterService = getHeicConverterService();
       await converterService.downloadFile(job.combinedPdfUrl, 'combined.pdf')
       toast({
         title: "Download Complete",

@@ -59,7 +59,19 @@ export interface ConversionSettings {
   };
 }
 
-class HeicConverterService {
+// Define the service interface
+export interface HeicConverterService {
+  convertFiles(files: File[], settings: ConversionSettings): Promise<string>;
+  getJobStatus(jobId: string): Promise<ConversionJob>;
+  downloadFile(filePath: string, fileName: string): Promise<void>;
+  downloadAllAsZip(jobId: string, outputFormat: string): Promise<void>;
+  connectWebSocket(onJobUpdate: (job: ConversionJob) => void): void;
+  disconnectWebSocket(): void;
+  getUserToken(): string;
+}
+
+// Implementation
+class _HeicConverterService implements HeicConverterService {
   private socket: Socket | null = null;
   private userId: string = '';
   private maxFiles: number = 15; // Default limit
@@ -386,26 +398,26 @@ class HeicConverterService {
   }
 
   // Get user token (for authentication)
-  private getUserToken(): string {
+  public getUserToken(): string {
     // In a real app, this might come from an auth system
     // For now, we're using a simple token with the userId
     return `user_${this.userId || 'anonymous'}`;
   }
 }
 
-// Lazy initialization of the service
-let serviceInstance: HeicConverterService | null = null;
+// Export a singleton instance for backward compatibility
+// This will be initialized only when accessed in browser environment
+export const heicConverterService = isBrowser ? new _HeicConverterService() : {} as HeicConverterService;
 
 // Get the service instance (creates it on first access in browser environment)
 export const getHeicConverterService = (): HeicConverterService => {
   if (isBrowser && !serviceInstance) {
-    serviceInstance = new HeicConverterService();
+    serviceInstance = new _HeicConverterService();
   }
   
   // During SSR, we'll return a minimal instance that won't use browser APIs
-  return serviceInstance || new HeicConverterService();
+  return serviceInstance || new _HeicConverterService();
 };
 
-// Export a singleton instance for backward compatibility
-// This will be initialized only when accessed
-export const heicConverterService = isBrowser ? new HeicConverterService() : {} as HeicConverterService;
+// Lazy initialization of the service
+let serviceInstance: _HeicConverterService | null = null;
