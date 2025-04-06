@@ -349,6 +349,7 @@ class _HeicConverterService implements HeicConverterService {
       
       // Get the job status to check if we have a combined PDF URL
       const job = await this.getJobStatus(jobId);
+      console.log('Job status for ZIP download:', job);
       
       // For PDF format with combined PDF available, use that instead
       if (outputFormat === 'pdf' && job.combinedPdfUrl) {
@@ -360,6 +361,7 @@ class _HeicConverterService implements HeicConverterService {
       const url = `${FILES_ENDPOINT}/download-zip/${jobId}`;
       const filename = `heic-converted-${outputFormat}-${new Date().toISOString().split('T')[0]}.zip`;
       
+      console.log('Fetching ZIP from URL:', url);
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -367,12 +369,33 @@ class _HeicConverterService implements HeicConverterService {
         }
       });
 
+      console.log('ZIP download response status:', response.status, response.statusText);
+      console.log('ZIP download content-type:', response.headers.get('content-type'));
+      
       if (!response.ok) {
-        throw new Error('Failed to download files');
+        const errorBody = await response.text();
+        console.error('Download ZIP error response:', errorBody);
+        try {
+          const errorJson = JSON.parse(errorBody);
+          throw new Error(errorJson.message || 'Failed to download files');
+        } catch (parseError) {
+          throw new Error(`Failed to download files: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      // Verify we have a valid ZIP content type
+      const contentType = response.headers.get('content-type');
+      if (contentType && !contentType.includes('application/zip') && !contentType.includes('application/octet-stream')) {
+        console.warn('Unexpected content type for ZIP:', contentType);
       }
 
       // Create a blob from the response
       const blob = await response.blob();
+      console.log('Received blob:', blob.size, 'bytes', blob.type);
+      
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
       
       // Create a temporary URL for the blob
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -391,6 +414,7 @@ class _HeicConverterService implements HeicConverterService {
       // Clean up
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
+      console.log('ZIP download completed successfully');
     } catch (error) {
       console.error('Error downloading files:', error);
       throw error;

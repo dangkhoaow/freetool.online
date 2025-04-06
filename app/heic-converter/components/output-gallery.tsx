@@ -7,7 +7,6 @@ import Image from "next/image"
 import { ConversionJob, getHeicConverterService } from "@/lib/services/heic-converter-service"
 import { useToast } from "@/components/ui/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useAuth } from "@/lib/auth"
 
 interface OutputGalleryProps {
   files: File[]
@@ -81,9 +80,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       displayUrl = "/placeholder.svg?height=200&width=300";
     }
     
-    // For download URL with authentication token
+    // For download URL with authentication token (without /thumbnails path)
     if (currentJobId && convertedName) {
       // Construct download URL from jobId and convertedName with /uploads prefix and token
+      // Ensure we use the full converted path without thumbnails for downloads
       downloadUrl = `http://localhost:3001/api/files/uploads/converted/${currentJobId}/${convertedName}?token=user_${token}`;
       console.log('Constructed download URL with auth:', downloadUrl);
     } else {
@@ -126,7 +126,15 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      await converterService.downloadFile(image.downloadUrl, image.name)
+      
+      // Create an anchor element to download with proper headers
+      const link = document.createElement('a')
+      link.href = image.downloadUrl
+      link.download = image.name // This triggers download mode
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
       toast({
         title: "Download Complete",
         description: `File ${image.name} has been downloaded.`
@@ -335,9 +343,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                   <Eye className="h-4 w-4 mr-1" />
                   Preview
                 </Button>
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                <button 
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-3"
                   onClick={() => handleDownload(image)}
                   disabled={isDownloading || image.status !== 'completed'}
                 >
@@ -345,11 +352,15 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                     <span className="animate-spin">⏳</span>
                   ) : (
                     <>
-                      <Download className="h-4 w-4 mr-1" />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-download h-4 w-4 mr-1">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" x2="12" y1="15" y2="3"></line>
+                      </svg>
                       Download
                     </>
                   )}
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -412,7 +423,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           <div className="flex justify-end space-x-2 mt-2">
             <Button 
               variant="outline" 
-              onClick={() => window.open(previewImage?.downloadUrl, '_blank')}
+              onClick={() => window.open(previewImage?.url, '_blank')}
+              title="View image in a new tab"
             >
               <Eye className="h-4 w-4 mr-2" />
               Open in New Tab

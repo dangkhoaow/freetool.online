@@ -79,13 +79,15 @@ export default function Home() {
             </div>
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex-grow">
-                <h3 className="text-xl font-bold mb-2">GIF to Frames</h3>
-                <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
-                  Coming Soon
-                </span>
+                <div className="flex items-center mb-2">
+                  <h3 className="text-xl font-bold">GIF to Frames</h3>
+                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                    Coming Soon
+                  </span>
+                </div>
                 <p className="text-gray-600">
-                  Extract individual frames from animated GIFs. Choose your output format and frames per second for
-                  perfect results.
+                    Extract individual frames from animated GIFs. Choose your output format and frames per second for
+                    perfect results.
                 </p>
               </div>
               <div className="mt-4">
