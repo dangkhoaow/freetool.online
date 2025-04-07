@@ -22,3 +22,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+app/heic-converter/.DS_Store
+lib/.DS_Store

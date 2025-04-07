@@ -82,9 +82,9 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     // For download URL with authentication token (without /thumbnails path)
     if (currentJobId && convertedName) {
-      // Construct download URL from jobId and convertedName with /uploads prefix and token
+      // Construct download URL from jobId and convertedName with token
       // Ensure we use the full converted path without thumbnails for downloads
-      downloadUrl = `http://localhost:3001/api/files/uploads/converted/${currentJobId}/${convertedName}?token=user_${token}`;
+      downloadUrl = `http://localhost:3001/api/files/converted/${currentJobId}/${convertedName}?token=user_${token}`;
       console.log('Constructed download URL with auth:', downloadUrl);
     } else {
       downloadUrl = null;
@@ -163,19 +163,50 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     }
     
     try {
+      console.log("Starting download of all files as ZIP for job:", jobId);
+      console.log("Using token:", token);
       setIsDownloading(true)
-      await converterService.downloadAllAsZip(jobId, settings.outputFormat)
+      
+      // Manually construct the API URL with token
+      const zipUrl = `http://localhost:3001/api/files/download-zip/${jobId}?token=user_${token}`;
+      console.log("ZIP download URL:", zipUrl);
+      
+      // Use direct file download instead of the service
+      const response = await fetch(zipUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download ZIP: ${response.status} ${response.statusText}`);
+      }
+      
+      // Create a blob from the response
+      const blob = await response.blob();
+      console.log("ZIP blob received:", blob.size, "bytes");
+      
+      // Create a download link
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `heic-converted-${settings.outputFormat}-${jobId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+      }, 100);
+      
       toast({
         title: "Download Complete",
         description: "All files have been downloaded as a ZIP"
       })
     } catch (error) {
+      console.error("Download ZIP error:", error);
       toast({
         title: "Download Failed",
         description: "An error occurred during download",
         variant: "destructive"
       })
-      console.error("Download error:", error)
     } finally {
       setIsDownloading(false)
     }
@@ -183,6 +214,9 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
 
   // Handle downloading combined PDF
   const handleDownloadCombinedPdf = async () => {
+    console.log("Attempting to download combined PDF");
+    console.log("Combined PDF URL:", job?.combinedPdfUrl);
+    
     if (!job?.combinedPdfUrl) {
       toast({
         title: "Download Failed",
@@ -194,18 +228,27 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      await converterService.downloadFile(job.combinedPdfUrl, 'combined.pdf')
+      
+      // Ensure URL has the token parameter
+      let downloadUrl = job.combinedPdfUrl;
+      if (!downloadUrl.includes('token=')) {
+        const separator = downloadUrl.includes('?') ? '&' : '?';
+        downloadUrl = `${downloadUrl}${separator}token=user_${token}`;
+      }
+      
+      console.log("Starting download of combined PDF from:", downloadUrl);
+      await converterService.downloadFile(downloadUrl, 'combined.pdf')
       toast({
         title: "Download Complete",
         description: "Combined PDF has been downloaded"
       })
     } catch (error) {
+      console.error("Download error for combined PDF:", error);
       toast({
         title: "Download Failed",
         description: "An error occurred during download",
         variant: "destructive"
       })
-      console.error("Download error:", error)
     } finally {
       setIsDownloading(false)
     }
@@ -221,8 +264,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       {isPdfFormat && job?.files && job?.files.length > 1 && (
         <div className="bg-gray-100 p-3 mb-3 text-xs font-mono">
           <p>Debug: CombinedPdfUrl available: {job?.combinedPdfUrl ? 'YES' : 'NO'}</p>
+          <p>URL: {job?.combinedPdfUrl || 'Not available'}</p>
           <p>Files count: {job?.files?.length}</p>
           <p>Job status: {job?.status}</p>
+          <p>Output format: {job?.outputFormat}</p>
         </div>
       )}
 
@@ -244,10 +289,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           <p className="text-sm text-gray-500">Download individual files or all at once</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             <Eye className="h-4 w-4 mr-2" />
             Preview All
-          </Button>
+          </Button> */}
           <Button 
             size="sm" 
             onClick={handleDownloadAll} 
@@ -421,14 +466,14 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           </div>
           
           <div className="flex justify-end space-x-2 mt-2">
-            <Button 
+            {/* <Button 
               variant="outline" 
               onClick={() => window.open(previewImage?.url, '_blank')}
               title="View image in a new tab"
             >
               <Eye className="h-4 w-4 mr-2" />
               Open in New Tab
-            </Button>
+            </Button> */}
             <Button 
               variant="default" 
               onClick={() => previewImage && handleDownload(previewImage)}
