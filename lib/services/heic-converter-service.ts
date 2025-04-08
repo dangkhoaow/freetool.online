@@ -68,6 +68,8 @@ export interface HeicConverterService {
   connectWebSocket(onJobUpdate: (job: ConversionJob) => void): void;
   disconnectWebSocket(): void;
   getUserToken(): string;
+  getMaxFilesLimit(): Promise<number>;
+  getApiBaseUrl(): string;
 }
 
 // Implementation
@@ -75,6 +77,7 @@ class _HeicConverterService implements HeicConverterService {
   private socket: Socket | null = null;
   private userId: string = '';
   private maxFiles: number = 15; // Default limit
+  private apiBaseUrl: string = API_BASE_URL;
 
   constructor() {
     // Only access localStorage in browser environment
@@ -90,21 +93,34 @@ class _HeicConverterService implements HeicConverterService {
   }
 
   // Fetch max files setting from the server
-  private async getMaxFilesLimit() {
+  public async getMaxFilesLimit(): Promise<number> {
     try {
-      if (!isBrowser) return;
+      if (!isBrowser) return this.maxFiles;
       
-      const response = await fetch(SETTINGS_ENDPOINT);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.maxFiles) {
-          this.maxFiles = data.maxFiles;
-          console.log(`Max files per job set to: ${this.maxFiles}`);
-        }
+      const response = await fetch(`${this.apiBaseUrl}/api/settings/max-files`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch max files setting:', response.statusText);
+        return 200; // Default value
+      }
+
+      const data = await response.json();
+      if (data.maxFiles) {
+        this.maxFiles = data.maxFiles;
+        console.log(`Max files per job set to: ${this.maxFiles}`);
+      } else {
+        console.log(`Max files not found in settings, using default: ${this.maxFiles}`);
       }
     } catch (error) {
       console.error('Error fetching max files setting:', error);
     }
+    
+    return this.maxFiles;
   }
 
   // Connect to WebSocket for real-time updates
@@ -217,231 +233,130 @@ class _HeicConverterService implements HeicConverterService {
     try {
       console.log('Fetching job status from:', `${JOB_STATUS_ENDPOINT}/${jobId}`);
       
+      const token = this.getUserToken();
+      console.log('Using auth token:', token ? 'Token exists' : 'No token');
+      
       const response = await fetch(`${JOB_STATUS_ENDPOINT}/${jobId}`, {
         headers: {
-          'Authorization': `Bearer ${this.getUserToken()}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
-      console.log('Job status response:', response.status, response.statusText);
-      
       if (!response.ok) {
-        if (response.status === 404) {
-          // If job not found, return a default job with 'not found' status
-          console.warn('Job not found, creating placeholder job');
-          return {
-            jobId,
-            status: 'failed',
-            progress: 0,
-            files: [],
-            outputFormat: 'unknown',
-            createdAt: new Date(),
-            error: 'Job not found or expired'
-          } as ConversionJob;
-        }
-        
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || 'Failed to get job status');
-        } catch (parseError) {
-          throw new Error(`Failed to get job status: ${response.status} ${response.statusText}`);
-        }
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Job status API error:', response.status, response.statusText, errorData);
+        throw new Error(errorData.error || `HTTP Error ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('Job status data:', data);
-      return data;
+      if (!data || !data.job) {
+        console.error('Invalid job status response:', data);
+        throw new Error('Invalid job status response from server');
+      }
+      
+      return data.job;
     } catch (error) {
-      console.error('Error getting job status:', error);
+      console.error('Error fetching job status:', error);
       throw error;
     }
   }
 
-  // Get file download URL
-  getFileDownloadUrl(filePath: string): string {
-    return `${FILES_ENDPOINT}/${filePath}`;
-  }
-
-  // Download a converted file
+  // Download a file
   async downloadFile(filePath: string, fileName: string): Promise<void> {
-    // Ensure we're in a browser environment
-    if (!isBrowser) {
-      throw new Error('This method can only be called in a browser environment');
-    }
-
-    console.log(`Downloading file with path: ${filePath}`);
-    
     try {
-      // If it's a full URL, use it directly
-      if (filePath.startsWith('http')) {
-        console.log('Direct download of URL:', filePath);
-        
-        // Fetch the file to force download rather than open in browser
-        const response = await fetch(filePath);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
-        }
-        
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        
-        // Create a link and trigger download
-        const link = document.createElement('a');
-        link.href = objectUrl;
-        link.download = fileName;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        
-        // Clean up
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(objectUrl);
-        }, 100);
-        
-        return;
+      // Ensure we're in a browser environment
+      if (!isBrowser) {
+        throw new Error('This method can only be called in a browser environment');
       }
       
-      // Otherwise, try to download through the API
-      const url = `${FILES_ENDPOINT}/${encodeURIComponent(filePath)}`;
-      console.log('Using API endpoint for download:', url);
-      
-      const response = await fetch(url, {
+      const response = await fetch(FILES_ENDPOINT + filePath, {
         headers: {
           'Authorization': `Bearer ${this.getUserToken()}`
         }
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to download file');
       }
 
-      // Get the blob and create a download link
       const blob = await response.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = URL.createObjectURL(blob);
       link.download = fileName;
-      link.style.display = 'none';
-      document.body.appendChild(link);
       link.click();
-      
-      // Clean up after a short delay
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(downloadUrl);
-      }, 100);
+      URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error('Error downloading file:', error);
       throw error;
     }
   }
 
-  // Download all files as a ZIP
+  // Download all files as a zip
   async downloadAllAsZip(jobId: string, outputFormat: string): Promise<void> {
     try {
-      console.log('Downloading all files as ZIP for job:', jobId);
-      
-      // Get the job status to check if we have a combined PDF URL
-      const job = await this.getJobStatus(jobId);
-      console.log('Job status for ZIP download:', job);
-      
-      // For PDF format with combined PDF available, use that instead
-      if (outputFormat === 'pdf' && job.combinedPdfUrl) {
-        console.log('Combined PDF available, downloading that instead of ZIP');
-        return this.downloadFile(job.combinedPdfUrl, `combined-${jobId}.pdf`);
+      // Ensure we're in a browser environment
+      if (!isBrowser) {
+        throw new Error('This method can only be called in a browser environment');
       }
       
-      // Otherwise use ZIP download
-      const url = `${FILES_ENDPOINT}/download-zip/${jobId}`;
-      const filename = `heic-converted-${outputFormat}-${new Date().toISOString().split('T')[0]}.zip`;
-      
-      console.log('Fetching ZIP from URL:', url);
-      const response = await fetch(url, {
-        method: 'GET',
+      const response = await fetch(`${FILES_ENDPOINT}/zip/${jobId}?outputFormat=${outputFormat}`, {
         headers: {
           'Authorization': `Bearer ${this.getUserToken()}`
         }
       });
 
-      console.log('ZIP download response status:', response.status, response.statusText);
-      console.log('ZIP download content-type:', response.headers.get('content-type'));
-      
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('Download ZIP error response:', errorBody);
-        try {
-          const errorJson = JSON.parse(errorBody);
-          throw new Error(errorJson.message || 'Failed to download files');
-        } catch (parseError) {
-          throw new Error(`Failed to download files: ${response.status} ${response.statusText}`);
-        }
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to download zip');
       }
 
-      // Verify we have a valid ZIP content type
-      const contentType = response.headers.get('content-type');
-      if (contentType && !contentType.includes('application/zip') && !contentType.includes('application/octet-stream')) {
-        console.warn('Unexpected content type for ZIP:', contentType);
-      }
-
-      // Create a blob from the response
       const blob = await response.blob();
-      console.log('Received blob:', blob.size, 'bytes', blob.type);
-      
-      if (blob.size === 0) {
-        throw new Error('Downloaded file is empty');
-      }
-      
-      // Create a temporary URL for the blob
-      const downloadUrl = window.URL.createObjectURL(blob);
-      
-      // Create a link element
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      
-      // Append to the document
-      document.body.appendChild(link);
-      
-      // Trigger click event
+      link.href = URL.createObjectURL(blob);
+      link.download = `job-${jobId}-${outputFormat.toUpperCase()}.zip`;
       link.click();
-      
-      // Clean up
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-      console.log('ZIP download completed successfully');
+      URL.revokeObjectURL(link.href);
     } catch (error) {
-      console.error('Error downloading files:', error);
+      console.error('Error downloading zip:', error);
       throw error;
     }
   }
 
-  // Get user token (for authentication)
-  public getUserToken(): string {
-    // In a real app, this might come from an auth system
-    // For now, we're using a simple token with the userId
-    return `user_${this.userId || 'anonymous'}`;
+  // Get user token
+  getUserToken(): string {
+    // Ensure we're in a browser environment
+    if (!isBrowser) {
+      return ''; // Return empty string during SSR
+    }
+    
+    // Get existing token or generate new one
+    let token = localStorage.getItem('userToken');
+    
+    // If no token exists, create one using the userId
+    if (!token) {
+      token = `user_${this.userId}`;
+      localStorage.setItem('userToken', token);
+    }
+    
+    return token;
+  }
+
+  // Get API base URL
+  getApiBaseUrl(): string {
+    return this.apiBaseUrl;
   }
 }
 
-// Export a singleton instance for backward compatibility
-// This will be initialized only when accessed in browser environment
-export const heicConverterService = isBrowser ? new _HeicConverterService() : {} as HeicConverterService;
+export default _HeicConverterService;
 
-// Get the service instance (creates it on first access in browser environment)
-export const getHeicConverterService = (): HeicConverterService => {
-  if (isBrowser && !serviceInstance) {
-    serviceInstance = new _HeicConverterService();
+// Singleton instance
+let _instance: _HeicConverterService | null = null;
+
+// Function to get singleton instance
+export function getHeicConverterService(): _HeicConverterService {
+  if (!_instance) {
+    _instance = new _HeicConverterService();
   }
-  
-  // During SSR, we'll return a minimal instance that won't use browser APIs
-  return serviceInstance || new _HeicConverterService();
-};
-
-// Lazy initialization of the service
-let serviceInstance: _HeicConverterService | null = null;
+  return _instance;
+}

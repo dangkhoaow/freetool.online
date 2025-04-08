@@ -2,10 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, FileType, AlertCircle, X, ArrowLeft } from "lucide-react"
+import { getHeicConverterService } from "@/lib/services/heic-converter-service"
 
 interface UploadSectionProps {
   files: File[]
@@ -18,6 +19,35 @@ interface UploadSectionProps {
 export default function UploadSection({ files, setFiles, onContinue, disabled, setActiveTab }: UploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [maxFiles, setMaxFiles] = useState<number>(15) // Default value
+  const [maxFileSizeMB, setMaxFileSizeMB] = useState<number>(100) // Default value
+  const converterService = getHeicConverterService()
+  
+  // Fetch max files limit on component mount
+  useEffect(() => {
+    // Access the converter service
+    converterService.getMaxFilesLimit().then(limit => {
+      setMaxFiles(limit);
+      console.log(`Max files limit set to: ${limit}`);
+    }).catch(error => {
+      console.error('Failed to fetch max files limit:', error);
+      // Keep default value if there's an error
+    });
+
+    // Fetch max file size from the API
+    fetch(`${converterService.getApiBaseUrl()}/api/settings/max-file-size`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.maxFileSizeMB) {
+          setMaxFileSizeMB(data.maxFileSizeMB);
+          console.log(`Max file size set to: ${data.maxFileSizeMB}MB`);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch max file size limit:', error);
+        // Keep default value if there's an error
+      });
+  }, [converterService])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -56,11 +86,23 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
       return
     }
 
-    // Check file size (limit to 50MB per file)
-    const validFiles = heicFiles.filter((file) => file.size <= 50 * 1024 * 1024)
+    // Check file size (using maxFileSizeMB from settings)
+    const maxSizeBytes = maxFileSizeMB * 1024 * 1024;
+    const validFiles = heicFiles.filter((file) => file.size <= maxSizeBytes)
 
     if (validFiles.length < heicFiles.length) {
-      setError("Some files exceed the 50MB size limit and were removed.")
+      setError(`Some files exceed the ${maxFileSizeMB}MB size limit and were removed.`)
+    }
+    
+    // Check max files limit
+    if (files.length + validFiles.length > maxFiles) {
+      setError(`Maximum ${maxFiles} files allowed. Please remove some files.`)
+      // Add only as many files as we can without exceeding the limit
+      const remainingSlots = maxFiles - files.length
+      if (remainingSlots > 0) {
+        setFiles([...files, ...validFiles.slice(0, remainingSlots)])
+      }
+      return
     }
 
     setFiles([...files, ...validFiles])
@@ -108,17 +150,27 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
             accept=".heic,.heif"
             multiple
             onChange={handleFileChange}
-            disabled={disabled}
+            disabled={disabled || files.length >= maxFiles}
           />
           <label htmlFor="file-upload">
-            <Button variant="outline" className="cursor-pointer" asChild disabled={disabled}>
+            <Button 
+              variant="outline" 
+              className="cursor-pointer" 
+              asChild 
+              disabled={disabled || files.length >= maxFiles}
+            >
               <span>Browse Files</span>
             </Button>
           </label>
           <div className="text-xs text-gray-500 space-y-1">
-            <p>Maximum file size: 50MB per file</p>
+            <p>Maximum file size: {maxFileSizeMB}MB per file</p>
             <p>Supported formats: HEIC, HEIF</p>
-            <p>Batch upload supported (up to 50 files)</p>
+            <p>Batch upload supported (up to {maxFiles} files)</p>
+            {files.length > 0 && (
+              <p className={files.length >= maxFiles ? "text-amber-500 font-medium" : ""}>
+                {files.length} of {maxFiles} files selected
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -126,7 +178,7 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
       {files.length > 0 && (
         <div className="mt-8">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium">Selected Files ({files.length})</h3>
+            <h3 className="font-medium">Selected Files ({files.length}/{maxFiles})</h3>
             <Button variant="ghost" size="sm" onClick={clearAllFiles} disabled={disabled}>
               Clear All
             </Button>
