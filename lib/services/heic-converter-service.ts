@@ -357,14 +357,16 @@ class _HeicConverterService implements HeicConverterService {
         return this.downloadFile(job.combinedPdfUrl, `combined-${jobId}.pdf`);
       }
       
-      // Otherwise use ZIP download - add token as query parameter instead of header
-      const token = this.getUserToken();
-      const url = `${FILES_ENDPOINT}/download-zip/${jobId}?token=${token}`;
+      // Otherwise use ZIP download
+      const url = `${FILES_ENDPOINT}/download-zip/${jobId}`;
       const filename = `heic-converted-${outputFormat}-${new Date().toISOString().split('T')[0]}.zip`;
       
       console.log('Fetching ZIP from URL:', url);
       const response = await fetch(url, {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.getUserToken()}`
+        }
       });
 
       console.log('ZIP download response status:', response.status, response.statusText);
