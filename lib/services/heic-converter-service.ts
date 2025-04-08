@@ -238,7 +238,8 @@ class _HeicConverterService implements HeicConverterService {
       
       const response = await fetch(`${JOB_STATUS_ENDPOINT}/${jobId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -249,12 +250,22 @@ class _HeicConverterService implements HeicConverterService {
       }
 
       const data = await response.json();
-      if (!data || !data.job) {
-        console.error('Invalid job status response:', data);
+      
+      // Handle different response formats
+      // Check if the response has a job property (from the [jobId] endpoint)
+      if (data && data.job) {
+        console.log('Received job status with job wrapper:', data);
+        return data.job;
+      } 
+      // Check if the response is the job itself (direct from queue manager)
+      else if (data && data.jobId) {
+        console.log('Received direct job status:', data);
+        return data;
+      } 
+      else {
+        console.error('Invalid job status response format:', data);
         throw new Error('Invalid job status response from server');
       }
-      
-      return data.job;
     } catch (error) {
       console.error('Error fetching job status:', error);
       throw error;
