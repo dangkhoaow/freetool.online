@@ -165,7 +165,16 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      await converterService.downloadAllAsZip(jobId, settings.outputFormat)
+      
+      // Create and use direct download link with token
+      const zipUrl = `http://localhost:3001/api/files/download-zip/${jobId}?token=user_${token}`;
+      const link = document.createElement('a');
+      link.href = zipUrl;
+      link.download = `converted-files-${jobId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
       toast({
         title: "Download Complete",
         description: "All files have been downloaded as a ZIP"
@@ -195,7 +204,23 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     
     try {
       setIsDownloading(true)
-      await converterService.downloadFile(job.combinedPdfUrl, 'combined.pdf')
+      
+      // Add token to the combinedPdfUrl
+      let pdfUrl = job.combinedPdfUrl;
+      if (!pdfUrl.includes('token=')) {
+        pdfUrl = pdfUrl.includes('?') 
+          ? `${pdfUrl}&token=user_${token}` 
+          : `${pdfUrl}?token=user_${token}`;
+      }
+      
+      // Create direct download link
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = 'combined.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
       toast({
         title: "Download Complete",
         description: "Combined PDF has been downloaded"
@@ -219,7 +244,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       <h3 className="text-xl font-semibold mb-4">Converted Images</h3>
 
       {/* Debug output for combined PDF URL */}
-      {isPdfFormat && job?.files && job?.files.length > 1 && (
+      {false && isPdfFormat && job?.files && job?.files.length > 1 && (
         <div className="bg-gray-100 p-3 mb-3 text-xs font-mono">
           <p>Debug: CombinedPdfUrl available: {job?.combinedPdfUrl ? 'YES' : 'NO'}</p>
           <p>Files count: {job?.files?.length}</p>
