@@ -193,10 +193,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
 
   // Handle downloading combined PDF
   const handleDownloadCombinedPdf = async () => {
-    if (!job?.combinedPdfUrl) {
+    if (!jobId) {
       toast({
         title: "Download Failed",
-        description: "Combined PDF not available",
+        description: "Job ID not available",
         variant: "destructive"
       })
       return
@@ -205,13 +205,9 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     try {
       setIsDownloading(true)
       
-      // Add token to the combinedPdfUrl
-      let pdfUrl = job.combinedPdfUrl;
-      if (!pdfUrl.includes('token=')) {
-        pdfUrl = pdfUrl.includes('?') 
-          ? `${pdfUrl}&token=user_${token}` 
-          : `${pdfUrl}?token=user_${token}`;
-      }
+      // Create direct URL to the combined.pdf file in the job directory
+      const pdfUrl = `http://localhost:3001/api/files/converted/${jobId}/combined.pdf?token=user_${token}`;
+      console.log("Attempting to download combined PDF from:", pdfUrl);
       
       // Create direct download link
       const link = document.createElement('a');
@@ -296,7 +292,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
               size="sm"
               variant="secondary"
               onClick={handleDownloadCombinedPdf}
-              disabled={isDownloading || !job?.combinedPdfUrl}
+              disabled={isDownloading || !jobId}
             >
               {isDownloading ? (
                 <>
