@@ -32,11 +32,17 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
     }).catch(error => {
       console.error('Failed to fetch max files limit:', error);
       // Keep default value if there's an error
+      setMaxFiles(200); // Use a sensible default
     });
 
     // Fetch max file size from the API
     fetch(`${converterService.getApiBaseUrl()}/api/settings/max-file-size`)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.maxFileSizeMB) {
           setMaxFileSizeMB(data.maxFileSizeMB);
@@ -46,6 +52,7 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
       .catch(error => {
         console.error('Failed to fetch max file size limit:', error);
         // Keep default value if there's an error
+        setMaxFileSizeMB(100); // Use a sensible default of 100MB
       });
   }, [converterService])
 

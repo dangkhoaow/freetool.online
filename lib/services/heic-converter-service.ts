@@ -7,7 +7,7 @@ import { io, Socket } from 'socket.io-client';
 const isBrowser = typeof window !== 'undefined';
 
 // Define API endpoints
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const HEIC_CONVERSION_ENDPOINT = `${API_BASE_URL}/api/heic-converter`;
 const FILES_ENDPOINT = `${API_BASE_URL}/api/files`;
 const JOB_STATUS_ENDPOINT = `${API_BASE_URL}/api/jobs/status`;
@@ -106,7 +106,7 @@ class _HeicConverterService implements HeicConverterService {
 
       if (!response.ok) {
         console.error('Failed to fetch max files setting:', response.statusText);
-        return 200; // Default value
+        return 200; // Default to a sensible value
       }
 
       const data = await response.json();
@@ -118,6 +118,7 @@ class _HeicConverterService implements HeicConverterService {
       }
     } catch (error) {
       console.error('Error fetching max files setting:', error);
+      return 200; // Default to a sensible value on error
     }
     
     return this.maxFiles;
@@ -212,7 +213,9 @@ class _HeicConverterService implements HeicConverterService {
         headers: {
           'Authorization': `Bearer ${this.getUserToken()}`
         },
-        body: formData
+        body: formData,
+        credentials: 'include',
+        mode: 'cors'
       });
 
       if (!response.ok) {
@@ -240,7 +243,9 @@ class _HeicConverterService implements HeicConverterService {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include',
+        mode: 'cors'
       });
 
       if (!response.ok) {

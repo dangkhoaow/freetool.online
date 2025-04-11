@@ -32,6 +32,9 @@ interface OutputGalleryProps {
   jobId: string | null
 }
 
+// Add import for API base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 // Helper function to get a filename with the correct extension
 function getOutputFilename(originalName: string, format: string): string {
   // Get the filename without extension
@@ -74,7 +77,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       // Construct thumbnail URL from jobId and convertedName with /uploads prefix and token
       const thumbnailBase = convertedName.split('.')[0];
       const thumbnailExt = settings.outputFormat === 'pdf' ? 'jpg' : settings.outputFormat;
-      displayUrl = `http://localhost:3001/api/files/uploads/converted/${currentJobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`;
+      displayUrl = `${API_BASE_URL}/api/files/uploads/converted/${currentJobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`;
       console.log('Constructed thumbnail URL with auth:', displayUrl);
     } else {
       // Fallback to placeholder
@@ -85,7 +88,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     if (currentJobId && convertedName) {
       // Construct download URL from jobId and convertedName with token
       // Ensure we use the full converted path without thumbnails for downloads
-      downloadUrl = `http://localhost:3001/api/files/converted/${currentJobId}/${convertedName}?token=user_${token}`;
+      downloadUrl = `${API_BASE_URL}/api/files/converted/${currentJobId}/${convertedName}?token=user_${token}`;
       console.log('Constructed download URL with auth:', downloadUrl);
     } else {
       downloadUrl = null;
@@ -167,7 +170,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       setIsDownloading(true)
       
       // Create and use direct download link with token
-      const zipUrl = `http://localhost:3001/api/files/download-zip/${jobId}?token=user_${token}`;
+      const zipUrl = `${API_BASE_URL}/api/files/download-zip/${jobId}?token=user_${token}`;
       const link = document.createElement('a');
       link.href = zipUrl;
       link.download = `converted-files-${jobId}.zip`;
@@ -206,7 +209,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       setIsDownloading(true)
       
       // Create direct URL to the combined.pdf file in the job directory
-      const pdfUrl = `http://localhost:3001/api/files/converted/${jobId}/combined.pdf?token=user_${token}`;
+      const pdfUrl = `${API_BASE_URL}/api/files/converted/${jobId}/combined.pdf?token=user_${token}`;
       console.log("Attempting to download combined PDF from:", pdfUrl);
       
       // Create direct download link

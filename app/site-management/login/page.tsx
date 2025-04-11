@@ -11,6 +11,9 @@ import { Label } from "../../../components/ui/label"
 import { Alert, AlertDescription } from "../../../components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
+// Define API base URL from environment variable
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState("")
@@ -33,7 +36,7 @@ export default function LoginPage() {
 
     try {
       // Use the backend service's login endpoint
-      const response = await fetch("http://localhost:3001/api/admin/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/admin/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { db } from "./db"
 import { getServerSession } from "next-auth/next"
+import { NextRequest } from "next/server"
 
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   try {
@@ -45,6 +46,18 @@ export const auth = async () => {
     throw new Error('Not authenticated')
   }
   return { userId: session.user.id }
+}
+
+export async function getToken(request: NextRequest): Promise<string | null> {
+  const authHeader = request.headers.get('authorization');
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  // If no authorization header, try to get token from cookies or session
+  const session = await getServerSession(authOptions);
+  return session?.user?.id || null;
 }
 
 export const authOptions: NextAuthOptions = {
