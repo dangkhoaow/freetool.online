@@ -262,7 +262,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
         <div>
           <p className="text-green-800 font-medium">Conversion Complete!</p>
           <p className="text-sm text-green-700">
-            All {files.length} files have been successfully converted to {settings.outputFormat.toUpperCase()}
+            {job?.files?.filter(file => file.status === 'completed').length || 0} of {job?.files?.length || files.length} files have been successfully converted to {settings.outputFormat.toUpperCase()}
+            {job?.files?.some(file => file.status === 'failed') && ` (${job.files.filter(file => file.status === 'failed').length} failed)`}
           </p>
         </div>
       </div>

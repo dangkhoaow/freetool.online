@@ -8,7 +8,10 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  generator: "v0.dev",
+  generator: "freetool.online",
+  icons: {
+    icon: '/favicon.32x32.png',
+  },
 };
 
 export default function RootLayout({
