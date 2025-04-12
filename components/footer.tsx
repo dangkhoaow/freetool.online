@@ -6,10 +6,9 @@ export default function Footer() {
       <div className="container mx-auto max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-white text-lg font-bold mb-4">HEIC Converter</h3>
+            <h3 className="text-white text-lg font-bold mb-4">FreeTool.Online</h3>
             <p className="text-sm">
-              Convert HEIC images to JPG, PNG, WEBP, and PDF with our AI-powered converter. Fast, secure, and easy to
-              use.
+            Your one-stop destination for a wide range of free online tools for developers, testers, students, and office workers.
             </p>
           </div>
 
@@ -43,7 +42,7 @@ export default function Footer() {
             <h4 className="text-white font-medium mb-4">Resources</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="hover:text-white transition-colors">
+                <Link href="https://freetoolonline.org?utm_source=external&utm_medium=freetool&utm_content=footer" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
                   Blog
                 </Link>
               </li>
@@ -53,7 +52,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-white transition-colors">
+                <Link href="https://freetoolonline.com/contact-us.html?utm_source=external&utm_medium=freetool&utm_content=footer" target="_blank" className="hover:text-white transition-colors">
                   Contact Us
                 </Link>
               </li>
@@ -69,7 +68,7 @@ export default function Footer() {
             <h4 className="text-white font-medium mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="hover:text-white transition-colors">
+                <Link href="https://freetoolonline.com/privacy-policy.html?utm_source=external&utm_medium=freetool&utm_content=footer" target="_blank" className="hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
@@ -79,7 +78,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-white transition-colors">
+                <Link href="https://freetoolonline.com/privacy-policy.html?utm_source=external&utm_medium=freetool&utm_content=footer" target="_blank" className="hover:text-white transition-colors">
                   Cookie Policy
                 </Link>
               </li>
@@ -88,9 +87,9 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm">© {new Date().getFullYear()} HEIC Converter. All rights reserved.</p>
+          <p className="text-sm">© {new Date().getFullYear()} <a href="https://freetoolonline.com?utm_source=external&utm_medium=freetool&utm_content=footer" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">FreeToolOnline.com</a>. All rights reserved.</p>
           <div className="flex space-x-4 mt-4 md:mt-0">
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors">
+            <Link href="https://www.facebook.com/freetoolonline" target="_blank" className="text-gray-400 hover:text-white transition-colors">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"

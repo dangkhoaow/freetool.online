@@ -14,7 +14,7 @@ interface OutputGalleryProps {
   onReset: () => void
   job: {
     jobId: string
-    userId: string
+    userId?: string
     files: Array<{
       name: string
       size: number
@@ -243,7 +243,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       <h3 className="text-xl font-semibold mb-4">Converted Images</h3>
 
       {/* Debug output for combined PDF URL */}
-      {false && isPdfFormat && job?.files && job?.files.length > 1 && (
+      {false && isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && (
         <div className="bg-gray-100 p-3 mb-3 text-xs font-mono">
           <p>Debug: CombinedPdfUrl available: {job?.combinedPdfUrl ? 'YES' : 'NO'}</p>
           <p>Files count: {job?.files?.length}</p>
@@ -290,7 +290,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
               </>
             )}
           </Button>
-          {isPdfFormat && job?.files && job?.files.length > 1 && (
+          {isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && (
             <Button 
               size="sm"
               variant="secondary"
