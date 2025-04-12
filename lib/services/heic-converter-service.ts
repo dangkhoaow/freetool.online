@@ -33,6 +33,7 @@ export interface ConversionJob {
   createdAt: Date;
   completedAt?: Date;
   error?: string;
+  warning?: string;
   zipUrl?: string;
   combinedPdfUrl?: string;
 }
@@ -63,6 +64,8 @@ export interface ConversionSettings {
 export interface HeicConverterService {
   convertFiles(files: File[], settings: ConversionSettings): Promise<string>;
   getJobStatus(jobId: string): Promise<ConversionJob>;
+  startStatusPolling(jobId: string, onJobUpdate: (job: ConversionJob) => void): void;
+  stopStatusPolling(): void;
   downloadFile(filePath: string, fileName: string): Promise<void>;
   downloadAllAsZip(jobId: string, outputFormat: string): Promise<void>;
   connectWebSocket(onJobUpdate: (job: ConversionJob) => void): void;
@@ -78,6 +81,10 @@ class _HeicConverterService implements HeicConverterService {
   private userId: string = '';
   private maxFiles: number = 15; // Default limit
   private apiBaseUrl: string = API_BASE_URL;
+  private pollingInterval: NodeJS.Timeout | null = null;
+  private pollingJobId: string | null = null;
+  private pollingCallback: ((job: ConversionJob) => void) | null = null;
+  private pollingDelay: number = 1000; // 1 second between polls
 
   constructor() {
     // Only access localStorage in browser environment
@@ -274,6 +281,82 @@ class _HeicConverterService implements HeicConverterService {
     } catch (error) {
       console.error('Error fetching job status:', error);
       throw error;
+    }
+  }
+
+  // Start polling for job status
+  startStatusPolling(jobId: string, onJobUpdate: (job: ConversionJob) => void): void {
+    // Only poll in browser environment
+    if (!isBrowser) return;
+    
+    // Log the callback to verify it's a function
+    console.log("Setting up polling with callback type:", typeof onJobUpdate);
+    
+    // Stop any existing polling
+    this.stopStatusPolling();
+    
+    // Store job ID and callback
+    this.pollingJobId = jobId;
+    this.pollingCallback = onJobUpdate;
+    
+    // Define polling function with proper scope
+    const pollStatus = async () => {
+      try {
+        // Verify both jobId and callback are available
+        if (!this.pollingJobId) {
+          console.log("No polling job ID available");
+          return;
+        }
+        
+        // Get job status
+        const job = await this.getJobStatus(this.pollingJobId);
+        
+        // Reference the callback locally to avoid issues with 'this' context
+        const callback = this.pollingCallback;
+        
+        // Check if it's a function
+        if (typeof callback === 'function') {
+          // Call with the job data
+          callback(job);
+          
+          // Check if job is completed or failed to stop polling
+          if (job.status === 'completed' || job.status === 'failed') {
+            console.log(`Job ${this.pollingJobId} is ${job.status}, stopping polling`);
+            this.stopStatusPolling();
+          }
+        } else {
+          console.error('Polling callback is not a function', callback);
+          this.stopStatusPolling();
+        }
+      } catch (error) {
+        console.error('Error polling job status:', error);
+        // Don't stop polling on error, just continue trying
+      }
+    };
+    
+    // Create a closure to ensure 'this' context is preserved
+    const boundPollStatus = () => pollStatus.call(this);
+    
+    // Start polling immediately
+    boundPollStatus();
+    
+    // Then at intervals, using the bound function
+    this.pollingInterval = setInterval(boundPollStatus, this.pollingDelay);
+    
+    console.log(`Started polling for job ${jobId} at ${this.pollingDelay}ms intervals`);
+  }
+
+  // Stop polling for job status
+  stopStatusPolling(): void {
+    // Only clear interval in browser environment
+    if (!isBrowser) return;
+    
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+      this.pollingJobId = null;
+      this.pollingCallback = null;
+      console.log('Stopped job status polling');
     }
   }
 

@@ -46,7 +46,7 @@ export class ApiClient {
   private environment: Environment = 'production';
 
   // Backend services URL - change this to switch environments during testing
-  private readonly CONFIG_URL = 'https://service.freetool.online/api/config';
+  private readonly CONFIG_URL = 'http://localhost:3001/api/config';
 
   private constructor() {}
 

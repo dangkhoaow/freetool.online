@@ -44,72 +44,44 @@ export default function ConverterTool() {
     },
   })
 
-  // Set up WebSocket connection for real-time updates when processing
+  // Set up polling for job status updates when processing
   useEffect(() => {
     if (isProcessing && currentJobId) {
-      // Get the service and connect to WebSocket for real-time updates
+      // Get the service and start polling for job status updates
       const converterService = getHeicConverterService();
-      converterService.connectWebSocket((updatedJob) => {
-        if (updatedJob.jobId === currentJobId) {
-          setConversionJob(updatedJob)
-          setProgress(updatedJob.progress)
-          
-          // Check if job is complete or failed
-          if (updatedJob.status === 'completed') {
-            setIsProcessing(false)
-            setIsComplete(true)
-            setActiveTab("output")
-            toast({
-              title: "Conversion Complete",
-              description: `All ${files.length} files have been successfully converted.`,
-              variant: "default"
-            })
-          } else if (updatedJob.status === 'failed') {
-            setIsProcessing(false)
-            setError(updatedJob.error || 'Conversion failed')
-            toast({
-              title: "Conversion Failed",
-              description: updatedJob.error || 'An error occurred during conversion.',
-              variant: "destructive"
-            })
-          }
-        }
-      })
       
-      // Polling fallback - check job status every 3 seconds
-      const statusInterval = setInterval(async () => {
-        try {
-          if (currentJobId) {
-            const converterService = getHeicConverterService();
-            const jobStatus = await converterService.getJobStatus(currentJobId)
-            setConversionJob(jobStatus)
-            setProgress(jobStatus.progress)
-            
-            // Check if job is complete or failed
-            if (jobStatus.status === 'completed') {
-              clearInterval(statusInterval)
-              setIsProcessing(false)
-              setIsComplete(true)
-              setActiveTab("output")
-            } else if (jobStatus.status === 'failed') {
-              clearInterval(statusInterval)
-              setIsProcessing(false)
-              setError(jobStatus.error || 'Conversion failed')
-            }
-          }
-        } catch (err) {
-          console.error('Error checking job status:', err)
+      // Start polling with callback function for job updates
+      converterService.startStatusPolling(currentJobId, (updatedJob) => {
+        setConversionJob(updatedJob);
+        setProgress(updatedJob.progress);
+        
+        // Check if job is complete or failed
+        if (updatedJob.status === 'completed') {
+          setIsProcessing(false);
+          setIsComplete(true);
+          setActiveTab("output");
+          toast({
+            title: "Conversion Complete",
+            description: `All ${files.length} files have been successfully converted.`,
+            variant: "default"
+          });
+        } else if (updatedJob.status === 'failed') {
+          setIsProcessing(false);
+          setError(updatedJob.error || 'Conversion failed');
+          toast({
+            title: "Conversion Failed",
+            description: updatedJob.error || 'An error occurred during conversion.',
+            variant: "destructive"
+          });
         }
-      }, 3000)
+      });
       
-      // Cleanup function
+      // Cleanup function to stop polling when component unmounts
       return () => {
-        clearInterval(statusInterval)
-        const converterService = getHeicConverterService();
-        converterService.disconnectWebSocket()
+        converterService.stopStatusPolling();
       }
     }
-  }, [isProcessing, currentJobId, files.length, toast])
+  }, [isProcessing, currentJobId, files.length, toast]);
 
   // Handle starting the conversion process
   const handleStartConversion = async () => {
