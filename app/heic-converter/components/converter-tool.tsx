@@ -9,6 +9,9 @@ import ProcessingSection from "./processing-section"
 import OutputGallery from "./output-gallery"
 import { getHeicConverterService, ConversionJob } from "@/lib/services/heic-converter-service"
 
+// Add pollingStarted flag to track if polling has begun
+let pollingStarted = false;
+
 export default function ConverterTool() {
   // State for managing the conversion flow
   const [files, setFiles] = useState<File[]>([])
@@ -44,18 +47,133 @@ export default function ConverterTool() {
     },
   })
 
-  // Set up polling for job status updates when processing
+  // Add an effect to listen for first file uploaded event
   useEffect(() => {
-    if (isProcessing && currentJobId) {
+    // Create event listener for the first file upload
+    const handleFirstFileUploaded = (event: any) => {
+      const { masterJobId, fileName } = event.detail;
+      console.log(`First file uploaded: ${fileName} for job ${masterJobId}`);
+      
+      // If we don't already have a job ID set, use this one
+      if (!currentJobId) {
+        setCurrentJobId(masterJobId);
+        setIsProcessing(true);
+        // Start polling immediately after first file upload
+        const converterService = getHeicConverterService();
+        pollingStarted = true;
+        
+        // Start polling with callback function for job updates - check every 2 seconds
+        converterService.startStatusPolling(masterJobId, (updatedJob) => {
+          setConversionJob(updatedJob);
+          setProgress(updatedJob.progress || 0);
+          
+          // Check if all files are processed (no more processing or pending files)
+          const allFilesProcessed = updatedJob.files?.every(file => 
+            file.status === 'completed' || file.status === 'failed'
+          ) || false;
+          
+          // Check if at least one file is completed successfully
+          const hasCompletedFiles = updatedJob.files?.some(file => 
+            file.status === 'completed'
+          ) || false;
+          
+          // Check if completed files
+          const completedFiles = updatedJob.files?.filter(file => file.status === 'completed') || [];
+          
+          // Show toast for each newly completed file
+          if (completedFiles.length > 0) {
+            const lastFile = completedFiles[completedFiles.length - 1];
+            const fileName = lastFile.originalName || lastFile.convertedName || 'Unknown file';
+            console.log(`File completed: ${fileName}`);
+          }
+          
+          // Check if job is complete, failed, or has partial success
+          if (updatedJob.status === 'completed') {
+            setIsProcessing(false);
+            setIsComplete(true);
+            setActiveTab("output");
+            toast({
+              title: "Conversion Complete",
+              description: `All ${files.length} files have been successfully converted.`,
+              variant: "default"
+            });
+          } else if (updatedJob.status === 'failed' && hasCompletedFiles && allFilesProcessed) {
+            // Handle partial success - some files converted successfully but overall job failed
+            setIsProcessing(false);
+            setIsComplete(true);
+            setActiveTab("output");
+            
+            // Count completed files
+            const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
+            const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
+            
+            toast({
+              title: "Partial Conversion",
+              description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+              variant: "default"
+            });
+          } else if (updatedJob.status === 'failed' && !hasCompletedFiles) {
+            // All files failed
+            setIsProcessing(false);
+            setError(updatedJob.error || 'Conversion failed');
+            toast({
+              title: "Conversion Failed",
+              description: updatedJob.error || 'An error occurred during conversion.',
+              variant: "destructive"
+            });
+          } else if (allFilesProcessed && hasCompletedFiles) {
+            // Handle case where all files are processed but job status hasn't updated yet
+            setIsProcessing(false);
+            setIsComplete(true);
+            setActiveTab("output");
+            
+            // Count completed files
+            const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
+            const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
+            
+            toast({
+              title: "Processing Complete",
+              description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+              variant: "default"
+            });
+          }
+        }, 2000);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('firstFileUploaded', handleFirstFileUploaded);
+    
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('firstFileUploaded', handleFirstFileUploaded);
+    };
+  }, [currentJobId, files.length, toast, setActiveTab]);
+
+  // Original polling effect - modify to only run if not started by first file upload
+  useEffect(() => {
+    // Only run this if isProcessing is true and we have a jobId but no polling started yet
+    if (isProcessing && currentJobId && !pollingStarted) {
       // Get the service and start polling for job status updates
       const converterService = getHeicConverterService();
+      pollingStarted = true;
       
       // Start polling with callback function for job updates
       converterService.startStatusPolling(currentJobId, (updatedJob) => {
         setConversionJob(updatedJob);
-        setProgress(updatedJob.progress);
+        setProgress(updatedJob.progress || 0);
         
-        // Check if job is complete or failed
+        // Check if all files are processed (no more processing or pending files)
+        const allFilesProcessed = updatedJob.files?.every(file => 
+          file.status === 'completed' || file.status === 'failed'
+        ) || false;
+        
+        // Check if at least one file is completed successfully
+        const hasCompletedFiles = updatedJob.files?.some(file => 
+          file.status === 'completed'
+        ) || false;
+        
+        // Check if job is complete, failed, or has partial success
         if (updatedJob.status === 'completed') {
           setIsProcessing(false);
           setIsComplete(true);
@@ -65,7 +183,23 @@ export default function ConverterTool() {
             description: `All ${files.length} files have been successfully converted.`,
             variant: "default"
           });
-        } else if (updatedJob.status === 'failed') {
+        } else if (updatedJob.status === 'failed' && hasCompletedFiles && allFilesProcessed) {
+          // Handle partial success - some files converted successfully but overall job failed
+          setIsProcessing(false);
+          setIsComplete(true);
+          setActiveTab("output");
+          
+          // Count completed files
+          const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
+          const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
+          
+          toast({
+            title: "Partial Conversion",
+            description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+            variant: "default"
+          });
+        } else if (updatedJob.status === 'failed' && !hasCompletedFiles) {
+          // All files failed
           setIsProcessing(false);
           setError(updatedJob.error || 'Conversion failed');
           toast({
@@ -73,12 +207,28 @@ export default function ConverterTool() {
             description: updatedJob.error || 'An error occurred during conversion.',
             variant: "destructive"
           });
+        } else if (allFilesProcessed && hasCompletedFiles) {
+          // Handle case where all files are processed but job status hasn't updated yet
+          setIsProcessing(false);
+          setIsComplete(true);
+          setActiveTab("output");
+          
+          // Count completed files
+          const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
+          const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
+          
+          toast({
+            title: "Processing Complete",
+            description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+            variant: "default"
+          });
         }
-      });
+      }, 2000);
       
       // Cleanup function to stop polling when component unmounts
       return () => {
         converterService.stopStatusPolling();
+        pollingStarted = false;
       }
     }
   }, [isProcessing, currentJobId, files.length, toast]);

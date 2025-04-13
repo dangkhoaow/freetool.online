@@ -188,23 +188,29 @@ class _HeicConverterService implements HeicConverterService {
       const masterJobId = await this.createMasterJob(files.length, settings);
       console.log(`Created master job with ID: ${masterJobId}`);
       
-      // Process each file individually
-      const filePromises = files.map(async (file, index) => {
+      // Process each file individually, but don't wait for all to complete
+      // Start by uploading the first file
+      if (files.length > 0) {
         try {
-          await this.uploadSingleFile(file, masterJobId, settings, index);
-          console.log(`File ${index + 1}/${files.length} (${file.name}) queued for processing`);
-          return true;
+          await this.uploadSingleFile(files[0], masterJobId, settings, 0);
+          console.log(`First file ${files[0].name} queued for processing`);
         } catch (error) {
-          console.error(`Error processing file ${file.name}:`, error);
-          return false;
+          console.error(`Error processing first file ${files[0].name}:`, error);
         }
-      });
+      }
       
-      // Wait for all files to be queued for processing
-      await Promise.all(filePromises);
-      console.log(`All ${files.length} files have been queued for processing under master job ${masterJobId}`);
+      // Upload the rest of the files in the background
+      if (files.length > 1) {
+        // Process remaining files asynchronously without awaiting their completion
+        for (let i = 1; i < files.length; i++) {
+          const file = files[i];
+          this.uploadSingleFile(file, masterJobId, settings, i)
+            .then(() => console.log(`File ${i + 1}/${files.length} (${file.name}) queued for processing`))
+            .catch(error => console.error(`Error processing file ${file.name}:`, error));
+        }
+      }
       
-      // Return the master job ID for tracking overall progress
+      // Return the master job ID for tracking overall progress immediately
       return masterJobId;
     } catch (error) {
       console.error('Error starting conversion:', error);
@@ -284,6 +290,21 @@ class _HeicConverterService implements HeicConverterService {
       throw new Error(error.message || `Failed to process file ${file.name}`);
     }
     
+    // Check if this is the first file, fire event for first file uploaded
+    if (fileIndex === 0) {
+      // Dispatch a custom event that can be listened to by any component
+      if (typeof window !== 'undefined') {
+        const firstFileUploadedEvent = new CustomEvent('firstFileUploaded', { 
+          detail: { 
+            masterJobId, 
+            fileName: file.name 
+          }
+        });
+        window.dispatchEvent(firstFileUploadedEvent);
+        console.log(`First file ${file.name} uploaded successfully, dispatched firstFileUploaded event`);
+      }
+    }
+    
     // No need to return anything - the master job will track progress
   }
 
@@ -334,11 +355,11 @@ class _HeicConverterService implements HeicConverterService {
   }
 
   // Implement startStatusPolling to check job status periodically
-  startStatusPolling(jobId: string, callback: (job: ConversionJob) => void): void {
+  startStatusPolling(jobId: string, callback: (job: ConversionJob) => void, pollingInterval: number = 2000): void {
     // Clear any existing polling
     this.stopStatusPolling();
 
-    console.log(`Starting status polling for job ${jobId}`);
+    console.log(`Starting status polling for job ${jobId} with interval ${pollingInterval}ms`);
     
     // Keep track of state changes for better debugging
     let previousStatus: string | null = null;
@@ -405,7 +426,7 @@ class _HeicConverterService implements HeicConverterService {
       } catch (error) {
         console.error(`[HeicConverter] Error polling job status: ${error}`);
       }
-    }, 1000); // Check every second
+    }, pollingInterval); // Use the provided polling interval (defaults to 2000ms)
   }
 
   // Stop polling for job status

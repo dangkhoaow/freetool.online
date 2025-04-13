@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, DownloadCloud, Eye, Zap, Check, X, AlertCircle, Clock } from "lucide-react"
 import Image from "next/image"
@@ -30,18 +30,30 @@ function getOutputFilename(originalName: string, format: string): string {
 
 export default function OutputGallery({ files, settings, onReset, job, jobId }: OutputGalleryProps) {
   const [isDownloading, setIsDownloading] = useState(false)
-  const [previewImage, setPreviewImage] = useState<any | null>(null)
+  const [previewImage, setPreviewImage] = useState<any>(null)
   const { toast } = useToast()
   const converterService = getHeicConverterService(); // Get the service instance
   const token = localStorage.getItem('userId') || 'anonymous'; // Use userId as token
 
-  // Stats for success/failure
-  const completedFiles = job?.files?.filter(file => file.status === 'completed').length || 0;
-  const failedFiles = job?.files?.filter(file => file.status === 'failed').length || 0;
-  const processingFiles = job?.files?.filter(file => file.status === 'processing').length || 0;
-  const pendingFiles = job?.files?.filter(file => file.status === 'pending').length || 0;
-  const totalFiles = job?.files?.length || files.length;
-  
+  // Add logic to show images even if job failed but some files were converted
+  const hasConvertedFiles = useMemo(() => {
+    if (!job?.files) return false;
+    return job.files.some(file => file.status === 'completed' && file.convertedPath);
+  }, [job]);
+
+  // If the job failed but we have converted files, make sure to display them
+  const showGallery = job?.status === 'completed' || hasConvertedFiles;
+
+  // Filter to only show successfully converted files
+  const successfulFiles = useMemo(() => {
+    return job?.files?.filter(file => file.status === 'completed' && file.convertedPath) || [];
+  }, [job]);
+
+  // Count stats
+  const totalFiles = files.length;
+  const successCount = successfulFiles.length;
+  const failedCount = job?.files?.filter(file => file.status === 'failed').length || 0;
+
   // Use actual converted files from the job if available, otherwise fall back to placeholders
   const isPdfFormat = settings.outputFormat === 'pdf';
   const convertedImages = job?.files?.map((file: any, index) => {
@@ -168,43 +180,41 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     thumbnailUrl: null,
   }))
   
-  // Handle downloading a single file
-  const handleDownload = async (image: any) => {
-    if (!image.downloadUrl) {
-      toast({
-        title: "Download Failed",
-        description: "File path not available",
-        variant: "destructive"
-      })
-      return
-    }
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // View image in a new tab
+  const handleViewImage = (url: string) => {
+    if (!url) return;
+    window.open(url, '_blank');
+  };
+
+  // Download a single file
+  const handleDownload = (url: string, fileName: string) => {
+    if (!url) return;
+    setIsDownloading(true);
     
-    try {
-      setIsDownloading(true)
-      
-      // Create an anchor element to download with proper headers
-      const link = document.createElement('a')
-      link.href = image.downloadUrl
-      link.download = image.name // This triggers download mode
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      toast({
-        title: "Download Complete",
-        description: `File ${image.name} has been downloaded.`
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        setIsDownloading(false);
       })
-    } catch (error) {
-      toast({
-        title: "Download Failed",
-        description: "An error occurred during download",
-        variant: "destructive"
-      })
-      console.error("Download error:", error)
-    } finally {
-      setIsDownloading(false)
-    }
-  }
+      .catch(error => {
+        console.error('Error downloading file:', error);
+        setIsDownloading(false);
+      });
+  };
   
   // Handle downloading all files as a ZIP
   const handleDownloadAll = async () => {
@@ -291,241 +301,196 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
 
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-4">Converted Images</h3>
+      <h3 className="text-xl font-semibold mb-4">Conversion Results</h3>
 
-      {/* Debug output for combined PDF URL - with proper null checks */}
-      {isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && job.combinedPdfUrl && (
-        <div className="bg-gray-100 p-3 mb-3 text-xs font-mono">
-          <p>Debug: CombinedPdfUrl available: {job?.combinedPdfUrl ? 'YES' : 'NO'}</p>
-          <p>Files count: {job?.files?.length}</p>
-          <p>Job status: {job?.status}</p>
-        </div>
-      )}
-
-      <div className="bg-green-50 border border-green-100 rounded-lg p-4 mb-6 flex items-center">
-        <div className="bg-green-100 rounded-full p-1 mr-3">
-          {failedFiles > 0 && completedFiles > 0 ? (
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-          ) : failedFiles > 0 ? (
-            <X className="h-5 w-5 text-red-600" />
-          ) : processingFiles > 0 || pendingFiles > 0 ? (
-            <Clock className="h-5 w-5 text-blue-600" />
-          ) : (
-            <Check className="h-5 w-5 text-green-600" />
-          )}
-        </div>
-        <div>
-          {completedFiles === totalFiles ? (
-            <p className="text-green-800 font-medium">Conversion Complete!</p>
-          ) : failedFiles === totalFiles ? (
-            <p className="text-red-800 font-medium">Conversion Failed!</p>
-          ) : failedFiles > 0 ? (
-            <p className="text-yellow-800 font-medium">Partial Conversion</p>
-          ) : (
-            <p className="text-blue-800 font-medium">Processing...</p>
-          )}
-          <p className="text-sm text-green-700">
-            {completedFiles} of {totalFiles} files successfully converted to {settings.outputFormat.toUpperCase()}
-            {failedFiles > 0 && ` (${failedFiles} failed)`}
-            {processingFiles > 0 && ` (${processingFiles} processing)`}
-            {pendingFiles > 0 && ` (${pendingFiles} pending)`}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h4 className="font-medium">Download Options</h4>
-          <p className="text-sm text-gray-500">Download individual files or all at once</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button 
-            size="sm" 
-            onClick={handleDownloadAll} 
-            disabled={isDownloading || !job || job.status !== 'completed' || completedFiles === 0}
-          >
-            {isDownloading ? (
-              <>
-                <span className="animate-spin mr-2">⏳</span>
-                Downloading...
-              </>
+      <div className="space-y-6">
+        <div className="bg-green-50 border border-green-100 rounded-lg p-4 mb-6 flex items-center">
+          <div className="bg-green-100 rounded-full p-1 mr-3">
+            {failedCount > 0 && successCount > 0 ? (
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+            ) : failedCount > 0 ? (
+              <X className="h-5 w-5 text-red-600" />
+            ) : successCount > 0 ? (
+              <Check className="h-5 w-5 text-green-600" />
             ) : (
-              <>
-                <DownloadCloud className="h-4 w-4 mr-2" />
-                Download All
-              </>
+              <Clock className="h-5 w-5 text-blue-600" />
             )}
-          </Button>
-          {isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && (
-            <Button 
-              size="sm"
-              variant="secondary"
-              onClick={handleDownloadCombinedPdf}
-              disabled={isDownloading || !jobId || completedFiles === 0}
-            >
-              {isDownloading ? (
-                <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Combined PDF
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {convertedImages.map((image) => (
-          <div key={image.id} className="border rounded-lg overflow-hidden bg-white">
-            <div 
-              className="relative aspect-video bg-gray-100 cursor-pointer" 
-              onClick={() => image.status === 'completed' && setPreviewImage(image)}
-            >
-              {image.status === 'failed' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                  <div className="text-center px-4">
-                    <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-2" />
-                    <p className="text-red-600 font-medium text-sm">Conversion Failed</p>
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{image.error || 'Could not convert file'}</p>
-                  </div>
-                </div>
-              ) : image.status === 'processing' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-blue-50">
-                  <div className="text-center px-4">
-                    <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-blue-600 font-medium text-sm">Processing...</p>
-                    <p className="text-xs text-gray-600 mt-1">Converting your file</p>
-                  </div>
-                </div>
-              ) : image.status === 'pending' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-                  <div className="text-center px-4">
-                    <Clock className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 font-medium text-sm">Pending</p>
-                    <p className="text-xs text-gray-500 mt-1">Waiting to process</p>
-                  </div>
-                </div>
-              ) : (
-                <Image 
-                  src={image.url || "/placeholder.svg"} 
-                  alt={image.name} 
-                  fill 
-                  className="object-cover hover:opacity-90 transition-opacity" 
-                  onError={(e) => {
-                    // Handle image load error by setting a placeholder
-                    console.error(`Error loading image: ${image.url}`);
-                    (e.target as HTMLImageElement).src = "/placeholder.svg";
-                  }}
-                />
-              )}
-              <div className="absolute top-2 right-2 flex space-x-1">
-                {settings.aiOptimization && (
-                  <div className="p-1 bg-blue-500 rounded-full" title="AI Optimized">
-                    <Zap className="h-3 w-3 text-white" />
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="p-3">
-              <div className="mb-2">
-                <p className="text-sm font-medium truncate">{image.name}</p>
-                <div className="flex items-center text-xs text-gray-500 mt-0.5">
-                  <span>{image.size}</span>
-                  {settings.aiOptimization && image.status === 'completed' && (
-                    <span className="flex items-center ml-2 text-green-600">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="18 15 12 9 6 15"></polyline>
-                      </svg>
-                      {settings.aiOptimization ? "30% smaller" : ""}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => image.status === 'completed' && setPreviewImage(image)}
-                  disabled={image.status !== 'completed'}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  Preview
-                </Button>
-                <button 
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-3"
-                  onClick={() => handleDownload(image)}
-                  disabled={isDownloading || image.status !== 'completed'}
-                >
-                  {isDownloading ? (
-                    <span className="animate-spin">⏳</span>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-download h-4 w-4 mr-1">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" x2="12" y1="15" y2="3"></line>
-                      </svg>
-                      Download
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {failedFiles > 0 && (
-        <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 mb-6 flex items-center">
-          <div className="bg-yellow-100 rounded-full p-1 mr-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
           </div>
           <div>
-            <p className="text-yellow-800 font-medium">Some files failed to convert</p>
-            <p className="text-sm text-yellow-700">
-              {failedFiles} of {totalFiles} files couldn't be converted. This might be due to corrupted HEIC files or unsupported formats.
+            {successCount === totalFiles ? (
+              <p className="text-green-800 font-medium">Conversion Complete!</p>
+            ) : failedCount === totalFiles ? (
+              <p className="text-red-800 font-medium">Conversion Failed!</p>
+            ) : failedCount > 0 ? (
+              <p className="text-yellow-800 font-medium">Partial Conversion</p>
+            ) : (
+              <p className="text-blue-800 font-medium">Processing...</p>
+            )}
+            <p className="text-sm text-green-700">
+              {successCount} of {totalFiles} files successfully converted to {settings.outputFormat.toUpperCase()}
+              {failedCount > 0 && ` (${failedCount} failed)`}
             </p>
           </div>
         </div>
-      )}
 
-      <div className="mt-8 pt-6 border-t">
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onReset}>
-            Convert More Files
-          </Button>
-          <Button 
-            variant="default" 
-            onClick={handleDownloadAll}
-            disabled={isDownloading || !job || completedFiles === 0}
-          >
-            {isDownloading ? (
-              <>
-                <span className="animate-spin mr-2">⏳</span>
-                Downloading...
-              </>
-            ) : (
-              <>
-                <DownloadCloud className="h-4 w-4 mr-2" />
-                Download All as ZIP
-              </>
-            )}
-          </Button>
+        {failedCount > 0 && (
+          <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 mb-6 flex items-center">
+            <div className="bg-yellow-100 rounded-full p-1 mr-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-yellow-800 font-medium">Some files failed to convert</p>
+              <p className="text-sm text-yellow-700">
+                {failedCount} of {totalFiles} files couldn't be converted. This might be due to corrupted HEIC files or unsupported formats.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {successfulFiles.length > 0 ? (
+            successfulFiles.map((file, index) => {
+              // Get display URL
+              let displayUrl = file.thumbnailUrl || file.convertedPath || '';
+              let downloadUrl = file.convertedPath || '';
+              
+              // Extract the original file name
+              const originalName = file.originalName || `file-${index + 1}.${settings.outputFormat}`;
+              const convertedName = file.convertedName || originalName.replace(/\.(heic|heif)$/i, `.${settings.outputFormat}`);
+              
+              return (
+                <div
+                  key={index}
+                  className="bg-white border rounded-lg overflow-hidden shadow-sm transition hover:shadow-md"
+                >
+                  <div className="relative aspect-square bg-gray-100">
+                    {/* Image thumbnail - adjust display logic as needed */}
+                    <img
+                      src={displayUrl}
+                      alt={`Converted ${originalName}`}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fall back to placeholder if image fails to load
+                        (e.target as HTMLImageElement).src = "/placeholder.svg?height=200&width=300";
+                      }}
+                    />
+                  </div>
+                  <div className="p-3">
+                    <p className="font-medium truncate">{convertedName}</p>
+                    <p className="text-sm text-gray-500 truncate">Size: {formatFileSize(file.size || 0)}</p>
+
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewImage(file.convertedPath || '')}
+                        className="flex-1"
+                        disabled={!file.convertedPath}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handleDownload(file.convertedPath || '', convertedName)}
+                        className="flex-1"
+                        disabled={!file.convertedPath}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Clock className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-700">No Converted Files Yet</h3>
+              <p className="text-gray-500 mt-1">
+                {job?.status === 'failed' ? 
+                  'Conversion failed. Please try again or check your files.' : 
+                  'Your files are still processing. Please wait...'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h4 className="font-medium">Download Options</h4>
+              <p className="text-sm text-gray-500">Download individual files or all at once</p>
+            </div>
+            <div className="flex space-x-2">
+              <Button 
+                size="sm" 
+                onClick={handleDownloadAll} 
+                disabled={isDownloading || !job || job.status !== 'completed' || successCount === 0}
+              >
+                {isDownloading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <DownloadCloud className="h-4 w-4 mr-2" />
+                    Download All
+                  </>
+                )}
+              </Button>
+              {isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && (
+                <Button 
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleDownloadCombinedPdf}
+                  disabled={isDownloading || !jobId || successCount === 0}
+                >
+                  {isDownloading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Combined PDF
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t">
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={onReset}>
+                Convert More Files
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={handleDownloadAll}
+                disabled={isDownloading || !job || successCount === 0}
+              >
+                {isDownloading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <DownloadCloud className="h-4 w-4 mr-2" />
+                    Download All as ZIP
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -565,7 +530,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           <div className="flex justify-end space-x-2 mt-2">
             <Button 
               variant="default" 
-              onClick={() => previewImage && handleDownload(previewImage)}
+              onClick={() => previewImage && handleDownload(previewImage.downloadUrl || '', previewImage.name)}
               disabled={isDownloading || !previewImage || previewImage.status !== 'completed'}
             >
               {isDownloading ? (

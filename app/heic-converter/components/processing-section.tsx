@@ -17,7 +17,22 @@ interface ProcessingSectionProps {
 export default function ProcessingSection({ files, settings, progress, error, job }: ProcessingSectionProps) {
   // Calculate which file is currently being processed
   const totalFiles = files.length
-  const fileProgress = Math.min(Math.floor((progress / 100) * totalFiles), totalFiles - 1)
+  
+  // Get actual completed file count from job status
+  const completedFiles = React.useMemo(() => {
+    if (!job?.files) return 0;
+    return job.files.filter(f => f.status === 'completed').length;
+  }, [job]);
+  
+  // Calculate which file is being processed more accurately
+  const fileProgress = React.useMemo(() => {
+    if (!job?.files) return Math.min(Math.floor((progress / 100) * totalFiles), totalFiles - 1);
+    
+    // Use actual completed files + 1 (for the one currently processing)
+    // but don't exceed the total number of files
+    const inProgressFile = job.files.some(f => f.status === 'processing') ? 1 : 0;
+    return Math.min(completedFiles + inProgressFile, totalFiles - 1);
+  }, [job, completedFiles, progress, totalFiles]);
   
   // Check if there are inconsistencies between overall status and file statuses
   const hasInconsistentStatus = React.useMemo(() => {
@@ -34,9 +49,20 @@ export default function ProcessingSection({ files, settings, progress, error, jo
   }, [job]);
   
   // Get current file information - either from job status or fallback to local files array
-  const currentFileName = job?.files && job.files[fileProgress] 
-    ? job.files[fileProgress].originalName || (job.files[fileProgress] as any).name || `File ${fileProgress + 1}`
-    : files[fileProgress]?.name || "";
+  const currentFileName = React.useMemo(() => {
+    if (!job?.files) return files[fileProgress]?.name || `File ${fileProgress + 1}`;
+    
+    // Find the file that's currently being processed
+    const processingFile = job.files.find(f => f.status === 'processing');
+    if (processingFile) return processingFile.originalName || `File ${fileProgress + 1}`;
+    
+    // If no file is processing but there are pending files, show the first pending one
+    const pendingFile = job.files.find(f => f.status === 'pending');
+    if (pendingFile) return pendingFile.originalName || `File ${fileProgress + 1}`;
+    
+    // Otherwise just show the next file after the completed ones
+    return job.files[fileProgress]?.originalName || files[fileProgress]?.name || `File ${fileProgress + 1}`;
+  }, [job, files, fileProgress]);
     
   // Get the job status details with improved detection
   const jobStatus = job?.status || "processing";
@@ -46,21 +72,21 @@ export default function ProcessingSection({ files, settings, progress, error, jo
     if (!job || !job.files) return jobStatus === "processing" ? "Processing" : jobStatus === "pending" ? "Pending" : jobStatus;
     
     const completedFiles = job.files.filter(f => f.status === 'completed').length;
+    const failedFiles = job.files.filter(f => f.status === 'failed').length;
     const totalFiles = job.files.length;
     
     if (completedFiles === totalFiles) {
       return hasInconsistentStatus ? "Complete (Syncing status...)" : "Complete";
     }
     
-    if (completedFiles > 0) {
-      return `Processing (${completedFiles}/${totalFiles} files completed)`;
+    if (completedFiles > 0 || failedFiles > 0) {
+      return `Processing (${completedFiles}/${totalFiles} files completed${failedFiles > 0 ? `, ${failedFiles} failed` : ''})`;
     }
     
     return jobStatus === "processing" ? "Processing" : jobStatus === "pending" ? "Pending" : jobStatus;
   };
   
   const processingText = getStatusText();
-  const statusDisplay = job?.progress ? `${job.progress}%` : `${progress}%`;
   
   // Display actual file progress regardless of overall job status
   const actualProgress = React.useMemo(() => {
@@ -71,6 +97,30 @@ export default function ProcessingSection({ files, settings, progress, error, jo
     
     return totalFiles > 0 ? Math.round((completedFiles / totalFiles) * 100) : progress;
   }, [job, progress]);
+
+  // More accurate "in progress" status description
+  const getProgressDescription = () => {
+    if (!job?.files) return `Converting ${fileProgress + 1} of ${totalFiles} files`;
+    
+    const completedCount = job.files.filter(f => f.status === 'completed').length;
+    const failedCount = job.files.filter(f => f.status === 'failed').length;
+    const processingCount = job.files.filter(f => f.status === 'processing').length;
+    const pendingCount = job.files.filter(f => f.status === 'pending').length;
+    
+    if (completedCount === totalFiles) {
+      return `All ${totalFiles} files converted`;
+    }
+    
+    if (failedCount === totalFiles) {
+      return `All ${totalFiles} files failed`;
+    }
+    
+    if (processingCount > 0) {
+      return `Converting file ${completedCount + 1} of ${totalFiles}`;
+    }
+    
+    return `Converted ${completedCount} of ${totalFiles} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`;
+  };
 
   return (
     <div>
@@ -96,7 +146,7 @@ export default function ProcessingSection({ files, settings, progress, error, jo
         <div>
           <p className="font-medium">Overall Progress</p>
           <p className="text-sm text-gray-500">
-            Converting {fileProgress + 1} of {totalFiles} files
+            {getProgressDescription()}
           </p>
         </div>
         <div className="flex items-center text-primary">
@@ -106,10 +156,10 @@ export default function ProcessingSection({ files, settings, progress, error, jo
         </div>
 
         <div className="space-y-2">
-        <Progress value={actualProgress > progress ? actualProgress : progress} className="h-2" />
+        <Progress value={actualProgress} className="h-2" />
         <div className="flex justify-between text-sm text-gray-500">
           <span>0%</span>
-          <span>{actualProgress > progress ? `${actualProgress}%` : statusDisplay}</span>
+          <span>{actualProgress}%</span>
           <span>100%</span>
         </div>
         </div>
