@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, DownloadCloud, Eye, Zap, Check, X, AlertCircle } from "lucide-react"
+import { Download, DownloadCloud, Eye, Zap, Check, X, AlertCircle, Clock } from "lucide-react"
 import Image from "next/image"
 import { ConversionJob, getHeicConverterService } from "@/lib/services/heic-converter-service"
 import { useToast } from "@/components/ui/use-toast"
@@ -35,6 +35,13 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
   const converterService = getHeicConverterService(); // Get the service instance
   const token = localStorage.getItem('userId') || 'anonymous'; // Use userId as token
 
+  // Stats for success/failure
+  const completedFiles = job?.files?.filter(file => file.status === 'completed').length || 0;
+  const failedFiles = job?.files?.filter(file => file.status === 'failed').length || 0;
+  const processingFiles = job?.files?.filter(file => file.status === 'processing').length || 0;
+  const pendingFiles = job?.files?.filter(file => file.status === 'pending').length || 0;
+  const totalFiles = job?.files?.length || files.length;
+  
   // Use actual converted files from the job if available, otherwise fall back to placeholders
   const isPdfFormat = settings.outputFormat === 'pdf';
   const convertedImages = job?.files?.map((file: any, index) => {
@@ -75,23 +82,61 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     let displayUrl, downloadUrl;
     
     // For display URL (thumbnail) with authentication token
-    if (jobId && convertedName) {
-      // Construct thumbnail URL from jobId and convertedName with /uploads prefix and token
-      const thumbnailBase = convertedName.split('.')[0];
-      const thumbnailExt = settings.outputFormat === 'pdf' ? 'jpg' : settings.outputFormat;
-      displayUrl = `${API_BASE_URL}/api/files/uploads/converted/${jobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`;
-      console.log('Constructed thumbnail URL with auth:', displayUrl);
+    if (jobId && status === 'completed') {
+      // First try to use the thumbnailUrl from the file if available
+      if (thumbnailUrl) {
+        displayUrl = thumbnailUrl;
+        console.log('Using thumbnailUrl from file:', displayUrl);
+      } else if (file.convertedPath) {
+        // If no thumbnailUrl but we have convertedPath, construct a thumbnail URL
+        try {
+          const url = new URL(file.convertedPath);
+          const pathParts = url.pathname.split('/');
+          const filename = pathParts[pathParts.length - 1];
+          
+          // Create a thumbnail URL based on the converted path
+          // Replace the last part of the path with thumbnails/filename
+          const thumbnailPath = url.pathname.replace(/\/[^\/]+$/, `/thumbnails/${filename}`);
+          
+          // Create a new URL for the thumbnail
+          displayUrl = url.origin + thumbnailPath;
+          
+          // Copy the token from the converted path
+          if (url.searchParams.has('token')) {
+            displayUrl += `?token=${url.searchParams.get('token')}`;
+          } else {
+            displayUrl += `?token=user_${token}`;
+          }
+          
+          console.log('Constructed thumbnail URL from convertedPath:', displayUrl);
+        } catch (error) {
+          console.error('Error constructing thumbnail URL:', error);
+          // Fallback to placeholder
+          displayUrl = "/placeholder.svg?height=200&width=300";
+        }
+      } else {
+        // Fallback to constructing from jobId and convertedName
+        const thumbnailBase = convertedName.split('.')[0];
+        const thumbnailExt = settings.outputFormat === 'pdf' ? 'jpg' : settings.outputFormat;
+        displayUrl = `${API_BASE_URL}/api/files/uploads/converted/${jobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`;
+        console.log('Constructed thumbnail URL with auth:', displayUrl);
+      }
     } else {
       // Fallback to placeholder
       displayUrl = "/placeholder.svg?height=200&width=300";
     }
     
     // For download URL with authentication token (without /thumbnails path)
-    if (jobId && convertedName) {
-      // Construct download URL from jobId and convertedName with token
-      // Ensure we use the full converted path without thumbnails for downloads
-      downloadUrl = `${API_BASE_URL}/api/files/converted/${jobId}/${convertedName}?token=user_${token}`;
-      console.log('Constructed download URL with auth:', downloadUrl);
+    if (jobId && status === 'completed') {
+      // First try to use the convertedPath from the file if available
+      if (file.convertedPath) {
+        downloadUrl = file.convertedPath;
+        console.log('Using convertedPath from file:', downloadUrl);
+      } else {
+        // Construct download URL from jobId and convertedName with token
+        downloadUrl = `${API_BASE_URL}/api/files/converted/${jobId}/${convertedName}?token=user_${token}`;
+        console.log('Constructed download URL with auth:', downloadUrl);
+      }
     } else {
       downloadUrl = null;
     }
@@ -105,7 +150,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       originalName: originalName,
       status: status,
       error: file.error || undefined,
-      convertedPath: null, // No longer needed with the new URL construction
+      convertedPath: file.convertedPath || null,
+      thumbnailUrl: thumbnailUrl || null,
     };
   }) || 
   // Fallback to local files
@@ -116,9 +162,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     url: "/placeholder.svg?height=200&width=300",
     downloadUrl: null,
     originalName: file.name,
-    status: "completed",
+    status: "pending",
     error: undefined,
     convertedPath: null,
+    thumbnailUrl: null,
   }))
   
   // Handle downloading a single file
@@ -257,13 +304,31 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
 
       <div className="bg-green-50 border border-green-100 rounded-lg p-4 mb-6 flex items-center">
         <div className="bg-green-100 rounded-full p-1 mr-3">
-          <Check className="h-5 w-5 text-green-600" />
+          {failedFiles > 0 && completedFiles > 0 ? (
+            <AlertCircle className="h-5 w-5 text-yellow-600" />
+          ) : failedFiles > 0 ? (
+            <X className="h-5 w-5 text-red-600" />
+          ) : processingFiles > 0 || pendingFiles > 0 ? (
+            <Clock className="h-5 w-5 text-blue-600" />
+          ) : (
+            <Check className="h-5 w-5 text-green-600" />
+          )}
         </div>
         <div>
-          <p className="text-green-800 font-medium">Conversion Complete!</p>
+          {completedFiles === totalFiles ? (
+            <p className="text-green-800 font-medium">Conversion Complete!</p>
+          ) : failedFiles === totalFiles ? (
+            <p className="text-red-800 font-medium">Conversion Failed!</p>
+          ) : failedFiles > 0 ? (
+            <p className="text-yellow-800 font-medium">Partial Conversion</p>
+          ) : (
+            <p className="text-blue-800 font-medium">Processing...</p>
+          )}
           <p className="text-sm text-green-700">
-            {job?.files?.filter(file => file.status === 'completed').length || 0} of {job?.files?.length || files.length} files have been successfully converted to {settings.outputFormat.toUpperCase()}
-            {job?.files?.some(file => file.status === 'failed') && ` (${job.files.filter(file => file.status === 'failed').length} failed)`}
+            {completedFiles} of {totalFiles} files successfully converted to {settings.outputFormat.toUpperCase()}
+            {failedFiles > 0 && ` (${failedFiles} failed)`}
+            {processingFiles > 0 && ` (${processingFiles} processing)`}
+            {pendingFiles > 0 && ` (${pendingFiles} pending)`}
           </p>
         </div>
       </div>
@@ -274,14 +339,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           <p className="text-sm text-gray-500">Download individual files or all at once</p>
         </div>
         <div className="flex space-x-2">
-          {/* <Button variant="outline" size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            Preview All
-          </Button> */}
           <Button 
             size="sm" 
             onClick={handleDownloadAll} 
-            disabled={isDownloading || !job || job.status !== 'completed'}
+            disabled={isDownloading || !job || job.status !== 'completed' || completedFiles === 0}
           >
             {isDownloading ? (
               <>
@@ -300,7 +361,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
               size="sm"
               variant="secondary"
               onClick={handleDownloadCombinedPdf}
-              disabled={isDownloading || !jobId}
+              disabled={isDownloading || !jobId || completedFiles === 0}
             >
               {isDownloading ? (
                 <>
@@ -323,7 +384,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           <div key={image.id} className="border rounded-lg overflow-hidden bg-white">
             <div 
               className="relative aspect-video bg-gray-100 cursor-pointer" 
-              onClick={() => setPreviewImage(image)}
+              onClick={() => image.status === 'completed' && setPreviewImage(image)}
             >
               {image.status === 'failed' ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -333,12 +394,33 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                     <p className="text-xs text-gray-600 mt-1 line-clamp-2">{image.error || 'Could not convert file'}</p>
                   </div>
                 </div>
+              ) : image.status === 'processing' ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-blue-50">
+                  <div className="text-center px-4">
+                    <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p className="text-blue-600 font-medium text-sm">Processing...</p>
+                    <p className="text-xs text-gray-600 mt-1">Converting your file</p>
+                  </div>
+                </div>
+              ) : image.status === 'pending' ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                  <div className="text-center px-4">
+                    <Clock className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500 font-medium text-sm">Pending</p>
+                    <p className="text-xs text-gray-500 mt-1">Waiting to process</p>
+                  </div>
+                </div>
               ) : (
                 <Image 
                   src={image.url || "/placeholder.svg"} 
                   alt={image.name} 
                   fill 
                   className="object-cover hover:opacity-90 transition-opacity" 
+                  onError={(e) => {
+                    // Handle image load error by setting a placeholder
+                    console.error(`Error loading image: ${image.url}`);
+                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                  }}
                 />
               )}
               <div className="absolute top-2 right-2 flex space-x-1">
@@ -354,7 +436,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                 <p className="text-sm font-medium truncate">{image.name}</p>
                 <div className="flex items-center text-xs text-gray-500 mt-0.5">
                   <span>{image.size}</span>
-                  {settings.aiOptimization && !image.error && (
+                  {settings.aiOptimization && image.status === 'completed' && (
                     <span className="flex items-center ml-2 text-green-600">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -378,8 +460,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setPreviewImage(image)}
-                  disabled={image.status === 'failed'}
+                  onClick={() => image.status === 'completed' && setPreviewImage(image)}
+                  disabled={image.status !== 'completed'}
                 >
                   <Eye className="h-4 w-4 mr-1" />
                   Preview
@@ -408,15 +490,15 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
         ))}
       </div>
 
-      {job?.warning && (
+      {failedFiles > 0 && (
         <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 mb-6 flex items-center">
           <div className="bg-yellow-100 rounded-full p-1 mr-3">
             <AlertCircle className="h-5 w-5 text-yellow-600" />
           </div>
           <div>
-            <p className="text-yellow-800 font-medium">Partial Success</p>
+            <p className="text-yellow-800 font-medium">Some files failed to convert</p>
             <p className="text-sm text-yellow-700">
-              {job.warning}
+              {failedFiles} of {totalFiles} files couldn't be converted. This might be due to corrupted HEIC files or unsupported formats.
             </p>
           </div>
         </div>
@@ -430,7 +512,7 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           <Button 
             variant="default" 
             onClick={handleDownloadAll}
-            disabled={isDownloading || !job || job.status !== 'completed'}
+            disabled={isDownloading || !job || completedFiles === 0}
           >
             {isDownloading ? (
               <>
@@ -470,20 +552,17 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                   alt={previewImage.name} 
                   fill
                   className="object-contain" 
+                  onError={(e) => {
+                    // Handle image load error by setting a placeholder
+                    console.error(`Error loading preview image: ${previewImage.url}`);
+                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                  }}
                 />
               </a>
             )}
           </div>
           
           <div className="flex justify-end space-x-2 mt-2">
-            {/* <Button 
-              variant="outline" 
-              onClick={() => window.open(previewImage?.url, '_blank')}
-              title="View image in a new tab"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Open in New Tab
-            </Button> */}
             <Button 
               variant="default" 
               onClick={() => previewImage && handleDownload(previewImage)}

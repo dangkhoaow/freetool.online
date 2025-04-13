@@ -182,60 +182,109 @@ class _HeicConverterService implements HeicConverterService {
         throw new Error(`Too many files. Maximum allowed is ${this.maxFiles}.`);
       }
       
-      // Create a FormData object to send files
-      const formData = new FormData();
+      console.log(`Starting conversion of ${files.length} files with settings:`, settings);
       
-      // Clear the FormData first to ensure no stale data
+      // Create a master job to track the batch
+      const masterJobId = await this.createMasterJob(files.length, settings);
+      console.log(`Created master job with ID: ${masterJobId}`);
       
-      // Add each file to the FormData one by one
-      for (let i = 0; i <files.length; i++) {
-        formData.append('files', files[i]);
-        console.log(`Adding file ${i+1}/${files.length}: ${files[i].name} (${files[i].size} bytes)`);
-      }
-
-      // Add conversion settings
-      formData.append('outputFormat', settings.outputFormat);
-      formData.append('quality', settings.quality.toString());
-      formData.append('preserveExif', settings.preserveExif.toString());
-      
-      // Add PDF options if the output format is PDF
-      if (settings.outputFormat === 'pdf') {
-        formData.append('pdfOptions', JSON.stringify(settings.pdfOptions));
-      }
-
-      // Add priority (can be used for premium features later)
-      formData.append('priority', '1');
-
-      // Log the body formdata for debugging
-      console.log('Sending request with FormData:', Array.from(formData.entries()).map(entry => {
-        // Don't log the file content, just name and size
-        if (entry[1] instanceof File) {
-          return [`${entry[0]}`, `File: ${(entry[1] as File).name} (${(entry[1] as File).size} bytes)`];
+      // Process each file individually
+      const filePromises = files.map(async (file, index) => {
+        try {
+          await this.uploadSingleFile(file, masterJobId, settings, index);
+          console.log(`File ${index + 1}/${files.length} (${file.name}) queued for processing`);
+          return true;
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+          return false;
         }
-        return entry;
-      }));
-
-      const response = await fetch(HEIC_CONVERSION_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.getUserToken()}`
-        },
-        body: formData,
-        credentials: 'include',
-        mode: 'cors'
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to start conversion');
-      }
-
-      const data = await response.json();
-      return data.jobId;
+      
+      // Wait for all files to be queued for processing
+      await Promise.all(filePromises);
+      console.log(`All ${files.length} files have been queued for processing under master job ${masterJobId}`);
+      
+      // Return the master job ID for tracking overall progress
+      return masterJobId;
     } catch (error) {
       console.error('Error starting conversion:', error);
       throw error;
     }
+  }
+
+  // Helper method to create a master job
+  private async createMasterJob(fileCount: number, settings: ConversionSettings): Promise<string> {
+    // Send request to create a master job with no files yet
+    const response = await fetch(`${HEIC_CONVERSION_ENDPOINT}/create-master-job`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getUserToken()}`
+      },
+      body: JSON.stringify({
+        fileCount,
+        outputFormat: settings.outputFormat,
+        quality: settings.quality,
+        preserveExif: settings.preserveExif,
+        pdfOptions: settings.outputFormat === 'pdf' ? settings.pdfOptions : undefined
+      }),
+      credentials: 'include',
+      mode: 'cors'
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to create master job');
+    }
+    
+    const data = await response.json();
+    return data.jobId;
+  }
+
+  // Helper method to upload and process a single file
+  private async uploadSingleFile(file: File, masterJobId: string, settings: ConversionSettings, fileIndex: number): Promise<void> {
+    // Create a FormData object for this specific file
+    const formData = new FormData();
+    
+    // Add the file to the FormData
+    formData.append('file', file);
+    
+    // Add the master job ID for reference
+    formData.append('masterJobId', masterJobId);
+    
+    // Add file index for ordered processing
+    formData.append('fileIndex', fileIndex.toString());
+    
+    // Add conversion settings
+    formData.append('outputFormat', settings.outputFormat);
+    formData.append('quality', settings.quality.toString());
+    formData.append('preserveExif', settings.preserveExif.toString());
+    
+    // Add PDF options if the output format is PDF
+    if (settings.outputFormat === 'pdf') {
+      formData.append('pdfOptions', JSON.stringify(settings.pdfOptions));
+    }
+    
+    // Add priority (can be used for premium features later)
+    formData.append('priority', '1');
+    
+    // Send the request to process this specific file
+    const response = await fetch(`${HEIC_CONVERSION_ENDPOINT}/process-file`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getUserToken()}`
+      },
+      body: formData,
+      credentials: 'include',
+      mode: 'cors'
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || `Failed to process file ${file.name}`);
+    }
+    
+    // No need to return anything - the master job will track progress
   }
 
   // Get job status
@@ -284,66 +333,79 @@ class _HeicConverterService implements HeicConverterService {
     }
   }
 
-  // Start polling for job status
-  startStatusPolling(jobId: string, onJobUpdate: (job: ConversionJob) => void): void {
-    // Only poll in browser environment
-    if (!isBrowser) return;
-    
-    // Log the callback to verify it's a function
-    console.log("Setting up polling with callback type:", typeof onJobUpdate);
-    
-    // Stop any existing polling
+  // Implement startStatusPolling to check job status periodically
+  startStatusPolling(jobId: string, callback: (job: ConversionJob) => void): void {
+    // Clear any existing polling
     this.stopStatusPolling();
+
+    console.log(`Starting status polling for job ${jobId}`);
     
-    // Store job ID and callback
-    this.pollingJobId = jobId;
-    this.pollingCallback = onJobUpdate;
+    // Keep track of state changes for better debugging
+    let previousStatus: string | null = null;
+    let statusChangeCount = 0;
+    let statusInconsistencies = 0;
+    let lastProgressUpdate = Date.now();
     
-    // Define polling function with proper scope
-    const pollStatus = async () => {
+    // Start new polling interval
+    this.pollingInterval = setInterval(async () => {
       try {
-        // Verify both jobId and callback are available
-        if (!this.pollingJobId) {
-          console.log("No polling job ID available");
+        // Get the current job status
+        const jobStatus = await this.getJobStatus(jobId);
+        
+        if (!jobStatus) {
+          console.error(`[HeicConverter] Job ${jobId} not found`);
+          this.stopStatusPolling();
           return;
         }
         
-        // Get job status
-        const job = await this.getJobStatus(this.pollingJobId);
+        // Check for status changes
+        if (previousStatus !== null && previousStatus !== jobStatus.status) {
+          statusChangeCount++;
+          console.log(`[HeicConverter] Job ${jobId} status changed from ${previousStatus} to ${jobStatus.status} (change #${statusChangeCount})`);
+        }
         
-        // Reference the callback locally to avoid issues with 'this' context
-        const callback = this.pollingCallback;
-        
-        // Check if it's a function
-        if (typeof callback === 'function') {
-          // Call with the job data
-          callback(job);
+        // Check for inconsistencies in job status vs. file statuses
+        if (jobStatus.files && jobStatus.files.length > 0) {
+          const completedFiles = jobStatus.files.filter(file => file.status === 'completed').length;
+          const failedFiles = jobStatus.files.filter(file => file.status === 'failed').length;
+          const pendingFiles = jobStatus.files.filter(file => file.status === 'pending' || file.status === 'processing').length;
           
-          // Check if job is completed or failed to stop polling
-          if (job.status === 'completed' || job.status === 'failed') {
-            console.log(`Job ${this.pollingJobId} is ${job.status}, stopping polling`);
-            this.stopStatusPolling();
+          const hasStatusInconsistency = 
+            (jobStatus.status === 'failed' && completedFiles === jobStatus.files.length) || 
+            (jobStatus.status === 'failed' && completedFiles > 0 && pendingFiles === 0 && failedFiles === 0);
+          
+          if (hasStatusInconsistency) {
+            statusInconsistencies++;
+            console.warn(`[HeicConverter] Job ${jobId} has status inconsistency (incident #${statusInconsistencies})`);
+            console.warn(`[HeicConverter] Job status is '${jobStatus.status}' but has ${completedFiles}/${jobStatus.files.length} completed files`);
           }
-        } else {
-          console.error('Polling callback is not a function', callback);
+          
+          // Log progress updates periodically (not on every check)
+          const now = Date.now();
+          if (now - lastProgressUpdate > 3000) { // Log every 3 seconds 
+            console.log(`[HeicConverter] Job ${jobId} progress: ${jobStatus.progress}%, files: ${completedFiles}/${jobStatus.files.length} completed`);
+            lastProgressUpdate = now;
+          }
+        }
+        
+        // Store previous status for change detection
+        previousStatus = jobStatus.status;
+        
+        // Fire callback with the job status
+        callback(jobStatus);
+        
+        // If job is complete or failed, stop polling
+        if (jobStatus.status === 'completed' || jobStatus.status === 'failed') {
+          if (statusInconsistencies > 0) {
+            console.log(`[HeicConverter] Job ${jobId} finished with ${statusInconsistencies} status inconsistencies detected`);
+          }
+          console.log(`[HeicConverter] Stopping status polling for completed/failed job ${jobId}`);
           this.stopStatusPolling();
         }
       } catch (error) {
-        console.error('Error polling job status:', error);
-        // Don't stop polling on error, just continue trying
+        console.error(`[HeicConverter] Error polling job status: ${error}`);
       }
-    };
-    
-    // Create a closure to ensure 'this' context is preserved
-    const boundPollStatus = () => pollStatus.call(this);
-    
-    // Start polling immediately
-    boundPollStatus();
-    
-    // Then at intervals, using the bound function
-    this.pollingInterval = setInterval(boundPollStatus, this.pollingDelay);
-    
-    console.log(`Started polling for job ${jobId} at ${this.pollingDelay}ms intervals`);
+    }, 1000); // Check every second
   }
 
   // Stop polling for job status
