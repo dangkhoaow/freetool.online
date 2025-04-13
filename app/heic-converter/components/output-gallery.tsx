@@ -97,6 +97,10 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     if (jobId && status === 'completed') {
       // First try to use the thumbnailUrl from the file if available
       if (thumbnailUrl) {
+        // Ensure we're using .jpg extension for thumbnails
+        if (thumbnailUrl.includes('.pdf')) {
+          thumbnailUrl = thumbnailUrl.replace('.pdf', '.jpg');
+        }
         displayUrl = thumbnailUrl;
         console.log('Using thumbnailUrl from file:', displayUrl);
       } else if (file.convertedPath) {
@@ -108,7 +112,13 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
           
           // Create a thumbnail URL based on the converted path
           // Replace the last part of the path with thumbnails/filename
-          const thumbnailPath = url.pathname.replace(/\/[^\/]+$/, `/thumbnails/${filename}`);
+          // Always use .jpg extension for thumbnails regardless of the output format
+          let thumbnailFilename = filename;
+          if (thumbnailFilename.endsWith('.pdf')) {
+            thumbnailFilename = thumbnailFilename.replace('.pdf', '.jpg');
+          }
+          
+          const thumbnailPath = url.pathname.replace(/\/[^\/]+$/, `/thumbnails/${thumbnailFilename}`);
           
           // Create a new URL for the thumbnail
           displayUrl = url.origin + thumbnailPath;
@@ -129,7 +139,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       } else {
         // Fallback to constructing from jobId and convertedName
         const thumbnailBase = convertedName.split('.')[0];
-        const thumbnailExt = settings.outputFormat === 'pdf' ? 'jpg' : settings.outputFormat;
+        // Always use .jpg extension for thumbnails
+        const thumbnailExt = 'jpg';
         displayUrl = `${API_BASE_URL}/api/files/uploads/converted/${jobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`;
         console.log('Constructed thumbnail URL with auth:', displayUrl);
       }
@@ -269,8 +280,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     try {
       setIsDownloading(true)
       
-      // Create direct URL to the combined.pdf file in the job directory
-      const pdfUrl = `${API_BASE_URL}/api/files/converted/${jobId}/combined.pdf?token=user_${token}`;
+      // Use the new dedicated endpoint for combined PDF
+      const pdfUrl = `${API_BASE_URL}/api/files/download-combined-pdf/${jobId}?token=user_${token}`;
       console.log("Attempting to download combined PDF from:", pdfUrl);
       
       // Create direct download link
@@ -370,8 +381,28 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                       alt={`Converted ${originalName}`}
                       className="w-full h-full object-contain"
                       onError={(e) => {
-                        // Fall back to placeholder if image fails to load
-                        (e.target as HTMLImageElement).src = "/placeholder.svg?height=200&width=300";
+                        // Log the error for debugging
+                        console.error(`Error loading thumbnail: ${displayUrl}`);
+                        
+                        // Try alternative thumbnail URL formats
+                        const target = e.target as HTMLImageElement;
+                        
+                        if (displayUrl.includes('.jpg')) {
+                          // Try with PDF extension instead
+                          const pdfUrl = displayUrl.replace('.jpg', '.pdf');
+                          console.log('Trying alternative PDF URL:', pdfUrl);
+                          target.src = pdfUrl;
+                          
+                          // Add another error handler for the fallback
+                          target.onerror = () => {
+                            console.error(`Fallback URL also failed: ${pdfUrl}`);
+                            target.src = "/placeholder.svg?height=200&width=300";
+                            target.onerror = null; // Prevent infinite error handling
+                          };
+                        } else {
+                          // Fall back to placeholder if image fails to load
+                          target.src = "/placeholder.svg?height=200&width=300";
+                        }
                       }}
                     />
                   </div>
@@ -380,16 +411,6 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                     <p className="text-sm text-gray-500 truncate">Size: {formatFileSize(file.size || 0)}</p>
 
                     <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewImage(file.convertedPath || '')}
-                        className="flex-1"
-                        disabled={!file.convertedPath}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
                       <Button
                         size="sm"
                         variant="default"
@@ -421,35 +442,16 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
         </div>
 
         <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h4 className="font-medium">Download Options</h4>
-              <p className="text-sm text-gray-500">Download individual files or all at once</p>
-            </div>
-            <div className="flex space-x-2">
-              <Button 
-                size="sm" 
-                onClick={handleDownloadAll} 
-                disabled={isDownloading || !job || job.status !== 'completed' || successCount === 0}
-              >
-                {isDownloading ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <DownloadCloud className="h-4 w-4 mr-2" />
-                    Download All
-                  </>
-                )}
+          <div className="mt-8 pt-6 border-t">
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={onReset}>
+                Convert More Files
               </Button>
-              {isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && (
+              {(isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1) ? (
                 <Button 
-                  size="sm"
-                  variant="secondary"
+                  variant="default" 
                   onClick={handleDownloadCombinedPdf}
-                  disabled={isDownloading || !jobId || successCount === 0}
+                  disabled={isDownloading || !job || successCount === 0}
                 >
                   {isDownloading ? (
                     <>
@@ -458,37 +460,30 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                     </>
                   ) : (
                     <>
-                      <Download className="h-4 w-4 mr-2" />
+                      <DownloadCloud className="h-4 w-4 mr-2" />
                       Download Combined PDF
                     </>
                   )}
                 </Button>
+              ) : (
+                <Button 
+                  variant="default" 
+                  onClick={handleDownloadAll}
+                  disabled={isDownloading || !job || successCount === 0}
+                >
+                  {isDownloading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <DownloadCloud className="h-4 w-4 mr-2" />
+                      Download All as ZIP
+                    </>
+                  )}
+                </Button>
               )}
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t">
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={onReset}>
-                Convert More Files
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={handleDownloadAll}
-                disabled={isDownloading || !job || successCount === 0}
-              >
-                {isDownloading ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <DownloadCloud className="h-4 w-4 mr-2" />
-                    Download All as ZIP
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </div>
