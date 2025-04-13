@@ -290,6 +290,33 @@ class _HeicConverterService implements HeicConverterService {
       throw new Error(error.message || `Failed to process file ${file.name}`);
     }
     
+    // Get the response data - this typically includes the masterJobId and singleFileJobId
+    const responseData = await response.json();
+    console.log(`File ${file.name} processed successfully:`, responseData);
+    
+    // Immediately fetch the job status after each file is processed to ensure we have the latest file state
+    try {
+      console.log(`Fetching latest job status after processing file ${file.name}`);
+      const updatedJobStatus = await this.getJobStatus(masterJobId);
+      
+      // Dispatch a custom event with the updated job status
+      if (typeof window !== 'undefined') {
+        const fileProcessedEvent = new CustomEvent('fileProcessed', { 
+          detail: { 
+            masterJobId, 
+            fileName: file.name,
+            jobStatus: updatedJobStatus,
+            fileIndex
+          }
+        });
+        window.dispatchEvent(fileProcessedEvent);
+        console.log(`File ${file.name} processed, dispatched fileProcessed event with updated job status`);
+      }
+    } catch (error) {
+      console.error(`Error fetching job status after processing file ${file.name}:`, error);
+      // Continue even if job status fetch fails - we don't want to stop the overall process
+    }
+    
     // Check if this is the first file, fire event for first file uploaded
     if (fileIndex === 0) {
       // Dispatch a custom event that can be listened to by any component

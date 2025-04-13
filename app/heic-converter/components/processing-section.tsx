@@ -122,6 +122,33 @@ export default function ProcessingSection({ files, settings, progress, error, jo
     return `Converted ${completedCount} of ${totalFiles} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`;
   };
 
+  // Function to get the current file being processed
+  const getCurrentFileText = () => {
+    if (!job?.files || job.files.length === 0) {
+      return "Preparing to convert files...";
+    }
+
+    // Look for a file with 'processing' status
+    const processingFile = job.files.find(file => file.status === 'processing');
+    if (processingFile) {
+      return `Converting: ${processingFile.originalName || 'file'}`;
+    }
+
+    // If no file is currently processing, show counts of completed/failed files
+    const completedFiles = job.files.filter(file => file.status === 'completed').length;
+    const failedFiles = job.files.filter(file => file.status === 'failed').length;
+    const totalFiles = job.files.length;
+    
+    if (completedFiles === totalFiles) {
+      return "All files converted successfully!";
+    } else if (completedFiles + failedFiles === totalFiles) {
+      return `Converted ${completedFiles} of ${totalFiles} files. ${failedFiles} files failed.`;
+    }
+    
+    // Otherwise, just show the progress
+    return `Converting ${completedFiles} of ${totalFiles} files (${progress}%)...`;
+  };
+
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Converting Files</h3>
@@ -171,7 +198,7 @@ export default function ProcessingSection({ files, settings, progress, error, jo
             </div>
             <div>
               <p className="font-medium">Currently processing:</p>
-              <p className="text-sm text-gray-500">{currentFileName}</p>
+              <p className="text-sm text-gray-500">{getCurrentFileText()}</p>
             </div>
           </div>
 

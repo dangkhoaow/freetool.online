@@ -141,12 +141,80 @@ export default function ConverterTool() {
       }
     };
 
-    // Add event listener
+    // Create event listener for individual file processing updates
+    const handleFileProcessed = (event: any) => {
+      const { masterJobId, fileName, jobStatus } = event.detail;
+      console.log(`File processed event: ${fileName} for job ${masterJobId}`);
+      
+      // Update the job status directly from the event data
+      // This ensures we have the latest job status right after each file is processed
+      if (jobStatus && masterJobId === currentJobId) {
+        console.log('Updating job status from file processed event:', jobStatus);
+        setConversionJob(jobStatus);
+        setProgress(jobStatus.progress || 0);
+        
+        // Show toast for the processed file
+        const file = jobStatus.files?.find((f: any) => f.name === fileName || f.originalName === fileName);
+        if (file && file.status === 'completed') {
+          toast({
+            title: "File Converted",
+            description: `${fileName} has been successfully converted.`,
+            variant: "default"
+          });
+        } else if (file && file.status === 'failed') {
+          toast({
+            title: "File Failed",
+            description: `Failed to convert ${fileName}.`,
+            variant: "destructive"
+          });
+        }
+        
+        // Check if all files are processed
+        const allFilesProcessed = jobStatus.files?.every((file: any) => 
+          file.status === 'completed' || file.status === 'failed'
+        ) || false;
+        
+        if (allFilesProcessed) {
+          // Count completed files
+          const completedCount = jobStatus.files?.filter((file: any) => file.status === 'completed').length || 0;
+          const failedCount = jobStatus.files?.filter((file: any) => file.status === 'failed').length || 0;
+          
+          // If all files are processed, update UI accordingly
+          setIsProcessing(false);
+          setIsComplete(true);
+          setActiveTab("output");
+          
+          if (completedCount === files.length) {
+            toast({
+              title: "Conversion Complete",
+              description: `All ${files.length} files have been successfully converted.`,
+              variant: "default"
+            });
+          } else if (completedCount > 0) {
+            toast({
+              title: "Processing Complete",
+              description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+              variant: "default"
+            });
+          } else {
+            toast({
+              title: "Conversion Failed",
+              description: "All files failed to convert.",
+              variant: "destructive"
+            });
+          }
+        }
+      }
+    };
+
+    // Add event listeners
     window.addEventListener('firstFileUploaded', handleFirstFileUploaded);
+    window.addEventListener('fileProcessed', handleFileProcessed);
     
     // Cleanup on unmount
     return () => {
       window.removeEventListener('firstFileUploaded', handleFirstFileUploaded);
+      window.removeEventListener('fileProcessed', handleFileProcessed);
     };
   }, [currentJobId, files.length, toast, setActiveTab]);
 

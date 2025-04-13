@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, DownloadCloud, Eye, Zap, Check, X, AlertCircle, Clock } from "lucide-react"
 import Image from "next/image"
@@ -81,6 +81,17 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     let thumbnailUrl = '';
     if ('thumbnailUrl' in file && file.thumbnailUrl) {
       thumbnailUrl = file.thumbnailUrl;
+      
+      // Fix relative URLs that don't start with http
+      if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
+        // If it includes 'temp/' and '/converted/', clean it up
+        if (thumbnailUrl.includes('temp/') && thumbnailUrl.includes('/converted/')) {
+          thumbnailUrl = thumbnailUrl.substring(thumbnailUrl.indexOf('/converted/') + 1);
+        }
+        
+        // Ensure it has the API base URL
+        thumbnailUrl = `${API_BASE_URL}/api/files/${thumbnailUrl}?token=user_${token}`;
+      }
     }
     
     // Status with fallbacks
@@ -106,7 +117,13 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
       } else if (file.convertedPath) {
         // If no thumbnailUrl but we have convertedPath, construct a thumbnail URL
         try {
-          const url = new URL(file.convertedPath);
+          // Fix relative URLs first
+          let convertedPath = file.convertedPath;
+          if (!convertedPath.startsWith('http')) {
+            convertedPath = `${API_BASE_URL}/api/files/${convertedPath}?token=user_${token}`;
+          }
+          
+          const url = new URL(convertedPath);
           const pathParts = url.pathname.split('/');
           const filename = pathParts[pathParts.length - 1];
           
@@ -308,7 +325,18 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     }
   }
 
-  // In a real implementation, this would show actual conversion results
+  // Add effect to refresh file list when the conversion job changes
+  useEffect(() => {
+    if (job && job.files && job.files.length > 0) {
+      // The component will use the job.files data automatically through the
+      // convertedImages variable defined in the component
+      console.log(`Output gallery refreshed with ${job.files.length} files`);
+      
+      // Filter to show just completed files
+      const completedCount = job.files.filter(file => file.status === 'completed').length;
+      console.log(`Completed files: ${completedCount}`);
+    }
+  }, [job]);
 
   return (
     <div>
