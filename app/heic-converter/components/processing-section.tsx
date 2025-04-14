@@ -1,10 +1,11 @@
 "use client"
 
 import { Progress } from "@/components/ui/progress"
-import { Loader2, Zap, AlertCircle } from "lucide-react"
+import { Loader2, Zap, AlertCircle, Upload, ClockIcon } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ConversionJob } from "@/lib/services/heic-converter-service"
-import React from "react"
+import React, { useState, useEffect } from "react"
+import { AlertTriangle } from "lucide-react"
 
 interface ProcessingSectionProps {
   files: File[]
@@ -15,37 +16,48 @@ interface ProcessingSectionProps {
 }
 
 export default function ProcessingSection({ files, settings, progress, error, job }: ProcessingSectionProps) {
-  // Calculate which file is currently being processed
-  const totalFiles = files.length
+  // State to track queued files vs. actively uploading files
+  const [uploadStatus, setUploadStatus] = useState<{
+    uploading: string[];
+    queued: string[];
+  }>({ uploading: [], queued: [] });
+
+  // Effect to handle file processing progress
+  useEffect(() => {
+    // Listen for events dispatched by the service about file upload status
+    const handleFileStatusUpdate = (event: any) => {
+      const { status, files } = event.detail;
+      if (status && files) {
+        setUploadStatus({
+          uploading: files.filter((f: any) => f.status === 'uploading').map((f: any) => f.originalName || f.name),
+          queued: files.filter((f: any) => f.status === 'queued').map((f: any) => f.originalName || f.name)
+        });
+      }
+    };
+
+    window.addEventListener('fileUploadStatusUpdate', handleFileStatusUpdate);
+    return () => {
+      window.removeEventListener('fileUploadStatusUpdate', handleFileStatusUpdate);
+    };
+  }, []);
+  
+  // Calculate which file is being processed more accurately
+  const fileProgress = Math.min(Math.floor((progress / 100) * files.length), files.length - 1);
+  
+  // For safety, check if an edge case has inconsistent status
+  const hasInconsistentStatus = React.useMemo(() => {
+    if (job?.status === 'failed' && job?.files) {
+      // If marked as failed but all files completed, consider it inconsistent
+      const completedFiles = job.files.filter(f => f.status === 'completed');
+      return completedFiles.length === job.files.length;
+    }
+    return false;
+  }, [job]);
   
   // Get actual completed file count from job status
   const completedFiles = React.useMemo(() => {
     if (!job?.files) return 0;
     return job.files.filter(f => f.status === 'completed').length;
-  }, [job]);
-  
-  // Calculate which file is being processed more accurately
-  const fileProgress = React.useMemo(() => {
-    if (!job?.files) return Math.min(Math.floor((progress / 100) * totalFiles), totalFiles - 1);
-    
-    // Use actual completed files + 1 (for the one currently processing)
-    // but don't exceed the total number of files
-    const inProgressFile = job.files.some(f => f.status === 'processing') ? 1 : 0;
-    return Math.min(completedFiles + inProgressFile, totalFiles - 1);
-  }, [job, completedFiles, progress, totalFiles]);
-  
-  // Check if there are inconsistencies between overall status and file statuses
-  const hasInconsistentStatus = React.useMemo(() => {
-    if (!job || !job.files || job.files.length === 0) return false;
-    
-    const completedFiles = job.files.filter(f => f.status === 'completed').length;
-    const failedFiles = job.files.filter(f => f.status === 'failed').length;
-    const totalFiles = job.files.length;
-    
-    // Detect inconsistencies between overall job status and individual file statuses
-    return (job.status === 'failed' && completedFiles === totalFiles) || 
-           (job.status === 'failed' && completedFiles > 0 && failedFiles === 0) ||
-           (job.progress === 0 && completedFiles > 0);
   }, [job]);
   
   // Get current file information - either from job status or fallback to local files array
@@ -73,17 +85,27 @@ export default function ProcessingSection({ files, settings, progress, error, jo
     
     const completedFiles = job.files.filter(f => f.status === 'completed').length;
     const failedFiles = job.files.filter(f => f.status === 'failed').length;
+    const processingFiles = job.files.filter(f => f.status === 'processing').length;
+    const queuedFiles = uploadStatus.queued.length;
     const totalFiles = job.files.length;
     
     if (completedFiles === totalFiles) {
       return hasInconsistentStatus ? "Complete (Syncing status...)" : "Complete";
     }
     
-    if (completedFiles > 0 || failedFiles > 0) {
-      return `Processing (${completedFiles}/${totalFiles} files completed${failedFiles > 0 ? `, ${failedFiles} failed` : ''})`;
+    let statusText = `Processing (${completedFiles}/${totalFiles} files completed`;
+    if (failedFiles > 0) {
+      statusText += `, ${failedFiles} failed`;
     }
+    if (processingFiles > 0) {
+      statusText += `, ${processingFiles} processing`;
+    }
+    if (queuedFiles > 0) {
+      statusText += `, ${queuedFiles} queued`;
+    }
+    statusText += ')';
     
-    return jobStatus === "processing" ? "Processing" : jobStatus === "pending" ? "Pending" : jobStatus;
+    return statusText;
   };
   
   const processingText = getStatusText();
@@ -100,26 +122,26 @@ export default function ProcessingSection({ files, settings, progress, error, jo
 
   // More accurate "in progress" status description
   const getProgressDescription = () => {
-    if (!job?.files) return `Converting ${fileProgress + 1} of ${totalFiles} files`;
+    if (!job?.files) return `Converting ${fileProgress + 1} of ${files.length} files`;
     
     const completedCount = job.files.filter(f => f.status === 'completed').length;
     const failedCount = job.files.filter(f => f.status === 'failed').length;
     const processingCount = job.files.filter(f => f.status === 'processing').length;
     const pendingCount = job.files.filter(f => f.status === 'pending').length;
     
-    if (completedCount === totalFiles) {
-      return `All ${totalFiles} files converted`;
+    if (completedCount === files.length) {
+      return `All ${files.length} files converted`;
     }
     
-    if (failedCount === totalFiles) {
-      return `All ${totalFiles} files failed`;
+    if (failedCount === files.length) {
+      return `All ${files.length} files failed`;
     }
     
     if (processingCount > 0) {
-      return `Converting file ${completedCount + 1} of ${totalFiles}`;
+      return `Converting file ${completedCount + 1} of ${files.length}`;
     }
     
-    return `Converted ${completedCount} of ${totalFiles} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`;
+    return `Converted ${completedCount} of ${files.length} files${failedCount > 0 ? `, ${failedCount} failed` : ''}`;
   };
 
   // Function to get the current file being processed
@@ -150,86 +172,71 @@ export default function ProcessingSection({ files, settings, progress, error, jo
   };
 
   return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Converting Files</h3>
-
-      <div className="space-y-8">
-        {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error}
-            {hasInconsistentStatus && (
-              <div className="mt-2 text-amber-600 text-sm">
-                Note: Some files appear to have converted successfully despite this error.
-                The status will be updated automatically.
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+      <div className="text-center space-y-4">
+        <h2 className="text-2xl font-bold">Processing Your Files</h2>
+        <p className="text-lg text-muted-foreground">
+          {processingText}
+        </p>
+      </div>
       
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="font-medium">Overall Progress</p>
-          <p className="text-sm text-gray-500">
-            {getProgressDescription()}
-          </p>
-        </div>
-        <div className="flex items-center text-primary">
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          <span className="text-sm">{processingText}</span>
-        </div>
-        </div>
-
-        <div className="space-y-2">
-        <Progress value={actualProgress} className="h-2" />
-        <div className="flex justify-between text-sm text-gray-500">
-          <span>0%</span>
-          <span>{actualProgress}%</span>
-          <span>100%</span>
-        </div>
-        </div>
-
-        <div className="bg-gray-50 p-4 rounded-lg border">
-          <div className="flex items-center mb-3">
-            <div className="p-2 bg-primary/10 rounded mr-3">
-              <Loader2 className="h-4 w-4 text-primary animate-spin" />
-            </div>
-            <div>
-              <p className="font-medium">Currently processing:</p>
-              <p className="text-sm text-gray-500">{getCurrentFileText()}</p>
-            </div>
+      <div className="max-w-md mx-auto">
+        <Progress value={progress} className="h-2" />
+        <p className="text-sm text-muted-foreground mt-2 text-center">
+          {progress}% complete
+        </p>
+      </div>
+      
+      <div className="bg-muted rounded-lg p-4 max-w-md mx-auto">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div>
+            <p className="font-medium">Currently Processing</p>
+            <p className="text-sm text-muted-foreground truncate">{currentFileName}</p>
           </div>
-
-          {/* Display file status summary if we have file information */}
-          {job?.files && job.files.length > 0 && (
-            <div className="mt-4 text-sm text-gray-600">
-              <p>File status:</p>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <span className="text-green-500">Completed: {job.files.filter(f => f.status === 'completed').length}</span>
-                <span className="text-red-500">Failed: {job.files.filter(f => f.status === 'failed').length}</span>
-                <span className="text-yellow-500">Processing: {job.files.filter(f => f.status === 'processing').length}</span>
-                <span className="text-gray-500">Pending: {job.files.filter(f => f.status === 'pending').length}</span>
-              </div>
-            </div>
-          )}
-
-          {settings.aiOptimization && (
-            <div className="flex items-center mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <Zap className="h-4 w-4 text-blue-500 mr-2" />
-              <div className="text-sm text-blue-700">
-                AI optimization in progress - this may take a few extra seconds
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="text-center text-sm text-gray-500">
-          <p>Please don't close this window during conversion</p>
-          <p>Your files are being processed securely in your browser</p>
         </div>
       </div>
+      
+      {uploadStatus.uploading.length > 0 && (
+        <div className="bg-muted rounded-lg p-4 max-w-md mx-auto">
+          <div className="flex items-center gap-3">
+            <Upload className="h-6 w-6 text-blue-600" />
+            <div className="w-full">
+              <p className="font-medium">Currently Uploading ({uploadStatus.uploading.length})</p>
+              <div className="text-sm text-muted-foreground max-h-16 overflow-y-auto">
+                {uploadStatus.uploading.map((name, i) => (
+                  <p key={i} className="truncate">{name}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {uploadStatus.queued.length > 0 && (
+        <div className="bg-muted rounded-lg p-4 max-w-md mx-auto">
+          <div className="flex items-center gap-3">
+            <ClockIcon className="h-6 w-6 text-yellow-600" />
+            <div className="w-full">
+              <p className="font-medium">In Queue ({uploadStatus.queued.length})</p>
+              <div className="text-sm text-muted-foreground max-h-24 overflow-y-auto">
+                {uploadStatus.queued.map((name, i) => (
+                  <p key={i} className="truncate">{name}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-lg p-4 max-w-md mx-auto">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5" />
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

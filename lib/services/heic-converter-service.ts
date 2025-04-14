@@ -85,6 +85,12 @@ class _HeicConverterService implements HeicConverterService {
   private pollingJobId: string | null = null;
   private pollingCallback: ((job: ConversionJob) => void) | null = null;
   private pollingDelay: number = 1000; // 1 second between polls
+  
+  // Queue management variables
+  private uploadQueue: Array<{file: File, masterJobId: string, settings: ConversionSettings, fileIndex: number, status: string}> = [];
+  private activeUploads: number = 0;
+  private maxConcurrentUploads: number = 4; // Limit to 4 concurrent uploads
+  private isProcessingQueue: boolean = false;
 
   constructor() {
     // Only access localStorage in browser environment
@@ -188,33 +194,147 @@ class _HeicConverterService implements HeicConverterService {
       const masterJobId = await this.createMasterJob(files.length, settings);
       console.log(`Created master job with ID: ${masterJobId}`);
       
-      // Process each file individually, but don't wait for all to complete
-      // Start by uploading the first file
-      if (files.length > 0) {
-        try {
-          await this.uploadSingleFile(files[0], masterJobId, settings, 0);
-          console.log(`First file ${files[0].name} queued for processing`);
-        } catch (error) {
-          console.error(`Error processing first file ${files[0].name}:`, error);
-        }
-      }
+      // Clear any existing queue (should not happen, but just in case)
+      this.uploadQueue = [];
       
-      // Upload the rest of the files in the background
-      if (files.length > 1) {
-        // Process remaining files asynchronously without awaiting their completion
-        for (let i = 1; i < files.length; i++) {
-          const file = files[i];
-          this.uploadSingleFile(file, masterJobId, settings, i)
-            .then(() => console.log(`File ${i + 1}/${files.length} (${file.name}) queued for processing`))
-            .catch(error => console.error(`Error processing file ${file.name}:`, error));
-        }
-      }
+      // Add all files to the upload queue with "queued" status
+      const queuedFiles = files.map((file, index) => ({
+        file,
+        masterJobId,
+        settings,
+        fileIndex: index,
+        status: 'queued'
+      }));
+      this.uploadQueue = queuedFiles;
+      
+      console.log(`Added ${files.length} files to upload queue`);
+      
+      // Dispatch initial event with queue status
+      this.dispatchQueueStatusUpdate(masterJobId, files);
+      
+      // Start processing the queue
+      this.processUploadQueue();
       
       // Return the master job ID for tracking overall progress immediately
       return masterJobId;
     } catch (error) {
       console.error('Error starting conversion:', error);
       throw error;
+    }
+  }
+  
+  // Dispatch an event with the current status of uploading and queued files
+  private dispatchQueueStatusUpdate(masterJobId: string, originalFiles: File[]) {
+    if (typeof window === 'undefined') return;
+    
+    // Create arrays for files being uploaded and files in queue
+    const uploadingFiles = [];
+    const queuedFiles = [];
+    
+    // Track which files are currently being uploaded (first 4 files that were removed from queue)
+    for (let i = 0; i < originalFiles.length; i++) {
+      const file = originalFiles[i];
+      const isQueued = this.uploadQueue.some(qf => qf.fileIndex === i);
+      
+      if (isQueued) {
+        queuedFiles.push({
+          name: file.name,
+          originalName: file.name,
+          status: 'queued',
+          index: i
+        });
+      } else if (this.activeUploads > 0 && uploadingFiles.length < this.activeUploads) {
+        // Files not in queue and within activeUploads count are being uploaded
+        uploadingFiles.push({
+          name: file.name,
+          originalName: file.name,
+          status: 'uploading',
+          index: i
+        });
+      }
+    }
+    
+    // Dispatch a custom event with the queue status
+    const event = new CustomEvent('fileUploadStatusUpdate', {
+      detail: {
+        masterJobId,
+        status: 'uploading',
+        files: [...uploadingFiles, ...queuedFiles]
+      }
+    });
+    
+    window.dispatchEvent(event);
+    console.log(`Dispatched fileUploadStatusUpdate event with ${uploadingFiles.length} uploading and ${queuedFiles.length} queued files`);
+  }
+  
+  // Process files in the upload queue with a maximum of 4 concurrent uploads
+  private async processUploadQueue() {
+    // If already processing or no files in queue, do nothing
+    if (this.isProcessingQueue || this.uploadQueue.length === 0) {
+      return;
+    }
+    
+    this.isProcessingQueue = true;
+    
+    try {
+      // Continue processing while there are files in the queue and we have capacity
+      while (this.uploadQueue.length > 0 && this.activeUploads < this.maxConcurrentUploads) {
+        const nextFile = this.uploadQueue.shift();
+        if (!nextFile) break;
+        
+        this.activeUploads++;
+        
+        // Update queue status after starting a new upload
+        const masterJobId = nextFile.masterJobId;
+        
+        // Get the original files list from the job status
+        try {
+          const jobStatus = await this.getJobStatus(masterJobId);
+          if (jobStatus && jobStatus.files) {
+            this.dispatchQueueStatusUpdate(masterJobId, jobStatus.files.map(f => ({
+              name: f.originalName || '',
+              size: f.size || 0
+            } as unknown as File)));
+          }
+        } catch (error) {
+          console.error('Error updating queue status:', error);
+        }
+        
+        // Process this file in the background (don't await)
+        this.uploadSingleFile(nextFile.file, nextFile.masterJobId, nextFile.settings, nextFile.fileIndex)
+          .then(() => {
+            console.log(`File ${nextFile.file.name} (${nextFile.fileIndex + 1}) processed successfully`);
+          })
+          .catch(error => {
+            console.error(`Error processing file ${nextFile.file.name}:`, error);
+          })
+          .finally(() => {
+            // Decrease active upload count
+            this.activeUploads--;
+            
+            // Update queue status after completing an upload
+            try {
+              const masterJobId = nextFile.masterJobId;
+              this.getJobStatus(masterJobId).then(jobStatus => {
+                if (jobStatus && jobStatus.files) {
+                  this.dispatchQueueStatusUpdate(masterJobId, jobStatus.files.map(f => ({
+                    name: f.originalName || '',
+                    size: f.size || 0
+                  } as unknown as File)));
+                }
+              });
+            } catch (error) {
+              console.error('Error updating queue status after completion:', error);
+            }
+            
+            // Continue processing queue if there are more files
+            if (this.uploadQueue.length > 0) {
+              this.processUploadQueue();
+            }
+          });
+      }
+    } finally {
+      this.isProcessingQueue = false;
     }
   }
 
@@ -249,6 +369,8 @@ class _HeicConverterService implements HeicConverterService {
 
   // Helper method to upload and process a single file
   private async uploadSingleFile(file: File, masterJobId: string, settings: ConversionSettings, fileIndex: number): Promise<void> {
+    console.log(`Starting upload for file ${fileIndex + 1}/${this.uploadQueue.length + this.activeUploads}: ${file.name}`);
+    
     // Create a FormData object for this specific file
     const formData = new FormData();
     
@@ -331,8 +453,6 @@ class _HeicConverterService implements HeicConverterService {
         console.log(`First file ${file.name} uploaded successfully, dispatched firstFileUploaded event`);
       }
     }
-    
-    // No need to return anything - the master job will track progress
   }
 
   // Get job status
