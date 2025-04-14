@@ -2,9 +2,9 @@
 set -e
 
 # Configuration
-LS_IP="18.136.101.51" # Lightsail IP address passed as an argument
+LS_IP="44.203.48.91" # Lightsail IP address passed as an argument
 API_BASE_URL="https://service.freetool.online"
-SSH_KEY_PATH="/Users/ktran/Documents/Code/ec2/LightsailDefaultKey-ap-southeast-1.pem"
+SSH_KEY_PATH="/Users/ktran/Documents/Code/ec2/LightsailDefaultKey-us-east-1.pem"
 SSH_USER="ubuntu"
 REMOTE_APP_DIR="/home/ubuntu/freetool.online"
 LOCAL_APP_DIR="/Users/ktran/Documents/Code/NewCode/freetool/freetool.online"
