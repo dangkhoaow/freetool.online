@@ -82,14 +82,10 @@ class _HeicConverterService implements HeicConverterService {
   private maxFiles: number = 15; // Default limit
   private apiBaseUrl: string = API_BASE_URL;
   private pollingInterval: NodeJS.Timeout | null = null;
-  private pollingJobId: string | null = null;
-  private pollingCallback: ((job: ConversionJob) => void) | null = null;
-  private pollingDelay: number = 1000; // 1 second between polls
-  
   // Queue management variables
   private uploadQueue: Array<{file: File, masterJobId: string, settings: ConversionSettings, fileIndex: number, status: string}> = [];
   private activeUploads: number = 0;
-  private maxConcurrentUploads: number = 4; // Limit to 4 concurrent uploads
+  private maxConcurrentUploads: number = 2; // Limit to 2 concurrent uploads
   private isProcessingQueue: boolean = false;
 
   constructor() {
@@ -287,19 +283,6 @@ class _HeicConverterService implements HeicConverterService {
         // Update queue status after starting a new upload
         const masterJobId = nextFile.masterJobId;
         
-        // Get the original files list from the job status
-        try {
-          const jobStatus = await this.getJobStatus(masterJobId);
-          if (jobStatus && jobStatus.files) {
-            this.dispatchQueueStatusUpdate(masterJobId, jobStatus.files.map(f => ({
-              name: f.originalName || '',
-              size: f.size || 0
-            } as unknown as File)));
-          }
-        } catch (error) {
-          console.error('Error updating queue status:', error);
-        }
-        
         // Process this file in the background (don't await)
         this.uploadSingleFile(nextFile.file, nextFile.masterJobId, nextFile.settings, nextFile.fileIndex)
           .then(() => {
@@ -312,20 +295,6 @@ class _HeicConverterService implements HeicConverterService {
             // Decrease active upload count
             this.activeUploads--;
             
-            // Update queue status after completing an upload
-            try {
-              const masterJobId = nextFile.masterJobId;
-              this.getJobStatus(masterJobId).then(jobStatus => {
-                if (jobStatus && jobStatus.files) {
-                  this.dispatchQueueStatusUpdate(masterJobId, jobStatus.files.map(f => ({
-                    name: f.originalName || '',
-                    size: f.size || 0
-                  } as unknown as File)));
-                }
-              });
-            } catch (error) {
-              console.error('Error updating queue status after completion:', error);
-            }
             
             // Continue processing queue if there are more files
             if (this.uploadQueue.length > 0) {
