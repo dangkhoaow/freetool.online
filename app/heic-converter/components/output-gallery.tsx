@@ -53,6 +53,19 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
   const totalFiles = files.length;
   const successCount = successfulFiles.length;
   const failedCount = job?.files?.filter(file => file.status === 'failed').length || 0;
+  
+  // Determine status message based on conversion statistics
+  const getStatusMessage = () => {
+    if (successCount === 0 && failedCount === 0) {
+      return "Waiting for files to be processed...";
+    } else if (successCount === totalFiles) {
+      return `All ${totalFiles} files successfully converted to ${settings.outputFormat.toUpperCase()}`;
+    } else if (successCount > 0) {
+      return `${successCount} of ${totalFiles} files successfully converted. ${failedCount} files failed.`;
+    } else {
+      return "No files were successfully converted.";
+    }
+  };
 
   // Use actual converted files from the job if available, otherwise fall back to placeholders
   const isPdfFormat = settings.outputFormat === 'pdf';
@@ -339,180 +352,149 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
   }, [job]);
 
   return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Conversion Results</h3>
-
-      <div className="space-y-6">
-        <div className="bg-green-50 border border-green-100 rounded-lg p-4 mb-6 flex items-center">
-          <div className="bg-green-100 rounded-full p-1 mr-3">
-            {failedCount > 0 && successCount > 0 ? (
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-            ) : failedCount > 0 ? (
-              <X className="h-5 w-5 text-red-600" />
-            ) : successCount > 0 ? (
-              <Check className="h-5 w-5 text-green-600" />
-            ) : (
-              <Clock className="h-5 w-5 text-blue-600" />
-            )}
-          </div>
-          <div>
-            {successCount === totalFiles ? (
-              <p className="text-green-800 font-medium">Conversion Complete!</p>
-            ) : failedCount === totalFiles ? (
-              <p className="text-red-800 font-medium">Conversion Failed!</p>
-            ) : failedCount > 0 ? (
-              <p className="text-yellow-800 font-medium">Partial Conversion</p>
-            ) : (
-              <p className="text-blue-800 font-medium">Processing...</p>
-            )}
-            <p className="text-sm text-green-700">
-              {successCount} of {totalFiles} files successfully converted to {settings.outputFormat.toUpperCase()}
-              {failedCount > 0 && ` (${failedCount} failed)`}
-            </p>
-          </div>
+    <div className="space-y-8">
+      <h3 className="text-2xl font-bold text-center">Conversion Complete</h3>
+      
+      {/* Add status message display */}
+      <div className="text-center mb-6">
+        <div className={`text-sm px-4 py-2 rounded-full inline-flex items-center ${
+          successCount === totalFiles ? 'bg-green-100 text-green-800' : 
+          successCount > 0 ? 'bg-yellow-100 text-yellow-800' : 
+          'bg-red-100 text-red-800'
+        }`}>
+          {successCount === totalFiles && <Check className="w-4 h-4 mr-2" />}
+          {successCount > 0 && successCount < totalFiles && <AlertCircle className="w-4 h-4 mr-2" />}
+          {successCount === 0 && <X className="w-4 h-4 mr-2" />}
+          {getStatusMessage()}
         </div>
+      </div>
 
-        {failedCount > 0 && (
-          <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 mb-6 flex items-center">
-            <div className="bg-yellow-100 rounded-full p-1 mr-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-yellow-800 font-medium">Some files failed to convert</p>
-              <p className="text-sm text-yellow-700">
-                {failedCount} of {totalFiles} files couldn't be converted. This might be due to corrupted HEIC files or unsupported formats.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {successfulFiles.length > 0 ? (
-            successfulFiles.map((file, index) => {
-              // Get display URL
-              let displayUrl = file.thumbnailUrl || file.convertedPath || '';
-              let downloadUrl = file.convertedPath || '';
-              
-              // Extract the original file name
-              const originalName = file.originalName || `file-${index + 1}.${settings.outputFormat}`;
-              const convertedName = file.convertedName || originalName.replace(/\.(heic|heif)$/i, `.${settings.outputFormat}`);
-              
-              return (
-                <div
-                  key={index}
-                  className="bg-white border rounded-lg overflow-hidden shadow-sm transition hover:shadow-md"
-                >
-                  <div className="relative aspect-square bg-gray-100">
-                    {/* Image thumbnail - adjust display logic as needed */}
-                    <img
-                      src={displayUrl}
-                      alt={`Converted ${originalName}`}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        // Log the error for debugging
-                        console.error(`Error loading thumbnail: ${displayUrl}`);
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {successfulFiles.length > 0 ? (
+          successfulFiles.map((file, index) => {
+            // Get display URL
+            let displayUrl = file.thumbnailUrl || file.convertedPath || '';
+            let downloadUrl = file.convertedPath || '';
+            
+            // Extract the original file name
+            const originalName = file.originalName || `file-${index + 1}.${settings.outputFormat}`;
+            const convertedName = file.convertedName || originalName.replace(/\.(heic|heif)$/i, `.${settings.outputFormat}`);
+            
+            return (
+              <div
+                key={index}
+                className="bg-white border rounded-lg overflow-hidden shadow-sm transition hover:shadow-md"
+              >
+                <div className="relative aspect-square bg-gray-100">
+                  {/* Image thumbnail - adjust display logic as needed */}
+                  <img
+                    src={displayUrl}
+                    alt={`Converted ${originalName}`}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Log the error for debugging
+                      console.error(`Error loading thumbnail: ${displayUrl}`);
+                      
+                      // Try alternative thumbnail URL formats
+                      const target = e.target as HTMLImageElement;
+                      
+                      if (displayUrl.includes('.jpg')) {
+                        // Try with PDF extension instead
+                        const pdfUrl = displayUrl.replace('.jpg', '.pdf');
+                        console.log('Trying alternative PDF URL:', pdfUrl);
+                        target.src = pdfUrl;
                         
-                        // Try alternative thumbnail URL formats
-                        const target = e.target as HTMLImageElement;
-                        
-                        if (displayUrl.includes('.jpg')) {
-                          // Try with PDF extension instead
-                          const pdfUrl = displayUrl.replace('.jpg', '.pdf');
-                          console.log('Trying alternative PDF URL:', pdfUrl);
-                          target.src = pdfUrl;
-                          
-                          // Add another error handler for the fallback
-                          target.onerror = () => {
-                            console.error(`Fallback URL also failed: ${pdfUrl}`);
-                            target.src = "/placeholder.svg?height=200&width=300";
-                            target.onerror = null; // Prevent infinite error handling
-                          };
-                        } else {
-                          // Fall back to placeholder if image fails to load
+                        // Add another error handler for the fallback
+                        target.onerror = () => {
+                          console.error(`Fallback URL also failed: ${pdfUrl}`);
                           target.src = "/placeholder.svg?height=200&width=300";
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="p-3">
-                    <p className="font-medium truncate">{convertedName}</p>
-                    <p className="text-sm text-gray-500 truncate">Size: {formatFileSize(file.size || 0)}</p>
+                          target.onerror = null; // Prevent infinite error handling
+                        };
+                      } else {
+                        // Fall back to placeholder if image fails to load
+                        target.src = "/placeholder.svg?height=200&width=300";
+                      }
+                    }}
+                  />
+                </div>
+                <div className="p-3">
+                  <p className="font-medium truncate">{convertedName}</p>
+                  <p className="text-sm text-gray-500 truncate">Size: {formatFileSize(file.size || 0)}</p>
 
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleDownload(file.convertedPath || '', convertedName)}
-                        className="flex-1"
-                        disabled={!file.convertedPath}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </Button>
-                    </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleDownload(file.convertedPath || '', convertedName)}
+                      className="flex-1"
+                      disabled={!file.convertedPath}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
                   </div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-700">No Converted Files Yet</h3>
-              <p className="text-gray-500 mt-1">
-                {job?.status === 'failed' ? 
-                  'Conversion failed. Please try again or check your files.' : 
-                  'Your files are still processing. Please wait...'}
-              </p>
+            );
+          })
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <Clock className="h-6 w-6 text-gray-400" />
             </div>
-          )}
-        </div>
+            <h3 className="text-lg font-medium text-gray-700">No Converted Files Yet</h3>
+            <p className="text-gray-500 mt-1">
+              {job?.status === 'failed' ? 
+                'Conversion failed. Please try again or check your files.' : 
+                'Your files are still processing. Please wait...'}
+            </p>
+          </div>
+        )}
+      </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="mt-8 pt-6 border-t">
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={onReset}>
-                Convert More Files
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="mt-8 pt-6 border-t">
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={onReset}>
+              Convert More Files
+            </Button>
+            {(isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1) ? (
+              <Button 
+                variant="default" 
+                onClick={handleDownloadCombinedPdf}
+                disabled={isDownloading || !job || successCount === 0}
+              >
+                {isDownloading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <DownloadCloud className="h-4 w-4 mr-2" />
+                    Download Combined PDF
+                  </>
+                )}
               </Button>
-              {(isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1) ? (
-                <Button 
-                  variant="default" 
-                  onClick={handleDownloadCombinedPdf}
-                  disabled={isDownloading || !job || successCount === 0}
-                >
-                  {isDownloading ? (
-                    <>
-                      <span className="animate-spin mr-2">⏳</span>
-                      Downloading...
-                    </>
-                  ) : (
-                    <>
-                      <DownloadCloud className="h-4 w-4 mr-2" />
-                      Download Combined PDF
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button 
-                  variant="default" 
-                  onClick={handleDownloadAll}
-                  disabled={isDownloading || !job || successCount === 0}
-                >
-                  {isDownloading ? (
-                    <>
-                      <span className="animate-spin mr-2">⏳</span>
-                      Downloading...
-                    </>
-                  ) : (
-                    <>
-                      <DownloadCloud className="h-4 w-4 mr-2" />
-                      Download All as ZIP
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+            ) : (
+              <Button 
+                variant="default" 
+                onClick={handleDownloadAll}
+                disabled={isDownloading || !job || successCount === 0}
+              >
+                {isDownloading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <DownloadCloud className="h-4 w-4 mr-2" />
+                    Download All as ZIP
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>

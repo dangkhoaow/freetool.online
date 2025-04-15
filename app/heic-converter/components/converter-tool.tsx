@@ -71,7 +71,7 @@ export default function ConverterTool() {
           const allFilesProcessed = updatedJob.files?.every(file => 
             file.status === 'completed' || file.status === 'failed'
           ) && updatedJob.files?.length === files.length || false;
-          console.log(`allFilesProcessed: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`);
+          console.log(`allFilesProcessed_1: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`);
         
           // Check if at least one file is completed successfully
           const hasCompletedFiles = updatedJob.files?.some(file => 
@@ -98,30 +98,45 @@ export default function ConverterTool() {
               description: `All ${files.length} files have been successfully converted.`,
               variant: "default"
             });
-          } else if (updatedJob.status === 'failed' && hasCompletedFiles && allFilesProcessed) {
-            // Handle partial success - some files converted successfully but overall job failed
-            setIsProcessing(false);
-            setIsComplete(true);
-            setActiveTab("output");
+          } else if (updatedJob.status === 'failed') {
+            // First check if there are any completed files, regardless of other conditions
+            const hasCompletedFiles = updatedJob.files?.some(file => file.status === 'completed') || false;
             
-            // Count completed files
-            const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
-            const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
-            
-            toast({
-              title: "Partial Conversion",
-              description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
-              variant: "default"
-            });
-          } else if (updatedJob.status === 'failed' && !hasCompletedFiles) {
-            // All files failed
-            setIsProcessing(false);
-            setError(updatedJob.error || 'Conversion failed');
-            toast({
-              title: "Conversion Failed",
-              description: updatedJob.error || 'An error occurred during conversion.',
-              variant: "destructive"
-            });
+            if (hasCompletedFiles) {
+              // If any files completed successfully, show output gallery
+              setIsProcessing(false);
+              setIsComplete(true);
+              setActiveTab("output");
+              
+              // Count completed files
+              const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
+              const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
+              
+              toast({
+                title: "Partial Conversion",
+                description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+                variant: "default"
+              });
+            } else {
+              // Only show error if there are no completed files
+              const isLikelyStillUploading = !updatedJob.files || updatedJob.files.length === 0;
+              const jobStartTime = new Date(updatedJob.createdAt || Date.now());
+              const isWithinUploadTimeWindow = (Date.now() - jobStartTime.getTime()) < 300000; // 5 minutes
+
+              if (isLikelyStillUploading && isWithinUploadTimeWindow) {
+                // Still uploading - don't show error yet
+                console.log('Files still uploading, waiting for uploads to complete...');
+              } else {
+                // All files failed after uploads completed
+                setIsProcessing(false);
+                setError(updatedJob.error || 'Conversion failed');
+                toast({
+                  title: "Conversion Failed",
+                  description: updatedJob.error || 'An error occurred during conversion.',
+                  variant: "destructive"
+                });
+              }
+            }
           } else if (allFilesProcessed && hasCompletedFiles) {
             // Handle case where all files are processed but job status hasn't updated yet
             setIsProcessing(false);
@@ -175,7 +190,7 @@ export default function ConverterTool() {
           file.status === 'completed' || file.status === 'failed'
         ) && jobStatus.files?.length === files.length || false;
         
-        console.log(`allFilesProcessed: ${allFilesProcessed}, jobStatus.files?.length: ${jobStatus.files?.length}, files.length: ${files.length}`);
+        console.log(`allFilesProcessed_2: ${allFilesProcessed}, jobStatus.files?.length: ${jobStatus.files?.length}, files.length: ${files.length}`);
         
         if (allFilesProcessed) {
           // Count completed files
@@ -206,6 +221,26 @@ export default function ConverterTool() {
               variant: "destructive"
             });
           }
+        }
+        
+        // Also check if we have any completed files, regardless of job status
+        // This ensures we show output gallery even if job status is "failed" but some files completed
+        const hasCompletedFiles = jobStatus.files?.some((file: any) => file.status === 'completed') || false;
+        if (hasCompletedFiles && jobStatus.status === 'failed') {
+          const completedCount = jobStatus.files?.filter((file: any) => file.status === 'completed').length || 0;
+          const failedCount = jobStatus.files?.filter((file: any) => file.status === 'failed').length || 0;
+          
+          setIsProcessing(false);
+          setIsComplete(true);
+          setActiveTab("output");
+          
+          console.log(`Job marked as failed but has ${completedCount} completed files - showing output gallery`);
+          
+          toast({
+            title: "Partial Conversion",
+            description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+            variant: "default"
+          });
         }
       }
     };
@@ -238,7 +273,7 @@ export default function ConverterTool() {
         const allFilesProcessed = updatedJob.files?.every(file => 
           file.status === 'completed' || file.status === 'failed'
         ) && updatedJob.files?.length === files.length || false;
-        console.log(`allFilesProcessed: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`);
+        console.log(`allFilesProcessed_3: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`);
         
         // Check if at least one file is completed successfully
         const hasCompletedFiles = updatedJob.files?.some(file => 
@@ -255,30 +290,45 @@ export default function ConverterTool() {
             description: `All ${files.length} files have been successfully converted.`,
             variant: "default"
           });
-        } else if (updatedJob.status === 'failed' && hasCompletedFiles && allFilesProcessed) {
-          // Handle partial success - some files converted successfully but overall job failed
-          setIsProcessing(false);
-          setIsComplete(true);
-          setActiveTab("output");
+        } else if (updatedJob.status === 'failed') {
+          // First check if there are any completed files, regardless of other conditions
+          const hasCompletedFiles = updatedJob.files?.some(file => file.status === 'completed') || false;
           
-          // Count completed files
-          const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
-          const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
-          
-          toast({
-            title: "Partial Conversion",
-            description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
-            variant: "default"
-          });
-        } else if (updatedJob.status === 'failed' && !hasCompletedFiles) {
-          // All files failed
-          setIsProcessing(false);
-          setError(updatedJob.error || 'Conversion failed');
-          toast({
-            title: "Conversion Failed",
-            description: updatedJob.error || 'An error occurred during conversion.',
-            variant: "destructive"
-          });
+          if (hasCompletedFiles) {
+            // If any files completed successfully, show output gallery
+            setIsProcessing(false);
+            setIsComplete(true);
+            setActiveTab("output");
+            
+            // Count completed files
+            const completedCount = updatedJob.files?.filter(file => file.status === 'completed').length || 0;
+            const failedCount = updatedJob.files?.filter(file => file.status === 'failed').length || 0;
+            
+            toast({
+              title: "Partial Conversion",
+              description: `${completedCount} of ${files.length} files successfully converted. ${failedCount} files failed.`,
+              variant: "default"
+            });
+          } else {
+            // Only show error if there are no completed files
+            const isLikelyStillUploading = !updatedJob.files || updatedJob.files.length === 0;
+            const jobStartTime = new Date(updatedJob.createdAt || Date.now());
+            const isWithinUploadTimeWindow = (Date.now() - jobStartTime.getTime()) < 300000; // 5 minutes
+
+            if (isLikelyStillUploading && isWithinUploadTimeWindow) {
+              // Still uploading - don't show error yet
+              console.log('Files still uploading, waiting for uploads to complete...');
+            } else {
+              // All files failed after uploads completed
+              setIsProcessing(false);
+              setError(updatedJob.error || 'Conversion failed');
+              toast({
+                title: "Conversion Failed",
+                description: updatedJob.error || 'An error occurred during conversion.',
+                variant: "destructive"
+              });
+            }
+          }
         } else if (allFilesProcessed && hasCompletedFiles) {
           // Handle case where all files are processed but job status hasn't updated yet
           setIsProcessing(false);

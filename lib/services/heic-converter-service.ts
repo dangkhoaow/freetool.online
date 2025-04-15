@@ -81,7 +81,9 @@ class _HeicConverterService implements HeicConverterService {
   private userId: string = '';
   private maxFiles: number = 15; // Default limit
   private apiBaseUrl: string = API_BASE_URL;
-  private pollingInterval: NodeJS.Timeout | null = null;
+  // Add a flag to track ongoing API requests
+  private isPolling: boolean = false;
+  private shouldContinuePolling: boolean = false;
   // Queue management variables
   private uploadQueue: Array<{file: File, masterJobId: string, settings: ConversionSettings, fileIndex: number, status: string}> = [];
   private activeUploads: number = 0;
@@ -482,16 +484,57 @@ class _HeicConverterService implements HeicConverterService {
     let statusChangeCount = 0;
     let statusInconsistencies = 0;
     let lastProgressUpdate = Date.now();
+    let jobStartTime = Date.now();
     
-    // Start new polling interval
-    this.pollingInterval = setInterval(async () => {
+    // Set polling flags
+    this.shouldContinuePolling = true;
+    this.isPolling = false;
+    
+    // Define the polling function that will call itself after waiting
+    const pollJobStatus = async () => {
+      // If polling was stopped, don't continue
+      if (!this.shouldContinuePolling) {
+        console.log(`[HeicConverter] Polling stopped for job ${jobId}`);
+        return;
+      }
+      
+      // If already polling, wait for the next cycle
+      if (this.isPolling) {
+        console.log(`[HeicConverter] Skipping poll cycle - previous request still in progress`);
+        setTimeout(pollJobStatus, pollingInterval);
+        return;
+      }
+      
       try {
+        // Set flag to indicate polling is in progress
+        this.isPolling = true;
+        
         // Get the current job status
+        console.log(`[HeicConverter] Fetching status for job ${jobId}`);
         const jobStatus = await this.getJobStatus(jobId);
+        
+        // Reset polling flag after response is received
+        this.isPolling = false;
         
         if (!jobStatus) {
           console.error(`[HeicConverter] Job ${jobId} not found`);
           this.stopStatusPolling();
+          return;
+        }
+        
+        // Check if no files have been uploaded yet
+        if (!jobStatus.files || jobStatus.files.length === 0) {
+          // If it's been less than 10 seconds since we started polling, use a longer interval for the next poll
+          // This helps reduce backend load during the initial file upload phase
+          const uploadPhaseTime = Date.now() - jobStartTime;
+          const nextPollDelay = uploadPhaseTime < 10000 ? pollingInterval * 2 : pollingInterval;
+          
+          console.log(`[HeicConverter] No files uploaded yet for job ${jobId}, using longer polling interval (${nextPollDelay}ms)`);
+          if (this.shouldContinuePolling) {
+            setTimeout(pollJobStatus, nextPollDelay);
+          }
+          // Still update the UI with current status
+          callback(jobStatus);
           return;
         }
         
@@ -531,32 +574,59 @@ class _HeicConverterService implements HeicConverterService {
         // Fire callback with the job status
         callback(jobStatus);
         
-        // If job is complete or failed, stop polling
-        if (jobStatus.status === 'completed' || jobStatus.status === 'failed') {
+        // Check if job is actually complete before stopping polling
+        // Don't stop polling just because status is failed - files may still be uploading
+        const emptyFilesArray = !jobStatus.files || jobStatus.files.length === 0;
+        const isLikelyStillUploading = emptyFilesArray && (Date.now() - jobStartTime < 300000); // 5 minutes
+
+        if (jobStatus.status === 'completed') {
+          // Job is complete - stop polling
+          console.log(`[HeicConverter] Stopping status polling for completed job ${jobId}`);
+          this.stopStatusPolling();
+        } else if (jobStatus.status === 'failed' && !isLikelyStillUploading) {
+          // Job failed and not likely still uploading - stop polling
           if (statusInconsistencies > 0) {
             console.log(`[HeicConverter] Job ${jobId} finished with ${statusInconsistencies} status inconsistencies detected`);
           }
-          console.log(`[HeicConverter] Stopping status polling for completed/failed job ${jobId}`);
+          console.log(`[HeicConverter] Stopping status polling for failed job ${jobId}`);
           this.stopStatusPolling();
+        } else if (jobStatus.status === 'failed' && isLikelyStillUploading) {
+          console.log(`[HeicConverter] Job ${jobId} marked as failed but uploads may still be in progress - continuing to poll`);
+          
+          // Schedule next poll if we should continue
+          if (this.shouldContinuePolling) {
+            setTimeout(pollJobStatus, pollingInterval);
+          }
+        } else {
+          // For all other cases, schedule next poll if we should continue
+          if (this.shouldContinuePolling) {
+            setTimeout(pollJobStatus, pollingInterval);
+          }
         }
       } catch (error) {
+        // Reset polling flag if there was an error
+        this.isPolling = false;
         console.error(`[HeicConverter] Error polling job status: ${error}`);
+        
+        // Continue polling despite errors, unless stopped
+        if (this.shouldContinuePolling) {
+          setTimeout(pollJobStatus, pollingInterval);
+        }
       }
-    }, pollingInterval); // Use the provided polling interval (defaults to 2000ms)
+    };
+    
+    // Start the polling process immediately
+    pollJobStatus();
   }
 
   // Stop polling for job status
   stopStatusPolling(): void {
-    // Only clear interval in browser environment
+    // Only stop polling in browser environment
     if (!isBrowser) return;
     
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
-      this.pollingJobId = null;
-      this.pollingCallback = null;
-      console.log('Stopped job status polling');
-    }
+    // Set flag to false to stop the polling cycle
+    this.shouldContinuePolling = false;
+    console.log('Stopped job status polling');
   }
 
   // Download a file
