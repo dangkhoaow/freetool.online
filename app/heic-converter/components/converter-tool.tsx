@@ -70,8 +70,9 @@ export default function ConverterTool() {
           // Check if all files are processed (no more processing or pending files)
           const allFilesProcessed = updatedJob.files?.every(file => 
             file.status === 'completed' || file.status === 'failed'
-          ) || false;
-          
+          ) && updatedJob.files?.length === files.length || false;
+          console.log(`allFilesProcessed: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`);
+        
           // Check if at least one file is completed successfully
           const hasCompletedFiles = updatedJob.files?.some(file => 
             file.status === 'completed'
@@ -172,7 +173,9 @@ export default function ConverterTool() {
         // Check if all files are processed
         const allFilesProcessed = jobStatus.files?.every((file: any) => 
           file.status === 'completed' || file.status === 'failed'
-        ) || false;
+        ) && jobStatus.files?.length === files.length || false;
+        
+        console.log(`allFilesProcessed: ${allFilesProcessed}, jobStatus.files?.length: ${jobStatus.files?.length}, files.length: ${files.length}`);
         
         if (allFilesProcessed) {
           // Count completed files
@@ -234,7 +237,8 @@ export default function ConverterTool() {
         // Check if all files are processed (no more processing or pending files)
         const allFilesProcessed = updatedJob.files?.every(file => 
           file.status === 'completed' || file.status === 'failed'
-        ) || false;
+        ) && updatedJob.files?.length === files.length || false;
+        console.log(`allFilesProcessed: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`);
         
         // Check if at least one file is completed successfully
         const hasCompletedFiles = updatedJob.files?.some(file => 
