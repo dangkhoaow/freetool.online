@@ -31,6 +31,7 @@ export default function RootLayout({
             })(window,document,'script','dataLayer','GTM-TQVXPQXZ');
           `}
         </Script>
+        <meta name="google-adsense-account" content="ca-pub-2317460280557760" />
       </head>
       <body className={inter.className}>
         <noscript>
