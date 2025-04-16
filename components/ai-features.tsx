@@ -93,7 +93,7 @@ export default function AiFeatures() {
             <div className="md:w-1/2">
               <div className="relative rounded-lg overflow-hidden">
                 <img
-                  src="/placeholder.svg?height=300&width=500"
+                  src="/ai-heic-converter.jpg"
                   alt="AI Image Enhancement Visualization"
                   className="w-full h-auto"
                 />
