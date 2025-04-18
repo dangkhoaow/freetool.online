@@ -1,10 +1,13 @@
-"use client"
-
 import HeroSection from "../components/hero-section"
 import Footer from "../components/footer"
 import { Button } from "../components/ui/button"
 import { ArrowRight, Image, Film, FileType, Zap, Shield } from "lucide-react"
 import Link from "next/link"
+
+export const metadata = {
+  title: "FreeTool Online - Free Browser-Based Tools for Everyday Tasks",
+  description: "A collection of free, browser-based tools to help you convert, transform, and optimize your files without installing any software. All processing happens locally for complete privacy.",
+}
 
 export default function Home() {
   // Function to scroll to tools section
@@ -33,8 +36,8 @@ export default function Home() {
         badge="100% Free Tools"
         primaryButtonText="Explore Tools"
         secondaryButtonText="View Features"
-        onPrimaryButtonClick={scrollToTools}
-        onSecondaryButtonClick={scrollToFeatures}
+        primaryButtonHref="#tools"
+        secondaryButtonHref="#features"
       />
 
       {/* Tools Section */}
@@ -52,7 +55,7 @@ export default function Home() {
             {/* HEIC Converter */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
             <div className="h-40 bg-gradient-to-r from-blue-50 to-cyan-50 flex items-center justify-center">
-              <Image className="h-16 w-16 text-blue-500" />
+              <Image className="h-16 w-16 text-blue-500" aria-hidden="true" />
             </div>
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex-grow">
@@ -64,8 +67,8 @@ export default function Home() {
               </div>
               <div className="mt-4">
                 <Button asChild className="w-full">
-                  <Link href="/heic-converter" className="flex items-center justify-center gap-2">
-                    Use Tool <ArrowRight className="h-4 w-4" />
+                  <Link href="/heic-converter" className="flex items-center justify-center gap-2" aria-label="Use HEIC Converter Tool">
+                    Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </div>
@@ -75,7 +78,7 @@ export default function Home() {
             {/* GIF to Frames */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
             <div className="h-40 bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-center">
-              <Film className="h-16 w-16 text-purple-500" />
+              <Film className="h-16 w-16 text-purple-500" aria-hidden="true" />
             </div>
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex-grow">
@@ -92,8 +95,8 @@ export default function Home() {
               </div>
               <div className="mt-4">
                 <Button asChild className="w-full" variant="outline">
-                  <Link href="#" className="flex items-center justify-center gap-2">
-                    Coming Soon <ArrowRight className="h-4 w-4" />
+                  <Link href="#" className="flex items-center justify-center gap-2" aria-label="GIF to Frames Tool - Coming Soon">
+                    Coming Soon <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </div>
@@ -103,7 +106,7 @@ export default function Home() {
             {/* Coming Soon */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
             <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 flex items-center justify-center">
-              <FileType className="h-16 w-16 text-green-500" />
+              <FileType className="h-16 w-16 text-green-500" aria-hidden="true" />
             </div>
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex-grow">
@@ -120,8 +123,8 @@ export default function Home() {
               </div>
               <div className="mt-4">
                 <Button asChild className="w-full" variant="outline">
-                  <Link href="#" className="flex items-center justify-center gap-2">
-                    Coming Soon <ArrowRight className="h-4 w-4" />
+                  <Link href="#" className="flex items-center justify-center gap-2" aria-label="PDF Tools - Coming Soon">
+                    Coming Soon <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </div>
@@ -144,7 +147,7 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-xl shadow-sm">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                <Zap className="h-6 w-6 text-blue-600" />
+                <Zap className="h-6 w-6 text-blue-600" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-bold mb-2">Fast Processing</h3>
               <p className="text-gray-600">
@@ -155,7 +158,7 @@ export default function Home() {
 
             <div className="bg-white p-6 rounded-xl shadow-sm">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-green-600" />
+                <Shield className="h-6 w-6 text-green-600" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-bold mb-2">100% Secure</h3>
               <p className="text-gray-600">
@@ -177,6 +180,7 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   className="text-purple-600"
+                  aria-hidden="true"
                 >
                   <path d="M12 2v4"></path>
                   <path d="M12 18v4"></path>

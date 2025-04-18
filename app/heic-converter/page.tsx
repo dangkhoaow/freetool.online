@@ -1,5 +1,3 @@
-"use client"
-
 import ConverterTool from "./components/converter-tool"
 import Footer from "@/components/footer"
 import HeroSection from "@/components/hero-section"
@@ -8,6 +6,11 @@ import ToolGuide from "./components/tool-guide"
 import FormatComparison from "@/components/format-comparison"
 import FaqSection from "./components/faq-section"
 import SecuritySection from "./components/security-section"
+
+export const metadata = {
+  title: "HEIC to JPG Converter | Free Online HEIC Converter Tool",
+  description: "Convert HEIC photos to JPG, PNG, WEBP, or PDF formats online for free. AI-powered optimization for smaller file sizes without quality loss.",
+}
 
 export default function HeicConverterPage() {
   // Function to scroll to converter section
@@ -36,9 +39,8 @@ export default function HeicConverterPage() {
         badge="AI-Powered Image Conversion"
         primaryButtonText="Start Converting"
         secondaryButtonText="Learn About AI Features"
-        onPrimaryButtonClick={scrollToConverter}
-        secondaryButtonHref="/#ai-features"
-        onSecondaryButtonClick={scrollToAiFeatures}
+        primaryButtonHref="#converter"
+        secondaryButtonHref="#ai-features"
       />
 
       {/* Main Converter Tool */}

@@ -8,6 +8,8 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
+  title: "FreeTool Online - Free Browser-Based Converter Tools",
+  description: "100% free web-based tools for everyday tasks. Convert, transform, and optimize your files without installing any software. All processing happens in your browser for complete privacy.",
   generator: "freetool.online",
   icons: {
     icon: '/favicon.32x32.png',
