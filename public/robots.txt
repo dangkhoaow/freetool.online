@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://freetool.online
+
+# Sitemaps
+Sitemap: https://freetool.online/sitemap.xml
