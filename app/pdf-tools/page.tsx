@@ -14,7 +14,7 @@ export default function PdfToolsPage() {
       <HeroSection
         title="All-in-One PDF Tools"
         titleHighlight="Free & Online"
-        description="Powerful browser-based PDF tools to merge, split, compress, and convert your PDF files. No software installation required, 100% secure and private."
+        description="Powerful browser-based PDF tools to merge, split, compress, rotate, and convert your PDF files. No software installation required, 100% secure and private."
         badge="Multiple PDF Tools in One"
         primaryButtonText="Start Using PDF Tools"
         secondaryButtonText="Explore Features"

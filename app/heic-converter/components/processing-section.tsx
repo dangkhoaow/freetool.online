@@ -20,121 +20,90 @@ export default function ProcessingSection({ files, settings, progress, error, jo
 
   // Determine the current status
   const getStatusMessage = () => {
-    if (error) {
+    // Check if files are still being uploaded (for server mode)
+    const expectedFileCount = settings.conversionMode === "server" ? files.length : 0;
+    const currentFileCount = job?.files?.length || 0;
+    const isStillUploading = settings.conversionMode === "server" && currentFileCount < expectedFileCount;
+    
+    // If files are still uploading, prioritize showing that message over error
+    if (isStillUploading) {
       return (
-        <Alert variant="destructive" className="mb-6">
+        <div className="flex items-center gap-2 text-blue-500">
+          <Clock className="h-4 w-4 animate-spin" />
+          <span>Uploading files... {currentFileCount} of {expectedFileCount} uploaded</span>
+        </div>
+      )
+    }
+    
+    // Only show errors if we're not currently uploading files
+    if (error && !isStillUploading) {
+      return (
+        <div className="flex items-center gap-2 text-red-500">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Conversion Error</AlertTitle>
-          <AlertDescription className="mt-2">
-            {error}
-            {isBrowserMode && (
-              <div className="mt-2 text-sm">
-                <p>Browser-based conversion errors can occur due to:</p>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>File format not properly supported</li>
-                  <li>Browser memory limitations</li>
-                  <li>Browser security restrictions</li>
-                </ul>
-                <p className="mt-2">
-                  Try switching to server-based conversion in Settings → Advanced tab.
-                </p>
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
+          <span>{error}</span>
+        </div>
       )
     }
 
     if (job && job.status === "completed") {
       return (
-        <div className="flex items-center gap-2 text-green-600 mb-6">
-          <Check className="h-5 w-5" />
-          <p className="font-medium">Conversion Complete</p>
+        <div className="flex items-center gap-2 text-green-500">
+          <Check className="h-4 w-4" />
+          <span>Conversion complete! All files converted successfully.</span>
         </div>
       )
     }
 
-    if (job && job.status === "failed") {
-      // Check if any files were processed successfully
-      const successCount = job.files?.filter((file: any) => file.status === "completed").length || 0
-      const failedCount = job.files?.filter((file: any) => file.status === "failed").length || 0
-
-      if (successCount > 0) {
+    // For partially completed jobs
+    if (job?.files?.length) {
+      const completedCount = job.files.filter(f => f.status === "completed").length;
+      const totalCount = files.length;
+      
+      if (completedCount > 0 && completedCount < totalCount && job.status === "failed") {
         return (
-          <Alert variant="default" className="mb-6">
+          <div className="flex items-center gap-2 text-yellow-500">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Partial Conversion</AlertTitle>
-            <AlertDescription>
-              {successCount} of {successCount + failedCount} files were successfully converted.
-              {failedCount > 0 && ` ${failedCount} files failed.`}
-            </AlertDescription>
-          </Alert>
+            <span>Partial conversion: {completedCount} of {totalCount} files converted successfully.</span>
+          </div>
         )
       }
-
-      return (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Conversion Failed</AlertTitle>
-          <AlertDescription>
-            {job.error || "Failed to convert files. Please try again or try server-based conversion."}
-            {isBrowserMode && (
-              <div className="mt-2 text-sm">
-                <p>Browser-based conversion may fail due to:</p>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Large file sizes</li>
-                  <li>Unsupported HEIC variants</li>
-                  <li>Browser memory limitations</li>
-                </ul>
-                <p className="mt-2">
-                  Try server-based conversion in Settings → Advanced tab.
-                </p>
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )
     }
 
     return (
-      <div className="mb-6">
-        <div className="flex items-center gap-2 text-blue-600">
-          <RefreshCw className="h-5 w-5 animate-spin" />
-          <p className="font-medium">Processing your files...</p>
-        </div>
-        <p className="text-sm text-gray-500 mt-1">
-          {isBrowserMode 
-            ? "Converting files directly in your browser. This might take some time for larger files."
-            : "Your files are being processed on our servers. This might take a moment."}
-        </p>
+      <div className="flex items-center gap-2 text-blue-500">
+        <RefreshCw className="h-4 w-4 animate-spin" />
+        <span>Processing your files...</span>
       </div>
     )
   }
 
   // Get details about in-progress files
   const getProgressDetails = () => {
-    if (job && job.files && job.files.length > 0) {
-      const completed = job.files.filter((file: any) => file.status === "completed").length
-      const failed = job.files.filter((file: any) => file.status === "failed").length
-      const pending = job.files.filter((file: any) => file.status === "pending" || file.status === "processing").length
-
-      return (
-        <div className="flex justify-between text-sm text-gray-500 mt-2">
-          <span>Completed: {completed}</span>
-          <span>Pending: {pending}</span>
-          {failed > 0 && <span className="text-red-500">Failed: {failed}</span>}
+    if (!job?.files?.length) return null;
+    
+    const totalFiles = settings.conversionMode === "server" ? files.length : job.files.length;
+    const completedCount = job.files.filter(f => f.status === "completed").length;
+    const failedCount = job.files.filter(f => f.status === "failed").length;
+    const pendingCount = totalFiles - completedCount - failedCount;
+    
+    return (
+      <div className="mt-2 text-sm text-muted-foreground">
+        <div className="flex justify-between">
+          <span>Completed: {completedCount}</span>
+          <span>Pending: {pendingCount}</span>
+          <span>Failed: {failedCount}</span>
         </div>
-      )
-    }
-
-    return null
+      </div>
+    );
   }
 
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Processing</h3>
 
-      {getStatusMessage()}
+      <div className="p-4 border border-gray-200 rounded-lg mb-6">
+        {getStatusMessage()}
+      </div>
 
       <div className="space-y-8">
         <div>

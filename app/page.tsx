@@ -1,7 +1,7 @@
 import HeroSection from "../components/hero-section"
 import Footer from "../components/footer"
 import { Button } from "../components/ui/button"
-import { ArrowRight, Image, Film, FileType, Zap, Shield, Palette } from "lucide-react"
+import { ArrowRight, Image, Film, FileType, Zap, Shield, Palette, Code, QrCode, Ruler, CheckSquare, FileArchive, Eye } from "lucide-react"
 import Link from "next/link"
 
 export const metadata = {
@@ -75,21 +75,167 @@ export default function Home() {
             </div>
           </div>
 
-            {/* DesignFlow */}
+            {/* Code Editor */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
-              <div className="h-40 bg-gradient-to-r from-indigo-50 to-violet-50 flex items-center justify-center">
-                <Palette className="h-16 w-16 text-indigo-500" aria-hidden="true" />
+              <div className="h-40 bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-center">
+                <Code className="h-16 w-16 text-blue-600" aria-hidden="true" />
               </div>
               <div className="p-6 flex flex-col flex-grow">
                 <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2">DesignFlow</h3>
+                  <h3 className="text-xl font-bold mb-2">Code Editor</h3>
                   <p className="text-gray-600">
-                    Create, collaborate, and prototype designs with our browser-based vector design tool. Real-time collaboration and powerful editing tools.
+                    Write, run, and save JavaScript code directly in your browser. No installation required.
                   </p>
                 </div>
                 <div className="mt-4">
                   <Button asChild className="w-full">
-                    <Link href="/design-flow" className="flex items-center justify-center gap-2" aria-label="Use DesignFlow Tool">
+                    <Link href="/code-editor" className="flex items-center justify-center gap-2" aria-label="Use Code Editor Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Color Picker */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-red-50 to-yellow-50 flex items-center justify-center">
+                <Palette className="h-16 w-16 text-red-500" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">Color Picker</h3>
+                  <p className="text-gray-600">
+                    Select, convert, and save colors in RGB, HEX, and HSL formats. Copy color codes with one click.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/color-picker" className="flex items-center justify-center gap-2" aria-label="Use Color Picker Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* QR Code Generator */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-purple-50 to-blue-50 flex items-center justify-center">
+                <QrCode className="h-16 w-16 text-purple-600" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">QR Code Generator</h3>
+                  <p className="text-gray-600">
+                    Create custom QR codes for URLs, text, and more. Customize, download, and share instantly.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/qr-code-generator" className="flex items-center justify-center gap-2" aria-label="Use QR Code Generator Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Unit Converter */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 flex items-center justify-center">
+                <Ruler className="h-16 w-16 text-green-600" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">Unit Converter</h3>
+                  <p className="text-gray-600">
+                    Convert between different units of measurement. Supports length, weight, temperature, and more.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/unit-converter" className="flex items-center justify-center gap-2" aria-label="Use Unit Converter Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Todo List */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-cyan-50 to-blue-50 flex items-center justify-center">
+                <CheckSquare className="h-16 w-16 text-cyan-600" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">Todo List</h3>
+                  <p className="text-gray-600">
+                    A simple, effective way to manage your tasks with automatic saving to your browser.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/todo-list" className="flex items-center justify-center gap-2" aria-label="Use Todo List Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Font Generator */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-pink-50 to-purple-50 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="64"
+                  height="64"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-pink-600"
+                  aria-hidden="true"
+                >
+                  <text x="3" y="18" fontSize="20" fontWeight="bold">A</text>
+                </svg>
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">Font Generator</h3>
+                  <p className="text-gray-600">
+                    Design and customize text with different fonts, styles, and colors. Export as images.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/font-generator" className="flex items-center justify-center gap-2" aria-label="Use Font Generator Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Steganography Tool */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-indigo-50 to-blue-50 flex items-center justify-center">
+                <Eye className="h-16 w-16 text-indigo-600" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">Steganography Tool</h3>
+                  <p className="text-gray-600">
+                    Hide secret messages within images using advanced steganography techniques. 100% private.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/steganography-tool" className="flex items-center justify-center gap-2" aria-label="Use Steganography Tool">
                       Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
                   </Button>
@@ -104,49 +250,59 @@ export default function Home() {
             </div>
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex-grow">
-                <div className="flex items-center mb-2">
-                  <h3 className="text-xl font-bold">GIF to Frames</h3>
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
-                    Coming Soon
-                  </span>
-                </div>
+                <h3 className="text-xl font-bold mb-2">GIF to Frames</h3>
                 <p className="text-gray-600">
-                    Extract individual frames from animated GIFs. Choose your output format and frames per second for
-                    perfect results.
+                  Extract individual frames from animated GIFs. Choose your output format and frames per second.
                 </p>
               </div>
               <div className="mt-4">
-                <Button asChild className="w-full" variant="outline">
-                  <Link href="#" className="flex items-center justify-center gap-2" aria-label="GIF to Frames Tool - Coming Soon">
-                    Coming Soon <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <Button asChild className="w-full">
+                  <Link href="/gif-to-frames" className="flex items-center justify-center gap-2" aria-label="Use GIF to Frames Tool">
+                    Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </div>
             </div>
           </div>
 
-            {/* Coming Soon */}
+            {/* PDF Tools */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
             <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 flex items-center justify-center">
               <FileType className="h-16 w-16 text-green-500" aria-hidden="true" />
             </div>
             <div className="p-6 flex flex-col flex-grow">
               <div className="flex-grow">
-                <div className="flex items-center mb-2">
-                  <h3 className="text-xl font-bold">PDF Tools</h3>
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
-                    Coming Soon
-                  </span>
-                </div>
+                <h3 className="text-xl font-bold mb-2">PDF Tools</h3>
                 <p className="text-gray-600">
-                  Merge, split, compress, and convert PDF files with ease. Powerful PDF manipulation without installing
-                  any software.
+                  Merge, split, compress, and convert PDF files with ease. Powerful PDF manipulation.
                 </p>
               </div>
               <div className="mt-4">
-                <Button asChild className="w-full" variant="outline">
-                  <Link href="#" className="flex items-center justify-center gap-2" aria-label="PDF Tools - Coming Soon">
-                    Coming Soon <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <Button asChild className="w-full">
+                  <Link href="/pdf-tools" className="flex items-center justify-center gap-2" aria-label="Use PDF Tools">
+                    Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+            {/* Zip Compressor */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+            <div className="h-40 bg-gradient-to-r from-amber-50 to-yellow-50 flex items-center justify-center">
+              <FileArchive className="h-16 w-16 text-amber-500" aria-hidden="true" />
+            </div>
+            <div className="p-6 flex flex-col flex-grow">
+              <div className="flex-grow">
+                <h3 className="text-xl font-bold mb-2">Zip Compressor</h3>
+                <p className="text-gray-600">
+                  Compress folders online, reduce zip file size, and secure files with password protection.
+                </p>
+              </div>
+              <div className="mt-4">
+                <Button asChild className="w-full">
+                  <Link href="/zip-compressor" className="flex items-center justify-center gap-2" aria-label="Use Zip Compressor Tool">
+                    Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </div>

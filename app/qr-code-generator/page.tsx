@@ -4,11 +4,12 @@ import FeatureSection from "./components/feature-section"
 import ToolGuide from "./components/tool-guide"
 import FaqSection from "./components/faq-section"
 import SecuritySection from "@/components/security-section"
+import Footer from "@/components/footer"
 import { QrCode, Download } from "lucide-react"
 
 export default function QRCodeGeneratorPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-gray-50">
       <HeroSection
         title="Free Online QR Code"
         titleHighlight="Generator"
@@ -22,7 +23,7 @@ export default function QRCodeGeneratorPage() {
         secondaryButtonHref="#features"
       />
 
-      <section id="qr-code-generator" className="py-16 px-4 bg-white">
+      <section id="qr-code-generator" className="py-12 px-4 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold mb-4">QR Code Generator</h2>
@@ -38,10 +39,8 @@ export default function QRCodeGeneratorPage() {
       <FeatureSection />
       <ToolGuide />
       <FaqSection />
-      <SecuritySection
-        title="Secure QR Code Generation"
-        description="Our QR code generator processes all data locally in your browser. Your text and URLs are never sent to our servers."
-      />
+      <SecuritySection />
+      <Footer />
     </main>
   )
 }

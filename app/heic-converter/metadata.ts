@@ -12,14 +12,6 @@ export const metadata: Metadata = {
       "Convert HEIC photos from iPhone to JPG, PNG, WEBP, or PDF with AI optimization. 100% free, secure, and works directly in your browser.",
     url: "https://freetool.online/heic-converter",
     siteName: "FreeTool",
-    images: [
-      {
-        url: "https://freetool.online/images/heic-converter-og.jpg",
-        width: 1200,
-        height: 630,
-        alt: "HEIC to JPG Converter",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -28,7 +20,6 @@ export const metadata: Metadata = {
     title: "Free HEIC to JPG Converter | Convert iPhone Photos Online",
     description:
       "Convert HEIC photos from iPhone to JPG, PNG, WEBP, or PDF with AI optimization. 100% free and secure.",
-    images: ["https://freetool.online/images/heic-converter-og.jpg"],
   },
   robots: {
     index: true,

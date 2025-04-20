@@ -177,11 +177,128 @@ option_settings:
     LoadBalancerType: application
 EOL
 
+# Add NVMe disk configuration
+cat > $TEMP_DIR/.ebextensions/nvme-storage.config <<EOL
+files:
+  "/usr/local/bin/setup-nvme-storage.sh":
+    mode: "000755"
+    owner: root
+    group: root
+    content: |
+      #!/bin/bash
+      # Set up NVMe storage for uploads directory if available
+      
+      # Get the SWAP_SIZE_MB from environment or use default
+      SWAP_SIZE_MB=\${SWAP_SIZE_MB:-4096}
+      
+      # Check if nvme1n1 exists
+      if lsblk | grep -q nvme1n1; then
+        echo "NVMe disk (nvme1n1) detected."
+        
+        # Ensure NVMe disk is formatted
+        if ! blkid /dev/nvme1n1 > /dev/null; then
+          echo "Formatting NVMe disk..."
+          mkfs -t xfs /dev/nvme1n1
+        fi
+        
+        # Create persistent mount point outside application directory
+        NVME_MOUNT="/mnt/nvme_data"
+        mkdir -p \$NVME_MOUNT
+        
+        # Mount NVMe to persistent location first
+        if ! mountpoint -q \$NVME_MOUNT; then
+          echo "Mounting NVMe disk to \$NVME_MOUNT..."
+          mount /dev/nvme1n1 \$NVME_MOUNT
+          
+          # Add to fstab for persistence
+          if ! grep -q "/dev/nvme1n1.*\$NVME_MOUNT" /etc/fstab; then
+            echo "/dev/nvme1n1 \$NVME_MOUNT xfs defaults,nofail 0 2" >> /etc/fstab
+          fi
+          
+          echo "NVMe disk mounted to \$NVME_MOUNT successfully."
+        else
+          echo "NVMe disk already mounted to \$NVME_MOUNT."
+        fi
+        
+        # Create the application uploads directory
+        UPLOAD_DIR="/var/app/current/uploads"
+        mkdir -p \$UPLOAD_DIR
+        
+        # Create application upload directories on NVMe volume
+        mkdir -p \$NVME_MOUNT/uploads/{temp,converted,thumbnails}
+        
+        # Use bind mounts to link the NVMe storage to the application directory
+        echo "Setting up bind mount from \$NVME_MOUNT/uploads to \$UPLOAD_DIR..."
+        mount --bind \$NVME_MOUNT/uploads \$UPLOAD_DIR
+        
+        # Add bind mount to fstab for persistence
+        if ! grep -q "\$NVME_MOUNT/uploads.*\$UPLOAD_DIR" /etc/fstab; then
+          echo "\$NVME_MOUNT/uploads \$UPLOAD_DIR none bind 0 0" >> /etc/fstab
+        fi
+        
+        # Set permissions
+        chown -R webapp:webapp \$UPLOAD_DIR
+        chmod -R 0755 \$UPLOAD_DIR
+        chown -R webapp:webapp \$NVME_MOUNT/uploads
+        chmod -R 0755 \$NVME_MOUNT/uploads
+        
+        echo "Uploads directory bind mounted successfully."
+        
+        # Create swap file in persistent location
+        SWAP_FILE="\$NVME_MOUNT/swap.1"
+        
+        if [ ! -f "\$SWAP_FILE" ] || ! swapon -s | grep -q "\$SWAP_FILE"; then
+          echo "Creating \${SWAP_SIZE_MB}MB swap file in \$NVME_MOUNT..."
+          
+          # Remove existing swap if present
+          if swapon -s | grep -q "/var/app/current/uploads/swap.1"; then
+            echo "Deactivating old swap file in uploads directory..."
+            swapoff "/var/app/current/uploads/swap.1" 2>/dev/null
+          fi
+          
+          if swapon -s | grep -q "/mnt/swap.1"; then
+            echo "Deactivating old swap file in /mnt..."
+            swapoff "/mnt/swap.1" 2>/dev/null
+          fi
+          
+          # Create new swap file
+          dd if=/dev/zero of="\$SWAP_FILE" bs=1M count=\$SWAP_SIZE_MB
+          chmod 600 "\$SWAP_FILE"
+          mkswap "\$SWAP_FILE"
+          swapon "\$SWAP_FILE"
+          
+          # Add to fstab
+          if ! grep -q "\$SWAP_FILE" /etc/fstab; then
+            echo "\$SWAP_FILE none swap sw 0 0" >> /etc/fstab
+          fi
+          
+          echo "Swap file configured successfully."
+        else
+          echo "Swap file already exists and is active."
+        fi
+      else
+        echo "No NVMe disk (nvme1n1) detected. Using default storage."
+        
+        # Create default upload directories
+        mkdir -p /var/app/current/uploads/temp /var/app/current/uploads/converted /var/app/current/uploads/thumbnails
+        chown -R webapp:webapp /var/app/current/uploads
+        chmod -R 0755 /var/app/current/uploads
+      fi
+      
+      exit 0
+
+container_commands:
+  01_setup_nvme:
+    command: "chmod +x /usr/local/bin/setup-nvme-storage.sh"
+    ignoreErrors: true
+EOL
+
 # Remove any existing .platform to avoid conflicts
 echo "Setting up .platform..."
 rm -rf $TEMP_DIR/.platform
 mkdir -p $TEMP_DIR/.platform/nginx/conf.d/
 mkdir -p $TEMP_DIR/.platform/hooks/prebuild/
+mkdir -p $TEMP_DIR/.platform/hooks/predeploy/
 mkdir -p $TEMP_DIR/.platform/hooks/postdeploy/
 
 # Create Nginx config with increased upload size limit
@@ -216,41 +333,54 @@ server {
 }
 EOL
 
-# Create a postdeploy hook to set up swap
-cat > $TEMP_DIR/.platform/hooks/postdeploy/01_setup_environment.sh <<EOL
+# Create a predeploy script to deactivate swap before deployment
+cat > $TEMP_DIR/.platform/hooks/predeploy/01_deactivate_swap.sh <<EOL
 #!/bin/bash
-# Set up swap space if needed
+# Safely deactivate swap and unmount NVMe disk before deployment
 
-# Get the SWAP_SIZE_MB from environment or use default
-SWAP_SIZE_MB=\${SWAP_SIZE_MB:-4096}
-
-# Create swap file
-SWAP_FILE="/mnt/swap.1"
-
-if [ ! -f "\$SWAP_FILE" ] || ! swapon -s | grep -q "\$SWAP_FILE"; then
-  echo "Creating \${SWAP_SIZE_MB}MB swap file..."
-  
-  # Create new swap file
-  dd if=/dev/zero of="\$SWAP_FILE" bs=1M count=\$SWAP_SIZE_MB
-  chmod 600 "\$SWAP_FILE"
-  mkswap "\$SWAP_FILE"
-  swapon "\$SWAP_FILE"
-  
-  # Add to fstab
-  if ! grep -q "\$SWAP_FILE" /etc/fstab; then
-    echo "\$SWAP_FILE none swap sw 0 0" >> /etc/fstab
-  fi
-  
-  echo "Swap file configured successfully."
-else
-  echo "Swap file already exists and is active."
+# Check if swap is active and deactivate it
+if swapon -s | grep -q "/var/app/current/uploads/swap.1"; then
+  echo "Deactivating swap file before deployment..."
+  swapoff /var/app/current/uploads/swap.1
+  echo "Swap file deactivated successfully."
 fi
 
-# Create default upload directories
-mkdir -p /var/app/current/uploads/temp /var/app/current/uploads/converted /var/app/current/uploads/thumbnails
-chown -R webapp:webapp /var/app/current/uploads
-chmod -R 0755 /var/app/current/uploads
+# Check if the old swap file in /mnt needs to be deactivated
+if swapon -s | grep -q "/mnt/swap.1"; then
+  echo "Deactivating swap file in /mnt before deployment..."
+  swapoff /mnt/swap.1
+  echo "Swap file in /mnt deactivated successfully."
+fi
 
+# Check if the swap file in NVMe mount needs to be deactivated
+if swapon -s | grep -q "/mnt/nvme_data/swap.1"; then
+  echo "Deactivating swap file in NVMe mount before deployment..."
+  swapoff "/mnt/nvme_data/swap.1"
+  echo "Swap file in NVMe mount deactivated successfully."
+fi
+
+# Check if uploads dir is a mount point and unmount it
+if mountpoint -q /var/app/current/uploads; then
+  echo "Unmounting NVMe disk from /var/app/current/uploads..."
+  umount /var/app/current/uploads
+  echo "NVMe disk unmounted successfully."
+fi
+
+exit 0
+EOL
+chmod +x $TEMP_DIR/.platform/hooks/predeploy/01_deactivate_swap.sh
+
+# Create postdeploy hook to set up NVMe storage
+cat > $TEMP_DIR/.platform/hooks/postdeploy/01_setup_environment.sh <<EOL
+#!/bin/bash
+# Set up NVMe storage if available
+
+# Setup NVMe storage
+echo "Setting up NVMe storage..."
+/usr/local/bin/setup-nvme-storage.sh
+
+# Reload NGINX to apply any changes
+/sbin/service nginx reload
 exit 0
 EOL
 chmod +x $TEMP_DIR/.platform/hooks/postdeploy/01_setup_environment.sh
@@ -394,6 +524,7 @@ rm -rf $TEMP_DIR
 echo "===== DEPLOYMENT PACKAGE CREATED SUCCESSFULLY ====="
 echo "Package location: $PROJECT_ROOT/$ZIP_FILE"
 echo "IMPORTANT: This package contains a pre-built Next.js application for deployment to Elastic Beanstalk."
+echo "IMPORTANT: Deploy to Elastic Beanstalk using the c6gd instance type for NVMe storage capabilities."
 echo "To deploy: Use the AWS Management Console or AWS CLI to deploy this package to your Elastic Beanstalk environment."
 
 # Create a postdeploy verification script to ensure Next.js is available

@@ -21,6 +21,11 @@ export interface ImageToPdfResult {
   url: string
 }
 
+export interface PdfRotateResult {
+  url: string
+  size: number
+}
+
 export interface PdfToImageOptions {
   format: "jpg" | "png"
   quality: number
@@ -31,6 +36,13 @@ export interface ImageToPdfOptions {
   pageSize: string
   orientation: "portrait" | "landscape"
   margin: "none" | "small" | "medium" | "large"
+  fitToPage?: boolean
+  quality?: number
+  compression?: "low" | "medium" | "high"
+  autoRotate?: boolean
+  addPageNumbers?: boolean
+  centered?: boolean
+  createBookmarks?: boolean
 }
 
 // Singleton instance
@@ -296,6 +308,39 @@ export class PdfToolsService {
                 { type: "application/pdf" },
               ),
             ),
+          })
+        }
+      }, 500)
+    })
+  }
+
+  // Rotate PDF pages
+  public async rotatePdfPages(
+    file: File,
+    pageRange: string,
+    degrees: 90 | 180 | 270,
+    progressCallback?: (progress: number) => void,
+  ): Promise<PdfRotateResult> {
+    // Simulate API call and processing
+    return new Promise((resolve) => {
+      let progress = 0
+      const interval = setInterval(() => {
+        progress += 10
+        if (progressCallback) progressCallback(Math.min(progress, 100))
+        if (progress >= 100) {
+          clearInterval(interval)
+
+          // Simulate result
+          resolve({
+            url: URL.createObjectURL(
+              new Blob(
+                [
+                  /* PDF data would go here */
+                ],
+                { type: "application/pdf" },
+              ),
+            ),
+            size: file.size, // Size typically remains the same for rotation
           })
         }
       }, 500)

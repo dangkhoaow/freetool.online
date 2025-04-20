@@ -21,14 +21,6 @@ export const metadata: Metadata = {
       "Free online color picker tool to select, convert, and save colors in RGB, HEX, and HSL formats. Copy color codes with one click and save your favorite colors.",
     url: "https://freetool.online/color-picker",
     siteName: "FreeTool.Online",
-    images: [
-      {
-        url: "https://freetool.online/og-image-color-picker.png",
-        width: 1200,
-        height: 630,
-        alt: "Color Picker Tool",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -37,7 +29,6 @@ export const metadata: Metadata = {
     title: "Free Online Color Picker Tool | RGB, HEX, HSL Color Converter",
     description:
       "Free online color picker tool to select, convert, and save colors in RGB, HEX, and HSL formats. Copy color codes with one click and save your favorite colors.",
-    images: ["https://freetool.online/og-image-color-picker.png"],
   },
   alternates: {
     canonical: "https://freetool.online/color-picker",

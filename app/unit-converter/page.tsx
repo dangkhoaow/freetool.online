@@ -5,10 +5,11 @@ import FeatureSection from "./components/feature-section"
 import ToolGuide from "./components/tool-guide"
 import FaqSection from "./components/faq-section"
 import SecuritySection from "@/components/security-section"
+import Footer from "@/components/footer"
 
 export default function UnitConverterPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-gray-50">
       <HeroSection
         title="Free Online Unit"
         titleHighlight="Converter Tool"
@@ -22,7 +23,7 @@ export default function UnitConverterPage() {
         secondaryButtonHref="#features"
       />
 
-      <section id="converter" className="py-16 px-4 bg-white">
+      <section id="converter" className="py-12 px-4 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <h2 className="text-3xl font-bold text-center mb-12">Unit Converter</h2>
           <UnitConverter />
@@ -32,18 +33,8 @@ export default function UnitConverterPage() {
       <FeatureSection />
       <ToolGuide />
       <FaqSection />
-      <SecuritySection
-        title="Secure Unit Conversion"
-        description="Our unit converter tool processes all conversions directly in your browser. No data is sent to our servers, ensuring complete privacy and security."
-        features={[
-          "All conversions happen locally in your browser",
-          "No data is sent to our servers",
-          "Works offline after initial page load",
-          "No account or login required",
-          "No tracking of your conversion history on our end",
-          "Open source conversion formulas for transparency",
-        ]}
-      />
+      <SecuritySection />
+      <Footer />
     </main>
   )
 }

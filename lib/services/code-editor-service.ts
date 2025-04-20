@@ -98,9 +98,10 @@ export function executeCode(code: string): { result: string; error: boolean } {
       result: logs.join("\n"),
       error: false,
     }
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error('Error executing code:', error)
     return {
-      result: `Error: ${error.message}`,
+      result: `Error: ${error instanceof Error ? error.message : String(error)}`,
       error: true,
     }
   }
@@ -111,10 +112,10 @@ export function validateSyntax(code: string): { valid: boolean; error?: string }
     // Try to parse the code without executing it
     new Function(code)
     return { valid: true }
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       valid: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     }
   }
 }

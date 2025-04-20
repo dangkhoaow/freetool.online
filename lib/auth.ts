@@ -1,7 +1,9 @@
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { db } from "./db"
+import * as bcrypt from "bcrypt"
 import { getServerSession } from "next-auth/next"
+import type { GetServerSidePropsContext, NextApiRequest, NextApiResponse } from "next"
+import { db } from "@/lib/db"
 import { NextRequest } from "next/server"
 
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
@@ -74,7 +76,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials: Record<string, string> | undefined) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
@@ -105,14 +107,14 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any; user: any }) {
       if (user) {
         token.id = user.id
         token.role = user.role
       }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: any; token: any }) {
       if (session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string

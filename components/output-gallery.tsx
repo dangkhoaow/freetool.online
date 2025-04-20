@@ -3,26 +3,27 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { toast } from "react-hot-toast"
-import { HeicConverterService } from "../services/HeicConverterService"
+import { HeicConverterService, type ConversionJob } from "../services/HeicConverterService"
 
 const OutputGallery: React.FC = () => {
   const [jobId, setJobId] = useState<string | null>(null)
   const [jobStatus, setJobStatus] = useState<string>("pending")
   const [progress, setProgress] = useState<number>(0)
+  const [isLoading, setIsLoading] = useState(true)
   const [files, setFiles] = useState<any[]>([])
 
-  const heicConverterService = new HeicConverterService()
+  const heicConverterService = HeicConverterService
 
   useEffect(() => {
     if (jobId) {
-      heicConverterService.startStatusPolling(jobId, (job) => {
+      heicConverterService.startStatusPolling(jobId, (job: ConversionJob) => {
         setJobStatus(job.status)
         setProgress(job.progress || 0)
 
         if (job.files) {
           setFiles((prevFiles) => {
             const updatedFiles = [...prevFiles]
-            job.files.forEach((jobFile, index) => {
+            job.files.forEach((jobFile: any, index: number) => {
               if (index < updatedFiles.length) {
                 updatedFiles[index] = {
                   ...updatedFiles[index],

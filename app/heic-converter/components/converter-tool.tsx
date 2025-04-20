@@ -101,6 +101,7 @@ export default function ConverterTool() {
           converterService.startStatusPolling(
             masterJobId,
             (updatedJob) => {
+              console.log(`Job update: ${updatedJob.status}, files count: ${updatedJob.files?.length || 0}, total expected: ${files.length}`);
               setConversionJob(updatedJob)
               setProgress(updatedJob.progress || 0)
 
@@ -109,22 +110,23 @@ export default function ConverterTool() {
                 (updatedJob.files?.every((file) => file.status === "completed" || file.status === "failed") &&
                   updatedJob.files?.length === files.length) ||
                 false
-              console.log(
-                `allFilesProcessed_1: ${allFilesProcessed}, updatedJob.files?.length: ${updatedJob.files?.length}, files.length: ${files.length}`,
-              )
+              
+              // Check if initial upload is still in progress
+              const isStillUploading = updatedJob.files?.length < files.length;
+              
+              // Update progress calculation for uploads in progress
+              if (isStillUploading) {
+                // Adjust progress to show uploads in progress
+                const uploadPortion = 50; // First 50% for upload
+                const uploadProgress = (updatedJob.files?.length || 0) / files.length * uploadPortion;
+                const conversionPortion = 50; // Last 50% for conversion
+                const conversionProgress = (updatedJob.progress || 0) / 100 * conversionPortion;
+                
+                setProgress(Math.floor(uploadProgress + conversionProgress));
+              }
 
               // Check if at least one file is completed successfully
               const hasCompletedFiles = updatedJob.files?.some((file) => file.status === "completed") || false
-
-              // Check if completed files
-              const completedFiles = updatedJob.files?.filter((file) => file.status === "completed") || []
-
-              // Show toast for each newly completed file
-              if (completedFiles.length > 0) {
-                const lastFile = completedFiles[completedFiles.length - 1]
-                const fileName = lastFile.originalName || lastFile.convertedName || "Unknown file"
-                console.log(`File completed: ${fileName}`)
-              }
 
               // Check if job is complete, failed, or has partial success
               if (updatedJob.status === "completed") {
@@ -136,10 +138,9 @@ export default function ConverterTool() {
                   description: `All ${files.length} files have been successfully converted.`,
                   variant: "default",
                 })
-              } else if (updatedJob.status === "failed") {
+              } else if (updatedJob.status === "failed" && !isStillUploading) {
+                // Only show failure if all files have been uploaded and still failed
                 // First check if there are any completed files, regardless of other conditions
-                const hasCompletedFiles = updatedJob.files?.some((file) => file.status === "completed") || false
-
                 if (hasCompletedFiles) {
                   // If any files completed successfully, show output gallery
                   setIsProcessing(false)
@@ -157,23 +158,13 @@ export default function ConverterTool() {
                   })
                 } else {
                   // Only show error if there are no completed files
-                  const isLikelyStillUploading = !updatedJob.files || updatedJob.files.length === 0
-                  const jobStartTime = new Date(updatedJob.createdAt || Date.now())
-                  const isWithinUploadTimeWindow = Date.now() - jobStartTime.getTime() < 300000 // 5 minutes
-
-                  if (isLikelyStillUploading && isWithinUploadTimeWindow) {
-                    // Still uploading - don't show error yet
-                    console.log("Files still uploading, waiting for uploads to complete...")
-                  } else {
-                    // All files failed after uploads completed
-                    setIsProcessing(false)
-                    setError(updatedJob.error || "Conversion failed")
-                    toast({
-                      title: "Conversion Failed",
-                      description: updatedJob.error || "An error occurred during conversion.",
-                      variant: "destructive",
-                    })
-                  }
+                  setIsProcessing(false)
+                  setError(updatedJob.error || "Conversion failed")
+                  toast({
+                    title: "Conversion Failed",
+                    description: updatedJob.error || "An error occurred during conversion.",
+                    variant: "destructive",
+                  })
                 }
               } else if (allFilesProcessed && hasCompletedFiles) {
                 // Handle case where all files are processed but job status hasn't updated yet

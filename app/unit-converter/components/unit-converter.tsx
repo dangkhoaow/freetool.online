@@ -18,7 +18,7 @@ import {
   clearHistory,
   type ConversionHistory,
 } from "@/lib/services/unit-converter-service"
-import { debounce } from "lodash"
+import debounce from "lodash/debounce"
 
 export default function UnitConverter() {
   const [activeTab, setActiveTab] = useState("converter")

@@ -24,7 +24,7 @@ export default function ToolGuide() {
             </p>
             <div className="overflow-hidden flex items-center justify-center" style={{ height: "205px" }}>
               <img
-                src="/pdf-tools-select.png"
+                src="/select.png"
                 alt="Select PDF Tool"
                 style={{ maxWidth: "100px", height: "auto" }}
                 className="w-full h-auto m-auto"
@@ -54,7 +54,7 @@ export default function ToolGuide() {
             </p>
             <div className="overflow-hidden flex items-center justify-center" style={{ height: "205px" }}>
               <img
-                src="/pdf-tools-upload.png"
+                src="/uploads.png"
                 alt="Upload Files Step"
                 style={{ maxWidth: "100px", height: "auto" }}
                 className="w-full h-auto m-auto"
@@ -84,7 +84,7 @@ export default function ToolGuide() {
             </p>
             <div className="overflow-hidden flex items-center justify-center" style={{ height: "205px" }}>
               <img
-                src="/pdf-tools-download.png"
+                src="/downloads.png"
                 alt="Process and Download Step"
                 style={{ maxWidth: "100px", height: "auto" }}
                 className="w-full h-auto m-auto"

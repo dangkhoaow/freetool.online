@@ -3,7 +3,7 @@ import { Check } from "lucide-react"
 
 export default function AiFeatures() {
   return (
-    <section className="py-16 px-4 bg-gradient-to-b from-blue-50 to-white">
+    <section id="features" className="py-16 px-4 bg-gradient-to-b from-blue-50 to-white">
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-4">AI-Powered Optimization</h2>

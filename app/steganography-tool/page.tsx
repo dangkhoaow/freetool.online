@@ -1,14 +1,15 @@
 import HeroSection from "@/components/hero-section"
-import SecuritySection from "@/components/security-section"
+import SecuritySection from "./components/security-section"
 import SteganographyTool from "./components/steganography-tool"
 import FeatureSection from "./components/feature-section"
 import ToolGuide from "./components/tool-guide"
 import FaqSection from "./components/faq-section"
-import { Lock, ImageIcon, FileText } from "lucide-react"
+import Footer from "@/components/footer"
+import { ImageIcon, FileText } from "lucide-react"
 
 export default function SteganographyToolPage() {
   return (
-    <main className="flex flex-col min-h-screen">
+    <main className="flex flex-col min-h-screen bg-gray-50">
       <HeroSection
         title="Hide Secret Messages with"
         titleHighlight="Steganography"
@@ -22,21 +23,43 @@ export default function SteganographyToolPage() {
         secondaryButtonHref="#tool-guide"
       />
 
-      <div id="steganography-tool" className="container mx-auto px-4 py-12">
-        <SteganographyTool />
-      </div>
+      {/* Main Steganography Tool */}
+      <section id="steganography-tool" className="py-12 px-4 md:py-16">
+        <div className="container mx-auto max-w-7xl">
+          <SteganographyTool />
+        </div>
+      </section>
 
-      <FeatureSection />
+      {/* Feature Section */}
+      <section id="features" className="py-12 px-4 md:py-16">
+        <div className="container mx-auto max-w-7xl">
+          <FeatureSection />
+        </div>
+      </section>
 
-      <SecuritySection
-        title="Your Privacy Is Our Priority"
-        description="Our steganography tool processes everything locally in your browser. Your images and messages never leave your device."
-        icon={<Lock className="h-12 w-12 text-blue-600" />}
-      />
+      {/* Security Section */}
+      <section className="py-12 px-4 md:py-16 bg-white">
+        <div className="container mx-auto max-w-7xl">
+          <SecuritySection />
+        </div>
+      </section>
 
-      <ToolGuide />
+      {/* Tool Guide */}
+      <section id="tool-guide" className="py-12 px-4 md:py-16">
+        <div className="container mx-auto max-w-7xl">
+          <ToolGuide />
+        </div>
+      </section>
 
-      <FaqSection />
+      {/* FAQ Section */}
+      <section className="py-12 px-4 md:py-16 bg-white">
+        <div className="container mx-auto max-w-7xl">
+          <FaqSection />
+        </div>
+      </section>
+
+      {/* Footer */}
+      <Footer />
     </main>
   )
 }

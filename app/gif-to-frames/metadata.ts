@@ -12,14 +12,6 @@ export const metadata: Metadata = {
       "Convert animated GIFs to individual PNG or JPG frames with our free online tool. 100% secure, browser-based processing.",
     url: "https://freetool.online/gif-to-frames",
     siteName: "FreeTool",
-    images: [
-      {
-        url: "https://freetool.online/images/gif-to-frames-og.jpg",
-        width: 1200,
-        height: 630,
-        alt: "GIF to Frames Converter",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -28,7 +20,6 @@ export const metadata: Metadata = {
     title: "Free GIF to Frames Converter | Extract Images from Animated GIFs",
     description:
       "Convert animated GIFs to individual PNG or JPG frames with our free online tool. 100% secure and private.",
-    images: ["https://freetool.online/images/gif-to-frames-og.jpg"],
   },
   robots: {
     index: true,

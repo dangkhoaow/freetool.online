@@ -150,6 +150,46 @@ export default function FeatureSection() {
                 strokeLinejoin="round"
                 className="text-blue-600"
               >
+                <path d="M4.02 10.2L2 12.2l6 6 14-14-2.3-2.3-11.7 11.6z"></path>
+                <path d="M6.03 14.87l-2.66-2.66"></path>
+                <line x1="16" y1="2" x2="22" y2="8"></line>
+                <path d="M15 9l-9.1 9.1"></path>
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Rotate PDF</h3>
+            <p className="text-gray-600 mb-4">
+              Change the orientation of PDF pages by rotating them clockwise or counter-clockwise for correct viewing.
+            </p>
+            <ul className="space-y-2">
+              <li className="flex items-start">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-gray-600">Rotate specific pages or entire document</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-gray-600">90°, 180°, and 270° rotation options</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-gray-600">Fix incorrectly scanned documents</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-6">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-blue-600"
+              >
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                 <polyline points="21 15 16 10 5 21"></polyline>

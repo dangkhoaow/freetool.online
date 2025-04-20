@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Scissors, FileUp, FileDown, Combine, Minimize } from "lucide-react"
+import { FileText, Scissors, FileUp, FileDown, Combine, Minimize, RotateCw } from "lucide-react"
 import MergePdfTool from "./tools/merge-pdf-tool"
 import SplitPdfTool from "./tools/split-pdf-tool"
 import CompressPdfTool from "./tools/compress-pdf-tool"
 import PdfToImageTool from "./tools/pdf-to-image-tool"
 import ImageToPdfTool from "./tools/image-to-pdf-tool"
+import RotatePdfTool from "./tools/rotate-pdf-tool"
 
 export default function PdfToolsSection() {
   const [activeTab, setActiveTab] = useState("merge-pdf")
@@ -24,7 +25,7 @@ export default function PdfToolsSection() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8">
+        <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8">
           <TabsTrigger value="merge-pdf" className="flex flex-col items-center gap-2 py-3 px-2">
             <Combine className="h-5 w-5" />
             <span className="text-xs">Merge PDF</span>
@@ -36,6 +37,10 @@ export default function PdfToolsSection() {
           <TabsTrigger value="compress-pdf" className="flex flex-col items-center gap-2 py-3 px-2">
             <Minimize className="h-5 w-5" />
             <span className="text-xs">Compress PDF</span>
+          </TabsTrigger>
+          <TabsTrigger value="rotate-pdf" className="flex flex-col items-center gap-2 py-3 px-2">
+            <RotateCw className="h-5 w-5" />
+            <span className="text-xs">Rotate PDF</span>
           </TabsTrigger>
           <TabsTrigger value="pdf-to-image" className="flex flex-col items-center gap-2 py-3 px-2">
             <FileDown className="h-5 w-5" />
@@ -58,6 +63,10 @@ export default function PdfToolsSection() {
 
           <TabsContent value="compress-pdf">
             <CompressPdfTool />
+          </TabsContent>
+          
+          <TabsContent value="rotate-pdf">
+            <RotatePdfTool />
           </TabsContent>
 
           <TabsContent value="pdf-to-image">

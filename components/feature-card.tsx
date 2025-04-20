@@ -1,13 +1,18 @@
 import { Target, Eye, Heart, Award, Users, Lightbulb } from "lucide-react"
+import React from "react"
 
 interface FeatureCardProps {
   title: string
   description: string
-  icon: string
+  icon: string | React.ReactNode
 }
 
 export default function FeatureCard({ title, description, icon }: FeatureCardProps) {
   const getIcon = () => {
+    if (React.isValidElement(icon)) {
+      return icon
+    }
+    
     switch (icon) {
       case "Target":
         return <Target className="h-10 w-10 text-primary" />

@@ -70,23 +70,43 @@ export default function ImageToPdfTool() {
   const processFiles = (newFiles: File[]) => {
     setError(null)
 
-    // Filter for image files
-    const imageFiles = newFiles.filter((file) => file.type.startsWith("image/"))
+    // Check for and filter out HEIC files
+    const heicFiles = newFiles.filter(file => 
+      file.type === 'image/heic' || 
+      file.name.toLowerCase().endsWith('.heic') || 
+      file.name.toLowerCase().endsWith('.heif')
+    );
+    
+    if (heicFiles.length > 0) {
+      setError("HEIC files are not supported. Please convert them to JPG or PNG first.");
+      return;
+    }
+
+    // Filter for supported image files (only JPEG and PNG)
+    const imageFiles = newFiles.filter(
+      file => 
+        (file.type === 'image/jpeg' || 
+         file.type === 'image/jpg' || 
+         file.type === 'image/png' ||
+         file.name.toLowerCase().endsWith('.jpg') || 
+         file.name.toLowerCase().endsWith('.jpeg') || 
+         file.name.toLowerCase().endsWith('.png'))
+    );
 
     if (imageFiles.length === 0) {
-      setError("Please select image files only (JPG, PNG, GIF, etc.).")
-      return
+      setError("Please select only JPG or PNG image files.");
+      return;
     }
 
     // Check file size (max 10MB per file)
-    const maxSizeBytes = 10 * 1024 * 1024
-    const validFiles = imageFiles.filter((file) => file.size <= maxSizeBytes)
+    const maxSizeBytes = 10 * 1024 * 1024;
+    const validFiles = imageFiles.filter((file) => file.size <= maxSizeBytes);
 
     if (validFiles.length < imageFiles.length) {
-      setError(`Some files exceed the 10MB size limit and were removed.`)
+      setError(`Some files exceed the 10MB size limit and were removed.`);
     }
 
-    setFiles([...files, ...validFiles])
+    setFiles([...files, ...validFiles]);
   }
 
   const removeFile = (index: number) => {
@@ -135,13 +155,22 @@ export default function ImageToPdfTool() {
         })
       }, 300)
 
-      // Call the PDF service to create PDF from images
+      // Call the PDF service to create PDF from images with all settings
       const result = await pdfService.createPdfFromImages(
         files,
         {
+          // Basic settings
           pageSize: settings.pageSize,
           orientation: settings.orientation,
           margin: settings.margin,
+          // Advanced settings
+          fitToPage: settings.fitToPage,
+          quality: settings.quality,
+          compression: settings.compression,
+          autoRotate: settings.autoRotate,
+          addPageNumbers: settings.addPageNumbers,
+          centered: settings.centered,
+          createBookmarks: settings.createBookmarks
         },
         (progress) => {
           setProgress(progress)
@@ -216,7 +245,7 @@ export default function ImageToPdfTool() {
                   type="file"
                   id="file-upload"
                   className="hidden"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png"
                   multiple
                   onChange={handleFileChange}
                 />
@@ -227,7 +256,7 @@ export default function ImageToPdfTool() {
                 </label>
                 <div className="text-xs text-gray-500 space-y-1">
                   <p>Maximum file size: 10MB per image</p>
-                  <p>Supported formats: JPG, PNG, GIF, BMP, WEBP</p>
+                  <p>Supported formats: JPG, PNG</p>
                   <p>You can upload multiple images to create a multi-page PDF</p>
                 </div>
               </div>

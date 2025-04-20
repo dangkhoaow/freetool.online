@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { Menu, X, Coffee } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 export default function Navbar() {
@@ -12,6 +12,33 @@ export default function Navbar() {
   const pathname = usePathname()
 
   const isHomePage = pathname === "/"
+  
+  // Check if the current path is a tool page (any app page that's not home or admin)
+  const isToolPage = !isHomePage && !pathname.startsWith("/admin") && !pathname.startsWith("/health")
+
+  // Determine the tool section ID based on the pathname
+  const getToolSectionId = () => {
+    if (pathname.includes("/heic-converter") || pathname.includes("/gif-to-frames") || 
+        pathname.includes("/pdf-tools") || pathname.includes("/zip-compressor")) {
+      return "converter"
+    } else if (pathname.includes("/code-editor")) {
+      return "editor"
+    } else if (pathname.includes("/color-picker")) {
+      return "color-picker"
+    } else if (pathname.includes("/qr-code-generator")) {
+      return "qr-code-generator"
+    } else if (pathname.includes("/unit-converter")) {
+      return "converter"
+    } else if (pathname.includes("/todo-list")) {
+      return "todo-list"
+    } else if (pathname.includes("/font-generator")) {
+      return "font-generator"
+    } else if (pathname.includes("/steganography-tool")) {
+      return "steganography-tool"
+    } else {
+      return "tool" // Default section ID
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,32 +75,6 @@ export default function Navbar() {
                   Features
                 </Link>
               </>
-            ) : pathname.includes("/heic-converter") ? (
-              /* HEIC converter page navigation */
-              <>
-                <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
-                  Converter
-                </Link>
-                <Link href="#ai-features" className="text-gray-700 hover:text-primary transition-colors">
-                  Features
-                </Link>
-                <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
-                  All Tools
-                </Link>
-              </>
-            ) : pathname.includes("/gif-to-frames") ? (
-              /* GIF to Frames page navigation */
-              <>
-                <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
-                  Converter
-                </Link>
-                <Link href="#features" className="text-gray-700 hover:text-primary transition-colors">
-                  Features
-                </Link>
-                <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
-                  All Tools
-                </Link>
-              </>
             ) : pathname.startsWith("/admin") ? (
               /* Admin page navigation */
               <>
@@ -84,6 +85,25 @@ export default function Navbar() {
                   Settings
                 </Link>
               </>
+            ) : isToolPage ? (
+              /* Tool page navigation (standard for all tools) */
+              <>
+                <Link href={`#${getToolSectionId()}`} className="text-gray-700 hover:text-primary transition-colors">
+                  {pathname.includes("/code-editor") ? "Editor" : 
+                   pathname.includes("/todo-list") ? "Todo List" : 
+                   pathname.includes("/color-picker") ? "Color Picker" : 
+                   pathname.includes("/qr-code-generator") ? "QR Code" : 
+                   pathname.includes("/unit-converter") ? "Converter" : 
+                   pathname.includes("/font-generator") ? "Font Generator" : 
+                   pathname.includes("/steganography-tool") ? "Steganography" : "Converter"}
+                </Link>
+                <Link href="#features" className="text-gray-700 hover:text-primary transition-colors">
+                  Features
+                </Link>
+                <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
+                  All Tools
+                </Link>
+              </>
             ) : (
               /* Default navigation */
               <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
@@ -92,10 +112,43 @@ export default function Navbar() {
             )}
           </nav>
 
-          <div className="hidden md:block">
-            <Button asChild>
-              {isHomePage ? <Link href="#tools">Explore Tools</Link> : <a href="#converter">Start Converting</a>}
+          <div className="hidden md:flex items-center space-x-2">
+            {/* PayPal Donate Button */}
+            <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank" className="inline-block">
+              <input type="hidden" name="cmd" value="_s-xclick" />
+              <input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----" />
+              <Button variant="outline" size="sm" className="text-[#0070ba] hover:text-[#003087] border-[#0070ba] hover:border-[#003087] bg-white hover:bg-gray-50" type="submit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 154.728 190.5" className="w-4 h-4 mr-1">
+                  <g transform="translate(898.192 276.071)">
+                    <path clipPath="none" d="M-837.663-237.968a5.49 5.49 0 0 0-5.423 4.633l-9.013 57.15-8.281 52.514-.005.044.01-.044 8.281-52.514c.421-2.669 2.719-4.633 5.42-4.633h26.404c26.573 0 49.127-19.387 53.246-45.658.314-1.996.482-3.973.52-5.924v-.003h-.003c-6.753-3.543-14.683-5.565-23.372-5.565z" fill="#001c64"/>
+                    <path clipPath="none" d="M-766.506-232.402c-.037 1.951-.207 3.93-.52 5.926-4.119 26.271-26.673 45.658-53.246 45.658h-26.404c-2.701 0-4.999 1.964-5.42 4.633l-8.281 52.514-5.197 32.947a4.46 4.46 0 0 0 4.405 5.153h28.66a5.49 5.49 0 0 0 5.423-4.633l7.55-47.881c.423-2.669 2.722-4.636 5.423-4.636h16.876c26.573 0 49.124-19.386 53.243-45.655 2.924-18.649-6.46-35.614-22.511-44.026z" fill="#0070e0"/>
+                    <path clipPath="none" d="M-870.225-276.071a5.49 5.49 0 0 0-5.423 4.636l-22.489 142.608a4.46 4.46 0 0 0 4.405 5.156h33.351l8.281-52.514 9.013-57.15a5.49 5.49 0 0 1 5.423-4.633h47.782c8.691 0 16.621 2.025 23.375 5.563.46-23.917-19.275-43.666-46.412-43.666z" fill="#003087"/>
+                  </g>
+                </svg>
+                Donate
+              </Button>
+            </form>
+
+            {/* Buy Me A Coffee Button */}
+            <Button asChild variant="outline" size="sm" className="text-[#FFDD00] hover:text-[#FFDD00] border-[#FFDD00] hover:border-[#FFDD00] bg-[#2E2E2E] hover:bg-[#1A1A1A]">
+              <a href="https://www.buymeacoffee.com/freetoolonline.com" target="_blank" rel="noopener noreferrer">
+                <Coffee className="h-4 w-4 mr-1" />
+                Buy Me A Coffee
+              </a>
             </Button>
+
+            {/* Main Action Button */}
+            {/* <Button asChild>
+              {isHomePage ? (
+                <Link href="#tools">Explore Tools</Link>
+              ) : isToolPage ? (
+                <a href={`#`}>
+                  {"Login"}
+                </a>
+              ) : (
+                <Link href="/">Back to Home</Link>
+              )}
+            </Button> */}
           </div>
 
           {/* Mobile Menu Button */}
@@ -132,36 +185,6 @@ export default function Navbar() {
                   </Link>
                 </Button>
               </>
-            ) : pathname.includes("/heic-converter") || pathname.includes("/gif-to-frames") ? (
-              /* Tool page mobile navigation */
-              <>
-                <Link
-                  href="#converter"
-                  className="text-gray-700 hover:text-primary transition-colors py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Converter
-                </Link>
-                <Link
-                  href="#features"
-                  className="text-gray-700 hover:text-primary transition-colors py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Features
-                </Link>
-                <Link
-                  href="/"
-                  className="text-gray-700 hover:text-primary transition-colors py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  All Tools
-                </Link>
-                <Button className="w-full" asChild>
-                  <a href="#converter" onClick={() => setIsMobileMenuOpen(false)}>
-                    Start Converting
-                  </a>
-                </Button>
-              </>
             ) : pathname.startsWith("/admin") ? (
               /* Admin page mobile navigation */
               <>
@@ -180,6 +203,42 @@ export default function Navbar() {
                   Settings
                 </Link>
               </>
+            ) : isToolPage ? (
+              /* Tool page mobile navigation (standardized for all tools) */
+              <>
+                <Link
+                  href={`#${getToolSectionId()}`}
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {pathname.includes("/code-editor") ? "Editor" : 
+                   pathname.includes("/todo-list") ? "Todo List" : 
+                   pathname.includes("/color-picker") ? "Color Picker" : 
+                   pathname.includes("/qr-code-generator") ? "QR Code" : 
+                   pathname.includes("/unit-converter") ? "Converter" : 
+                   pathname.includes("/font-generator") ? "Font Generator" : 
+                   pathname.includes("/steganography-tool") ? "Steganography" : "Converter"}
+                </Link>
+                <Link
+                  href="#features"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Features
+                </Link>
+                <Link
+                  href="/"
+                  className="text-gray-700 hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  All Tools
+                </Link>
+                {/* <Button className="w-full" asChild>
+                  <a href={`#`} onClick={() => setIsMobileMenuOpen(false)}>
+                    {"Login"}
+                  </a>
+                </Button> */}
+              </>
             ) : (
               /* Default mobile navigation */
               <Link
@@ -190,6 +249,33 @@ export default function Navbar() {
                 Home
               </Link>
             )}
+            
+            {/* Mobile Donation Buttons */}
+            <div className="flex flex-col space-y-2 mt-4">
+              {/* Mobile PayPal Donate Button */}
+              <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
+                <input type="hidden" name="cmd" value="_s-xclick" />
+                <input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----" />
+                <Button variant="outline" size="sm" className="text-[#0070ba] hover:text-[#003087] border-[#0070ba] hover:border-[#003087] bg-white hover:bg-gray-50 w-full" type="submit">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 154.728 190.5" className="w-4 h-4 mr-1">
+                    <g transform="translate(898.192 276.071)">
+                      <path clipPath="none" d="M-837.663-237.968a5.49 5.49 0 0 0-5.423 4.633l-9.013 57.15-8.281 52.514-.005.044.01-.044 8.281-52.514c.421-2.669 2.719-4.633 5.42-4.633h26.404c26.573 0 49.127-19.387 53.246-45.658.314-1.996.482-3.973.52-5.924v-.003h-.003c-6.753-3.543-14.683-5.565-23.372-5.565z" fill="#001c64"/>
+                      <path clipPath="none" d="M-766.506-232.402c-.037 1.951-.207 3.93-.52 5.926-4.119 26.271-26.673 45.658-53.246 45.658h-26.404c-2.701 0-4.999 1.964-5.42 4.633l-8.281 52.514-5.197 32.947a4.46 4.46 0 0 0 4.405 5.153h28.66a5.49 5.49 0 0 0 5.423-4.633l7.55-47.881c.423-2.669 2.722-4.636 5.423-4.636h16.876c26.573 0 49.124-19.386 53.243-45.655 2.924-18.649-6.46-35.614-22.511-44.026z" fill="#0070e0"/>
+                      <path clipPath="none" d="M-870.225-276.071a5.49 5.49 0 0 0-5.423 4.636l-22.489 142.608a4.46 4.46 0 0 0 4.405 5.156h33.351l8.281-52.514 9.013-57.15a5.49 5.49 0 0 1 5.423-4.633h47.782c8.691 0 16.621 2.025 23.375 5.563.46-23.917-19.275-43.666-46.412-43.666z" fill="#003087"/>
+                    </g>
+                  </svg>
+                  Donate with PayPal
+                </Button>
+              </form>
+
+              {/* Mobile Buy Me A Coffee Button */}
+              <Button asChild variant="outline" size="sm" className="text-[#FFDD00] hover:text-[#FFDD00] border-[#FFDD00] hover:border-[#FFDD00] bg-[#2E2E2E] hover:bg-[#1A1A1A] w-full">
+                <a href="https://www.buymeacoffee.com/freetoolonline.com" target="_blank" rel="noopener noreferrer">
+                  <Coffee className="h-4 w-4 mr-1" />
+                  Buy Me A Coffee
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -27,14 +27,6 @@ export const metadata: Metadata = {
       "Hide secret text messages in images with our free online steganography tool. Encode and decode text in images without quality loss. Works offline with no data sent to servers.",
     url: "https://freetool.online/steganography-tool",
     siteName: "FreeTool.Online",
-    images: [
-      {
-        url: "https://freetool.online/steganography-preview.png",
-        width: 1200,
-        height: 630,
-        alt: "Steganography Tool Preview",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -43,7 +35,6 @@ export const metadata: Metadata = {
     title: "Free Online Steganography Tool - Hide Text in Images | FreeTool.Online",
     description:
       "Hide secret text messages in images with our free online steganography tool. Encode and decode text in images without quality loss. Works offline with no data sent to servers.",
-    images: ["https://freetool.online/steganography-preview.png"],
   },
   alternates: {
     canonical: "https://freetool.online/steganography-tool",

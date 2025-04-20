@@ -33,6 +33,11 @@ export default function FaqSection() {
         "Our PDF compression tool offers different compression levels to balance file size and quality. The 'Low' setting will maintain higher quality with less compression, while 'High' will maximize compression but may reduce quality, especially for images within the PDF.",
     },
     {
+      question: "How can I rotate specific pages in my PDF?",
+      answer:
+        "Our Rotate PDF tool allows you to rotate entire documents or specific pages. Simply upload your PDF, enter the page range you want to rotate (e.g., 'all', '1-5', or '2,4,6'), and select your preferred rotation angle (90°, 180°, or 270°). This is perfect for fixing scanned documents or adjusting page orientation.",
+    },
+    {
       question: "Can I convert multiple images to a single PDF?",
       answer:
         "Yes, our Image to PDF tool allows you to upload multiple images and convert them into a single PDF document. You can rearrange the order of the images before conversion, and each image will become a separate page in the PDF.",

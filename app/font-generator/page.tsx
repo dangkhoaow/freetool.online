@@ -4,11 +4,12 @@ import FeatureSection from "./components/feature-section"
 import ToolGuide from "./components/tool-guide"
 import FaqSection from "./components/faq-section"
 import SecuritySection from "@/components/security-section"
+import Footer from "@/components/footer"
 import { Edit, Type } from "lucide-react"
 
 export default function FontGeneratorPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-gray-50">
       <HeroSection
         title="Create Custom Text with"
         titleHighlight="Font Generator"
@@ -22,11 +23,11 @@ export default function FontGeneratorPage() {
         secondaryButtonHref="#features"
       />
 
-      <div id="font-generator" className="py-16">
-        <div className="container mx-auto px-4">
+      <section id="font-generator" className="py-12 px-4 md:py-16">
+        <div className="container mx-auto max-w-6xl">
           <FontGenerator />
         </div>
-      </div>
+      </section>
 
       <div id="features">
         <FeatureSection />
@@ -35,6 +36,7 @@ export default function FontGeneratorPage() {
       <ToolGuide />
       <FaqSection />
       <SecuritySection />
+      <Footer />
     </main>
   )
 }

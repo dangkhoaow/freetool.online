@@ -9,14 +9,6 @@ export const metadata: Metadata = {
     description: "Free browser-based tools for image conversion, file format transformation, and more. No software installation needed and 100% secure.",
     url: "https://freetool.online",
     siteName: "FreeTool",
-    images: [
-      {
-        url: "https://freetool.online/images/freetool-og.jpg",
-        width: 1200,
-        height: 630,
-        alt: "FreeTool Online Tools",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -24,7 +16,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "FreeTool | Free Online Tools for Image & File Conversion",
     description: "Free browser-based tools for image conversion, file format transformation, and more. No software installation needed.",
-    images: ["https://freetool.online/images/freetool-og.jpg"],
   },
   robots: {
     index: true,

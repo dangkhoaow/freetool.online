@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, RotationTypes, PDFOperator, PDFPage } from 'pdf-lib';
 // Use browser-specific PDF.js imports
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.js';
 import { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
@@ -30,6 +30,11 @@ export interface PdfToImageResult {
 
 export interface ImageToPdfResult {
   url: string
+}
+
+export interface PdfRotateResult {
+  url: string
+  size: number
 }
 
 export interface PdfToImageOptions {
@@ -353,181 +358,345 @@ export class BrowserPdfToolsService {
     progressCallback?: (progress: number) => void,
   ): Promise<ImageToPdfResult> {
     try {
-      // Create a new PDF document
+      const { margin = 20, fitToPage = true } = options;
       const pdfDoc = await PDFDocument.create();
       
-      // Apply compression settings
-      const compressionOptions: { [key: string]: any } = {
-        low: { useObjectStreams: false },
-        medium: { useObjectStreams: true },
-        high: { useObjectStreams: true, objectsPerTick: 20 },
-      };
-      
-      // Define page size dimensions with support for more sizes
-      const pageSizes: { [key: string]: [number, number] } = {
-        'a4': [595.28, 841.89],
-        'letter': [612, 792],
-        'legal': [612, 1008],
-        'a3': [841.89, 1190.55],
-        'a5': [419.53, 595.28],
-        'tabloid': [792, 1224],
-        '13x11': [936, 792], // Photo book size
-      };
-      
-      // Get page size
-      const [width, height] = pageSizes[options.pageSize] || pageSizes['a4'];
-      
-      // Adjust for orientation
-      const pageWidth = options.orientation === 'landscape' ? Math.max(width, height) : Math.min(width, height);
-      const pageHeight = options.orientation === 'landscape' ? Math.min(width, height) : Math.max(width, height);
-      
-      // Define margins
-      const marginSizes: { [key: string]: number } = {
-        'none': 0,
-        'small': 20,
-        'medium': 40,
-        'large': 60,
-      };
-      const margin = marginSizes[options.margin] || marginSizes['medium'];
-      
-      // Default values for optional settings
-      const fitToPage = options.fitToPage !== undefined ? options.fitToPage : true;
-      const quality = options.quality !== undefined ? options.quality : 90;
-      const centered = options.centered !== undefined ? options.centered : true;
-      const addPageNumbers = options.addPageNumbers || false;
-      const createBookmarks = options.createBookmarks || false;
-      const autoRotate = options.autoRotate !== undefined ? options.autoRotate : true;
-      
       let processedFiles = 0;
-      const totalFiles = files.length;
       
-      // We'll track page indices for bookmarks
-      const bookmarkData: { title: string; pageIndex: number }[] = [];
-      
-      // Process each image
       for (const file of files) {
-        // Update progress
-        if (progressCallback) {
-          progressCallback(Math.floor((processedFiles / totalFiles) * 90));
+        try {
+          const image = await this.loadImageFromFile(file);
+          
+          // Get page dimensions based on options or default to A4
+          const pageWidth = this.getPageWidth(options.pageSize);
+          const pageHeight = this.getPageHeight(options.pageSize);
+          
+          // Calculate dimensions to fit the page with margins
+          const { width: imgWidth, height: imgHeight, shouldRotate } = this.calculateDimensions(
+            image.width, 
+            image.height, 
+            pageWidth, 
+            pageHeight, 
+            this.getMarginSize(options.margin), 
+            fitToPage
+          );
+          
+          console.log(`Processing image: ${file.name}, original dimensions: ${image.width}x${image.height}`);
+          console.log(`PDF page dimensions: ${pageWidth}x${pageHeight}, margin: ${this.getMarginSize(options.margin)}`);
+          console.log(`Calculated dimensions after scaling/rotation: ${imgWidth.toFixed(2)}x${imgHeight.toFixed(2)}, shouldRotate: ${shouldRotate}`);
+          
+          // Create page
+          const page = pdfDoc.addPage([pageWidth, pageHeight]);
+          
+          // Draw the image on the page
+          await this.drawImageOnPage(
+            page, 
+            image, 
+            this.getMarginSize(options.margin), 
+            shouldRotate, 
+            imgWidth, 
+            imgHeight
+          );
+          
+          processedFiles++;
+          if (progressCallback) {
+            progressCallback((processedFiles / files.length) * 100);
+          }
+        } catch (error: unknown) {
+          console.error(`Error processing image: ${file.name}`, error);
+          throw new Error(`Failed to process image: ${file.name}. ${error instanceof Error ? error.message : String(error)}`);
         }
-        
-        // Convert image to embedded image
-        const imageBytes = await file.arrayBuffer();
-        let image;
-        
-        if (file.type === 'image/jpeg' || file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) {
-          image = await pdfDoc.embedJpg(imageBytes);
-        } else if (file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')) {
-          image = await pdfDoc.embedPng(imageBytes);
-        } else {
-          // Skip unsupported image formats
-          console.warn(`Skipping unsupported image format: ${file.type}`);
-          continue;
-        }
-        
-        // Calculate dimensions to fit the page with margins
-        const maxWidth = pageWidth - (margin * 2);
-        const maxHeight = pageHeight - (margin * 2);
-        
-        const imgWidth = image.width;
-        const imgHeight = image.height;
-        
-        // Auto-rotate image if needed and requested
-        let shouldRotate = false;
-        let finalImgWidth = imgWidth;
-        let finalImgHeight = imgHeight;
-        
-        if (autoRotate && 
-            ((options.orientation === 'portrait' && imgWidth > imgHeight) || 
-             (options.orientation === 'landscape' && imgHeight > imgWidth))) {
-          // Swap dimensions for rotation
-          finalImgWidth = imgHeight;
-          finalImgHeight = imgWidth;
-          shouldRotate = true;
-        }
-        
-        // Calculate scale to fit if requested
-        let scale = 1;
-        if (fitToPage) {
-          scale = Math.min(maxWidth / finalImgWidth, maxHeight / finalImgHeight);
-        } else {
-          // Limit scale to 1 (don't enlarge small images)
-          scale = Math.min(1, Math.min(maxWidth / finalImgWidth, maxHeight / finalImgHeight));
-        }
-        
-        // Calculate final dimensions
-        const finalWidth = finalImgWidth * scale;
-        const finalHeight = finalImgHeight * scale;
-        
-        // Calculate position (center by default)
-        const x = centered ? (pageWidth - finalWidth) / 2 : margin;
-        const y = centered ? (pageHeight - finalHeight) / 2 : margin;
-        
-        // Add a page and draw the image
-        const page = pdfDoc.addPage([pageWidth, pageHeight]);
-        
-        // Draw the image (handle rotation in a type-safe way)
-        if (shouldRotate) {
-          // For rotation, we need to modify our drawing approach
-          // First move to the position
-          page.moveTo(x, y);
-          // Then draw the image with standard dimensions
-          page.drawImage(image, {
-            x: x,
-            y: y,
-            width: finalHeight,
-            height: finalWidth,
-          });
-        } else {
-          page.drawImage(image, {
-            x: x,
-            y: y,
-            width: finalWidth,
-            height: finalHeight,
-          });
-        }
-        
-        // Add page number if requested
-        if (addPageNumbers) {
-          const pageNumber = processedFiles + 1;
-          const fontSize = 10;
-          page.drawText(`${pageNumber}`, {
-            x: pageWidth / 2,
-            y: margin / 2,
-            size: fontSize,
-          });
-        }
-        
-        // Store bookmark data if requested
-        if (createBookmarks) {
-          bookmarkData.push({
-            title: file.name,
-            pageIndex: processedFiles,
-          });
-        }
-        
-        processedFiles++;
       }
       
-      // Handle bookmarks (pdf-lib doesn't directly support bookmarks,
-      // but we keep the data for potential future implementation)
+      // Save the PDF document
+      const pdfBytes = await pdfDoc.save();
       
-      // Save the PDF with compression options
-      const compressionLevel = options.compression || 'medium';
-      const pdfBytes = await pdfDoc.save(compressionOptions[compressionLevel]);
+      // Create a blob URL for the PDF
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
       
-      // Final progress update
-      if (progressCallback) {
-        progressCallback(100);
-      }
-      
-      return {
-        url: URL.createObjectURL(blob),
-      };
+      return { url };
     } catch (error) {
       console.error('Error creating PDF from images:', error);
       throw new Error('Failed to create PDF from images');
+    }
+  }
+
+  // Rotate PDF pages
+  public async rotatePdfPages(
+    file: File,
+    pageRange: string,
+    degrees: 90 | 180 | 270,
+    progressCallback?: (progress: number) => void,
+  ): Promise<PdfRotateResult> {
+    try {
+      if (progressCallback) progressCallback(10);
+      
+      // Load the PDF
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const pageCount = pdfDoc.getPageCount();
+      
+      if (progressCallback) progressCallback(30);
+      
+      // Parse page range
+      let pagesToRotate: number[] = [];
+      
+      if (pageRange === "all") {
+        pagesToRotate = Array.from({ length: pageCount }, (_, i) => i);
+      } else if (pageRange.includes("-")) {
+        const [start, end] = pageRange.split("-").map(num => parseInt(num, 10) - 1);
+        pagesToRotate = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+      } else if (pageRange.includes(",")) {
+        pagesToRotate = pageRange.split(",").map(num => parseInt(num, 10) - 1);
+      } else {
+        // Single page
+        pagesToRotate = [parseInt(pageRange, 10) - 1];
+      }
+      
+      if (progressCallback) progressCallback(50);
+      
+      // Make sure page indices are valid
+      pagesToRotate = pagesToRotate.filter(pageIdx => pageIdx >= 0 && pageIdx < pageCount);
+      
+      // Rotate each page in the range
+      for (const pageIndex of pagesToRotate) {
+        const page = pdfDoc.getPage(pageIndex);
+        
+        // Calculate the rotation degree based on current rotation
+        const currentRotation = page.getRotation().angle;
+        const newRotation = (currentRotation + degrees) % 360;
+        
+        // Set the new rotation with the correct enum type
+        page.setRotation({ type: RotationTypes.Degrees, angle: newRotation });
+      }
+      
+      if (progressCallback) progressCallback(80);
+      
+      // Save the PDF
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      
+      if (progressCallback) progressCallback(100);
+      
+      return {
+        url: URL.createObjectURL(blob),
+        size: blob.size,
+      };
+    } catch (error) {
+      console.error('Error rotating PDF pages:', error);
+      throw new Error('Failed to rotate PDF pages');
+    }
+  }
+
+  private calculateDimensions(imgWidth: number, imgHeight: number, pageWidth: number, pageHeight: number, margin: number, fitToPage: boolean): { 
+    width: number; 
+    height: number; 
+    shouldRotate: boolean;
+  } {
+    console.log(`Original image dimensions: ${imgWidth}x${imgHeight}, Page dimensions: ${pageWidth}x${pageHeight}, margin: ${margin}`);
+    
+    // Calculate available space on page
+    const maxWidth = pageWidth - 2 * margin;
+    const maxHeight = pageHeight - 2 * margin;
+    console.log(`Available space on page: ${maxWidth}x${maxHeight}`);
+    
+    // Determine if image should be rotated based on aspect ratios
+    const imgAspectRatio = imgWidth / imgHeight;
+    const pageAspectRatio = maxWidth / maxHeight;
+    
+    // Improve rotation decision logic:
+    // Rotate only if both conditions are met:
+    // 1. Image is landscape and PDF is portrait (or vice versa)
+    // 2. Rotating would result in better utilization of page space
+    const imageLandscape = imgAspectRatio > 1;
+    const pageLandscape = pageAspectRatio > 1;
+    
+    // Only rotate if image and page orientations don't match AND rotating improves fit
+    const shouldRotate = 
+      (imageLandscape && !pageLandscape && imgWidth > maxWidth && imgHeight < maxHeight) || 
+      (!imageLandscape && pageLandscape && imgHeight > maxHeight && imgWidth < maxWidth);
+    
+    console.log(`Image aspect ratio: ${imgAspectRatio.toFixed(2)}, Page aspect ratio: ${pageAspectRatio.toFixed(2)}`);
+    console.log(`Image is ${imageLandscape ? 'landscape' : 'portrait'}, Page is ${pageLandscape ? 'landscape' : 'portrait'}`);
+    console.log(`Should rotate: ${shouldRotate}`);
+    
+    let width = imgWidth;
+    let height = imgHeight;
+    
+    // If should rotate, swap dimensions for calculation purposes
+    if (shouldRotate) {
+      [width, height] = [height, width];
+      console.log(`Swapped dimensions for calculation: ${width}x${height}`);
+    }
+    
+    // Calculate scale factor
+    let scale = 1;
+    
+    if (fitToPage) {
+      // When fitting to page, prioritize maintaining aspect ratio while maximizing size
+      if (width > maxWidth || height > maxHeight) {
+        // If image is too large in any dimension, scale down proportionally
+        scale = Math.min(maxWidth / width, maxHeight / height);
+        console.log(`Scaling to fit page, scale factor: ${scale.toFixed(4)}`);
+      } else if (width < maxWidth && height < maxHeight && Math.min(maxWidth / width, maxHeight / height) > 1) {
+        // If image is smaller than the page and fitToPage is true, scale up proportionally
+        // but limit scaling to avoid excessive enlargement
+        scale = Math.min(maxWidth / width, maxHeight / height, 2);
+        console.log(`Scaling up to better fit page, scale factor: ${scale.toFixed(4)}`);
+      }
+    } else {
+      // When not fitting to page, only scale down if needed, never scale up
+      if (width > maxWidth || height > maxHeight) {
+        scale = Math.min(maxWidth / width, maxHeight / height);
+        console.log(`Scaling down to fit page, scale factor: ${scale.toFixed(4)}`);
+      } else {
+        console.log('No scaling needed, image fits within page');
+      }
+    }
+    
+    // Apply scaling
+    width = width * scale;
+    height = height * scale;
+    
+    console.log(`Final calculated dimensions: ${width.toFixed(2)}x${height.toFixed(2)}`);
+    
+    return {
+      width,
+      height,
+      shouldRotate
+    };
+  }
+
+  private async loadImageFromFile(file: File): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = (err) => reject(err);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private getPageWidth(pageSize: string = 'a4'): number {
+    const pageSizes: { [key: string]: [number, number] } = {
+      'a4': [595.28, 841.89],
+      'letter': [612, 792],
+      'legal': [612, 1008],
+      'a3': [841.89, 1190.55],
+      'a5': [419.53, 595.28],
+      'tabloid': [792, 1224],
+    };
+    const [width, height] = pageSizes[pageSize] || pageSizes['a4'];
+    return width;
+  }
+
+  private getPageHeight(pageSize: string = 'a4'): number {
+    const pageSizes: { [key: string]: [number, number] } = {
+      'a4': [595.28, 841.89],
+      'letter': [612, 792],
+      'legal': [612, 1008],
+      'a3': [841.89, 1190.55],
+      'a5': [419.53, 595.28],
+      'tabloid': [792, 1224],
+    };
+    const [width, height] = pageSizes[pageSize] || pageSizes['a4'];
+    return height;
+  }
+
+  private getMarginSize(marginOption: string = 'medium'): number {
+    const marginSizes: { [key: string]: number } = {
+      'none': 0,
+      'small': 20,
+      'medium': 40,
+      'large': 60,
+    };
+    return marginSizes[marginOption] || marginSizes['medium'];
+  }
+
+  private async imageToBase64(image: HTMLImageElement): Promise<string> {
+    return new Promise((resolve, reject) => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+        
+        ctx.drawImage(image, 0, 0);
+        
+        // Remove the data:image/png;base64, prefix if using with pdf-lib
+        const base64 = canvas.toDataURL('image/png').split(',')[1];
+        resolve(base64);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private async drawImageOnPage(page: PDFPage, image: HTMLImageElement, margin: number, shouldRotate: boolean, finalWidth: number, finalHeight: number): Promise<void> {
+    console.log(`Drawing image on page. Dimensions: ${finalWidth.toFixed(2)}x${finalHeight.toFixed(2)}, Should rotate: ${shouldRotate}`);
+    
+    const pageWidth = page.getWidth();
+    const pageHeight = page.getHeight();
+    
+    // Calculate center position
+    const centerX = pageWidth / 2;
+    const centerY = pageHeight / 2;
+    
+    try {
+      // First, convert image to base64 and embed it in the PDF document
+      const base64Image = await this.imageToBase64(image);
+      const embeddedImage = await page.doc.embedPng(base64Image);
+      
+      if (shouldRotate) {
+        console.log(`Drawing rotated image at center: ${centerX}, ${centerY}`);
+        
+        // For rotated images, we need to use operators for transformation
+        // Save graphics state
+        page.pushOperators(PDFOperator.of('q' as any));
+        
+        // Translate to center of page
+        page.pushOperators(PDFOperator.of('cm' as any, [1, 0, 0, 1, centerX, centerY] as any[]));
+        
+        // Rotate 90 degrees counterclockwise
+        page.pushOperators(PDFOperator.of('cm' as any, [0, 1, -1, 0, 0, 0] as any[]));
+        
+        // Translate to position image correctly given its center
+        page.pushOperators(PDFOperator.of('cm' as any, [1, 0, 0, 1, -finalHeight/2, -finalWidth/2] as any[]));
+        
+        // Draw the image with the calculated dimensions
+        page.drawImage(embeddedImage, {
+          x: 0,
+          y: 0,
+          width: finalHeight,
+          height: finalWidth
+        });
+        
+        // Restore graphics state
+        page.pushOperators(PDFOperator.of('Q' as any));
+      } else {
+        console.log(`Drawing image at center: ${centerX}, ${centerY}`);
+        
+        // For non-rotated images, draw normally
+        page.drawImage(embeddedImage, {
+          x: centerX - finalWidth / 2,
+          y: centerY - finalHeight / 2,
+          width: finalWidth,
+          height: finalHeight,
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Error drawing image:', error);
+      throw new Error(`Failed to draw image on PDF page: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }

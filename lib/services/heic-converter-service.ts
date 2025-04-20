@@ -96,42 +96,93 @@ class _HeicConverterService implements HeicConverterService {
       // Generate a unique user ID if not available
       this.userId = localStorage.getItem('userId') || uuidv4();
       localStorage.setItem('userId', this.userId);
+      
+      // Try to load max files from localStorage if available
+      const savedMaxFiles = localStorage.getItem('maxFilesLimit');
+      if (savedMaxFiles) {
+        try {
+          const parsedValue = parseInt(savedMaxFiles, 10);
+          if (!isNaN(parsedValue) && parsedValue > 0) {
+            this.maxFiles = parsedValue;
+            console.log(`Loaded max files from localStorage: ${this.maxFiles}`);
+          }
+        } catch (e) {
+          console.warn('Failed to parse maxFilesLimit from localStorage, using default:', this.maxFiles);
+        }
+      }
+      
+      // Fetch the latest settings in the background without blocking initialization
+      this.fetchMaxFilesLimitInBackground();
     } else {
       // During SSR, assign a temporary ID
       this.userId = 'server-side';
     }
-    this.getMaxFilesLimit(); // Fetch max files setting on initialization
+  }
+
+  // Fetch max files setting in the background
+  private fetchMaxFilesLimitInBackground(): void {
+    // Don't await this call - it runs in background
+    this.getMaxFilesLimit()
+      .then(maxFiles => {
+        // Store in localStorage for future use
+        localStorage.setItem('maxFilesLimit', maxFiles.toString());
+      })
+      .catch(error => {
+        console.warn('Background fetch of max files failed:', error);
+      });
   }
 
   // Fetch max files setting from the server
   public async getMaxFilesLimit(): Promise<number> {
+    // If we're not in browser environment, return the default
+    if (!isBrowser) return this.maxFiles;
+    
     try {
-      if (!isBrowser) return this.maxFiles;
+      // Create an AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
       const response = await fetch(`${this.apiBaseUrl}/api/settings/max-files`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
+      }).catch(error => {
+        console.warn('Failed to connect to backend for max files setting:', error.message);
+        return null;
       });
-
-      if (!response.ok) {
-        console.error('Failed to fetch max files setting:', response.statusText);
-        return 200; // Default to a sensible value
+      
+      // Clear the timeout
+      clearTimeout(timeoutId);
+      
+      // If fetch failed or response is not ok, use default
+      if (!response || !response.ok) {
+        console.warn('Using default max files setting due to failed fetch:', 
+                     response ? response.statusText : 'Network error');
+        // Return current value, don't modify this.maxFiles
+        return this.maxFiles;
       }
 
-      const data = await response.json();
-      if (data.maxFiles) {
-        this.maxFiles = data.maxFiles;
-        console.log(`Max files per job set to: ${this.maxFiles}`);
-      } else {
-        console.log(`Max files not found in settings, using default: ${this.maxFiles}`);
+      try {
+        const data = await response.json();
+        if (data && typeof data.maxFiles === 'number') {
+          // Only update the internal property if we got a valid value
+          this.maxFiles = data.maxFiles;
+          console.log(`Max files per job set to: ${this.maxFiles}`);
+        } else {
+          console.warn(`Max files not found in settings response, using default: ${this.maxFiles}`);
+        }
+      } catch (parseError) {
+        console.warn('Error parsing max files response:', parseError);
+        // Continue with current value
       }
     } catch (error) {
-      console.error('Error fetching max files setting:', error);
-      return 200; // Default to a sensible value on error
+      // Catch any other errors that might occur
+      console.warn('Error fetching max files setting, using default:', error);
     }
     
+    // Always return the current value, whether it was updated or not
     return this.maxFiles;
   }
 

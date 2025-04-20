@@ -38,8 +38,14 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
         setMaxFiles(200) // Use a sensible default
       })
 
-    // Fetch max file size from the API
-    fetch(`${converterService.getApiBaseUrl()}/api/settings/max-file-size`)
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+    // Fetch max file size from the API with better error handling
+    fetch(`${converterService.getApiBaseUrl()}/api/settings/max-file-size`, {
+      signal: controller.signal
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP error ${response.status}`)
@@ -47,16 +53,46 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
         return response.json()
       })
       .then((data) => {
-        if (data.maxFileSizeMB) {
+        if (data && typeof data.maxFileSizeMB === 'number' && data.maxFileSizeMB > 0) {
           setMaxFileSizeMB(data.maxFileSizeMB)
+          // Store in localStorage for future fallback
+          localStorage.setItem('maxFileSizeMB', data.maxFileSizeMB.toString())
           console.log(`Max file size set to: ${data.maxFileSizeMB}MB`)
+        } else {
+          console.warn("Invalid max file size data received:", data)
+          // Try to get from localStorage, otherwise keep default
+          const savedSize = localStorage.getItem('maxFileSizeMB')
+          if (savedSize) {
+            const parsedSize = parseInt(savedSize, 10)
+            if (!isNaN(parsedSize) && parsedSize > 0) {
+              setMaxFileSizeMB(parsedSize)
+            }
+          }
         }
       })
       .catch((error) => {
-        console.error("Failed to fetch max file size limit:", error)
-        // Keep default value if there's an error
-        setMaxFileSizeMB(100) // Use a sensible default of 100MB
+        // Clear timeout if fetch failed
+        clearTimeout(timeoutId)
+        
+        console.warn("Failed to fetch max file size limit:", error)
+        // Try to get from localStorage, otherwise keep default
+        const savedSize = localStorage.getItem('maxFileSizeMB')
+        if (savedSize) {
+          const parsedSize = parseInt(savedSize, 10)
+          if (!isNaN(parsedSize) && parsedSize > 0) {
+            setMaxFileSizeMB(parsedSize)
+          }
+        }
       })
+      .finally(() => {
+        clearTimeout(timeoutId)
+      })
+
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
   }, [converterService])
 
   const handleDragOver = (e: React.DragEvent) => {
