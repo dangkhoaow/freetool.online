@@ -10,7 +10,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
-  
+
   const isHomePage = pathname === "/"
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function Navbar() {
                   Features
                 </Link>
               </>
-            ) : pathname.includes('/heic-converter') ? (
+            ) : pathname.includes("/heic-converter") ? (
               /* HEIC converter page navigation */
               <>
                 <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
@@ -61,7 +61,7 @@ export default function Navbar() {
                   All Tools
                 </Link>
               </>
-            ) : pathname.includes('/gif-to-frames') ? (
+            ) : pathname.includes("/gif-to-frames") ? (
               /* GIF to Frames page navigation */
               <>
                 <Link href="#converter" className="text-gray-700 hover:text-primary transition-colors">
@@ -74,7 +74,7 @@ export default function Navbar() {
                   All Tools
                 </Link>
               </>
-            ) : pathname.startsWith('/admin') ? (
+            ) : pathname.startsWith("/admin") ? (
               /* Admin page navigation */
               <>
                 <Link href="/admin/dashboard" className="text-gray-700 hover:text-primary transition-colors">
@@ -94,11 +94,7 @@ export default function Navbar() {
 
           <div className="hidden md:block">
             <Button asChild>
-              {isHomePage ? (
-                <Link href="#tools">Explore Tools</Link>
-              ) : (
-                <a href="#converter">Start Converting</a>
-              )}
+              {isHomePage ? <Link href="#tools">Explore Tools</Link> : <a href="#converter">Start Converting</a>}
             </Button>
           </div>
 
@@ -136,7 +132,7 @@ export default function Navbar() {
                   </Link>
                 </Button>
               </>
-            ) : pathname.includes('/heic-converter') || pathname.includes('/gif-to-frames') ? (
+            ) : pathname.includes("/heic-converter") || pathname.includes("/gif-to-frames") ? (
               /* Tool page mobile navigation */
               <>
                 <Link
@@ -166,7 +162,7 @@ export default function Navbar() {
                   </a>
                 </Button>
               </>
-            ) : pathname.startsWith('/admin') ? (
+            ) : pathname.startsWith("/admin") ? (
               /* Admin page mobile navigation */
               <>
                 <Link

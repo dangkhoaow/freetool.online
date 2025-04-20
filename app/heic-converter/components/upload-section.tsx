@@ -22,38 +22,41 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
   const [maxFiles, setMaxFiles] = useState<number>(15) // Default value
   const [maxFileSizeMB, setMaxFileSizeMB] = useState<number>(100) // Default value
   const converterService = getHeicConverterService()
-  
+
   // Fetch max files limit on component mount
   useEffect(() => {
     // Access the converter service
-    converterService.getMaxFilesLimit().then(limit => {
-      setMaxFiles(limit);
-      console.log(`Max files limit set to: ${limit}`);
-    }).catch(error => {
-      console.error('Failed to fetch max files limit:', error);
-      // Keep default value if there's an error
-      setMaxFiles(200); // Use a sensible default
-    });
+    converterService
+      .getMaxFilesLimit()
+      .then((limit) => {
+        setMaxFiles(limit)
+        console.log(`Max files limit set to: ${limit}`)
+      })
+      .catch((error) => {
+        console.error("Failed to fetch max files limit:", error)
+        // Keep default value if there's an error
+        setMaxFiles(200) // Use a sensible default
+      })
 
     // Fetch max file size from the API
     fetch(`${converterService.getApiBaseUrl()}/api/settings/max-file-size`)
-      .then(response => {
+      .then((response) => {
         if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
+          throw new Error(`HTTP error ${response.status}`)
         }
-        return response.json();
+        return response.json()
       })
-      .then(data => {
+      .then((data) => {
         if (data.maxFileSizeMB) {
-          setMaxFileSizeMB(data.maxFileSizeMB);
-          console.log(`Max file size set to: ${data.maxFileSizeMB}MB`);
+          setMaxFileSizeMB(data.maxFileSizeMB)
+          console.log(`Max file size set to: ${data.maxFileSizeMB}MB`)
         }
       })
-      .catch(error => {
-        console.error('Failed to fetch max file size limit:', error);
+      .catch((error) => {
+        console.error("Failed to fetch max file size limit:", error)
         // Keep default value if there's an error
-        setMaxFileSizeMB(100); // Use a sensible default of 100MB
-      });
+        setMaxFileSizeMB(100) // Use a sensible default of 100MB
+      })
   }, [converterService])
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -94,13 +97,13 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
     }
 
     // Check file size (using maxFileSizeMB from settings)
-    const maxSizeBytes = maxFileSizeMB * 1024 * 1024;
+    const maxSizeBytes = maxFileSizeMB * 1024 * 1024
     const validFiles = heicFiles.filter((file) => file.size <= maxSizeBytes)
 
     if (validFiles.length < heicFiles.length) {
       setError(`Some files exceed the ${maxFileSizeMB}MB size limit and were removed.`)
     }
-    
+
     // Check max files limit
     if (files.length + validFiles.length > maxFiles) {
       setError(`Maximum ${maxFiles} files allowed. Please remove some files.`)
@@ -160,10 +163,10 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
             disabled={disabled || files.length >= maxFiles}
           />
           <label htmlFor="file-upload">
-            <Button 
-              variant="outline" 
-              className="cursor-pointer" 
-              asChild 
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              asChild
               disabled={disabled || files.length >= maxFiles}
             >
               <span>Browse Files</span>
@@ -185,7 +188,9 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
       {files.length > 0 && (
         <div className="mt-8">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium">Selected Files ({files.length}/{maxFiles})</h3>
+            <h3 className="font-medium">
+              Selected Files ({files.length}/{maxFiles})
+            </h3>
             <Button variant="ghost" size="sm" onClick={clearAllFiles} disabled={disabled}>
               Clear All
             </Button>
@@ -211,20 +216,10 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
           </div>
 
           <div className="mt-6 flex flex-col md:flex-row gap-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setActiveTab("settings")} 
-              className="md:w-1/3"
-              disabled={disabled}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Settings
+            <Button variant="outline" onClick={() => setActiveTab("settings")} className="md:w-1/3" disabled={disabled}>
+              Configure Settings
             </Button>
-            <Button 
-              className="md:w-2/3" 
-              onClick={onContinue} 
-              disabled={disabled || files.length === 0}
-            >
+            <Button className="md:w-2/3" onClick={onContinue} disabled={disabled || files.length === 0}>
               Start Conversion
             </Button>
           </div>
@@ -233,4 +228,3 @@ export default function UploadSection({ files, setFiles, onContinue, disabled, s
     </div>
   )
 }
-

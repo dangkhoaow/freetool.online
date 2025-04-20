@@ -1,10 +1,10 @@
 "use client"
 
-import React from "react"
-import { Progress } from "@/components/ui/progress"
+import { AlertCircle, Clock, Check, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import { ConversionJob } from "@/lib/services/heic-converter-service"
+import { Progress } from "@/components/ui/progress"
+import type { ConversionJob } from "@/lib/services/heic-converter-service"
 
 interface ProcessingSectionProps {
   files: File[]
@@ -14,103 +14,178 @@ interface ProcessingSectionProps {
   job: ConversionJob | null
 }
 
-export default function ProcessingSection({ 
-  files, 
-  settings, 
-  progress, 
-  error,
-  job
-}: ProcessingSectionProps) {
-  // Determine the current processing status text
-  const getStatusText = () => {
-    if (error) return "Error";
-    
-    // Show "Uploading" status when job exists but has no files yet (still uploading)
-    if (job && (!job.files || job.files.length === 0)) {
-      return "Uploading files...";
+export default function ProcessingSection({ files, settings, progress, error, job }: ProcessingSectionProps) {
+  const fileCount = files.length
+  const isBrowserMode = settings.conversionMode === 'browser'
+
+  // Determine the current status
+  const getStatusMessage = () => {
+    if (error) {
+      return (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Conversion Error</AlertTitle>
+          <AlertDescription className="mt-2">
+            {error}
+            {isBrowserMode && (
+              <div className="mt-2 text-sm">
+                <p>Browser-based conversion errors can occur due to:</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>File format not properly supported</li>
+                  <li>Browser memory limitations</li>
+                  <li>Browser security restrictions</li>
+                </ul>
+                <p className="mt-2">
+                  Try switching to server-based conversion in Settings → Advanced tab.
+                </p>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )
     }
-    
-    // For regular processing
-    if (progress <= 0) return "Starting...";
-    if (progress >= 100) return "Complete";
-    return "Processing...";
-  };
-  
-  // Get the file being processed
-  const getCurrentFile = () => {
-    if (!job || !job.files) return null;
-    
-    // Find a file that's in "processing" status
-    const processingFile = job.files.find(file => file.status === 'processing');
-    if (processingFile) {
-      return processingFile.originalName;
+
+    if (job && job.status === "completed") {
+      return (
+        <div className="flex items-center gap-2 text-green-600 mb-6">
+          <Check className="h-5 w-5" />
+          <p className="font-medium">Conversion Complete</p>
+        </div>
+      )
     }
-    
-    // If we have no files yet, we're likely still in upload phase
-    if (job.files.length === 0) {
-      // Show upload status based on job ID
-      return files && files.length > 0 ? files[0].name : "files";
+
+    if (job && job.status === "failed") {
+      // Check if any files were processed successfully
+      const successCount = job.files?.filter((file: any) => file.status === "completed").length || 0
+      const failedCount = job.files?.filter((file: any) => file.status === "failed").length || 0
+
+      if (successCount > 0) {
+        return (
+          <Alert variant="default" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Partial Conversion</AlertTitle>
+            <AlertDescription>
+              {successCount} of {successCount + failedCount} files were successfully converted.
+              {failedCount > 0 && ` ${failedCount} files failed.`}
+            </AlertDescription>
+          </Alert>
+        )
+      }
+
+      return (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Conversion Failed</AlertTitle>
+          <AlertDescription>
+            {job.error || "Failed to convert files. Please try again or try server-based conversion."}
+            {isBrowserMode && (
+              <div className="mt-2 text-sm">
+                <p>Browser-based conversion may fail due to:</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Large file sizes</li>
+                  <li>Unsupported HEIC variants</li>
+                  <li>Browser memory limitations</li>
+                </ul>
+                <p className="mt-2">
+                  Try server-based conversion in Settings → Advanced tab.
+                </p>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )
     }
-    
-    return null;
-  };
-  
-  // Calculate more accurate progress including upload phase
-  const calculateProgress = () => {
-    if (error) return 0;
-    if (!job) return 0;
-    
-    // If we have no files yet, we're in upload phase (show 10% progress)
-    if (!job.files || job.files.length === 0) {
-      return 10;
+
+    return (
+      <div className="mb-6">
+        <div className="flex items-center gap-2 text-blue-600">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          <p className="font-medium">Processing your files...</p>
+        </div>
+        <p className="text-sm text-gray-500 mt-1">
+          {isBrowserMode 
+            ? "Converting files directly in your browser. This might take some time for larger files."
+            : "Your files are being processed on our servers. This might take a moment."}
+        </p>
+      </div>
+    )
+  }
+
+  // Get details about in-progress files
+  const getProgressDetails = () => {
+    if (job && job.files && job.files.length > 0) {
+      const completed = job.files.filter((file: any) => file.status === "completed").length
+      const failed = job.files.filter((file: any) => file.status === "failed").length
+      const pending = job.files.filter((file: any) => file.status === "pending" || file.status === "processing").length
+
+      return (
+        <div className="flex justify-between text-sm text-gray-500 mt-2">
+          <span>Completed: {completed}</span>
+          <span>Pending: {pending}</span>
+          {failed > 0 && <span className="text-red-500">Failed: {failed}</span>}
+        </div>
+      )
     }
-    
-    // Calculate what percentage of files have been processed
-    const totalFiles = files.length;
-    const uploadedFiles = job.files.length;
-    const uploadProgress = (uploadedFiles / totalFiles) * 20; // Upload is 20% of total progress
-    
-    // For conversion progress, use the reported progress
-    const conversionProgress = job.progress * 0.8; // Conversion is 80% of total progress
-    
-    return Math.min(Math.round(uploadProgress + conversionProgress), 99);
-  };
+
+    return null
+  }
 
   return (
-    <div className="space-y-8">
-      <h3 className="text-2xl font-bold text-center">Processing Your Files</h3>
-      <div className="text-center text-gray-500 text-lg">
-        {getStatusText()}
-      </div>
+    <div>
+      <h3 className="text-xl font-semibold mb-4">Processing</h3>
 
-      <Progress value={calculateProgress()} className="w-full h-2" />
-      <div className="text-center text-gray-500">
-        {calculateProgress()}% complete
-      </div>
+      {getStatusMessage()}
 
-      {getCurrentFile() && (
-        <div className="bg-blue-50 p-4 rounded-lg max-w-md mx-auto">
-          <h4 className="font-semibold">Currently Processing</h4>
-          <p className="text-sm text-blue-800">{getCurrentFile()}</p>
+      <div className="space-y-8">
+        <div>
+          <div className="flex justify-between text-sm mb-2">
+            <span>Converting {fileCount} files ({settings.outputFormat.toUpperCase()})</span>
+            <span>{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          {getProgressDetails()}
         </div>
-      )}
 
-      {job && job.files && job.files.length === 0 && (
-        <div className="bg-blue-50 p-4 rounded-lg max-w-md mx-auto">
-          <h4 className="font-semibold">Upload Phase</h4>
-          <p className="text-sm text-blue-800">Uploading {files.length} files to server...</p>
-          <p className="text-xs text-gray-500 mt-2">This may take a few minutes for large files.</p>
+        <div className="p-5 bg-gray-50 rounded-lg">
+          <h4 className="font-medium mb-3">Conversion Settings</h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-gray-500">Output Format:</span>
+              <span className="ml-2 font-medium">{settings.outputFormat.toUpperCase()}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Quality:</span>
+              <span className="ml-2 font-medium">{settings.quality}%</span>
+            </div>
+            <div>
+              <span className="text-gray-500">AI Optimization:</span>
+              <span className="ml-2 font-medium">{settings.aiOptimization ? "Enabled" : "Disabled"}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Conversion Mode:</span>
+              <span className="ml-2 font-medium">{settings.conversionMode === 'browser' ? "Browser-based" : "Server-based"}</span>
+            </div>
+          </div>
         </div>
-      )}
-      
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+
+        <div className="p-5 bg-gray-50 rounded-lg">
+          <h4 className="font-medium mb-3">Troubleshooting</h4>
+          <p className="text-sm text-gray-600 mb-2">
+            {isBrowserMode 
+              ? "Browser-based conversion runs locally on your device. For complex or large files, you might get better results with server-based conversion." 
+              : "Server-based conversion handles larger and more complex files better than browser-based conversion."}
+          </p>
+          <p className="text-sm text-gray-600">
+            If you're experiencing issues, try:
+          </p>
+          <ul className="list-disc pl-5 mt-1 text-sm text-gray-600 space-y-1">
+            <li>Using smaller files (under 10MB each)</li>
+            <li>Converting fewer files at once</li>
+            <li>{isBrowserMode ? "Switching to server-based conversion" : "Checking your internet connection"}</li>
+            <li>Using a different browser (Chrome or Safari recommended)</li>
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }
-

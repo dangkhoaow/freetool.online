@@ -1,7 +1,7 @@
 import HeroSection from "../components/hero-section"
 import Footer from "../components/footer"
 import { Button } from "../components/ui/button"
-import { ArrowRight, Image, Film, FileType, Zap, Shield } from "lucide-react"
+import { ArrowRight, Image, Film, FileType, Zap, Shield, Palette } from "lucide-react"
 import Link from "next/link"
 
 export const metadata = {
@@ -74,6 +74,28 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+            {/* DesignFlow */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">
+              <div className="h-40 bg-gradient-to-r from-indigo-50 to-violet-50 flex items-center justify-center">
+                <Palette className="h-16 w-16 text-indigo-500" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2">DesignFlow</h3>
+                  <p className="text-gray-600">
+                    Create, collaborate, and prototype designs with our browser-based vector design tool. Real-time collaboration and powerful editing tools.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/design-flow" className="flex items-center justify-center gap-2" aria-label="Use DesignFlow Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
 
             {/* GIF to Frames */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md flex flex-col">

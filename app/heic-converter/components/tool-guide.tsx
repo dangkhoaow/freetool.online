@@ -22,11 +22,11 @@ export default function ToolGuide() {
             <p className="text-gray-600 mb-4">
               Choose your desired output format and customize settings like quality, size, and AI optimization.
             </p>
-            <div className="overflow-hidden flex items-center justify-center" style={{ height: '205px' }}>
+            <div className="overflow-hidden flex items-center justify-center" style={{ height: "205px" }}>
               <img
                 src="/settings.png"
                 alt="Configure Settings Step"
-                style={{ maxWidth: '100px', height: 'auto' }}
+                style={{ maxWidth: "100px", height: "auto" }}
                 className="w-full h-auto m-auto"
               />
             </div>
@@ -53,8 +53,13 @@ export default function ToolGuide() {
               Drag and drop your HEIC files into the upload area or click "Browse Files" to select them from your
               device.
             </p>
-            <div className="overflow-hidden flex items-center justify-center" style={{ height: '205px' }}>
-              <img src="/uploads.png" alt="Upload Files Step" style={{ maxWidth: '100px', height: 'auto' }} className="w-full h-auto m-auto" />
+            <div className="overflow-hidden flex items-center justify-center" style={{ height: "205px" }}>
+              <img
+                src="/uploads.png"
+                alt="Upload Files Step"
+                style={{ maxWidth: "100px", height: "auto" }}
+                className="w-full h-auto m-auto"
+              />
             </div>
             <ul className="mt-4 space-y-2">
               <li className="flex items-start">
@@ -79,8 +84,13 @@ export default function ToolGuide() {
               Once conversion is complete, preview your images and download them individually or all at once as a ZIP
               file.
             </p>
-            <div className="overflow-hidden flex items-center justify-center" style={{ height: '205px' }}>
-              <img src="/downloads.png" alt="Download Results Step" style={{ maxWidth: '100px', height: 'auto' }} className="w-full h-auto m-auto" />
+            <div className="overflow-hidden flex items-center justify-center" style={{ height: "205px" }}>
+              <img
+                src="/downloads.png"
+                alt="Download Results Step"
+                style={{ maxWidth: "100px", height: "auto" }}
+                className="w-full h-auto m-auto"
+              />
             </div>
             <ul className="mt-4 space-y-2">
               <li className="flex items-start">
@@ -103,19 +113,19 @@ export default function ToolGuide() {
               <h4 className="font-bold mb-2">Files Not Uploading?</h4>
               <ul className="space-y-2">
                 <li className="flex items-start items-center">
-                  <div style={{ minWidth: '32px'}} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
+                  <div style={{ minWidth: "32px" }} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
                     <span className="text-blue-600 text-xs font-bold">1</span>
                   </div>
                   <span className="text-gray-700">Check that your files are in HEIC or HEIF format</span>
                 </li>
                 <li className="flex items-start items-center">
-                  <div style={{ minWidth: '32px'}} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
+                  <div style={{ minWidth: "32px" }} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
                     <span className="text-blue-600 text-xs font-bold">2</span>
                   </div>
                   <span className="text-gray-700">Ensure each file is under the 50MB size limit</span>
                 </li>
                 <li className="flex items-start items-center">
-                  <div style={{ minWidth: '32px'}} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
+                  <div style={{ minWidth: "32px" }} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
                     <span className="text-blue-600 text-xs font-bold">3</span>
                   </div>
                   <span className="text-gray-700">Try using a different browser if issues persist</span>
@@ -127,19 +137,19 @@ export default function ToolGuide() {
               <h4 className="font-bold mb-2">Conversion Taking Too Long?</h4>
               <ul className="space-y-2">
                 <li className="flex items-start items-center">
-                  <div style={{ minWidth: '32px'}} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
+                  <div style={{ minWidth: "32px" }} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
                     <span className="text-blue-600 text-xs font-bold">1</span>
                   </div>
                   <span className="text-gray-700">AI optimization may take extra time for large files</span>
                 </li>
                 <li className="flex items-start items-center">
-                  <div style={{ minWidth: '32px'}} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
+                  <div style={{ minWidth: "32px" }} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
                     <span className="text-blue-600 text-xs font-bold">2</span>
                   </div>
                   <span className="text-gray-700">Try disabling AI optimization for faster conversion</span>
                 </li>
                 <li className="flex items-start items-center">
-                  <div style={{ minWidth: '32px'}} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
+                  <div style={{ minWidth: "32px" }} className="text-center rounded-full bg-blue-100 p-1 mr-2 mt-0.5">
                     <span className="text-blue-600 text-xs font-bold">3</span>
                   </div>
                   <span className="text-gray-700">Convert fewer files at once for quicker processing</span>
@@ -152,4 +162,3 @@ export default function ToolGuide() {
     </section>
   )
 }
-

@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { FileType, Image, Zap, Sliders, ArrowLeft } from "lucide-react"
+import { FileType, Image, Zap, Sliders, Globe, Shield } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 
 interface SettingsPanelProps {
   settings: any
@@ -19,7 +20,14 @@ interface SettingsPanelProps {
   setActiveTab: (tab: string) => void
 }
 
-export default function SettingsPanel({ settings, setSettings, onStartConversion, disabled, files, setActiveTab }: SettingsPanelProps) {
+export default function SettingsPanel({
+  settings,
+  setSettings,
+  onStartConversion,
+  disabled,
+  files,
+  setActiveTab,
+}: SettingsPanelProps) {
   const updateSettings = (newSettings: any) => {
     setSettings({ ...settings, ...newSettings })
   }
@@ -368,118 +376,169 @@ export default function SettingsPanel({ settings, setSettings, onStartConversion
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
-          <div>
-            <h4 className="text-lg font-medium mb-4">Advanced Options</h4>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="preserve-exif">Preserve EXIF data</Label>
-                  <p className="text-sm text-gray-500">Keep metadata like camera model, date, and location</p>
-                </div>
-                <Switch
-                  id="preserve-exif"
-                  checked={settings.preserveExif}
-                  onCheckedChange={(checked) => updateSettings({ preserveExif: checked })}
-                />
-              </div>
-
-              <div className="space-y-4">
+          <div className="space-y-4">
+            <h4 className="text-lg font-medium">Conversion Mode</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className={`cursor-pointer border-2 transition-all ${settings.conversionMode === 'browser' ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}`}
+                onClick={() => updateSettings({ conversionMode: 'browser' })}>
+                <CardContent className="p-4 pt-4">
+                  <div className="flex gap-3 items-start">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <Shield className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium">Browser-based</h5>
+                      <p className="text-sm text-gray-500">Files stay on your device</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Private</span>
+                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Fast</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className={`cursor-pointer border-2 transition-all ${settings.conversionMode === 'server' ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}`}
+                onClick={() => updateSettings({ conversionMode: 'server' })}>
+                <CardContent className="p-4 pt-4">
+                  <div className="flex gap-3 items-start">
+                    <div className="bg-purple-100 p-2 rounded-full">
+                      <Globe className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h5 className="font-medium">Server-based</h5>
+                      <p className="text-sm text-gray-500">Processed on our servers</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">High Quality</span>
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Advanced Options</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <p className="text-xs text-gray-500">
+              {settings.conversionMode === 'browser' 
+                ? "Browser-based conversion keeps your files private - they never leave your device. Perfect for sensitive content." 
+                : "Server-based conversion enables advanced AI features and higher quality output, but requires uploading files to our secure servers."}
+            </p>
+          </div>
+          
+          <div className="border-t pt-6">
+            <div>
+              <h4 className="text-lg font-medium mb-4">Advanced Options</h4>
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label htmlFor="watermark">Add watermark</Label>
-                    <p className="text-sm text-gray-500">Apply text watermark to converted images</p>
+                    <Label htmlFor="preserve-exif">Preserve EXIF data</Label>
+                    <p className="text-sm text-gray-500">Keep metadata like camera model, date, and location</p>
                   </div>
                   <Switch
-                    id="watermark"
-                    checked={settings.watermark.enabled}
-                    onCheckedChange={(checked) =>
-                      updateSettings({
-                        watermark: { ...settings.watermark, enabled: checked },
-                      })
-                    }
+                    id="preserve-exif"
+                    checked={settings.preserveExif}
+                    onCheckedChange={(checked) => updateSettings({ preserveExif: checked })}
                   />
                 </div>
 
-                {settings.watermark.enabled && (
-                  <div className="space-y-4 pl-6 border-l-2 border-gray-100">
-                    <div className="space-y-2">
-                      <Label htmlFor="watermark-text">Watermark text</Label>
-                      <Input
-                        id="watermark-text"
-                        value={settings.watermark.text}
-                        onChange={(e) =>
-                          updateSettings({
-                            watermark: { ...settings.watermark, text: e.target.value },
-                          })
-                        }
-                        placeholder="© Your Name"
-                      />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="watermark">Add watermark</Label>
+                      <p className="text-sm text-gray-500">Apply text watermark to converted images</p>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="watermark-position">Position</Label>
-                      <Select
-                        value={settings.watermark.position}
-                        onValueChange={(value) =>
-                          updateSettings({
-                            watermark: { ...settings.watermark, position: value },
-                          })
-                        }
-                      >
-                        <SelectTrigger id="watermark-position">
-                          <SelectValue placeholder="Select position" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="top-left">Top Left</SelectItem>
-                          <SelectItem value="top-right">Top Right</SelectItem>
-                          <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                          <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                          <SelectItem value="center">Center</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="watermark-opacity">Opacity</Label>
-                        <span className="text-sm text-gray-500">{settings.watermark.opacity}%</span>
-                      </div>
-                      <Slider
-                        id="watermark-opacity"
-                        min={10}
-                        max={100}
-                        step={5}
-                        value={[settings.watermark.opacity]}
-                        onValueChange={(value) =>
-                          updateSettings({
-                            watermark: { ...settings.watermark, opacity: value[0] },
-                          })
-                        }
-                      />
-                    </div>
+                    <Switch
+                      id="watermark"
+                      checked={settings.watermark.enabled}
+                      onCheckedChange={(checked) =>
+                        updateSettings({
+                          watermark: { ...settings.watermark, enabled: checked },
+                        })
+                      }
+                    />
                   </div>
-                )}
+
+                  {settings.watermark.enabled && (
+                    <div className="space-y-4 pl-6 border-l-2 border-gray-100">
+                      <div className="space-y-2">
+                        <Label htmlFor="watermark-text">Watermark text</Label>
+                        <Input
+                          id="watermark-text"
+                          value={settings.watermark.text}
+                          onChange={(e) =>
+                            updateSettings({
+                              watermark: { ...settings.watermark, text: e.target.value },
+                            })
+                          }
+                          placeholder="© Your Name"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="watermark-position">Position</Label>
+                        <Select
+                          value={settings.watermark.position}
+                          onValueChange={(value) =>
+                            updateSettings({
+                              watermark: { ...settings.watermark, position: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger id="watermark-position">
+                            <SelectValue placeholder="Select position" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="top-left">Top Left</SelectItem>
+                            <SelectItem value="top-right">Top Right</SelectItem>
+                            <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                            <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                            <SelectItem value="center">Center</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="watermark-opacity">Opacity</Label>
+                          <span className="text-sm text-gray-500">{settings.watermark.opacity}%</span>
+                        </div>
+                        <Slider
+                          id="watermark-opacity"
+                          min={10}
+                          max={100}
+                          step={5}
+                          value={[settings.watermark.opacity]}
+                          onValueChange={(value) =>
+                            updateSettings({
+                              watermark: { ...settings.watermark, opacity: value[0] },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </TabsContent>
       </Tabs>
 
-      <div className="mt-8 pt-6 border-t flex justify-end">
+      <div className="flex justify-between mt-8">
         <Button 
-          onClick={() => {
-            if (files.length > 0) {
-              onStartConversion();
-            } else {
-              setActiveTab("upload");
-            }
-          }} 
-          disabled={disabled}
+          variant="outline" 
+          onClick={() => setActiveTab("upload")}
         >
-          {files.length > 0 ? "Start Conversion" : "Upload Files"}
+          Back to Files
+        </Button>
+        <Button 
+          onClick={onStartConversion} 
+          disabled={disabled || files.length === 0}
+        >
+          Start Conversion
         </Button>
       </div>
     </div>
   )
 }
-

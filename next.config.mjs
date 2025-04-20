@@ -29,6 +29,25 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  transpilePackages: ['konva', 'react-konva'],
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Replace the Node.js version with an empty module
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        canvas: false,
+        fs: false,
+        path: false,
+      };
+
+      // Use specifically the browser version of Konva
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'konva': 'konva/lib/index-react',
+      };
+    }
+    return config;
+  },
 }
 
 if (userConfig) {

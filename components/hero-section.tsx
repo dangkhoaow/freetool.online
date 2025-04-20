@@ -1,23 +1,23 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ChevronRight, ImageIcon, Zap, Upload, FileType, Download } from "lucide-react"
-import { ReactNode } from "react"
+import { ImageIcon, Zap, Upload } from "lucide-react"
+import type { ReactNode } from "react"
 import Link from "next/link"
 
 interface HeroSectionProps {
-  title?: string;
-  titleHighlight?: string;
-  description?: string;
-  badge?: string;
-  primaryButtonText?: string;
-  secondaryButtonText?: string;
-  primaryButtonIcon?: ReactNode;
-  secondaryButtonIcon?: ReactNode;
-  onPrimaryButtonClick?: () => void;
-  onSecondaryButtonClick?: () => void;
-  primaryButtonHref?: string;
-  secondaryButtonHref?: string;
+  title?: string
+  titleHighlight?: string
+  description?: string
+  badge?: string
+  primaryButtonText?: string
+  secondaryButtonText?: string
+  primaryButtonIcon?: ReactNode
+  secondaryButtonIcon?: ReactNode
+  onPrimaryButtonClick?: () => void
+  onSecondaryButtonClick?: () => void
+  primaryButtonHref?: string
+  secondaryButtonHref?: string
 }
 
 export default function HeroSection({
@@ -48,9 +48,7 @@ export default function HeroSection({
                 {titleHighlight}
               </span>
             </h1>
-            <p className="text-lg text-gray-600 mb-8">
-              {description}
-            </p>
+            <p className="text-lg text-gray-600 mb-8">{description}</p>
             <div className="flex flex-col sm:flex-row gap-4">
               {primaryButtonHref ? (
                 <Button asChild size="lg" className="gap-2">
@@ -59,13 +57,15 @@ export default function HeroSection({
                     {primaryButtonText}
                   </Link>
                 </Button>
-              ) : onPrimaryButtonClick && (
-                <Button size="lg" onClick={onPrimaryButtonClick} className="gap-2" aria-label={primaryButtonText}>
-                  {primaryButtonIcon}
-                  {primaryButtonText}
-                </Button>
+              ) : (
+                onPrimaryButtonClick && (
+                  <Button size="lg" onClick={onPrimaryButtonClick} className="gap-2" aria-label={primaryButtonText}>
+                    {primaryButtonIcon}
+                    {primaryButtonText}
+                  </Button>
+                )
               )}
-              
+
               {secondaryButtonHref ? (
                 <Button asChild variant="outline" size="lg" className="gap-2">
                   <Link href={secondaryButtonHref} aria-label={secondaryButtonText}>
@@ -73,11 +73,19 @@ export default function HeroSection({
                     {secondaryButtonText}
                   </Link>
                 </Button>
-              ) : onSecondaryButtonClick && (
-                <Button variant="outline" size="lg" className="gap-2" onClick={onSecondaryButtonClick} aria-label={secondaryButtonText}>
-                  {secondaryButtonIcon}
-                  {secondaryButtonText}
-                </Button>
+              ) : (
+                onSecondaryButtonClick && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="gap-2"
+                    onClick={onSecondaryButtonClick}
+                    aria-label={secondaryButtonText}
+                  >
+                    {secondaryButtonIcon}
+                    {secondaryButtonText}
+                  </Button>
+                )
               )}
             </div>
             <div className="mt-8 flex flex-col sm:flex-row gap-6">
@@ -114,4 +122,3 @@ export default function HeroSection({
     </section>
   )
 }
-

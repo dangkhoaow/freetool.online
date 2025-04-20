@@ -9,26 +9,27 @@ import SecuritySection from "./components/security-section"
 
 export const metadata = {
   title: "HEIC to JPG Converter | Free Online HEIC Converter Tool",
-  description: "Convert HEIC photos to JPG, PNG, WEBP, or PDF formats online for free. AI-powered optimization for smaller file sizes without quality loss.",
+  description:
+    "Convert HEIC photos to JPG, PNG, WEBP, or PDF formats online for free. AI-powered optimization for smaller file sizes without quality loss.",
 }
 
 export default function HeicConverterPage() {
   // Function to scroll to converter section
   const scrollToConverter = () => {
-    const converterSection = document.getElementById('converter');
+    const converterSection = document.getElementById("converter")
     if (converterSection) {
-      converterSection.scrollIntoView({ behavior: 'smooth' });
+      converterSection.scrollIntoView({ behavior: "smooth" })
     }
-  };
+  }
 
   // Function to scroll to AI features section
   const scrollToAiFeatures = () => {
-    const aiSection = document.getElementById('ai-features');
+    const aiSection = document.getElementById("ai-features")
     if (aiSection) {
-      aiSection.scrollIntoView({ behavior: 'smooth' });
+      aiSection.scrollIntoView({ behavior: "smooth" })
     }
-  };
-  
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}

@@ -92,11 +92,7 @@ export default function AiFeatures() {
             </div>
             <div className="md:w-1/2">
               <div className="relative rounded-lg overflow-hidden">
-                <img
-                  src="/ai-heic-converter.jpg"
-                  alt="AI Image Enhancement Visualization"
-                  className="w-full h-auto"
-                />
+                <img src="/ai-heic-converter.jpg" alt="AI Image Enhancement Visualization" className="w-full h-auto" />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 pointer-events-none"></div>
               </div>
             </div>
@@ -106,4 +102,3 @@ export default function AiFeatures() {
     </section>
   )
 }
-

@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, DownloadCloud, Eye, Zap, Check, X, AlertCircle, Clock } from "lucide-react"
+import { Download, DownloadCloud, Check, X, AlertCircle, Clock, RefreshCw } from "lucide-react"
 import Image from "next/image"
-import { ConversionJob, getHeicConverterService } from "@/lib/services/heic-converter-service"
+import { type ConversionJob, getHeicConverterService } from "@/lib/services/heic-converter-service"
 import { useToast } from "@/components/ui/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import JSZip from 'jszip'
+import { PDFDocument } from 'pdf-lib'
 
 interface OutputGalleryProps {
   files: File[]
@@ -17,280 +19,420 @@ interface OutputGalleryProps {
 }
 
 // Add import for API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 // Helper function to get a filename with the correct extension
 function getOutputFilename(originalName: string, format: string): string {
   // Get the filename without extension
-  const baseName = originalName.replace(/\.[^/.]+$/, "");
-  
+  const baseName = originalName.replace(/\.[^/.]+$/, "")
+
   // Return with the new extension
-  return `${baseName}.${format}`;
+  return `${baseName}.${format}`
 }
 
 export default function OutputGallery({ files, settings, onReset, job, jobId }: OutputGalleryProps) {
   const [isDownloading, setIsDownloading] = useState(false)
   const [previewImage, setPreviewImage] = useState<any>(null)
   const { toast } = useToast()
-  const converterService = getHeicConverterService(); // Get the service instance
-  const token = localStorage.getItem('userId') || 'anonymous'; // Use userId as token
+  const converterService = getHeicConverterService() // Get the service instance
+  const token = localStorage.getItem("userId") || "anonymous" // Use userId as token
+
+  // Add debug logging
+  console.log("OutputGallery received job:", job ? {
+    status: job.status,
+    filesCount: job.files?.length || 0,
+    filesSample: job.files?.slice(0, 2).map(f => ({
+      status: f.status,
+      hasConvertedPath: 'convertedPath' in f ? !!f.convertedPath : false,
+      hasUrl: 'url' in f ? !!f.url : false,
+      hasThumbnail: 'thumbnailUrl' in f ? !!f.thumbnailUrl : false
+    }))
+  } : 'no job')
 
   // Add logic to show images even if job failed but some files were converted
   const hasConvertedFiles = useMemo(() => {
-    if (!job?.files) return false;
-    return job.files.some(file => file.status === 'completed' && file.convertedPath);
-  }, [job]);
+    if (!job?.files) return false
+    return job.files.some((file) => file.status === "completed" && (file.convertedPath || file.url))
+  }, [job])
+
+  // Debug log the result of hasConvertedFiles check
+  console.log("hasConvertedFiles:", hasConvertedFiles)
 
   // If the job failed but we have converted files, make sure to display them
-  const showGallery = job?.status === 'completed' || hasConvertedFiles;
+  const showGallery = job?.status === "completed" || hasConvertedFiles
 
   // Filter to only show successfully converted files
   const successfulFiles = useMemo(() => {
-    return job?.files?.filter(file => file.status === 'completed' && file.convertedPath) || [];
-  }, [job]);
+    const filtered = job?.files?.filter((file) => file.status === "completed" && (file.convertedPath || file.url)) || []
+    console.log("successfulFiles count:", filtered.length)
+    return filtered
+  }, [job])
 
   // Count stats
-  const totalFiles = files.length;
-  const successCount = successfulFiles.length;
-  const failedCount = job?.files?.filter(file => file.status === 'failed').length || 0;
-  
+  const totalFiles = files.length
+  const successCount = successfulFiles.length
+  const failedCount = job?.files?.filter((file) => file.status === "failed").length || 0
+  const pendingCount = job?.files?.filter((file) => file.status === "pending" || file.status === "processing").length || 0
+
   // Determine status message based on conversion statistics
   const getStatusMessage = () => {
     if (successCount === 0 && failedCount === 0) {
-      return "Waiting for files to be processed...";
+      return "Waiting for files to be processed..."
     } else if (successCount === totalFiles) {
-      return `All ${totalFiles} files successfully converted to ${settings.outputFormat.toUpperCase()}`;
+      return `All ${totalFiles} files successfully converted to ${settings.outputFormat.toUpperCase()}`
     } else if (successCount > 0) {
-      return `${successCount} of ${totalFiles} files successfully converted. ${failedCount} files failed.`;
+      return `${successCount} of ${totalFiles} files successfully converted. ${failedCount} files failed.`
     } else {
-      return "No files were successfully converted.";
+      return "No files were successfully converted."
     }
-  };
+  }
 
   // Use actual converted files from the job if available, otherwise fall back to placeholders
-  const isPdfFormat = settings.outputFormat === 'pdf';
-  const convertedImages = job?.files?.map((file: any, index) => {
-    console.log('Processing file:', file); // Debug log
+  const isPdfFormat = settings.outputFormat === "pdf"
+  const convertedImages =
+    job?.files?.map((file: any, index) => {
+      console.log("Processing file:", file) // Debug log
 
-    // Extract necessary information from the file object with fallbacks
-    let originalName = '';
-    if (file && typeof file === 'object' && 'originalName' in file) {
-      originalName = file.originalName;
-    } else if (file && typeof file === 'object' && 'name' in file && typeof file.name === 'string') {
-      originalName = file.name;
-    } else {
-      originalName = files[index]?.name || `File ${index+1}`;
-    }
-    
-    // Get converted name with fallbacks
-    let convertedName = '';
-    if ('convertedName' in file && file.convertedName) {
-      convertedName = file.convertedName;
-    } else {
-      convertedName = originalName.replace(/\.[^/.]+$/, `.${settings.outputFormat}`);
-    }
-    
-    // Get thumbnail URL
-    let thumbnailUrl = '';
-    if ('thumbnailUrl' in file && file.thumbnailUrl) {
-      thumbnailUrl = file.thumbnailUrl;
-      
-      // Fix relative URLs that don't start with http
-      if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
-        // If it includes 'temp/' and '/converted/', clean it up
-        if (thumbnailUrl.includes('temp/') && thumbnailUrl.includes('/converted/')) {
-          thumbnailUrl = thumbnailUrl.substring(thumbnailUrl.indexOf('/converted/') + 1);
-        }
-        
-        // Ensure it has the API base URL
-        thumbnailUrl = `${API_BASE_URL}/api/files/${thumbnailUrl}?token=user_${token}`;
+      // Extract necessary information from the file object with fallbacks
+      let originalName = ""
+      if (file && typeof file === "object" && "originalName" in file) {
+        originalName = file.originalName
+      } else if (file && typeof file === "object" && "name" in file && typeof file.name === "string") {
+        originalName = file.name
+      } else {
+        originalName = files[index]?.name || `File ${index + 1}`
       }
-    }
-    
-    // Status with fallbacks
-    const status = file.status || 'processing';
-    
-    // Extract just the filename part without path or extension
-    const fileBaseName = originalName.split('/').pop()?.split('.')[0] || '';
-    console.log('Extracted base name:', fileBaseName);
-    
-    // Construct URLs for display and download
-    let displayUrl, downloadUrl;
-    
-    // For display URL (thumbnail) with authentication token
-    if (jobId && status === 'completed') {
-      // First try to use the thumbnailUrl from the file if available
-      if (thumbnailUrl) {
-        // Ensure we're using .jpg extension for thumbnails
-        if (thumbnailUrl.includes('.pdf')) {
-          thumbnailUrl = thumbnailUrl.replace('.pdf', '.jpg');
+
+      // Get converted name with fallbacks
+      let convertedName = ""
+      if ("convertedName" in file && file.convertedName) {
+        convertedName = file.convertedName
+      } else {
+        convertedName = originalName.replace(/\.[^/.]+$/, `.${settings.outputFormat}`)
+      }
+
+      // Get thumbnail URL
+      let thumbnailUrl = ""
+      if ("thumbnailUrl" in file && file.thumbnailUrl) {
+        thumbnailUrl = file.thumbnailUrl
+
+        // Fix relative URLs that don't start with http
+        if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+          // If it includes 'temp/' and '/converted/', clean it up
+          if (thumbnailUrl.includes("temp/") && thumbnailUrl.includes("/converted/")) {
+            thumbnailUrl = thumbnailUrl.substring(thumbnailUrl.indexOf("/converted/") + 1)
+          }
+
+          // Ensure it has the API base URL
+          thumbnailUrl = `${API_BASE_URL}/api/files/${thumbnailUrl}?token=user_${token}`
         }
-        displayUrl = thumbnailUrl;
-        console.log('Using thumbnailUrl from file:', displayUrl);
-      } else if (file.convertedPath) {
-        // If no thumbnailUrl but we have convertedPath, construct a thumbnail URL
-        try {
-          // Fix relative URLs first
-          let convertedPath = file.convertedPath;
-          if (!convertedPath.startsWith('http')) {
-            convertedPath = `${API_BASE_URL}/api/files/${convertedPath}?token=user_${token}`;
+      }
+
+      // Status with fallbacks
+      const status = file.status || "processing"
+
+      // Extract just the filename part without path or extension
+      const fileBaseName = originalName.split("/").pop()?.split(".")[0] || ""
+      console.log("Extracted base name:", fileBaseName)
+
+      // Construct URLs for display and download
+      let displayUrl, downloadUrl
+
+      // For display URL (thumbnail) with authentication token
+      if (jobId && status === "completed") {
+        // First try to use the thumbnailUrl from the file if available
+        if (thumbnailUrl) {
+          // Ensure we're using .jpg extension for thumbnails
+          if (thumbnailUrl.includes(".pdf")) {
+            thumbnailUrl = thumbnailUrl.replace(".pdf", ".jpg")
           }
-          
-          const url = new URL(convertedPath);
-          const pathParts = url.pathname.split('/');
-          const filename = pathParts[pathParts.length - 1];
-          
-          // Create a thumbnail URL based on the converted path
-          // Replace the last part of the path with thumbnails/filename
-          // Always use .jpg extension for thumbnails regardless of the output format
-          let thumbnailFilename = filename;
-          if (thumbnailFilename.endsWith('.pdf')) {
-            thumbnailFilename = thumbnailFilename.replace('.pdf', '.jpg');
+          displayUrl = thumbnailUrl
+          console.log("Using thumbnailUrl from file:", displayUrl)
+        } else if (file.convertedPath) {
+          // If no thumbnailUrl but we have convertedPath, construct a thumbnail URL
+          try {
+            // Fix relative URLs first
+            let convertedPath = file.convertedPath
+            if (!convertedPath.startsWith("http")) {
+              convertedPath = `${API_BASE_URL}/api/files/${convertedPath}?token=user_${token}`
+            }
+
+            const url = new URL(convertedPath)
+            const pathParts = url.pathname.split("/")
+            const filename = pathParts[pathParts.length - 1]
+
+            // Create a thumbnail URL based on the converted path
+            // Replace the last part of the path with thumbnails/filename
+            // Always use .jpg extension for thumbnails regardless of the output format
+            let thumbnailFilename = filename
+            if (thumbnailFilename.endsWith(".pdf")) {
+              thumbnailFilename = thumbnailFilename.replace(".pdf", ".jpg")
+            }
+
+            const thumbnailPath = url.pathname.replace(/\/[^/]+$/, `/thumbnails/${thumbnailFilename}`)
+
+            // Create a new URL for the thumbnail
+            displayUrl = url.origin + thumbnailPath
+
+            // Copy the token from the converted path
+            if (url.searchParams.has("token")) {
+              displayUrl += `?token=${url.searchParams.get("token")}`
+            } else {
+              displayUrl += `?token=user_${token}`
+            }
+
+            console.log("Constructed thumbnail URL from convertedPath:", displayUrl)
+          } catch (error) {
+            console.error("Error constructing thumbnail URL:", error)
+            // Fallback to placeholder
+            displayUrl = "/placeholder.svg?height=200&width=300"
           }
-          
-          const thumbnailPath = url.pathname.replace(/\/[^\/]+$/, `/thumbnails/${thumbnailFilename}`);
-          
-          // Create a new URL for the thumbnail
-          displayUrl = url.origin + thumbnailPath;
-          
-          // Copy the token from the converted path
-          if (url.searchParams.has('token')) {
-            displayUrl += `?token=${url.searchParams.get('token')}`;
-          } else {
-            displayUrl += `?token=user_${token}`;
-          }
-          
-          console.log('Constructed thumbnail URL from convertedPath:', displayUrl);
-        } catch (error) {
-          console.error('Error constructing thumbnail URL:', error);
-          // Fallback to placeholder
-          displayUrl = "/placeholder.svg?height=200&width=300";
+        } else {
+          // Fallback to constructing from jobId and convertedName
+          const thumbnailBase = convertedName.split(".")[0]
+          // Always use .jpg extension for thumbnails
+          const thumbnailExt = "jpg"
+          displayUrl = `${API_BASE_URL}/api/files/uploads/converted/${jobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`
+          console.log("Constructed thumbnail URL with auth:", displayUrl)
         }
       } else {
-        // Fallback to constructing from jobId and convertedName
-        const thumbnailBase = convertedName.split('.')[0];
-        // Always use .jpg extension for thumbnails
-        const thumbnailExt = 'jpg';
-        displayUrl = `${API_BASE_URL}/api/files/uploads/converted/${jobId}/thumbnails/${thumbnailBase}.${thumbnailExt}?token=user_${token}`;
-        console.log('Constructed thumbnail URL with auth:', displayUrl);
+        // Fallback to placeholder
+        displayUrl = "/placeholder.svg?height=200&width=300"
       }
-    } else {
-      // Fallback to placeholder
-      displayUrl = "/placeholder.svg?height=200&width=300";
-    }
-    
-    // For download URL with authentication token (without /thumbnails path)
-    if (jobId && status === 'completed') {
-      // First try to use the convertedPath from the file if available
-      if (file.convertedPath) {
-        downloadUrl = file.convertedPath;
-        console.log('Using convertedPath from file:', downloadUrl);
+
+      // For download URL with authentication token (without /thumbnails path)
+      if (jobId && status === "completed") {
+        // First try to use the convertedPath from the file if available
+        if (file.convertedPath) {
+          downloadUrl = file.convertedPath
+          console.log("Using convertedPath from file:", downloadUrl)
+        } else {
+          // Construct download URL from jobId and convertedName with token
+          downloadUrl = `${API_BASE_URL}/api/files/converted/${jobId}/${convertedName}?token=user_${token}`
+          console.log("Constructed download URL with auth:", downloadUrl)
+        }
       } else {
-        // Construct download URL from jobId and convertedName with token
-        downloadUrl = `${API_BASE_URL}/api/files/converted/${jobId}/${convertedName}?token=user_${token}`;
-        console.log('Constructed download URL with auth:', downloadUrl);
+        downloadUrl = null
       }
-    } else {
-      downloadUrl = null;
-    }
-    
-    return {
+
+      return {
+        id: index + 1,
+        name: convertedName || originalName.replace(".heic", `.${settings.outputFormat}`),
+        size: file.size ? (file.size / 1024 / 1024).toFixed(2) + " MB" : "Unknown",
+        url: displayUrl,
+        downloadUrl: downloadUrl,
+        originalName: originalName,
+        status: status,
+        error: file.error || undefined,
+        convertedPath: file.convertedPath || null,
+        thumbnailUrl: thumbnailUrl || null,
+      }
+    }) ||
+    // Fallback to local files
+    files.map((file, index) => ({
       id: index + 1,
-      name: convertedName || originalName.replace(".heic", `.${settings.outputFormat}`),
-      size: file.size ? (file.size / 1024 / 1024).toFixed(2) + " MB" : "Unknown",
-      url: displayUrl,
-      downloadUrl: downloadUrl,
-      originalName: originalName,
-      status: status,
-      error: file.error || undefined,
-      convertedPath: file.convertedPath || null,
-      thumbnailUrl: thumbnailUrl || null,
-    };
-  }) || 
-  // Fallback to local files
-  files.map((file, index) => ({
-    id: index + 1,
-    name: file.name.replace(".heic", `.${settings.outputFormat}`),
-    size: ((file.size / 1024 / 1024) * 0.7).toFixed(2) + " MB",
-    url: "/placeholder.svg?height=200&width=300",
-    downloadUrl: null,
-    originalName: file.name,
-    status: "pending",
-    error: undefined,
-    convertedPath: null,
-    thumbnailUrl: null,
-  }))
-  
+      name: file.name.replace(".heic", `.${settings.outputFormat}`),
+      size: ((file.size / 1024 / 1024) * 0.7).toFixed(2) + " MB",
+      url: "/placeholder.svg?height=200&width=300",
+      downloadUrl: null,
+      originalName: file.name,
+      status: "pending",
+      error: undefined,
+      convertedPath: null,
+      thumbnailUrl: null,
+    }))
+
   // Helper function to format file size
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+    if (bytes === 0) return "0 B"
+    const k = 1024
+    const sizes = ["B", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
 
   // View image in a new tab
   const handleViewImage = (url: string) => {
-    if (!url) return;
-    window.open(url, '_blank');
-  };
+    if (!url) return
+    window.open(url, "_blank")
+  }
 
   // Download a single file
   const handleDownload = (url: string, fileName: string) => {
-    if (!url) return;
-    setIsDownloading(true);
+    if (!url) return
+    setIsDownloading(true)
+
+    // Get the file extension to determine how to handle it
+    const fileExtension = fileName.split('.').pop()?.toLowerCase() || ''
+    const isPdf = fileExtension === 'pdf'
     
+    console.log(`Downloading file: ${fileName}, isPdf: ${isPdf}, URL: ${url}`)
+
+    // Special handling for blob URLs (browser mode)
+    if (url.startsWith('blob:')) {
+      try {
+        // For blob URLs, we can use them directly with correct MIME type
+        // Create download link
+        const link = document.createElement("a")
+        link.href = url
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        toast({
+          title: "Download Complete",
+          description: `${fileName} has been downloaded`,
+        })
+        setIsDownloading(false)
+      } catch (error) {
+        console.error("Error downloading blob:", error)
+        toast({
+          title: "Download Failed",
+          description: "Failed to download from blob URL. Please try again.",
+          variant: "destructive",
+        })
+        setIsDownloading(false)
+      }
+      return
+    }
+
+    // For non-blob URLs, use fetch
     fetch(url)
-      .then(response => response.blob())
-      .then(blob => {
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-        URL.revokeObjectURL(link.href);
-        setIsDownloading(false);
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`)
+        }
+        return response.blob()
       })
-      .catch(error => {
-        console.error('Error downloading file:', error);
-        setIsDownloading(false);
-      });
-  };
-  
+      .then((blob) => {
+        // Set correct MIME type for PDFs
+        const fileBlob = isPdf 
+          ? new Blob([blob], { type: 'application/pdf' })
+          : blob
+
+        // Create download link
+        const link = document.createElement("a")
+        link.href = URL.createObjectURL(fileBlob)
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up object URL
+        setTimeout(() => URL.revokeObjectURL(link.href), 100)
+        
+        toast({
+          title: "Download Complete",
+          description: `${fileName} has been downloaded`,
+        })
+        
+        setIsDownloading(false)
+      })
+      .catch((error) => {
+        console.error("Error downloading file:", error)
+        toast({
+          title: "Download Failed",
+          description: `Failed to download: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        })
+        setIsDownloading(false)
+      })
+  }
+
   // Handle downloading all files as a ZIP
   const handleDownloadAll = async () => {
-    if (!jobId) {
+    // For server-side conversions that have a jobId, use the server API to get the ZIP
+    if (jobId) {
+      try {
+        setIsDownloading(true)
+
+        // Create and use direct download link with token
+        const zipUrl = `${API_BASE_URL}/api/files/download-zip/${jobId}?token=user_${token}`
+        const link = document.createElement("a")
+        link.href = zipUrl
+        link.download = `converted-files-${jobId}.zip`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        toast({
+          title: "Download Complete",
+          description: "All files have been downloaded as a ZIP",
+        })
+      } catch (error) {
+        toast({
+          title: "Download Failed",
+          description: "An error occurred during download",
+          variant: "destructive",
+        })
+        console.error("Download error:", error)
+      } finally {
+        setIsDownloading(false)
+      }
+      return
+    }
+
+    // For browser-side conversions (no jobId), create ZIP client-side
+    if (!job?.files) {
       toast({
         title: "Download Failed",
-        description: "Job ID not available",
-        variant: "destructive"
+        description: "No files available to download",
+        variant: "destructive",
       })
       return
     }
-    
+
     try {
       setIsDownloading(true)
       
-      // Create and use direct download link with token
-      const zipUrl = `${API_BASE_URL}/api/files/download-zip/${jobId}?token=user_${token}`;
-      const link = document.createElement('a');
-      link.href = zipUrl;
-      link.download = `converted-files-${jobId}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Create a new ZIP file
+      const zip = new JSZip()
+      const completedFiles = job.files.filter(file => file.status === "completed" && (file.url || file.convertedPath))
+      
+      // Add each file to the ZIP
+      for (const file of completedFiles) {
+        const url = file.url || file.convertedPath
+        if (!url) continue
+        
+        // Get the file name
+        const fileName = file.convertedName || 
+                         file.originalName?.replace(/\.(heic|heif)$/i, `.${settings.outputFormat}`) || 
+                         `file-${completedFiles.indexOf(file)}.${settings.outputFormat}`
+        
+        try {
+          // Fetch the blob from the URL
+          const response = await fetch(url)
+          const blob = await response.blob()
+          zip.file(fileName, blob)
+        } catch (fetchError) {
+          console.error(`Error adding file ${fileName} to ZIP:`, fetchError)
+        }
+      }
+
+      // Generate the ZIP file
+      const zipBlob = await zip.generateAsync({type: 'blob'})
+      
+      // Create a download link for the ZIP
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(zipBlob)
+      link.download = `converted-files-${Date.now()}.zip`
+      link.click()
+      
+      // Clean up
+      setTimeout(() => URL.revokeObjectURL(link.href), 100)
       
       toast({
         title: "Download Complete",
-        description: "All files have been downloaded as a ZIP"
+        description: "All files have been downloaded as a ZIP",
       })
     } catch (error) {
+      console.error("Error creating ZIP file:", error)
       toast({
         title: "Download Failed",
-        description: "An error occurred during download",
-        variant: "destructive"
+        description: "An error occurred while creating the ZIP file",
+        variant: "destructive",
       })
-      console.error("Download error:", error)
     } finally {
       setIsDownloading(false)
     }
@@ -298,41 +440,136 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
 
   // Handle downloading combined PDF
   const handleDownloadCombinedPdf = async () => {
-    if (!jobId) {
+    if (!job?.files) {
       toast({
         title: "Download Failed",
-        description: "Job ID not available",
-        variant: "destructive"
+        description: "No files available to combine",
+        variant: "destructive",
       })
       return
     }
-    
+
     try {
       setIsDownloading(true)
-      
-      // Use the new dedicated endpoint for combined PDF
-      const pdfUrl = `${API_BASE_URL}/api/files/download-combined-pdf/${jobId}?token=user_${token}`;
-      console.log("Attempting to download combined PDF from:", pdfUrl);
-      
-      // Create direct download link
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = 'combined.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+
+      if (jobId) {
+        // Server-side conversion - use the API endpoint
+        const pdfUrl = `${API_BASE_URL}/api/files/download-combined-pdf/${jobId}?token=user_${token}`
+        console.log("Attempting to download combined PDF from API:", pdfUrl)
+
+        // Use fetch to handle the download properly
+        const response = await fetch(pdfUrl)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to download combined PDF: ${response.status} ${response.statusText}`)
+        }
+        
+        const pdfBlob = await response.blob()
+        
+        // Create a new blob with the correct MIME type
+        const fileBlob = new Blob([pdfBlob], { type: 'application/pdf' })
+        
+        // Create download link
+        const link = document.createElement("a")
+        link.href = URL.createObjectURL(fileBlob)
+        link.download = "combined.pdf"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up object URL
+        setTimeout(() => URL.revokeObjectURL(link.href), 100)
+      } else {
+        // Browser-side conversion - combine PDFs locally
+        console.log("Combining PDFs in browser mode")
+        
+        // Get all successful PDF files
+        const pdfFiles = job.files
+          .filter(file => file.status === "completed" && 
+                  (file.convertedName?.toLowerCase().endsWith('.pdf') || 
+                   file.url?.toLowerCase().includes('.pdf')))
+
+        if (pdfFiles.length === 0) {
+          throw new Error("No PDF files found to combine")
+        }
+
+        console.log(`Found ${pdfFiles.length} PDF files to combine`)
+
+        // Get blobs for all PDFs
+        const pdfBlobs: Blob[] = []
+        const pdfNames: string[] = []
+
+        for (const file of pdfFiles) {
+          const url = file.convertedPath || file.url
+          if (!url) continue
+
+          try {
+            const response = await fetch(url)
+            if (!response.ok) {
+              console.error(`Failed to fetch PDF at ${url}: ${response.status}`)
+              continue
+            }
+            const blob = await response.blob()
+            pdfBlobs.push(blob)
+            pdfNames.push(file.convertedName || `file-${pdfBlobs.length}.pdf`)
+          } catch (error) {
+            console.error(`Error fetching PDF: ${error}`)
+          }
+        }
+
+        if (pdfBlobs.length === 0) {
+          throw new Error("Failed to fetch any PDF files")
+        }
+
+        // Create merged PDF
+        const mergedPdf = await PDFDocument.create()
+        
+        // Sort by name
+        const sortedBlobsAndNames = pdfBlobs
+          .map((blob, index) => ({ blob, name: pdfNames[index] }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        
+        console.log(`Combining PDFs in order: ${sortedBlobsAndNames.map(item => item.name).join(', ')}`)
+        
+        // Combine PDFs
+        for (const { blob, name } of sortedBlobsAndNames) {
+          try {
+            const arrayBuffer = await blob.arrayBuffer()
+            const pdf = await PDFDocument.load(arrayBuffer)
+            const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+            pages.forEach(page => mergedPdf.addPage(page))
+          } catch (error) {
+            console.error(`Error processing PDF ${name}:`, error)
+          }
+        }
+        
+        // Save combined PDF
+        const pdfBytes = await mergedPdf.save()
+        const combinedPdfBlob = new Blob([pdfBytes], { type: 'application/pdf' })
+        
+        // Create download link
+        const link = document.createElement("a")
+        link.href = URL.createObjectURL(combinedPdfBlob)
+        link.download = "combined.pdf"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(link.href), 100)
+      }
+
       toast({
         title: "Download Complete",
-        description: "Combined PDF has been downloaded"
+        description: "Combined PDF has been downloaded",
       })
     } catch (error) {
+      console.error("Download error:", error)
       toast({
         title: "Download Failed",
-        description: "An error occurred during download",
-        variant: "destructive"
+        description: `An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
       })
-      console.error("Download error:", error)
     } finally {
       setIsDownloading(false)
     }
@@ -343,28 +580,39 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
     if (job && job.files && job.files.length > 0) {
       // The component will use the job.files data automatically through the
       // convertedImages variable defined in the component
-      console.log(`Output gallery refreshed with ${job.files.length} files`);
-      
+      console.log(`Output gallery refreshed with ${job.files.length} files`)
+
       // Filter to show just completed files
-      const completedCount = job.files.filter(file => file.status === 'completed').length;
-      console.log(`Completed files: ${completedCount}`);
+      const completedCount = job.files.filter((file) => file.status === "completed").length
+      console.log(`Completed files: ${completedCount}`)
     }
-  }, [job]);
+  }, [job])
 
   return (
     <div className="space-y-8">
-      <h3 className="text-2xl font-bold text-center">Conversion Complete</h3>
-      
+      <h3 className="text-2xl font-bold text-center">
+        {successCount > 0 ? "Conversion Complete" : 
+         pendingCount > 0 ? "Converting Files..." : 
+         "Waiting for Files"}
+      </h3>
+
       {/* Add status message display */}
       <div className="text-center mb-6">
-        <div className={`text-sm px-4 py-2 rounded-full inline-flex items-center ${
-          successCount === totalFiles ? 'bg-green-100 text-green-800' : 
-          successCount > 0 ? 'bg-yellow-100 text-yellow-800' : 
-          'bg-red-100 text-red-800'
-        }`}>
+        <div
+          className={`text-sm px-4 py-2 rounded-full inline-flex items-center ${
+            successCount === totalFiles
+              ? "bg-green-100 text-green-800"
+              : successCount > 0
+                ? "bg-yellow-100 text-yellow-800"
+                : pendingCount > 0
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-red-100 text-red-800"
+          }`}
+        >
           {successCount === totalFiles && <Check className="w-4 h-4 mr-2" />}
           {successCount > 0 && successCount < totalFiles && <AlertCircle className="w-4 h-4 mr-2" />}
-          {successCount === 0 && <X className="w-4 h-4 mr-2" />}
+          {pendingCount > 0 && <Clock className="w-4 h-4 mr-2 animate-spin" />}
+          {successCount === 0 && pendingCount === 0 && <X className="w-4 h-4 mr-2" />}
           {getStatusMessage()}
         </div>
       </div>
@@ -373,13 +621,14 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
         {successfulFiles.length > 0 ? (
           successfulFiles.map((file, index) => {
             // Get display URL
-            let displayUrl = file.thumbnailUrl || file.convertedPath || '';
-            let downloadUrl = file.convertedPath || '';
-            
+            const displayUrl = file.thumbnailUrl || file.convertedPath || file.url || ""
+            const downloadUrl = file.convertedPath || file.url || ""
+
             // Extract the original file name
-            const originalName = file.originalName || `file-${index + 1}.${settings.outputFormat}`;
-            const convertedName = file.convertedName || originalName.replace(/\.(heic|heif)$/i, `.${settings.outputFormat}`);
-            
+            const originalName = file.originalName || `file-${index + 1}.${settings.outputFormat}`
+            const convertedName =
+              file.convertedName || originalName.replace(/\.(heic|heif)$/i, `.${settings.outputFormat}`)
+
             return (
               <div
                 key={index}
@@ -393,26 +642,26 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                     className="w-full h-full object-contain"
                     onError={(e) => {
                       // Log the error for debugging
-                      console.error(`Error loading thumbnail: ${displayUrl}`);
-                      
+                      console.error(`Error loading thumbnail: ${displayUrl}`)
+
                       // Try alternative thumbnail URL formats
-                      const target = e.target as HTMLImageElement;
-                      
-                      if (displayUrl.includes('.jpg')) {
+                      const target = e.target as HTMLImageElement
+
+                      if (displayUrl.includes(".jpg")) {
                         // Try with PDF extension instead
-                        const pdfUrl = displayUrl.replace('.jpg', '.pdf');
-                        console.log('Trying alternative PDF URL:', pdfUrl);
-                        target.src = pdfUrl;
-                        
+                        const pdfUrl = displayUrl.replace(".jpg", ".pdf")
+                        console.log("Trying alternative PDF URL:", pdfUrl)
+                        target.src = pdfUrl
+
                         // Add another error handler for the fallback
                         target.onerror = () => {
-                          console.error(`Fallback URL also failed: ${pdfUrl}`);
-                          target.src = "/placeholder.svg?height=200&width=300";
-                          target.onerror = null; // Prevent infinite error handling
-                        };
+                          console.error(`Fallback URL also failed: ${pdfUrl}`)
+                          target.src = "/placeholder.svg?height=200&width=300"
+                          target.onerror = null // Prevent infinite error handling
+                        }
                       } else {
                         // Fall back to placeholder if image fails to load
-                        target.src = "/placeholder.svg?height=200&width=300";
+                        target.src = "/placeholder.svg?height=200&width=300"
                       }
                     }}
                   />
@@ -425,9 +674,9 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                     <Button
                       size="sm"
                       variant="default"
-                      onClick={() => handleDownload(file.convertedPath || '', convertedName)}
+                      onClick={() => handleDownload(file.convertedPath || file.url || "", convertedName)}
                       className="flex-1"
-                      disabled={!file.convertedPath}
+                      disabled={!file.convertedPath && !file.url}
                     >
                       <Download className="h-4 w-4 mr-1" />
                       Download
@@ -435,18 +684,24 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                   </div>
                 </div>
               </div>
-            );
+            )
           })
         ) : (
           <div className="col-span-full text-center py-12">
             <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Clock className="h-6 w-6 text-gray-400" />
+              {pendingCount > 0 ? (
+                <RefreshCw className="h-6 w-6 text-blue-400 animate-spin" />
+              ) : (
+                <Clock className="h-6 w-6 text-gray-400" />
+              )}
             </div>
             <h3 className="text-lg font-medium text-gray-700">No Converted Files Yet</h3>
             <p className="text-gray-500 mt-1">
-              {job?.status === 'failed' ? 
-                'Conversion failed. Please try again or check your files.' : 
-                'Your files are still processing. Please wait...'}
+              {pendingCount > 0 
+                ? `Converting ${pendingCount} files... Please wait.`
+                : job?.status === "failed"
+                  ? "Conversion failed. Please try again or check your files."
+                  : "Your files are still processing. Please wait..."}
             </p>
           </div>
         )}
@@ -458,11 +713,11 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
             <Button variant="outline" onClick={onReset}>
               Convert More Files
             </Button>
-            {(isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1) ? (
-              <Button 
-                variant="default" 
+            {isPdfFormat && job && job.files && Array.isArray(job.files) && job.files.length > 1 && successCount > 0 ? (
+              <Button
+                variant="default"
                 onClick={handleDownloadCombinedPdf}
-                disabled={isDownloading || !job || successCount === 0}
+                disabled={isDownloading || successCount === 0}
               >
                 {isDownloading ? (
                   <>
@@ -477,8 +732,8 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
                 )}
               </Button>
             ) : (
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 onClick={handleDownloadAll}
                 disabled={isDownloading || !job || successCount === 0}
               >
@@ -513,30 +768,30 @@ export default function OutputGallery({ files, settings, onReset, job, jobId }: 
               Original: {previewImage?.originalName} • Size: {previewImage?.size}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="relative w-full h-[60vh] border rounded-lg overflow-hidden bg-gray-900 flex items-center justify-center">
             {previewImage && (
               <a href={previewImage.downloadUrl} target="_blank" rel="noopener noreferrer" className="w-full h-full">
-                <Image 
-                  src={previewImage.url || "/placeholder.svg"} 
-                  alt={previewImage.name} 
+                <Image
+                  src={previewImage.url || "/placeholder.svg"}
+                  alt={previewImage.name}
                   fill
-                  className="object-contain" 
+                  className="object-contain"
                   onError={(e) => {
                     // Handle image load error by setting a placeholder
-                    console.error(`Error loading preview image: ${previewImage.url}`);
-                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                    console.error(`Error loading preview image: ${previewImage.url}`)
+                    ;(e.target as HTMLImageElement).src = "/placeholder.svg"
                   }}
                 />
               </a>
             )}
           </div>
-          
+
           <div className="flex justify-end space-x-2 mt-2">
-            <Button 
-              variant="default" 
-              onClick={() => previewImage && handleDownload(previewImage.downloadUrl || '', previewImage.name)}
-              disabled={isDownloading || !previewImage || previewImage.status !== 'completed'}
+            <Button
+              variant="default"
+              onClick={() => previewImage && handleDownload(previewImage.downloadUrl || "", previewImage.name)}
+              disabled={isDownloading || !previewImage || previewImage.status !== "completed"}
             >
               {isDownloading ? (
                 <>
