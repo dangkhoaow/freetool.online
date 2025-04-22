@@ -16,6 +16,9 @@ export interface WebLLMConfig {
   presencePenalty?: number;
   frequencyPenalty?: number;
   stopStrings?: string[];
+  contextWindowSize?: number;
+  slidingWindowSize?: number;
+  attentionSinkSize?: number;
 }
 
 export interface WebLLMModel {

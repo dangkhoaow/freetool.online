@@ -25,6 +25,8 @@ import {
   ChatCompletionFinishReason
 } from './types';
 
+import { encode } from 'gpt-tokenizer';
+
 interface WebLLMInstance {
   engine: any;
   modelId: string;
@@ -41,6 +43,13 @@ let cachedModelList: WebLLMModel[] = [];
 
 // Default model ID to use if none is specified
 export const DEFAULT_MODEL_ID = RECOMMENDED_MODELS[0]?.id || '';
+
+// List of available embedding models
+export const embeddingModels = [
+  "snowflake-arctic-embed",
+  "nomic-embed-text",
+  // Add other embedding models as they become available
+];
 
 // Check if WebGPU is supported
 export function isWebGPUSupported(): boolean {
@@ -194,12 +203,42 @@ export function setModelCustomUrl(url: string): void {
   lastModelCdnUrl = url;
 }
 
+/**
+ * Check if a model is an embedding model
+ */
+export function isEmbeddingModel(modelId: string): boolean {
+  return embeddingModels.includes(modelId);
+}
+
 // WebLLM Service class
 export class WebLLMService {
   private instance: WebLLMInstance;
+  private eventListeners: Record<string, Function[]> = {};
   
   constructor(instance: WebLLMInstance) {
     this.instance = instance;
+  }
+
+  // Add event listener support
+  on(event: string, callback: Function): void {
+    if (!this.eventListeners[event]) {
+      this.eventListeners[event] = [];
+    }
+    this.eventListeners[event].push(callback);
+  }
+
+  // Remove event listener
+  off(event: string, callback: Function): void {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
+    }
+  }
+
+  // Trigger event
+  private triggerEvent(event: string, ...args: any[]): void {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event].forEach(callback => callback(...args));
+    }
   }
 
   // Initialize the model if not already initialized
@@ -207,19 +246,124 @@ export class WebLLMService {
     if (this.instance.isInitialized) return;
     
     try {
+      // Build configuration with enhanced context window settings
+      const engineConfig: any = {
+        temperature: this.instance.config.temperature,
+        top_p: this.instance.config.topP,
+        max_gen_len: this.instance.config.maxGenerateTokens || this.instance.config.maxTokens
+      };
+      
+      // Check if this is an embedding model before applying sliding window
+      const modelIsForEmbedding = isEmbeddingModel(this.instance.modelId);
+      
+      // Only apply context window handling parameters for non-embedding models
+      if (!modelIsForEmbedding) {
+        // WebLLM only allows one of context_window_size or sliding_window_size to be positive
+        if (this.instance.config.slidingWindowSize && this.instance.config.slidingWindowSize > 0) {
+          // If using sliding window, set context window to -1
+          engineConfig.context_window_size = -1;
+          engineConfig.sliding_window_size = this.instance.config.slidingWindowSize;
+          
+          // Add a small attention sink size to improve quality with sliding windows
+          engineConfig.attention_sink_size = 4;
+        } else if (this.instance.config.contextWindowSize && this.instance.config.contextWindowSize > 0) {
+          // If using fixed context window, set sliding window to -1
+          engineConfig.context_window_size = this.instance.config.contextWindowSize;
+          engineConfig.sliding_window_size = -1;
+        }
+      }
+      
       // Configure and load the model
       await this.instance.engine.reload(
         this.instance.modelId, 
-        {
-          temperature: this.instance.config.temperature,
-          top_p: this.instance.config.topP,
-          max_gen_len: this.instance.config.maxGenerateTokens || this.instance.config.maxTokens
+        engineConfig,
+        (report: ModelInitProgress) => {
+          // Check if the progress is related to downloading
+          if (report.text.toLowerCase().includes('download')) {
+            this.triggerEvent('download', report.progress);
+          }
+          // Trigger the general progress event
+          this.triggerEvent('progress', report);
         }
       );
       
       this.instance.isInitialized = true;
+      this.triggerEvent('loaded', this.instance.modelId);
     } catch (error) {
       console.error('Failed to initialize WebLLM:', error);
+      this.triggerEvent('error', error);
+      throw error;
+    }
+  }
+
+  // Load the model explicitly (synonym for initialize with progress reporting)
+  async loadModel(modelId: string, statusCallback?: (status: string) => void): Promise<void> {
+    // If requested model is different from current, update it
+    if (this.instance.modelId !== modelId) {
+      this.instance.modelId = modelId;
+      this.instance.isInitialized = false;
+    }
+    
+    try {
+      // Track progress
+      const progressHandler = (report: ModelInitProgress) => {
+        if (statusCallback) {
+          statusCallback(report.text);
+        }
+        // Check if the progress is related to downloading
+        if (report.text.toLowerCase().includes('download')) {
+          this.triggerEvent('download', report.progress);
+        }
+      };
+      
+      // Set up progress tracking
+      this.instance.engine.setInitProgressCallback(progressHandler);
+      
+      // Build configuration with enhanced context window settings
+      const engineConfig: any = {
+        temperature: this.instance.config.temperature,
+        top_p: this.instance.config.topP,
+        max_gen_len: this.instance.config.maxGenerateTokens || this.instance.config.maxTokens
+      };
+      
+      // Check if this is an embedding model before applying sliding window
+      const modelIsForEmbedding = isEmbeddingModel(this.instance.modelId);
+      
+      // Only apply context window handling parameters for non-embedding models
+      if (!modelIsForEmbedding) {
+        // WebLLM only allows one of context_window_size or sliding_window_size to be positive
+        if (this.instance.config.slidingWindowSize && this.instance.config.slidingWindowSize > 0) {
+          // If using sliding window, set context window to -1
+          engineConfig.context_window_size = -1;
+          engineConfig.sliding_window_size = this.instance.config.slidingWindowSize;
+          
+          // Add a small attention sink size to improve quality with sliding windows
+          engineConfig.attention_sink_size = 4;
+        } else if (this.instance.config.contextWindowSize && this.instance.config.contextWindowSize > 0) {
+          // If using fixed context window, set sliding window to -1
+          engineConfig.context_window_size = this.instance.config.contextWindowSize;
+          engineConfig.sliding_window_size = -1;
+        }
+      }
+      
+      // Configure and load the model
+      await this.instance.engine.reload(
+        this.instance.modelId, 
+        engineConfig
+      );
+      
+      this.instance.isInitialized = true;
+      this.triggerEvent('loaded', this.instance.modelId);
+      
+      if (statusCallback) {
+        statusCallback('Model loaded successfully');
+      }
+    } catch (error: unknown) {
+      console.error('Failed to load WebLLM model:', error);
+      this.triggerEvent('error', error);
+      if (statusCallback) {
+        statusCallback(`Error loading model: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
       throw error;
     }
   }
@@ -242,7 +386,18 @@ export class WebLLMService {
   // Get the runtime stats (tokens/second, etc.)
   async getRuntimeStats(): Promise<string> {
     if (!this.instance.isInitialized) return '';
-    return await this.instance.engine.runtimeStatsText();
+    
+    // Check if this is an embedding model - these don't support chat stats
+    if (isEmbeddingModel(this.instance.modelId)) {
+      return 'Embedding model (stats not available)';
+    }
+    
+    try {
+      return await this.instance.engine.runtimeStatsText();
+    } catch (error) {
+      console.error("Error getting runtime stats:", error);
+      return '';
+    }
   }
 
   // Generate a response from the model
@@ -419,5 +574,64 @@ export class WebLLMService {
       await (this.instance.engine as any).clearCache();
     }
     this.instance.isInitialized = false;
+  }
+  
+  // Dispose of resources and clean up
+  async dispose(): Promise<void> {
+    try {
+      // Unload the model first if it's loaded
+      if (this.instance.isInitialized) {
+        await this.instance.engine.unload();
+      }
+      
+      // Clear event listeners
+      this.eventListeners = {};
+      
+      // Reset state
+      this.instance.isInitialized = false;
+      this.instance.isGenerating = false;
+      this.instance.abortController = null;
+      
+      // Return success
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error during WebLLM service disposal:", error);
+      return Promise.reject(error);
+    }
+  }
+  
+  // Alias for dispose for compatibility
+  async unload(): Promise<void> {
+    return this.dispose();
+  }
+
+  // Generate embeddings from text using an embedding model
+  async generateEmbeddings(text: string): Promise<number[] | null> {
+    if (!this.instance.isInitialized) {
+      await this.initialize();
+    }
+
+    if (!this.instance) {
+      throw new Error('WebLLM instance is not available');
+    }
+
+    if (!isEmbeddingModel(this.instance.modelId)) {
+      throw new Error('The current model is not an embedding model');
+    }
+
+    try {
+      const embeddingData = await this.instance.engine.embeddings.create({
+        input: text,
+        model: this.instance.modelId
+      });
+      
+      if (embeddingData && embeddingData.data && embeddingData.data.length > 0) {
+        return embeddingData.data[0].embedding;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error generating embeddings:', error);
+      throw error;
+    }
   }
 } 
