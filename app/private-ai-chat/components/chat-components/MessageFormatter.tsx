@@ -2,19 +2,22 @@
 
 import React from "react"
 import { CodeBlock } from "./CodeBlock"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 /**
- * Formats message content with support for code blocks and thinking/reasoning tags.
+ * Formats message content with support for code blocks, thinking/reasoning tags, and Markdown.
  * 
  * This formatter supports:
  * 1. Code blocks using triple backticks: ```language\ncode```
  * 2. Thinking/reasoning sections using <think>text</think> tags
+ * 3. Markdown formatting including headers, lists, tables, links, etc.
  *
  * The thinking tags are displayed in a highlighted box to visually separate them
  * from the regular content, making it easier to follow the AI's reasoning process.
  * 
  * @param content The message content to format
- * @returns Formatted React node with styled code blocks and thinking sections
+ * @returns Formatted React node with styled code blocks, thinking sections, and markdown formatting
  */
 export function formatMessageContent(content: string): React.ReactNode {
   // Process thinking tags first
@@ -49,11 +52,41 @@ export function formatMessageContent(content: string): React.ReactNode {
         return (
           <div key={i} className="bg-yellow-50 border-l-4 border-yellow-500 p-3 my-2 rounded">
             <div className="text-xs font-medium text-yellow-800 mb-1">Thinking/Reasoning:</div>
-            <p className="text-gray-700 whitespace-pre-wrap">{thinking}</p>
+            <div className="text-gray-700">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // @ts-ignore - ReactMarkdown types are incompatible
+                  p: ({children}: any) => <p className="whitespace-pre-wrap">{children}</p>
+                }}
+              >
+                {thinking}
+              </ReactMarkdown>
+            </div>
           </div>
         )
       } else {
-        return <p key={i} className="whitespace-pre-wrap">{part}</p>
+        // Render regular text with markdown
+        return (
+          <div key={i} className="markdown-content">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // @ts-ignore - ReactMarkdown types are incompatible
+                code: ({inline, className, children}: any) => {
+                  if (inline) {
+                    return <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">{children}</code>
+                  }
+                  return null; // Code blocks are already handled
+                },
+                // @ts-ignore - ReactMarkdown types are incompatible
+                p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
+              }}
+            >
+              {part}
+            </ReactMarkdown>
+          </div>
+        )
       }
     })
   }
@@ -74,25 +107,46 @@ export function formatMessageContent(content: string): React.ReactNode {
       
       // Add any text before this thinking block
       if (startIndex > currentIndex) {
-        textParts.push(processedContent.substring(currentIndex, startIndex))
+        const textContent = processedContent.substring(currentIndex, startIndex)
+        textParts.push(textContent)
       }
       
       // Extract the thinking content
       const thinking = match[1]
       
-      // Add the thinking block
-      result.push(
-        <p key={`text-${idx}`} className="whitespace-pre-wrap">
-          {textParts.join('')}
-        </p>
-      )
-      textParts.length = 0 // Clear text parts after adding
+      // Add the text before this thinking block with markdown support
+      if (textParts.length > 0) {
+        result.push(
+          <div key={`text-${idx}`}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // @ts-ignore - ReactMarkdown types are incompatible
+                p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
+              }}
+            >
+              {textParts.join('')}
+            </ReactMarkdown>
+          </div>
+        )
+        textParts.length = 0 // Clear text parts after adding
+      }
       
-      // Add the thinking section
+      // Add the thinking section with markdown support
       result.push(
         <div key={`thinking-${idx}`} className="bg-yellow-50 border-l-4 border-yellow-500 p-3 my-2 rounded">
           <div className="text-xs font-medium text-yellow-800 mb-1">Thinking/Reasoning:</div>
-          <p className="text-gray-700 whitespace-pre-wrap">{thinking}</p>
+          <div className="text-gray-700">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // @ts-ignore - ReactMarkdown types are incompatible
+                p: ({children}: any) => <p className="whitespace-pre-wrap">{children}</p>
+              }}
+            >
+              {thinking}
+            </ReactMarkdown>
+          </div>
         </div>
       )
       
@@ -102,16 +156,47 @@ export function formatMessageContent(content: string): React.ReactNode {
     
     // Add any remaining text after the last thinking block
     if (currentIndex < processedContent.length) {
+      const remainingText = processedContent.substring(currentIndex)
       result.push(
-        <p key="text-final" className="whitespace-pre-wrap">
-          {processedContent.substring(currentIndex)}
-        </p>
+        <div key="text-final">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // @ts-ignore - ReactMarkdown types are incompatible
+              p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
+            }}
+          >
+            {remainingText}
+          </ReactMarkdown>
+        </div>
       )
     }
     
     return result
   }
   
-  // If no code blocks or thinking tags, just return the text
-  return <p className="whitespace-pre-wrap">{content}</p>
+  // If no code blocks or thinking tags, use ReactMarkdown for standard markdown rendering
+  return (
+    <div className="markdown-content">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // @ts-ignore - ReactMarkdown types are incompatible
+          code: ({inline, className, children}: any) => {
+            if (inline) {
+              return <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">{children}</code>
+            }
+            // This shouldn't happen since code blocks were handled above, but just in case
+            const match = /language-(\w+)/.exec(className || '')
+            const lang = match ? match[1] : ''
+            return <CodeBlock code={String(children).replace(/\n$/, '')} language={lang} />
+          },
+          // @ts-ignore - ReactMarkdown types are incompatible
+          p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
 } 

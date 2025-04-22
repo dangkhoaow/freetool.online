@@ -3,7 +3,7 @@
 import React from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Loader2, Send, BrainCircuit } from "lucide-react"
+import { Loader2, Send, BrainCircuit, StopCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ChatInputProps {
@@ -12,6 +12,7 @@ interface ChatInputProps {
   isModelLoaded: boolean
   isGenerating: boolean
   handleSendMessage: (e: React.FormEvent) => Promise<void>
+  handleStopGeneration?: () => void // Optional stop generation function
 }
 
 export function ChatInput({ 
@@ -19,11 +20,27 @@ export function ChatInput({
   setUserInput, 
   isModelLoaded, 
   isGenerating, 
-  handleSendMessage 
+  handleSendMessage,
+  handleStopGeneration
 }: ChatInputProps) {
+  
+  // Handle form submission: either send message or stop generation
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // If generating and we have a stop function, call it
+    if (isGenerating && handleStopGeneration) {
+      handleStopGeneration();
+      return;
+    }
+    
+    // Otherwise send message as normal
+    handleSendMessage(e);
+  };
+  
   return (
     <div className="space-y-2">
-      <form onSubmit={handleSendMessage} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
@@ -31,17 +48,27 @@ export function ChatInput({
             !isModelLoaded
               ? "Load a model first..."
               : isGenerating
-              ? "Wait for response..."
+              ? "AI is generating a response..."
               : "Type your message..."
           }
-          disabled={!isModelLoaded || isGenerating}
+          disabled={!isModelLoaded}
           className="flex-grow shadow-sm focus-visible:ring-blue-500"
         />
-        <Button type="submit" disabled={!isModelLoaded || isGenerating || !userInput.trim()} className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          type="submit" 
+          disabled={!isModelLoaded || (!isGenerating && !userInput.trim())} 
+          className={isGenerating ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}
+        >
           {isGenerating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <>
+              <StopCircle className="h-4 w-4 mr-1" />
+              <span>Stop</span>
+            </>
           ) : (
-            <Send className="h-4 w-4" />
+            <>
+              <Send className="h-4 w-4 mr-1" />
+              <span>Send</span>
+            </>
           )}
         </Button>
       </form>

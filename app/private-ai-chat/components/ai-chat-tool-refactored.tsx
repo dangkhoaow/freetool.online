@@ -10,7 +10,7 @@ import { ChatInput } from "./chat-components/ChatInput"
 import { ChatFooter } from "./chat-components/ChatFooter"
 import { formatMessageContent } from "./chat-components/MessageFormatter"
 import { TokenLimitDialog } from "./chat-components/TokenLimitDialog"
-import { AlertCircle, Info } from "lucide-react"
+import { AlertCircle, Info, LoaderCircle } from "lucide-react"
 import { 
   Tooltip, 
   TooltipContent, 
@@ -147,6 +147,138 @@ const StatsDisplay = ({ stats }: { stats: string }) => {
   );
 };
 
+// Add Loading Overlay component for the entire chat area
+const LoadingOverlay = ({ status, progress }: { status: string, progress: number }) => {
+  return (
+    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+      <div className="flex flex-col items-center max-w-md text-center p-6 bg-white rounded-lg shadow-lg border">
+        <LoaderCircle className="h-10 w-10 text-blue-600 animate-spin mb-4" />
+        <h3 className="text-xl font-semibold mb-2">Loading AI Model</h3>
+        <p className="text-gray-600 mb-4">{status || "Please wait while the model is loading..."}</p>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
+          <div 
+            className="h-full bg-blue-600 transition-all duration-300"
+            style={{ width: `${progress || 0}%` }}
+          ></div>
+        </div>
+        <p className="text-sm text-gray-500">This may take a few minutes for larger models</p>
+      </div>
+    </div>
+  );
+};
+
+// Add a global style for markdown content
+const globalMarkdownStyles = `
+.markdown-content {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3, 
+.markdown-content h4, 
+.markdown-content h5, 
+.markdown-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-content h1 {
+  font-size: 1.75em;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+  margin-top: 0.5em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.markdown-content blockquote {
+  padding-left: 1em;
+  border-left: 3px solid #e5e7eb;
+  color: #6b7280;
+  font-style: italic;
+  margin: 1em 0;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  overflow-x: auto;
+  display: block;
+}
+
+.markdown-content th, 
+.markdown-content td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5em 1em;
+  text-align: left;
+}
+
+.markdown-content th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-content hr {
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5em 0;
+}
+
+.markdown-content pre {
+  background-color: #f3f4f6;
+  border-radius: 0.375rem;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-family: monospace;
+}
+
+.markdown-content code:not(pre code) {
+  background-color: #f3f4f6;
+  border-radius: 0.25rem;
+  padding: 0.1em 0.25em;
+  font-family: monospace;
+  font-size: 0.875em;
+}
+`;
+
 export default function AIChatTool() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
@@ -165,6 +297,8 @@ export default function AIChatTool() {
   const [tokenCount, setTokenCount] = useState(0)
   const [maxContextTokens, setMaxContextTokens] = useState(4096) // Default max tokens
   const [isTokenLimitDialogOpen, setIsTokenLimitDialogOpen] = useState(false)
+  // Add a reference to track if generation should be aborted
+  const abortGenerationRef = useRef<boolean>(false)
 
   // Get active chat
   const activeChat = chatSessions.find(chat => chat.id === activeChatId) || null
@@ -359,22 +493,79 @@ export default function AIChatTool() {
   
   // Set active chat
   const setActiveChat = (chatId: string) => {
-    setActiveChatId(chatId)
-    
-    // Set the model for this chat
-    const chat = chatSessions.find(c => c.id === chatId)
-    if (chat?.modelId) {
-      setSelectedModel(chat.modelId)
-      
-      // If the chat has isModelLoaded true but we don't have a service,
-      // we may need to reinitialize
-      if (chat.isModelLoaded && !webLLMServiceRef.current) {
-        console.log("Chat marked as having loaded model, but service not available");
-        // We'll lazy-load it when needed in handleSendMessage
+    try {
+      // If currently generating, stop the generation
+      if (isGenerating) {
+        // We're switching chats, so just abort the generation without UI updates
+        abortGenerationRef.current = true;
+        setIsGenerating(false);
+        console.log("Generation stopped by user (chat switch)");
       }
+      
+      // Reset generation state explicitly to avoid issues with the new chat
+      abortGenerationRef.current = false;
+      
+      // Switch to the new chat
+      setActiveChatId(chatId);
+      
+      // Set the model for this chat
+      const chat = chatSessions.find(c => c.id === chatId);
+      if (chat?.modelId) {
+        setSelectedModel(chat.modelId);
+        
+        // If the chat has isModelLoaded true but we don't have a service,
+        // we may need to reinitialize
+        if (chat.isModelLoaded && !webLLMServiceRef.current) {
+          console.log("Chat marked as having loaded model, but service not available");
+          // We'll lazy-load it when needed in handleSendMessage
+        }
+      }
+    } catch (error) {
+      console.error("Error switching chats:", error);
+      // Ensure generation state is reset even if there's an error
+      setIsGenerating(false);
+      abortGenerationRef.current = false;
     }
-  }
-  
+  };
+
+  // Function to stop generation
+  const stopGeneration = () => {
+    try {
+      if (!isGenerating) return;
+      
+      // Set the abort flag to true
+      abortGenerationRef.current = true;
+      
+      // Update UI state immediately
+      setIsGenerating(false);
+      
+      // Add a note to the partial response from the AI
+      if (activeChat) {
+        const messages = [...activeChat.messages];
+        const lastMessage = messages[messages.length - 1];
+        
+        // If the last message is from the assistant and has content, mark it as stopped
+        if (lastMessage && lastMessage.role === "assistant") {
+          // Update the AI's message
+          const updatedLastMessage = {
+            ...lastMessage,
+            content: lastMessage.content + (lastMessage.content ? "\n\n_(Generation stopped by user)_" : "Response generation stopped.")
+          };
+          
+          const updatedMessages = [...messages.slice(0, -1), updatedLastMessage];
+          updateActiveChat(updatedMessages);
+        }
+      }
+      
+      console.log("Generation stopped by user");
+    } catch (error) {
+      console.error("Error stopping generation:", error);
+      // Ensure generation state is reset even if there's an error
+      setIsGenerating(false);
+      abortGenerationRef.current = false;
+    }
+  };
+
   // Delete a chat session
   const deleteChat = (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent triggering the set active chat
@@ -775,225 +966,299 @@ export default function AIChatTool() {
   }
 
   // Send a message and get a response
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (userInput.trim() === "" || !isModelLoaded || isGenerating) return
-    
-    // Prevent sending messages with embedding models
-    if (selectedModel && isEmbeddingModel(selectedModel)) {
-      // Show error message in chat
-      const errorMessage: ChatMessage = {
-        id: `error-${Date.now()}`,
-        role: "assistant" as const,
-        content: "⚠️ Embedding models can't generate text responses. Please load a chat or instruction model to have a conversation.",
-        timestamp: Date.now(),
-      };
-      
-      if (activeChat) {
-        const updatedMessages = [...messages, errorMessage];
-        updateActiveChat(updatedMessages);
-      }
-      
-      return;
-    }
-    
-    // Stop if we're very close to the token limit
-    if (tokenCount > maxContextTokens * 0.95) {
-      const errorMessage: ChatMessage = {
-        id: `error-${Date.now()}`,
-        role: "assistant" as const,
-        content: "⚠️ This conversation is too long for the model to process. Please trim some older messages using the token manager above, or start a new conversation.",
-        timestamp: Date.now(),
-      };
-      
-      if (activeChat) {
-        // Add error message to the chat
-        const updatedMessages = [...messages.filter(m => m.content !== errorMessage.content), errorMessage];
-        updateActiveChat(updatedMessages);
-      }
-      
-      return;
-    }
-    
-    // Create a new chat if none is active
-    if (!activeChatId) {
-      createNewChat()
-    }
-    
-    // Check if WebLLM service is available, if not try to reload it
-    if (!webLLMServiceRef.current && isModelLoaded && selectedModel) {
-      try {
-        updateActiveChatLoadingState(false, true, "Reloading model...", 0);
-        
-        // Get the model's context window size
-        const model = models.find(m => m.id === selectedModel);
-        const contextSize = model?.contextLength || 4096;
-        
-        // Check if this is an embedding model
-        const modelIsForEmbedding = isEmbeddingModel(selectedModel);
-        
-        // Enhanced config with sliding window support for non-embedding models
-        const config: any = {
-          temperature: 0.7,
-          topP: 0.9,
-          maxGenerateTokens: 2048,
-        };
-        
-        // Only apply sliding window settings for non-embedding models
-        if (!modelIsForEmbedding) {
-          // Choose to use sliding window rather than fixed context size
-          // WebLLM requires only one of these to be positive
-          config.context_window_size = -1; // Disable fixed context window
-          // Use sliding window that's about 75% of the model's context size
-          config.sliding_window_size = Math.floor(contextSize * 0.75);
-        } else {
-          // For embedding models, just set the context window size
-          config.context_window_size = contextSize;
-        }
-        
-        webLLMServiceRef.current = await getWebLLMService(
-          selectedModel, 
-          config,
-          (progress, status, isFromCache) => {
-            updateActiveChatLoadingState(false, true, status, progress);
-          }
-        );
-        
-        await webLLMServiceRef.current.initialize();
-        updateActiveChatLoadingState(true, false);
-      } catch (error) {
-        console.error("Failed to reload model:", error);
-        updateActiveChatLoadingState(false, false, `Error reloading model: ${error}`, 0);
-        return; // Exit if we couldn't reload the model
-      }
-    }
-    
-    // Double check we have a service before proceeding
-    if (!webLLMServiceRef.current) {
-      console.error("WebLLM service is not available");
-      updateActiveChatLoadingState(false, false, "Error: AI service not available. Please try reloading the model.", 0);
-      return;
-    }
-    
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: userInput,
-      timestamp: Date.now(),
-    }
-    
-    // Get existing messages or start with system message if none
-    const currentMessages = activeChat?.messages || [
-      {
-        id: "system-1",
-        role: "system" as const,
-        content: "You are a helpful AI assistant helping users. When answering complex questions or solving problems, you can show your thinking process using <think>Your reasoning steps here</think> tags. This helps users understand your approach and learn from your problem-solving methods.",
-        timestamp: Date.now(),
-      }
-    ]
-    
-    const updatedMessages = [...currentMessages, userMessage]
-    updateActiveChat(updatedMessages)
-    
-    setUserInput("")
-    setIsGenerating(true)
-    
-    // Create the AI message placeholder
-    const aiMessageId = `assistant-${Date.now()}`
-    const aiMessage: ChatMessage = {
-      id: aiMessageId,
-      role: "assistant",
-      content: "",
-      timestamp: Date.now(),
-    }
-    
-    const messagesWithAIPlaceholder = [...updatedMessages, aiMessage]
-    updateActiveChat(messagesWithAIPlaceholder)
-    
-    // Prepare messages for the API
-    const apiMessages = updatedMessages
-      .map(msg => {
-        // For the last user message, encourage the model to show reasoning
-        if (msg.role === "user" && msg.id === userMessage.id) {
-          // For math or complex questions, add a hint to encourage showing reasoning
-          if (msg.content.includes("calculate") || 
-              msg.content.includes("solve") || 
-              msg.content.includes("explain") || 
-              msg.content.includes("why") || 
-              msg.content.match(/[0-9+\-*/^()=%]/) ||
-              msg.content.length > 50) {
-            return {
-              role: msg.role,
-              content: `${msg.content}\n\nPlease show your thinking process using <think>...</think> tags where appropriate.`
-            }
-          }
-        }
-        // Return the original message otherwise
-        return { role: msg.role, content: msg.content }
-      })
+  const handleSendMessage = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
     
     try {
-      // Use the service to generate the response
-      await webLLMServiceRef.current.generate(
-        apiMessages,
-        { 
-          stream: true 
-        },
-        {
-          onTokenCallback: (token: string, fullText: string) => {
-            const updatedMessagesWithAIResponse = messagesWithAIPlaceholder.map(msg => 
-              msg.id === aiMessageId ? { ...msg, content: fullText } : msg
-            )
-            updateActiveChat(updatedMessagesWithAIResponse)
-          },
-          onFinishCallback: async (response: any) => {
-            setIsGenerating(false)
-            
-            // Try to safely update stats
-            try {
-              const runtimeStats = await webLLMServiceRef.current.getRuntimeStats();
-              if (runtimeStats && !runtimeStats.includes('NaN')) {
-                setStats(runtimeStats);
-              }
-            } catch (error) {
-              console.error("Error getting runtime stats after generation", error);
-            }
-          },
-          onErrorCallback: (error: Error) => {
-            console.error("Generation error:", error)
-            setIsGenerating(false)
-            
-            // Check if it's a context window exceeded error
-            if (error.message && error.message.includes('exceed context window size')) {
-              handleContextWindowExceeded(error);
-              return;
-            }
-            
-            const errorMessages = messagesWithAIPlaceholder.map(msg => 
-              msg.id === aiMessageId 
-                ? { ...msg, content: "Error generating response. Please try again." } 
-                : msg
-            )
-            updateActiveChat(errorMessages)
-          }
-        }
-      )
-    } catch (error: any) {
-      console.error("Error during generation:", error)
-      setIsGenerating(false)
+      // Don't proceed if input is empty, model isn't loaded, or we're already generating
+      if (userInput.trim() === "" || !isModelLoaded || isGenerating) return;
       
-      // Check if it's a context window exceeded error
-      if (error.message && error.message.includes('exceed context window size')) {
-        handleContextWindowExceeded(error);
+      // IMPORTANT: Reset abort flag before starting new generation
+      abortGenerationRef.current = false;
+      
+      // Set generating state
+      setIsGenerating(true);
+      
+      // Prevent sending messages with embedding models
+      if (selectedModel && isEmbeddingModel(selectedModel)) {
+        // Show error message in chat
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: "assistant" as const,
+          content: "⚠️ Embedding models can't generate text responses. Please load a chat or instruction model to have a conversation.",
+          timestamp: Date.now(),
+        };
+        
+        if (activeChat) {
+          const updatedMessages = [...messages, errorMessage];
+          updateActiveChat(updatedMessages);
+        }
+        
         return;
       }
       
-      const errorMessages = messagesWithAIPlaceholder.map(msg => 
-        msg.id === aiMessageId 
-          ? { ...msg, content: "Error generating response. Please try again." } 
-          : msg
-      )
-      updateActiveChat(errorMessages)
+      // Stop if we're very close to the token limit
+      if (tokenCount > maxContextTokens * 0.95) {
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: "assistant" as const,
+          content: "⚠️ This conversation is too long for the model to process. Please trim some older messages using the token manager above, or start a new conversation.",
+          timestamp: Date.now(),
+        };
+        
+        if (activeChat) {
+          // Add error message to the chat
+          const updatedMessages = [...messages.filter(m => m.content !== errorMessage.content), errorMessage];
+          updateActiveChat(updatedMessages);
+        }
+        
+        return;
+      }
+      
+      // Create a new chat if none is active
+      if (!activeChatId) {
+        createNewChat()
+        return; // Return and let the user try again after creating the chat
+      }
+      
+      // Check if WebLLM service is available, if not try to reload it
+      if (!webLLMServiceRef.current && isModelLoaded && selectedModel) {
+        try {
+          updateActiveChatLoadingState(false, true, "Reloading model...", 0);
+          
+          // Get the model's context window size
+          const model = models.find(m => m.id === selectedModel);
+          const contextSize = model?.contextLength || 4096;
+          
+          // Check if this is an embedding model
+          const modelIsForEmbedding = isEmbeddingModel(selectedModel);
+          
+          // Enhanced config with sliding window support for non-embedding models
+          const config: any = {
+            temperature: 0.7,
+            topP: 0.9,
+            maxGenerateTokens: 2048,
+          };
+          
+          // Only apply sliding window settings for non-embedding models
+          if (!modelIsForEmbedding) {
+            // Choose to use sliding window rather than fixed context size
+            // WebLLM requires only one of these to be positive
+            config.context_window_size = -1; // Disable fixed context window
+            // Use sliding window that's about 75% of the model's context size
+            config.sliding_window_size = Math.floor(contextSize * 0.75);
+          } else {
+            // For embedding models, just set the context window size
+            config.context_window_size = contextSize;
+          }
+          
+          webLLMServiceRef.current = await getWebLLMService(
+            selectedModel, 
+            config,
+            (progress, status, isFromCache) => {
+              updateActiveChatLoadingState(false, true, status, progress);
+            }
+          );
+          
+          await webLLMServiceRef.current.initialize();
+          updateActiveChatLoadingState(true, false);
+        } catch (error) {
+          console.error("Failed to reload model:", error);
+          updateActiveChatLoadingState(false, false, `Error reloading model: ${error}`, 0);
+          return; // Exit if we couldn't reload the model
+        }
+      }
+      
+      // Double check we have a service before proceeding
+      if (!webLLMServiceRef.current) {
+        console.error("WebLLM service is not available");
+        updateActiveChatLoadingState(false, false, "Error: AI service not available. Please try reloading the model.", 0);
+        return;
+      }
+      
+      const userMessage: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: userInput,
+        timestamp: Date.now(),
+      }
+      
+      // Get existing messages or start with system message if none
+      const currentMessages = activeChat?.messages || [
+        {
+          id: "system-1",
+          role: "system" as const,
+          content: "You are a helpful AI assistant helping users. When answering complex questions or solving problems, you can show your thinking process using <think>Your reasoning steps here</think> tags. This helps users understand your approach and learn from your problem-solving methods.",
+          timestamp: Date.now(),
+        }
+      ]
+      
+      // Make sure there's a system message at the beginning
+      let messagesWithSystem = [...currentMessages];
+      
+      // Check if the first message is a system message, if not, add one
+      if (messagesWithSystem.length === 0 || messagesWithSystem[0].role !== "system") {
+        messagesWithSystem = [
+          {
+            id: "system-1",
+            role: "system" as const,
+            content: "You are a helpful AI assistant helping users. When answering complex questions or solving problems, you can show your thinking process using <think>Your reasoning steps here</think> tags. This helps users understand your approach and learn from your problem-solving methods.",
+            timestamp: Date.now(),
+          },
+          ...messagesWithSystem
+        ];
+      }
+      
+      // Ensure non-system messages are filtered and properly ordered
+      // This ensures any system messages that might have been added later are removed
+      const nonSystemMessages = messagesWithSystem.filter((msg, index) => 
+        index === 0 ? msg.role === "system" : msg.role !== "system"
+      );
+      
+      const updatedMessages = [...nonSystemMessages, userMessage];
+      updateActiveChat(updatedMessages);
+      
+      setUserInput("");
+      setIsGenerating(true);
+      
+      // Create the AI message placeholder
+      const aiMessageId = `assistant-${Date.now()}`
+      const aiMessage: ChatMessage = {
+        id: aiMessageId,
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+      }
+      
+      const messagesWithAIPlaceholder = [...updatedMessages, aiMessage]
+      updateActiveChat(messagesWithAIPlaceholder)
+      
+      // Prepare messages for the API - ensure system message is always first
+      const apiMessages = updatedMessages
+        .map(msg => {
+          // For the last user message, encourage the model to show reasoning
+          if (msg.role === "user" && msg.id === userMessage.id) {
+            // For math or complex questions, add a hint to encourage showing reasoning
+            if (msg.content.includes("calculate") || 
+                msg.content.includes("solve") || 
+                msg.content.includes("explain") || 
+                msg.content.includes("why") || 
+                msg.content.match(/[0-9+\-*/^()=%]/) ||
+                msg.content.length > 50) {
+              return {
+                role: msg.role,
+                content: `${msg.content}\n\nPlease show your thinking process using <think>...</think> tags where appropriate.`
+              }
+            }
+          }
+          // Return the original message otherwise
+          return { role: msg.role, content: msg.content }
+        })
+      
+      try {
+        // Use the service to generate the response
+        await webLLMServiceRef.current.generate(
+          apiMessages,
+          { 
+            stream: true 
+          },
+          {
+            onTokenCallback: (token: string, fullText: string) => {
+              // Check if generation should be aborted
+              if (abortGenerationRef.current) {
+                // We'll let the promise resolve but won't update the UI anymore
+                return;
+              }
+              
+              try {
+                // Make sure activeChat still exists (might have changed if user switched chats)
+                if (!activeChat) return;
+                
+                const updatedMessagesWithAIResponse = messagesWithAIPlaceholder.map(msg => 
+                  msg.id === aiMessageId ? { ...msg, content: fullText } : msg
+                );
+                updateActiveChat(updatedMessagesWithAIResponse);
+              } catch (error) {
+                console.error("Error updating chat during generation:", error);
+              }
+            },
+            onFinishCallback: async (response: any) => {
+              try {
+                // If aborted, don't update stats, keep the state as is
+                if (abortGenerationRef.current) {
+                  abortGenerationRef.current = false;
+                  return;
+                }
+                
+                setIsGenerating(false);
+                
+                // Try to safely update stats
+                try {
+                  const runtimeStats = await webLLMServiceRef.current.getRuntimeStats();
+                  if (runtimeStats && !runtimeStats.includes('NaN')) {
+                    setStats(runtimeStats);
+                  }
+                } catch (error) {
+                  console.error("Error getting runtime stats after generation", error);
+                }
+              } catch (error) {
+                console.error("Error in generation finish callback:", error);
+                setIsGenerating(false);
+                abortGenerationRef.current = false;
+              }
+            },
+            onErrorCallback: (error: Error) => {
+              console.error("Generation error:", error)
+              setIsGenerating(false)
+              
+              // If already aborted, don't show new error
+              if (abortGenerationRef.current) {
+                abortGenerationRef.current = false;
+                return;
+              }
+              
+              // Check if it's a context window exceeded error
+              if (error.message && error.message.includes('exceed context window size')) {
+                handleContextWindowExceeded(error);
+                return;
+              }
+              
+              const errorMessages = messagesWithAIPlaceholder.map(msg => 
+                msg.id === aiMessageId 
+                  ? { ...msg, content: "Error generating response. Please try again." } 
+                  : msg
+              )
+              updateActiveChat(errorMessages)
+            }
+          }
+        )
+      } catch (error: any) {
+        console.error("Error during generation:", error)
+        setIsGenerating(false)
+        
+        // If already aborted, don't show new error
+        if (abortGenerationRef.current) {
+          abortGenerationRef.current = false;
+          return;
+        }
+        
+        // Check if it's a context window exceeded error
+        if (error.message && error.message.includes('exceed context window size')) {
+          handleContextWindowExceeded(error);
+          return;
+        }
+        
+        const errorMessages = messagesWithAIPlaceholder.map(msg => 
+          msg.id === aiMessageId 
+            ? { ...msg, content: "Error generating response. Please try again." } 
+            : msg
+        )
+        updateActiveChat(errorMessages)
+      }
+    } catch (error) {
+      console.error("Error during message handling:", error);
+      setIsGenerating(false);
+      abortGenerationRef.current = false;
     }
   }
 
@@ -1034,6 +1299,9 @@ export default function AIChatTool() {
   // UI rendering
   return (
     <div className="flex h-[calc(100vh-10rem)] border-y relative">
+      {/* Add global style tag for markdown */}
+      <style jsx global>{globalMarkdownStyles}</style>
+      
       <ChatSidebar
         chatSessions={chatSessions}
         models={models}
@@ -1076,7 +1344,10 @@ export default function AIChatTool() {
                 <p>Please use Chrome 113+ or Edge 113+ to access this feature.</p>
               </div>
             ) : (
-              <div className="space-y-4 flex flex-col h-full min-h-0">
+              <div className="space-y-4 flex flex-col h-full min-h-0 relative">
+                {/* Add loading overlay when model is loading to prevent user interaction */}
+                {isLoading && <LoadingOverlay status={loadingStatus} progress={loadingProgress} />}
+                
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <Label htmlFor="model-selection">Select Model</Label>
@@ -1232,6 +1503,7 @@ export default function AIChatTool() {
                   isModelLoaded={isModelLoaded}
                   isGenerating={isGenerating}
                   handleSendMessage={handleSendMessage}
+                  handleStopGeneration={stopGeneration}
                 />
               </div>
             )}
