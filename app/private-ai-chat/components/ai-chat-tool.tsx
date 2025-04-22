@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Send, Trash, Download } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover" 
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Loader2, Send, Trash, Download, Database, Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
 
 // Import our WebLLM service instead of using the package directly
 import { 
@@ -44,8 +47,11 @@ export default function AIChatTool() {
   const [stats, setStats] = useState("")
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [models, setModels] = useState<WebLLMModel[]>([])
+  const [filteredModels, setFilteredModels] = useState<WebLLMModel[]>([])
   const [webLLMSupported, setWebLLMSupported] = useState(false)
   const webLLMServiceRef = useRef<any>(null)
+  const [open, setOpen] = useState(false)
+  const [cachedModels, setCachedModels] = useState<string[]>([])
 
   // Initialize WebLLM and check WebGPU support
   useEffect(() => {
@@ -59,13 +65,27 @@ export default function AIChatTool() {
           // Get available models
           const availableModels = await getAvailableModels()
           setModels(availableModels)
+          setFilteredModels(availableModels)
           
-          // Set a default model if available
-          if (availableModels.length > 0) {
-            // Pick the first recommended model or the first available model
-            const recommended = getRecommendedModels()
-            const defaultModel = recommended.length > 0 ? recommended[0].id : availableModels[0].id
-            setSelectedModel(defaultModel)
+          // Get previously selected model from localStorage if available
+          if (typeof window !== 'undefined') {
+            const lastSelectedModel = localStorage.getItem('webllm-last-model')
+            
+            // Only set a selected model if we have a previously used one
+            if (lastSelectedModel && availableModels.some(m => m.id === lastSelectedModel)) {
+              setSelectedModel(lastSelectedModel)
+            }
+            // Don't set any default model if no previous selection
+          }
+          
+          // Check for cached models via IndexedDB
+          if (window.indexedDB) {
+            try {
+              // Try to detect cached models
+              detectCachedModels()
+            } catch (err) {
+              console.log('Cache detection not available')
+            }
           }
         } catch (error) {
           console.error("Error loading models:", error)
@@ -78,6 +98,39 @@ export default function AIChatTool() {
     
     checkWebGPU()
   }, [])
+  
+  // Try to detect which models may be cached
+  const detectCachedModels = async () => {
+    try {
+      const webllm = await import('@mlc-ai/web-llm')
+      
+      // Use IndexedDB directly to check cache
+      if (window.indexedDB) {
+        try {
+          const dbName = "webllm_cache"
+          const request = window.indexedDB.open(dbName)
+          
+          request.onerror = () => {
+            console.log("IndexedDB access error")
+          }
+          
+          request.onsuccess = () => {
+            try {
+              // Set some default values - the actual cached models will be
+              // detected during loading
+              console.log("Cache detection will happen during model load")
+            } catch (err) {
+              console.error("Error accessing IndexedDB:", err)
+            }
+          }
+        } catch (err) {
+          console.log('Using fallback cache detection mechanism')
+        }
+      }
+    } catch (error) {
+      console.error("Error checking cached models:", error)
+    }
+  }
 
   // Scroll chat to bottom when messages change
   useEffect(() => {
@@ -89,6 +142,11 @@ export default function AIChatTool() {
   // Initialize the WebLLM engine with the selected model
   const handleModelLoad = async () => {
     if (!selectedModel) return
+    
+    // Save the selected model to localStorage for future use
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('webllm-last-model', selectedModel)
+    }
     
     setIsLoading(true)
     try {
@@ -110,6 +168,11 @@ export default function AIChatTool() {
           if (status) {
             setLoadingStatus(status)
           }
+          
+          // Update cached models if loaded from cache
+          if (isFromCache && !cachedModels.includes(selectedModel)) {
+            setCachedModels(prev => [...prev, selectedModel])
+          }
         }
       )
       
@@ -119,6 +182,11 @@ export default function AIChatTool() {
       // Update stats
       setStats(await webLLMServiceRef.current.getRuntimeStats())
       setIsModelLoaded(true)
+      
+      // Update cached models since this model is now cached
+      if (!cachedModels.includes(selectedModel)) {
+        setCachedModels(prev => [...prev, selectedModel])
+      }
     } catch (error) {
       console.error("Failed to load model:", error)
       setLoadingStatus(`Error: ${error}`)
@@ -251,38 +319,92 @@ export default function AIChatTool() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Model Selection */}
+              {/* Model Selection with Combobox */}
               <div className="space-y-2">
                 <Label htmlFor="model-selection">Select Model</Label>
                 <div className="flex gap-2">
-                  <Select 
-                    value={selectedModel} 
-                    onValueChange={setSelectedModel}
-                    disabled={isModelLoaded || isLoading}
-                  >
-                    <SelectTrigger id="model-selection" className="w-full">
-                      <SelectValue placeholder="Select a model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {models.map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          <div className="flex flex-col py-1">
-                            <div className="font-medium">{model.name}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              <div>{model.description}</div>
-                              <div className="flex gap-2 mt-0.5">
-                                <span className="font-medium">Size:</span> {model.size}
-                                <span className="font-medium ml-2">Context:</span> {model.contextLength} tokens
-                                {model.lowResourceRequired && (
-                                  <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">Low Resource</span>
-                                )}
-                              </div>
-                            </div>
+                  <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="model-selection"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between"
+                        disabled={isModelLoaded || isLoading}
+                      >
+                        {selectedModel ? (
+                          <div className="flex items-center">
+                            <span className="truncate mr-2">
+                              {models.find(m => m.id === selectedModel)?.name || selectedModel}
+                            </span>
+                            {models.find(m => m.id === selectedModel)?.lowResourceRequired && (
+                              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded ml-auto mr-1">
+                                Low
+                              </span>
+                            )}
+                            {cachedModels.includes(selectedModel) && (
+                              <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded flex items-center ml-auto">
+                                <Database className="h-3 w-3 mr-1" /> Cached
+                              </span>
+                            )}
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ) : (
+                          "Select model"
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command className="w-full">
+                        <CommandInput placeholder="Search models..." className="w-full" />
+                        <CommandEmpty>No models found.</CommandEmpty>
+                        <CommandGroup>
+                          <ScrollArea className="h-[300px]">
+                            {models.map((model) => (
+                              <CommandItem
+                                key={model.id}
+                                value={model.id}
+                                onSelect={(currentValue) => {
+                                  setSelectedModel(currentValue)
+                                  // Save selection to localStorage
+                                  if (typeof window !== 'undefined') {
+                                    localStorage.setItem('webllm-last-model', currentValue)
+                                  }
+                                  setOpen(false)
+                                }}
+                                className="flex flex-col items-start py-2 text-left w-full px-3"
+                              >
+                                <div className="flex w-full items-center justify-between">
+                                  <span className="font-medium mr-2">{model.name}</span>
+                                  <div className="flex items-center gap-1 ml-auto">
+                                    {cachedModels.includes(model.id) && (
+                                      <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded flex items-center">
+                                        <Database className="h-3 w-3 mr-1" /> Cached
+                                      </span>
+                                    )}
+                                    {model.id === selectedModel && <Check className="h-4 w-4" />}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1 w-full text-left">
+                                  <div>{model.description}</div>
+                                  <div className="flex flex-wrap gap-2 mt-0.5">
+                                    <span className="font-medium">Size:</span> {model.size}
+                                    <span className="font-medium ml-2">Context:</span> {model.contextLength} tokens
+                                    {model.lowResourceRequired && (
+                                      <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">
+                                        Low Resource
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </ScrollArea>
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <Button 
                     onClick={handleModelLoad} 
                     disabled={isModelLoaded || isLoading || !selectedModel}
