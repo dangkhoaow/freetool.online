@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { GifBrowserProcessor, GifProcessingSettings, ProcessedFrame, ProcessingProgress } from '@/lib/gif-browser/gif-processor';
+import { GifBrowserProcessor, GifProcessingSettings, ProcessedFrame, ProcessingProgress } from '@/lib/services/gif-processor';
 
 interface GifProcessorState {
   isProcessing: boolean;

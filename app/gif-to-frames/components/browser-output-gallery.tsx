@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, DownloadCloud, Check, X, AlertCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { ProcessedFrame } from "@/lib/gif-browser/gif-processor"
+import { ProcessedFrame } from "@/lib/services/gif-processor"
 import { useGifBrowserProcessor } from "@/hooks/use-gif-browser-processor"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 

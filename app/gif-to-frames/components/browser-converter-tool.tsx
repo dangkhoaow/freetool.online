@@ -10,7 +10,7 @@ import BrowserOutputGallery from "./browser-output-gallery"
 import { useGifBrowserProcessor } from "@/hooks/use-gif-browser-processor"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import { GifProcessingSettings } from "@/lib/gif-browser/gif-processor"
+import { GifProcessingSettings } from "@/lib/services/gif-processor"
 
 export default function BrowserConverterTool() {
   // State for managing the conversion flow
