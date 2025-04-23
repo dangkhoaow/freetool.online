@@ -160,42 +160,53 @@ export async function getWebLLMService(
   progressCallback?: (progress: number, state?: string, isFromCache?: boolean, modelCdnUrl?: string) => void
 ): Promise<WebLLMService> {
   // Only load the web-llm module when needed (dynamic import)
-  const webllm = await import('@mlc-ai/web-llm');
-  
-  if (!webLLMInstance) {
-    webLLMInstance = {
-      engine: new webllm.MLCEngine(),
-      modelId: modelId,
-      config: { ...DEFAULT_WEBLLM_CONFIG, ...config },
-      isInitialized: false,
-      initProgress: { progress: 0, text: 'Initializing...' },
-      isGenerating: false,
-      abortController: null
-    };
-
-    // Set up progress callback
-    webLLMInstance.engine.setInitProgressCallback((report: ModelInitProgress) => {
-      if (webLLMInstance) {
-        webLLMInstance.initProgress = report;
-        if (progressCallback) {
-          const isFromCache = report.text.toLowerCase().includes('cache');
-          progressCallback(report.progress, report.text, isFromCache, lastModelCdnUrl || undefined);
-        }
-      }
-    });
-  } else if (webLLMInstance.modelId !== modelId || config) {
-    // Update config if needed
-    webLLMInstance.config = { ...webLLMInstance.config, ...config };
+  try {
+    const webllm = await import('@mlc-ai/web-llm');
     
-    // If model changed, we need to reload
-    if (webLLMInstance.modelId !== modelId) {
-      webLLMInstance.modelId = modelId;
-      webLLMInstance.isInitialized = false;
-    }
-  }
+    // In production, show console logs to help debug issues
+    console.log("WebLLM module imported successfully");
+    
+    if (!webLLMInstance) {
+      console.log("Creating new WebLLM instance");
+      webLLMInstance = {
+        engine: new webllm.MLCEngine(),
+        modelId: modelId,
+        config: { ...DEFAULT_WEBLLM_CONFIG, ...config },
+        isInitialized: false,
+        initProgress: { progress: 0, text: 'Initializing...' },
+        isGenerating: false,
+        abortController: null
+      };
 
-  // Create service instance
-  return new WebLLMService(webLLMInstance);
+      // Set up progress callback
+      webLLMInstance.engine.setInitProgressCallback((report: ModelInitProgress) => {
+        console.log("Progress callback received:", report);
+        if (webLLMInstance) {
+          webLLMInstance.initProgress = report;
+          if (progressCallback) {
+            const isFromCache = report.text.toLowerCase().includes('cache');
+            progressCallback(report.progress, report.text, isFromCache, lastModelCdnUrl || undefined);
+          }
+        }
+      });
+    } else if (webLLMInstance.modelId !== modelId || config) {
+      console.log("Updating existing WebLLM instance");
+      // Update config if needed
+      webLLMInstance.config = { ...webLLMInstance.config, ...config };
+      
+      // If model changed, we need to reload
+      if (webLLMInstance.modelId !== modelId) {
+        webLLMInstance.modelId = modelId;
+        webLLMInstance.isInitialized = false;
+      }
+    }
+
+    // Create service instance
+    return new WebLLMService(webLLMInstance);
+  } catch (error) {
+    console.error("Error initializing WebLLM service:", error);
+    throw error;
+  }
 }
 
 // Set the custom model URL (for loading from a specific CDN)
@@ -246,6 +257,7 @@ export class WebLLMService {
     if (this.instance.isInitialized) return;
     
     try {
+      console.log("Initializing WebLLM model:", this.instance.modelId);
       // Build configuration with enhanced context window settings
       const engineConfig: any = {
         temperature: this.instance.config.temperature,
@@ -298,72 +310,52 @@ export class WebLLMService {
 
   // Load the model explicitly (synonym for initialize with progress reporting)
   async loadModel(modelId: string, statusCallback?: (status: string) => void): Promise<void> {
-    // If requested model is different from current, update it
-    if (this.instance.modelId !== modelId) {
-      this.instance.modelId = modelId;
-      this.instance.isInitialized = false;
+    if (this.instance.isInitialized && this.instance.modelId === modelId) {
+      console.log("Model already loaded, skipping reload");
+      return;
     }
     
     try {
-      // Track progress
+      console.log("Loading model:", modelId);
+      
+      // Set the model ID
+      this.instance.modelId = modelId;
+      this.instance.isInitialized = false;
+      
+      // Register progress callback if provided
       const progressHandler = (report: ModelInitProgress) => {
+        console.log("Load progress:", report);
+        
         if (statusCallback) {
           statusCallback(report.text);
         }
-        // Check if the progress is related to downloading
-        if (report.text.toLowerCase().includes('download')) {
-          this.triggerEvent('download', report.progress);
-        }
+        
+        // Trigger progress event
+        this.triggerEvent('progress', report);
       };
       
-      // Set up progress tracking
+      // Ensure our progress handler is set
       this.instance.engine.setInitProgressCallback(progressHandler);
       
-      // Build configuration with enhanced context window settings
-      const engineConfig: any = {
-        temperature: this.instance.config.temperature,
-        top_p: this.instance.config.topP,
-        max_gen_len: this.instance.config.maxGenerateTokens || this.instance.config.maxTokens
+      // Then reload with the model ID and options
+      const options: any = { 
+        ...this.instance.config
       };
       
-      // Check if this is an embedding model before applying sliding window
-      const modelIsForEmbedding = isEmbeddingModel(this.instance.modelId);
+      console.log("Calling engine.reload with options:", { modelId, options });
       
-      // Only apply context window handling parameters for non-embedding models
-      if (!modelIsForEmbedding) {
-        // WebLLM only allows one of context_window_size or sliding_window_size to be positive
-        if (this.instance.config.slidingWindowSize && this.instance.config.slidingWindowSize > 0) {
-          // If using sliding window, set context window to -1
-          engineConfig.context_window_size = -1;
-          engineConfig.sliding_window_size = this.instance.config.slidingWindowSize;
-          
-          // Add a small attention sink size to improve quality with sliding windows
-          engineConfig.attention_sink_size = 4;
-        } else if (this.instance.config.contextWindowSize && this.instance.config.contextWindowSize > 0) {
-          // If using fixed context window, set sliding window to -1
-          engineConfig.context_window_size = this.instance.config.contextWindowSize;
-          engineConfig.sliding_window_size = -1;
-        }
-      }
+      // Load the model
+      await this.instance.engine.reload(modelId, options);
+      console.log("Model loading completed");
       
-      // Configure and load the model
-      await this.instance.engine.reload(
-        this.instance.modelId, 
-        engineConfig
-      );
-      
+      // Mark as initialized
       this.instance.isInitialized = true;
-      this.triggerEvent('loaded', this.instance.modelId);
       
-      if (statusCallback) {
-        statusCallback('Model loaded successfully');
-      }
-    } catch (error: unknown) {
-      console.error('Failed to load WebLLM model:', error);
+      // Trigger loaded event
+      this.triggerEvent('loaded', modelId);
+    } catch (error) {
+      console.error("Error loading model:", error);
       this.triggerEvent('error', error);
-      if (statusCallback) {
-        statusCallback(`Error loading model: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
       throw error;
     }
   }

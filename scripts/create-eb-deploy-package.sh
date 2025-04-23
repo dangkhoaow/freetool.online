@@ -19,32 +19,9 @@ npm install --legacy-peer-deps --force
 npm install -D tailwindcss postcss autoprefixer @tailwindcss/forms @tailwindcss/typography --legacy-peer-deps --force
 npm install shadcn-ui @radix-ui/react-slot --legacy-peer-deps --force
 
-# Install next-sitemap for sitemap generation
-npm install --save-dev next-sitemap --legacy-peer-deps --force
-
-# Create next-sitemap config file if it doesn't exist
-if [ ! -f "next-sitemap.config.js" ]; then
-  echo "Creating next-sitemap.config.js..."
-  cat > next-sitemap.config.js <<EOL
-/** @type {import('next-sitemap').IConfig} */
-module.exports = {
-  siteUrl: 'https://freetool.online',
-  generateRobotsTxt: true,
-  sitemapSize: 7000,
-  exclude: ['/admin/**', '/api/**'],
-  generateIndexSitemap: false,
-  outDir: 'public',
-}
-EOL
-fi
-
 # Try to build the app locally
 echo "Building Next.js application locally..."
 npm run build
-
-# Generate sitemap after building
-echo "Generating sitemap.xml..."
-npx next-sitemap --config next-sitemap.config.js
 
 # Check if the build succeeded
 if [ ! -d ".next" ]; then
@@ -73,69 +50,6 @@ if [ ! -d "$TEMP_DIR/.next" ]; then
   echo "ERROR: Failed to copy .next directory to package"
   rm -rf $TEMP_DIR
   exit 1
-fi
-
-# Verify sitemap.xml was created and copy it
-echo "Checking for sitemap files..."
-if [ ! -f "public/sitemap.xml" ]; then
-  echo "WARNING: sitemap.xml was not generated. Creating a comprehensive one manually..."
-  mkdir -p $TEMP_DIR/public
-  CURRENT_DATE=$(date +%Y-%m-%d)
-  cat > $TEMP_DIR/public/sitemap.xml <<EOL
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://freetool.online/</loc>
-    <lastmod>${CURRENT_DATE}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://freetool.online/heic-converter</loc>
-    <lastmod>${CURRENT_DATE}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-</urlset>
-EOL
-  echo "Manual sitemap.xml created."
-  
-  # Create robots.txt if it doesn't exist
-  if [ ! -f "public/robots.txt" ]; then
-    cat > $TEMP_DIR/public/robots.txt <<EOL
-# *
-User-agent: *
-Allow: /
-
-# Host
-Host: https://freetool.online
-
-# Sitemaps
-Sitemap: https://freetool.online/sitemap.xml
-EOL
-    echo "Manual robots.txt created."
-  fi
-else
-  echo "Sitemap generated successfully. Copying to package..."
-  mkdir -p $TEMP_DIR/public
-  cp public/sitemap*.xml $TEMP_DIR/public/
-  if [ -f "public/robots.txt" ]; then
-    cp public/robots.txt $TEMP_DIR/public/
-  else
-    # Create robots.txt if it was not generated
-    cat > $TEMP_DIR/public/robots.txt <<EOL
-# *
-User-agent: *
-Allow: /
-
-# Host
-Host: https://freetool.online
-
-# Sitemaps
-Sitemap: https://freetool.online/sitemap.xml
-EOL
-    echo "Manual robots.txt created."
-  fi
 fi
 
 # === CONFIGURE DEPLOYMENT ===

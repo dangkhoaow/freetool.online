@@ -412,6 +412,7 @@ export default function AIChatTool() {
   const [tokenCount, setTokenCount] = useState(0)
   const [maxContextTokens, setMaxContextTokens] = useState(4096) // Default max tokens
   const [isTokenLimitDialogOpen, setIsTokenLimitDialogOpen] = useState(false)
+  const [webGPUErrorMessage, setWebGPUErrorMessage] = useState<string | null>(null)
   // Add a reference to track if generation should be aborted
   const abortGenerationRef = useRef<boolean>(false)
 
@@ -452,29 +453,79 @@ export default function AIChatTool() {
     }
   }, []);
 
-  // Initialize WebLLM and check WebGPU support
+  // Check if WebGPU is supported by the browser
+  const checkWebGPU = async () => {
+    try {
+      // Check if navigator.gpu exists
+      if (typeof navigator === 'undefined' || !('gpu' in navigator)) {
+        console.error("WebGPU not supported - navigator.gpu not available");
+        setWebLLMSupported(false);
+        setWebGPUErrorMessage("Your browser doesn't support WebGPU. Please use Chrome 113+ or Edge 113+.");
+        return false;
+      }
+      
+      console.log("WebGPU API is available, checking adapter availability");
+      
+      // Try to request an adapter to confirm WebGPU is actually working
+      try {
+        // Safely access navigator.gpu with a type assertion
+        const gpu = navigator.gpu as any;
+        const adapter = await gpu.requestAdapter();
+        if (!adapter) {
+          console.error("WebGPU adapter not available");
+          setWebLLMSupported(false);
+          setWebGPUErrorMessage("Your GPU doesn't support WebGPU or is not properly enabled. Check chrome://gpu for details.");
+          return false;
+        }
+        
+        // Get adapter info for logging purposes
+        try {
+          const adapterInfo = await adapter.requestAdapterInfo();
+          console.log("WebGPU adapter info:", adapterInfo);
+        } catch (infoError) {
+          console.warn("Could not get adapter info, but WebGPU is supported", infoError);
+        }
+        
+        console.log("WebGPU adapter successfully created");
+        setWebLLMSupported(true);
+        return true;
+      } catch (adapterError) {
+        console.error("Error requesting WebGPU adapter:", adapterError);
+        setWebLLMSupported(false);
+        setWebGPUErrorMessage(`WebGPU error: ${adapterError}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("Unexpected error checking WebGPU support:", error);
+      setWebLLMSupported(false);
+      setWebGPUErrorMessage(`Unexpected WebGPU error: ${error}`);
+      return false;
+    }
+  };
+
+  // Check for WebGPU support and load available models
   useEffect(() => {
-    const checkWebGPU = async () => {
-      // Check if WebGPU is supported
-      const gpuSupported = isWebGPUSupported()
-      setWebLLMSupported(gpuSupported)
+    const initializeApp = async () => {
+      // Check WebGPU support
+      const gpuSupported = await checkWebGPU();
       
       if (gpuSupported) {
+        console.log("WebGPU is supported, loading available models");
         try {
           // Get available models
-          const availableModels = await getAvailableModels()
-          setModels(availableModels)
+          const availableModels = await getAvailableModels();
+          setModels(availableModels);
           
           // Load saved chat sessions
-          loadChatSessions()
+          loadChatSessions();
           
           // Get previously selected model from localStorage if available
           if (typeof window !== 'undefined') {
-            const lastSelectedModel = localStorage.getItem('webllm-last-model')
+            const lastSelectedModel = localStorage.getItem('webllm-last-model');
             
             // Only set a selected model if we have a previously used one
             if (lastSelectedModel && availableModels.some(m => m.id === lastSelectedModel)) {
-              setSelectedModel(lastSelectedModel)
+              setSelectedModel(lastSelectedModel);
             }
           }
           
@@ -482,22 +533,23 @@ export default function AIChatTool() {
           if (window.indexedDB) {
             try {
               // Try to detect cached models
-              detectCachedModels()
+              detectCachedModels();
             } catch (err) {
-              console.log('Cache detection not available')
+              console.log('Cache detection not available', err);
             }
           }
         } catch (error) {
-          console.error("Error loading models:", error)
-          updateActiveChatLoadingState(false, false, "Error loading model list. Please try again.", 0)
+          console.error("Error loading models:", error);
+          updateActiveChatLoadingState(false, false, "Error loading model list. Please try again.", 0);
         }
       } else {
-        updateActiveChatLoadingState(false, false, "WebGPU is not supported in your browser. Please use Chrome 113+ or Edge 113+.", 0)
+        console.log("WebGPU is not supported, showing error message");
+        updateActiveChatLoadingState(false, false, webGPUErrorMessage || "WebGPU is not supported in your browser. Please use Chrome 113+ or Edge 113+.", 0);
       }
-    }
+    };
     
-    checkWebGPU()
-  }, [])
+    initializeApp();
+  }, []);
   
   // Cleanup WebLLM service on component unmount
   useEffect(() => {
@@ -883,6 +935,8 @@ export default function AIChatTool() {
   const handleModelLoad = async () => {
     if (!selectedModel || !activeChatId) return
     
+    console.log("Starting model load process for:", selectedModel);
+    
     // First check if this is an embedding model - these won't work for chat
     if (isEmbeddingModel(selectedModel)) {
       // Show error message about embedding models
@@ -898,6 +952,7 @@ export default function AIChatTool() {
     // Save the selected model to localStorage for future use
     if (typeof window !== 'undefined') {
       localStorage.setItem('webllm-last-model', selectedModel)
+      console.log("Saved model selection to localStorage");
     }
     
     // Update the active chat with the selected model
@@ -907,11 +962,13 @@ export default function AIChatTool() {
       )
       setChatSessions(updatedSessions)
       saveChatSessions(updatedSessions)
+      console.log("Updated chat session with selected model");
     }
     
     // If we already have an engine reference, release it to prevent conflicts
     if (webLLMServiceRef.current) {
       try {
+        console.log("Disposing previous model instance");
         // Only call dispose if it exists as a function
         if (typeof webLLMServiceRef.current.dispose === 'function') {
           await webLLMServiceRef.current.dispose();
@@ -930,6 +987,7 @@ export default function AIChatTool() {
     updateActiveChatLoadingState(false, true, "Initializing model loader...", 1)
     
     try {
+      console.log("Setting up model configuration");
       // Get the model's context window size
       const model = models.find(m => m.id === selectedModel);
       const contextSize = model?.contextLength || 4096;
@@ -956,43 +1014,72 @@ export default function AIChatTool() {
         config.context_window_size = contextSize;
       }
       
+      console.log("Config prepared:", config);
+      
       // Update the state with the model's context size
       setMaxContextTokens(contextSize);
       
       // Show "preparing to download" even before the service is created
       updateActiveChatLoadingState(false, true, "Preparing to download model...", 5)
       
-      // Use our service to create and initialize WebLLM
-      webLLMServiceRef.current = await getWebLLMService(
-        selectedModel, 
-        config,
-        (progress, status, isFromCache) => {
-          // Always update the loading state, even for cached models
-          updateActiveChatLoadingState(false, true, status || "Loading model...", progress)
-          
-          // Update cached models if loaded from cache
-          if (isFromCache && !cachedModels.includes(selectedModel)) {
-            setCachedModels(prev => [...prev, selectedModel])
+      // Use a try-catch block specifically for service creation
+      try {
+        console.log("Creating WebLLM service with model:", selectedModel);
+        
+        // Use our service to create and initialize WebLLM
+        webLLMServiceRef.current = await getWebLLMService(
+          selectedModel, 
+          config,
+          (progress, status, isFromCache) => {
+            console.log(`Loading progress: ${progress}%, Status: ${status}, FromCache: ${isFromCache}`);
+            // Always update the loading state, even for cached models
+            updateActiveChatLoadingState(false, true, status || "Loading model...", progress)
+            
+            // Update cached models if loaded from cache
+            if (isFromCache && !cachedModels.includes(selectedModel)) {
+              setCachedModels(prev => [...prev, selectedModel])
+            }
           }
-        }
-      )
+        )
+        
+        console.log("WebLLM service created successfully, initializing model");
+      } catch (serviceError) {
+        console.error("Failed to create WebLLM service:", serviceError);
+        updateActiveChatLoadingState(false, false, `Error creating model service: ${serviceError}`, 0);
+        webLLMServiceRef.current = null;
+        return;
+      }
       
-      // Initialize the model - this must complete before getting runtime stats
-      await webLLMServiceRef.current.initialize()
+      // Initialize the model in a separate try-catch
+      try {
+        console.log("Initializing the model");
+        // Initialize the model - this must complete before getting runtime stats
+        await webLLMServiceRef.current.initialize()
+        console.log("Model initialized successfully");
+      } catch (initError) {
+        console.error("Failed to initialize model:", initError);
+        updateActiveChatLoadingState(false, false, `Error initializing model: ${initError}`, 0);
+        webLLMServiceRef.current = null;
+        return;
+      }
       
       // Mark the model as loaded only AFTER successfully initializing
       updateActiveChatLoadingState(true, false)
+      console.log("Model loaded successfully");
       
       // Set a small delay before attempting to get runtime stats
       // This gives the model time to fully initialize internal state
       setTimeout(async () => {
         try {
           if (webLLMServiceRef.current) {
+            console.log("Getting runtime stats");
             const runtimeStats = await webLLMServiceRef.current.getRuntimeStats();
             if (runtimeStats && !runtimeStats.includes('NaN')) {
               setStats(runtimeStats);
+              console.log("Runtime stats:", runtimeStats);
             } else {
               setStats("");
+              console.log("Invalid runtime stats, clearing");
             }
           }
         } catch (error) {
@@ -1004,9 +1091,10 @@ export default function AIChatTool() {
       // Update cached models since this model is now cached
       if (!cachedModels.includes(selectedModel)) {
         setCachedModels(prev => [...prev, selectedModel])
+        console.log("Updated cached models list");
       }
     } catch (error) {
-      console.error("Failed to load model:", error)
+      console.error("Unhandled error in model loading process:", error)
       updateActiveChatLoadingState(false, false, `Error: ${error}`, 0)
       webLLMServiceRef.current = null;
     }

@@ -3,13 +3,14 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
-import Script from "next/script";
 import { Metadata } from "next";
 import ScrollToTop from "@/components/scroll-to-top";
+import { ProductionProvider } from "@/components/production-detector";
+import { GTMScripts } from "@/components/gtm-scripts";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// Function to check if we're in production environment
+// For server components, rely on NODE_ENV and middleware cookie
 const isProduction = process.env.NODE_ENV === 'production';
 
 export const metadata: Metadata = {
@@ -62,40 +63,20 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-2317460280557760" />
       </head>
       <body className={inter.className}>
-        {/* Google Tag Manager Script */}
-        {isProduction && (
-          <Script id="google-tag-manager" strategy="afterInteractive">
-            {`
-              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','GTM-TQVXPQXZ');
-              console.log('GTM loaded in production environment');
-            `}
-          </Script>
-        )}
-        
-        {isProduction && (
-          <noscript>
-            <iframe 
-              src="https://www.googletagmanager.com/ns.html?id=GTM-TQVXPQXZ"
-              height="0" 
-              width="0" 
-              style={{ display: 'none', visibility: 'hidden' }}
-            />
-          </noscript>
-        )}
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Navbar />
-          {children}
-          <ScrollToTop />
-        </ThemeProvider>
+        <ProductionProvider>
+          {/* GTM scripts will only be included in production environments */}
+          <GTMScripts />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Navbar />
+            {children}
+            <ScrollToTop />
+          </ThemeProvider>
+        </ProductionProvider>
       </body>
     </html>
   );

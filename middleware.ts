@@ -4,6 +4,21 @@ import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
+  const response = NextResponse.next()
+  
+  // Set a production mode cookie if accessed from the production domain
+  const host = request.headers.get('host') || '';
+  const forwardedHost = request.headers.get('x-forwarded-host') || '';
+  const hostToCheck = forwardedHost || host;
+  
+  if (hostToCheck === 'freetool.online' || hostToCheck === 'www.freetool.online') {
+    response.cookies.set('isProduction', 'true', { 
+      httpOnly: false,
+      sameSite: 'strict',
+      path: '/',
+      secure: true
+    });
+  }
   
   // Check if the path starts with /site-management
   if (path.startsWith("/site-management")) {
@@ -14,7 +29,7 @@ export async function middleware(request: NextRequest) {
       if (token) {
         return NextResponse.redirect(new URL("/site-management", request.url))
       }
-      return NextResponse.next()
+      return response
     }
 
     // For protected routes, check authentication
@@ -24,12 +39,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/site-management/login", request.url))
     }
     
-    return NextResponse.next()
+    return response
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
-  matcher: ["/site-management/:path*"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 }

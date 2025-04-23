@@ -126,9 +126,20 @@ export function ModelSelector({
           </PopoverContent>
         </Popover>
         <Button 
-          onClick={handleModelLoad} 
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("Load Model button clicked");
+            if (handleModelLoad) {
+              handleModelLoad();
+            } else {
+              console.error("handleModelLoad function is not defined");
+            }
+          }} 
           disabled={isModelLoaded || isLoading || !selectedModel}
           className={cn("whitespace-nowrap min-w-[110px]", isLoading && "bg-blue-600 hover:bg-blue-700")}
+          data-testid="load-model-button"
         >
           {isLoading ? (
             <>
