@@ -28,3 +28,4 @@ app/.DS_Store
 
 /public/ai-models/*
 /public/ai-models/.DS_Store
+.DS_Store

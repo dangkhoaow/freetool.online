@@ -42,11 +42,11 @@ export default function FormatComparison() {
   ]
 
   return (
-    <section className="py-16 px-4 bg-white">
+    <section className="py-16 px-4 bg-white dark:bg-gray-900">
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Format Comparison</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-4 dark:text-white">Format Comparison</h2>
+          <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Choose the right format for your needs. Each format has its own advantages and ideal use cases.
           </p>
         </div>
@@ -54,24 +54,24 @@ export default function FormatComparison() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Format</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Compatibility</TableHead>
-                <TableHead>Quality</TableHead>
-                <TableHead>File Size</TableHead>
-                <TableHead>Transparency</TableHead>
-                <TableHead>Best For</TableHead>
+              <TableRow className="dark:border-gray-700">
+                <TableHead className="dark:text-gray-300">Format</TableHead>
+                <TableHead className="dark:text-gray-300">Description</TableHead>
+                <TableHead className="dark:text-gray-300">Compatibility</TableHead>
+                <TableHead className="dark:text-gray-300">Quality</TableHead>
+                <TableHead className="dark:text-gray-300">File Size</TableHead>
+                <TableHead className="dark:text-gray-300">Transparency</TableHead>
+                <TableHead className="dark:text-gray-300">Best For</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {formats.map((format) => (
-                <TableRow key={format.name}>
-                  <TableCell className="font-medium">{format.name}</TableCell>
-                  <TableCell>{format.description}</TableCell>
-                  <TableCell>{format.compatibility}</TableCell>
-                  <TableCell>{format.quality}</TableCell>
-                  <TableCell>{format.fileSize}</TableCell>
+                <TableRow key={format.name} className="dark:border-gray-700">
+                  <TableCell className="font-medium dark:text-white">{format.name}</TableCell>
+                  <TableCell className="dark:text-gray-300">{format.description}</TableCell>
+                  <TableCell className="dark:text-gray-300">{format.compatibility}</TableCell>
+                  <TableCell className="dark:text-gray-300">{format.quality}</TableCell>
+                  <TableCell className="dark:text-gray-300">{format.fileSize}</TableCell>
                   <TableCell>
                     {format.transparency ? (
                       <Check className="h-4 w-4 text-green-500" />
@@ -79,7 +79,7 @@ export default function FormatComparison() {
                       <X className="h-4 w-4 text-red-500" />
                     )}
                   </TableCell>
-                  <TableCell>{format.bestFor}</TableCell>
+                  <TableCell className="dark:text-gray-300">{format.bestFor}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

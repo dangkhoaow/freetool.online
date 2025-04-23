@@ -236,9 +236,9 @@ export default function UnitConverter() {
                 </Button>
               </div>
 
-              <div className="bg-blue-50 p-4 rounded-md">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">Formula</h3>
-                <div className="text-sm text-blue-700">
+              <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-md">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Formula</h3>
+                <div className="text-sm text-blue-700 dark:text-blue-300">
                   {selectedCategory === "temperature" ? (
                     <>
                       {fromUnit === "celsius" && toUnit === "fahrenheit" && <p>°F = (°C × 9/5) + 32</p>}

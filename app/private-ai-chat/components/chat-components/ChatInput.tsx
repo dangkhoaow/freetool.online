@@ -52,7 +52,7 @@ export function ChatInput({
               : "Type your message..."
           }
           disabled={!isModelLoaded}
-          className="flex-grow shadow-sm focus-visible:ring-blue-500"
+          className="flex-grow shadow-sm focus-visible:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
         />
         <Button 
           type="submit" 
@@ -77,12 +77,12 @@ export function ChatInput({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 text-xs text-gray-500 cursor-help">
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 cursor-help">
                 <BrainCircuit className="h-3 w-3" />
                 <span>This chat supports showing AI thinking/reasoning process for complex questions.</span>
               </div>
             </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
+            <TooltipContent className="max-w-xs dark:bg-gray-800 dark:text-gray-200">
               <p>When you ask complex questions, the AI can show its reasoning process in highlighted sections. 
               Try questions about math problems, logic puzzles, or anything that requires step-by-step thinking!</p>
             </TooltipContent>

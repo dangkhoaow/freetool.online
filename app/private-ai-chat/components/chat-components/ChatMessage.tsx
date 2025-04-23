@@ -34,7 +34,7 @@ export function ChatMessage({
         className={`group relative max-w-[90%] rounded-lg p-3 ${
           message.role === "user"
             ? "bg-blue-600 text-white"
-            : "bg-gray-100 text-gray-800"
+            : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
         }`}
       >
         {message.role === "assistant" && (
@@ -42,13 +42,13 @@ export function ChatMessage({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button 
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full bg-gray-200 hover:bg-gray-300"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
                   onClick={() => handleCopyMessage(message.id, message.content)}
                 >
                   {copiedMessageId === message.id ? (
-                    <CheckCheck className="h-3 w-3" />
+                    <CheckCheck className="h-3 w-3 dark:text-gray-300" />
                   ) : (
-                    <Copy className="h-3 w-3" />
+                    <Copy className="h-3 w-3 dark:text-gray-300" />
                   )}
                 </button>
               </TooltipTrigger>

@@ -233,8 +233,8 @@ export default function SteganographyTool() {
     if (!file) return
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setEncodeError("Please upload a valid image file.")
+    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+      setEncodeError("Please upload a valid image file (JPG, JPEG, or PNG).")
       return
     }
 
@@ -502,8 +502,8 @@ export default function SteganographyTool() {
     if (!file) return
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setDecodeError("Please upload a valid image file.")
+    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+      setDecodeError("Please upload a valid image file (JPG, JPEG, or PNG).")
       return
     }
 
@@ -1027,8 +1027,8 @@ export default function SteganographyTool() {
                   <Label htmlFor="encode-image">Upload Image</Label>
                   <div
                     className={cn(
-                      "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors",
-                      encodeError ? "border-red-300" : "border-gray-300",
+                      "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                      encodeError ? "border-red-300 dark:border-red-800" : "border-gray-300 dark:border-gray-600",
                     )}
                     onClick={() => encodeFileInputRef.current?.click()}
                   >
@@ -1036,7 +1036,7 @@ export default function SteganographyTool() {
                       ref={encodeFileInputRef}
                       id="encode-image"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/jpg,image/png"
                       className="hidden"
                       onChange={handleEncodeImageUpload}
                     />
@@ -1047,13 +1047,13 @@ export default function SteganographyTool() {
                           alt="Preview"
                           className="max-h-48 mx-auto object-contain"
                         />
-                        <p className="text-sm text-gray-500">Click to change image</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click to change image</p>
                       </div>
                     ) : (
                       <div className="py-4">
-                        <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Click to upload an image or drag and drop</p>
-                        <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP, GIF up to 5MB</p>
+                        <Upload className="h-10 w-10 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload an image or drag and drop</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">JPG, JPEG, PNG up to 5MB</p>
                       </div>
                     )}
                   </div>
@@ -1095,7 +1095,7 @@ export default function SteganographyTool() {
                           onChange={(e) => setEncodeText(e.target.value)}
                           className="min-h-[120px]"
                         />
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {encodeText.length} / {maxTextLength} characters
                         </p>
                       </div>
@@ -1123,7 +1123,7 @@ export default function SteganographyTool() {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Enter a key to encrypt the hidden text. Keep this key safe, as it will be needed to decrypt the
                         message.
                       </p>
@@ -1133,8 +1133,8 @@ export default function SteganographyTool() {
                       <div className="space-y-2">
                         <Label htmlFor="file-to-hide">File to Hide</Label>
                         {showFileSizeWarning && (
-                          <Alert className="bg-yellow-50 text-yellow-800 border-yellow-200 mb-2">
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                          <Alert className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800 mb-2">
+                            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                             <AlertTitle>Small Image Warning</AlertTitle>
                             <AlertDescription>
                               This image can only store up to {formatFileSize(maxFileSize)}. For larger files, please use a bigger image.
@@ -1145,9 +1145,9 @@ export default function SteganographyTool() {
                           <div className="mb-2 text-sm">
                             <div className="flex justify-between mb-1">
                               <span>Storage capacity: {formatFileSize(usedCapacity)} of {formatFileSize(maxFileSize)}</span>
-                              <span className={capacityPercentage > 90 ? "text-red-500 font-medium" : ""}>{capacityPercentage}%</span>
+                              <span className={capacityPercentage > 90 ? "text-red-500 dark:text-red-400 font-medium" : ""}>{capacityPercentage}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                               <div 
                                 className={`h-2.5 rounded-full ${
                                   capacityPercentage > 90 ? "bg-red-500" : 
@@ -1160,8 +1160,8 @@ export default function SteganographyTool() {
                         )}
                         <div
                           className={cn(
-                            "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors",
-                            encodeError ? "border-red-300" : "border-gray-300",
+                            "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                            encodeError ? "border-red-300 dark:border-red-800" : "border-gray-300 dark:border-gray-600",
                           )}
                           onClick={() => document.getElementById("file-to-hide")?.click()}
                         >
@@ -1177,10 +1177,10 @@ export default function SteganographyTool() {
                             </div>
                           ) : (
                             <div className="py-4">
-                              <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                              <p className="text-sm text-gray-500">Click to select a file to hide</p>
-                              <p className="text-xs text-gray-400 mt-1">Maximum size: {formatFileSize(maxFileSize)}</p>
-                              <p className="text-xs text-gray-400 mt-1">For larger files, use a bigger image.</p>
+                              <Upload className="h-10 w-10 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Click to select a file to hide</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Maximum size: {formatFileSize(maxFileSize)}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">For larger files, use a bigger image.</p>
                             </div>
                           )}
                         </div>
@@ -1198,8 +1198,8 @@ export default function SteganographyTool() {
                 )}
 
                 {encodeSuccess && (
-                  <Alert className="bg-green-50 text-green-800 border-green-200">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <Alert className="bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                     <AlertTitle>Success</AlertTitle>
                     <AlertDescription>{encodeSuccess}</AlertDescription>
                   </Alert>
@@ -1230,14 +1230,14 @@ export default function SteganographyTool() {
               <div className="space-y-4">
                 {encodedImageUrl ? (
                   <div className="space-y-4">
-                    <div className="border rounded-lg p-4">
+                    <div className="border rounded-lg p-4 dark:border-gray-700">
                       <h3 className="text-sm font-medium mb-2">Encoded Image</h3>
                       <img
                         src={encodedImageUrl || "/placeholder.svg"}
                         alt="Encoded"
                         className="max-h-48 mx-auto object-contain"
                       />
-                      <p className="text-xs text-gray-500 mt-2 text-center">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
                         The image now contains your hidden {hideMode === "text" ? "message" : "file"}
                       </p>
                     </div>
@@ -1254,15 +1254,15 @@ export default function SteganographyTool() {
                     </div>
 
                     {storageWarning && (
-                      <Alert variant="default" className="bg-yellow-50 text-yellow-800 border-yellow-200">
-                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800">
+                        <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                         <AlertTitle>Storage Warning</AlertTitle>
                         <AlertDescription>{storageWarning}</AlertDescription>
                       </Alert>
                     )}
 
-                    <Alert className="bg-blue-50 text-blue-800 border-blue-200">
-                      <Lock className="h-4 w-4 text-blue-600" />
+                    <Alert className="bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">
+                      <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       <AlertTitle>Privacy Note</AlertTitle>
                       <AlertDescription>
                         Your image has been processed entirely in your browser. Nothing was uploaded to any server.
@@ -1271,10 +1271,10 @@ export default function SteganographyTool() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-center p-6 bg-gray-50 rounded-lg w-full">
-                      <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                      <h3 className="text-lg font-medium text-gray-700">Encoded Image Preview</h3>
-                      <p className="text-sm text-gray-500 mt-2">
+                    <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg w-full">
+                      <ImageIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                      <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Encoded Image Preview</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         Upload an image and {hideMode === "text" ? "enter text" : "select a file"} to hide, then click
                         the "{hideMode === "text" ? "Hide Text in Image" : "Hide File in Image"}" button.
                       </p>
@@ -1294,8 +1294,8 @@ export default function SteganographyTool() {
                   <Label htmlFor="decode-image">Upload Image with Hidden Content</Label>
                   <div
                     className={cn(
-                      "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors",
-                      decodeError ? "border-red-300" : "border-gray-300",
+                      "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                      decodeError ? "border-red-300 dark:border-red-800" : "border-gray-300 dark:border-gray-600",
                     )}
                     onClick={() => decodeFileInputRef.current?.click()}
                   >
@@ -1303,7 +1303,7 @@ export default function SteganographyTool() {
                       ref={decodeFileInputRef}
                       id="decode-image"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/jpg,image/png"
                       className="hidden"
                       onChange={handleDecodeImageUpload}
                     />
@@ -1314,13 +1314,13 @@ export default function SteganographyTool() {
                           alt="Preview"
                           className="max-h-48 mx-auto object-contain"
                         />
-                        <p className="text-sm text-gray-500">Click to change image</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click to change image</p>
                       </div>
                     ) : (
                       <div className="py-4">
-                        <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Click to upload an image or drag and drop</p>
-                        <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP, GIF up to 5MB</p>
+                        <Upload className="h-10 w-10 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Click to upload an image or drag and drop</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">JPG, JPEG, PNG up to 5MB</p>
                       </div>
                     )}
                   </div>
@@ -1348,7 +1348,7 @@ export default function SteganographyTool() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">Enter the key used to encrypt the hidden content.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Enter the key used to encrypt the hidden content.</p>
                 </div>
 
                 {decodeError && (
@@ -1360,8 +1360,8 @@ export default function SteganographyTool() {
                 )}
 
                 {decodeSuccess && (
-                  <Alert className="bg-green-50 text-green-800 border-green-200">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <Alert className="bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                     <AlertTitle>Success</AlertTitle>
                     <AlertDescription>{decodeSuccess}</AlertDescription>
                   </Alert>
@@ -1388,32 +1388,32 @@ export default function SteganographyTool() {
 
               {/* Right Column - Result */}
               <div className="space-y-4">
-                <div className="border rounded-lg p-4 h-full">
+                <div className="border rounded-lg p-4 h-full dark:border-gray-700">
                   <h3 className="text-sm font-medium mb-2">Extracted Content</h3>
                   {decodedText ? (
-                    <div className="bg-gray-50 p-4 rounded-md min-h-[200px] max-h-[300px] overflow-y-auto">
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md min-h-[200px] max-h-[300px] overflow-y-auto">
                       <p className="whitespace-pre-wrap">{decodedText}</p>
                     </div>
                   ) : decodedFile ? (
-                    <div className="bg-gray-50 p-4 rounded-md min-h-[200px] flex flex-col items-center justify-center">
-                      <FileText className="h-12 w-12 text-blue-500 mb-2" />
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md min-h-[200px] flex flex-col items-center justify-center">
+                      <FileText className="h-12 w-12 text-blue-500 dark:text-blue-400 mb-2" />
                       <h4 className="font-medium text-lg">{decodedFile.fileName}</h4>
-                      <p className="text-sm text-gray-500 mb-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         {formatFileSize(decodedFile.data.byteLength)} • {decodedFile.mimeType}
                       </p>
                       <Button 
                         onClick={handleDownloadDecodedFile}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                       >
                         <Download className="mr-2 h-4 w-4" />
                         Download File
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-[200px] bg-gray-50 rounded-md">
+                    <div className="flex items-center justify-center h-[200px] bg-gray-50 dark:bg-gray-800 rounded-md">
                       <div className="text-center p-6">
-                        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">
+                        <FileText className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           Upload an image with hidden content and click "Extract Hidden Content"
                         </p>
                       </div>
@@ -1422,8 +1422,8 @@ export default function SteganographyTool() {
                 </div>
 
                 {(decodedText || decodedFile) && (
-                  <Alert className="bg-blue-50 text-blue-800 border-blue-200">
-                    <Lock className="h-4 w-4 text-blue-600" />
+                  <Alert className="bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">
+                    <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <AlertTitle>Privacy Note</AlertTitle>
                     <AlertDescription>
                       Your image has been processed entirely in your browser. Nothing was uploaded to any server.
@@ -1448,7 +1448,7 @@ export default function SteganographyTool() {
                         <div
                           key={key}
                           className={cn(
-                            "border rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors",
+                            "border rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
                             selectedSavedImage === key && "border-blue-500 bg-blue-50",
                           )}
                           onClick={() => setSelectedSavedImage(key)}
@@ -1542,10 +1542,10 @@ export default function SteganographyTool() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
-                      <div className="text-center p-6 bg-gray-50 rounded-lg w-full">
-                        <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                        <h3 className="text-lg font-medium text-gray-700">No Image Selected</h3>
-                        <p className="text-sm text-gray-500 mt-2">
+                      <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg w-full">
+                        <ImageIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">No Image Selected</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                           Select an image from the list to view details and options.
                         </p>
                       </div>
@@ -1554,10 +1554,10 @@ export default function SteganographyTool() {
                 </div>
               </div>
             ) : (
-              <div className="text-center p-8 bg-gray-50 rounded-lg">
-                <Save className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <h3 className="text-lg font-medium text-gray-700">No Saved Images</h3>
-                <p className="text-sm text-gray-500 mt-2">
+              <div className="text-center p-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <Save className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">No Saved Images</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                   Images with hidden content will be saved here automatically.
                 </p>
                 <Button variant="outline" className="mt-4" onClick={() => setActiveTab("encode")}>

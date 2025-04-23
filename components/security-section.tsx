@@ -53,9 +53,9 @@ export default function SecuritySection() {
           </div>
         </div>
         
-        <div className="mt-12 bg-green-50 p-6 rounded-xl max-w-3xl mx-auto">
+        <div className="mt-12 bg-green-50 dark:bg-green-900/30 p-6 rounded-xl max-w-3xl mx-auto">
           <h3 className="text-xl font-bold mb-2 text-center">How Browser-Based Processing Protects You</h3>
-          <ul className="space-y-2 text-gray-700">
+          <ul className="space-y-2 text-gray-700 dark:text-gray-300">
             <li className="flex items-start">
               <div className="mr-2 mt-1">✓</div>
               <p>Your GIFs never travel across the internet - they stay within your browser</p>

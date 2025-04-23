@@ -14,12 +14,21 @@ export const metadata: Metadata = {
     siteName: "FreeTool",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/images/ai-heic-converter-og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "HEIC to JPG Converter with AI optimization",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Free HEIC to JPG Converter | Convert iPhone Photos Online",
     description:
       "Convert HEIC photos from iPhone to JPG, PNG, WEBP, or PDF with AI optimization. 100% free and secure.",
+    images: ["/images/ai-heic-converter-og.jpg"],
   },
   robots: {
     index: true,

@@ -77,9 +77,9 @@ export default function ToolGuide() {
           </Card>
         </div>
 
-        <div className="mt-12 bg-blue-50 p-6 rounded-lg">
+        <div className="mt-12 bg-blue-50 dark:bg-blue-900/30 p-6 rounded-lg">
           <h3 className="text-xl font-bold mb-4">Tips for Using the Unit Converter</h3>
-          <ul className="space-y-2 list-disc pl-5">
+          <ul className="space-y-2 list-disc pl-5 text-gray-700 dark:text-gray-300">
             <li>For temperature conversions, negative values are supported and handled correctly.</li>
             <li>Scientific notation is automatically used for very small or very large numbers.</li>
             <li>

@@ -89,16 +89,16 @@ export default function ToolGuide() {
                       <Save className="h-8 w-8 text-blue-600" />
                     </div>
                     <h3 className="text-lg font-medium mb-2">3. Hide and Download</h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Click "Hide Text in Image" to encode your message. The processed image will be saved automatically
                       and available for download.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg mt-6">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg mt-6">
                   <h4 className="font-medium mb-2">Important Notes:</h4>
-                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                  <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
                     <li>The encoded image will be saved in PNG format to preserve all data.</li>
                     <li>There is no visible difference between the original and encoded images.</li>
                     <li>The maximum text length depends on the image size - larger images can store more text.</li>
@@ -114,7 +114,7 @@ export default function ToolGuide() {
                       <Upload className="h-8 w-8 text-blue-600" />
                     </div>
                     <h3 className="text-lg font-medium mb-2">1. Upload the Image</h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Upload the image that contains the hidden message. You can use an image from your saved list or
                       upload a new one.
                     </p>
@@ -125,7 +125,7 @@ export default function ToolGuide() {
                       <Eye className="h-8 w-8 text-blue-600" />
                     </div>
                     <h3 className="text-lg font-medium mb-2">2. Extract the Hidden Text</h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Click "Extract Hidden Text" to decode the message. The tool will analyze the image and retrieve
                       any hidden text.
                     </p>
@@ -136,16 +136,16 @@ export default function ToolGuide() {
                       <FileText className="h-8 w-8 text-blue-600" />
                     </div>
                     <h3 className="text-lg font-medium mb-2">3. View the Message</h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       The extracted text will be displayed in the output area. You can copy it to your clipboard or read
                       it directly.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg mt-6">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg mt-6">
                   <h4 className="font-medium mb-2">Troubleshooting:</h4>
-                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                  <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
                     <li>If no text is found, the image might not contain any hidden messages.</li>
                     <li>Image compression can damage hidden data - always use the original encoded image.</li>
                     <li>
@@ -161,21 +161,21 @@ export default function ToolGuide() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Understanding LSB Steganography</h3>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       Our tool uses the Least Significant Bit (LSB) technique, which works by replacing the least
                       significant bit of each color channel (Red, Green, Blue) in each pixel with bits from your
                       message.
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       Since changing the least significant bit only changes the color value by at most 1/255, these
                       changes are imperceptible to the human eye, making the steganography virtually invisible.
                     </p>
 
                     <h3 className="text-lg font-medium mt-6">Capacity Calculation</h3>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       The maximum text length an image can store depends on its dimensions:
                     </p>
-                    <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
                       <li>Each pixel has 3 color channels (RGB)</li>
                       <li>Each channel can store 1 bit of data</li>
                       <li>Each character requires 16 bits (for Unicode support)</li>
@@ -186,7 +186,7 @@ export default function ToolGuide() {
 
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Best Practices</h3>
-                    <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
                       <li>
                         <strong>Use PNG format:</strong> PNG is lossless and preserves all pixel data exactly.
                       </li>
@@ -208,11 +208,11 @@ export default function ToolGuide() {
                     </ul>
 
                     <h3 className="text-lg font-medium mt-6">Security Considerations</h3>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       While steganography hides the existence of a message, it doesn't encrypt the content. For
                       sensitive information, consider these additional steps:
                     </p>
-                    <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 space-y-1">
                       <li>Encrypt your text before hiding it in an image</li>
                       <li>Use a password or key that only the recipient knows</li>
                       <li>Avoid sharing the image on social media or public platforms</li>

@@ -270,9 +270,9 @@ export default function CompressPdfTool() {
                 <p className="text-sm text-gray-500">Compressed Size</p>
                 <p className="font-bold text-lg">{formatFileSize(compressedSize)}</p>
               </div>
-              <div className="col-span-2 text-center bg-green-50 p-2 rounded">
-                <p className="text-sm text-gray-500">Size Reduction</p>
-                <p className="font-bold text-lg text-green-600">{calculateReduction()}</p>
+              <div className="col-span-2 text-center bg-green-50 dark:bg-green-900/30 p-2 rounded">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Size Reduction</p>
+                <p className="font-bold text-lg text-green-600 dark:text-green-400">{calculateReduction()}</p>
               </div>
             </div>
           </div>

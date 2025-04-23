@@ -40,7 +40,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onStartCompr
       </div>
 
       <div className="flex items-center gap-2 mb-4">
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-2 py-1">
+        <Badge variant="outline" className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-2 py-1">
           Browser-Based Compression
         </Badge>
         <TooltipProvider>
@@ -169,7 +169,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onStartCompr
           <div className="text-right">{formatBytes(estimatedCompressedSize)}</div>
 
           <div>Estimated Savings:</div>
-          <div className="text-right text-green-600">
+          <div className="text-right text-green-600 dark:text-green-400">
             {formatBytes(totalSize - estimatedCompressedSize)} (
             {Math.round(((totalSize - estimatedCompressedSize) / totalSize) * 100)}%)
           </div>

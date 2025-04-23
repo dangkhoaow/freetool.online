@@ -77,8 +77,8 @@ export default function ProcessingSection({ job }: ProcessingSectionProps) {
             </ul>
           </div>
 
-          <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-sm text-green-800 flex items-start gap-3">
-            <Shield className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div className="bg-green-50 dark:bg-green-900/30 border border-green-100 dark:border-green-800 rounded-lg p-4 text-sm text-green-800 dark:text-green-200 flex items-start gap-3">
+            <Shield className="h-5 w-5 flex-shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
             <div>
               <p className="font-medium">Secure Browser-Based Compression</p>
               <p className="mt-1">Your files are being compressed directly in your browser. Nothing is uploaded to our servers, ensuring complete privacy and security of your data.</p>

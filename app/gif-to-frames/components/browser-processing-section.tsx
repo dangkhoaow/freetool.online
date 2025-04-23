@@ -22,22 +22,22 @@ export default function BrowserProcessingSection({ progress, currentFile, error 
   return (
     <div className="space-y-8">
       <h3 className="text-2xl font-bold text-center">Processing Your GIFs</h3>
-      <div className="text-center text-gray-500 text-lg">{getStatusText()}</div>
+      <div className="text-center text-gray-500 dark:text-gray-400 text-lg">{getStatusText()}</div>
 
       <Progress value={progress} className="w-full h-2" />
-      <div className="text-center text-gray-500">{progress}% complete</div>
+      <div className="text-center text-gray-500 dark:text-gray-400">{progress}% complete</div>
 
       {currentFile && (
-        <div className="bg-blue-50 p-4 rounded-lg max-w-md mx-auto">
+        <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg max-w-md mx-auto">
           <h4 className="font-semibold">Currently Processing</h4>
-          <p className="text-sm text-blue-800">{currentFile}</p>
+          <p className="text-sm text-blue-800 dark:text-blue-300">{currentFile}</p>
         </div>
       )}
 
-      <div className="bg-green-50 p-4 rounded-lg max-w-md mx-auto">
+      <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg max-w-md mx-auto">
         <h4 className="font-semibold">Browser-Based Processing</h4>
-        <p className="text-sm text-green-800">All processing happens in your browser!</p>
-        <p className="text-xs text-gray-500 mt-2">No files are sent to a server, enhancing your privacy.</p>
+        <p className="text-sm text-green-800 dark:text-green-300">All processing happens in your browser!</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">No files are sent to a server, enhancing your privacy.</p>
       </div>
 
       {error && (

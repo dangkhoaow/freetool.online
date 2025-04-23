@@ -112,9 +112,9 @@ export function EmbeddingTool({
           )}
 
           {modelLoaded && (
-            <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-600">Model Ready</AlertTitle>
+            <Alert variant="default" className="mb-4 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800">
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertTitle className="text-green-600 dark:text-green-400">Model Ready</AlertTitle>
               <AlertDescription>
                 The embedding model is loaded and ready to use
               </AlertDescription>
@@ -150,13 +150,13 @@ export function EmbeddingTool({
             {embeddings && (
               <div className="mt-4">
                 <h3 className="text-sm font-medium mb-2">Embedding Vector (first 10 values):</h3>
-                <div className="bg-slate-50 p-3 rounded-md overflow-x-auto">
+                <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-md overflow-x-auto">
                   <pre className="text-xs">
                     {JSON.stringify(embeddings.slice(0, 10), null, 2)}... 
                     ({embeddings.length} dimensions)
                   </pre>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Note: Only showing first 10 dimensions. Total dimensions: {embeddings.length}
                 </div>
               </div>

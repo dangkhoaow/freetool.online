@@ -79,7 +79,7 @@ const TokenManager = ({
 
   return (
     <div className="flex items-center gap-2 text-xs mb-2">
-      <div className="flex-grow h-1 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-grow h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
         <div 
           className={`h-full ${colorClass} transition-all duration-300`} 
           style={{ width: `${percentUsed}%` }}
@@ -90,13 +90,13 @@ const TokenManager = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                {percentUsed > 85 ? <AlertCircle className="h-3 w-3 text-red-500" /> : <Info className="h-3 w-3 text-gray-500" />}
-                <span className={percentUsed > 85 ? "text-red-500 font-medium" : "text-gray-500"}>
+                {percentUsed > 85 ? <AlertCircle className="h-3 w-3 text-red-500" /> : <Info className="h-3 w-3 text-gray-500 dark:text-gray-400" />}
+                <span className={percentUsed > 85 ? "text-red-500 font-medium" : "text-gray-500 dark:text-gray-400"}>
                   {tokenCount}/{maxTokens} tokens
                 </span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent className="dark:bg-gray-800 dark:text-gray-200">
               <p>This shows the estimated token count for your conversation.</p>
               <p className="mt-1">The AI has a limited context window and can't process conversations that exceed this limit.</p>
               {percentUsed > 85 && (
@@ -107,16 +107,16 @@ const TokenManager = ({
                         Trim older messages
                       </button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="dark:bg-gray-800 dark:text-gray-200">
                       <AlertDialogHeader>
                         <AlertDialogTitle>Trim conversation history?</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogDescription className="dark:text-gray-300">
                           This will remove some older messages to make room for new ones. 
                           The system message and recent conversation will be preserved.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleTrimConversation}>
                           Trim Conversation
                         </AlertDialogAction>
@@ -141,7 +141,7 @@ const StatsDisplay = ({ stats }: { stats: string }) => {
   }
   
   return (
-    <div className="text-xs font-mono text-gray-500 p-2 bg-gray-50 rounded overflow-x-auto flex-shrink-0">
+    <div className="text-xs font-mono text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-800 rounded overflow-x-auto flex-shrink-0">
       {stats}
     </div>
   );
@@ -150,18 +150,18 @@ const StatsDisplay = ({ stats }: { stats: string }) => {
 // Add Loading Overlay component for the entire chat area
 const LoadingOverlay = ({ status, progress }: { status: string, progress: number }) => {
   return (
-    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-      <div className="flex flex-col items-center max-w-md text-center p-6 bg-white rounded-lg shadow-lg border">
+    <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+      <div className="flex flex-col items-center max-w-md text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700">
         <LoaderCircle className="h-10 w-10 text-blue-600 animate-spin mb-4" />
-        <h3 className="text-xl font-semibold mb-2">Loading AI Model</h3>
-        <p className="text-gray-600 mb-4">{status || "Please wait while the model is loading..."}</p>
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
+        <h3 className="text-xl font-semibold mb-2 dark:text-gray-200">Loading AI Model</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">{status || "Please wait while the model is loading..."}</p>
+        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
           <div 
             className="h-full bg-blue-600 transition-all duration-300"
             style={{ width: `${progress || 0}%` }}
           ></div>
         </div>
-        <p className="text-sm text-gray-500">This may take a few minutes for larger models</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">This may take a few minutes for larger models</p>
       </div>
     </div>
   );
@@ -279,6 +279,121 @@ const globalMarkdownStyles = `
 }
 `;
 
+// Add browser detection utilities
+const getBrowserInfo = () => {
+  if (typeof window === 'undefined' || !window.navigator) return { name: 'unknown', os: 'unknown' };
+  
+  const userAgent = window.navigator.userAgent;
+  let browserName = 'unknown';
+  let os = 'unknown';
+  
+  // Detect OS
+  if (/iPhone|iPad|iPod/.test(userAgent)) {
+    os = 'iOS';
+  } else if (/Mac/.test(userAgent)) {
+    os = 'macOS';
+  } else if (/Windows/.test(userAgent)) {
+    os = 'Windows';
+  } else if (/Android/.test(userAgent)) {
+    os = 'Android';
+  } else if (/Linux/.test(userAgent)) {
+    os = 'Linux';
+  }
+  
+  // Detect browser
+  if (/Safari/.test(userAgent) && !/Chrome/.test(userAgent)) {
+    browserName = 'Safari';
+  } else if (/Firefox/.test(userAgent)) {
+    browserName = 'Firefox';
+  } else if (/Edg/.test(userAgent)) {
+    browserName = 'Edge';
+  } else if (/Chrome/.test(userAgent)) {
+    browserName = 'Chrome';
+  }
+  
+  return { name: browserName, os };
+};
+
+// WebGPU not supported component with specific instructions
+const WebGPUNotSupported = () => {
+  const { name: browser, os } = getBrowserInfo();
+  
+  return (
+    <div className="flex flex-col h-full max-h-[calc(100vh-15rem)] overflow-hidden">
+      {/* Scrollable container for the error content */}
+      <div className="overflow-y-auto px-4 py-2 flex-grow">
+        <div className="max-w-2xl mx-auto py-6">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-8">
+            <h3 className="text-2xl font-semibold text-red-600 dark:text-red-400 mb-4">WebGPU Not Supported</h3>
+            <p className="mb-3 text-gray-700 dark:text-gray-300">
+              Your browser doesn't support WebGPU, which is required for running AI models directly in your browser.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">
+              WebGPU is a newer web standard that allows AI models to use your device's GPU for faster processing.
+            </p>
+          </div>
+          
+          {os === 'iOS' && browser === 'Safari' && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6 mb-6 text-left">
+              <h4 className="text-lg font-medium text-amber-700 dark:text-amber-400 mb-3">Enable WebGPU in Safari on iOS</h4>
+              <ol className="list-decimal pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                <li>Open your <strong>Settings</strong> app</li>
+                <li>Scroll down and tap on <strong>Safari</strong></li>
+                <li>Tap on <strong>Advanced</strong></li>
+                <li>Tap on <strong>Feature Flags</strong></li>
+                <li>Enable the <strong>WebGPU</strong> toggle</li>
+                <li>Restart Safari completely (close all tabs)</li>
+                <li>Return to this page and refresh</li>
+              </ol>
+              <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
+                Note: On iOS 18 and above, you might need to go to Settings &gt; Apps &gt; Safari &gt; Advanced &gt; Feature Flags
+              </p>
+            </div>
+          )}
+          
+          {os === 'macOS' && browser === 'Safari' && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6 mb-6 text-left">
+              <h4 className="text-lg font-medium text-amber-700 dark:text-amber-400 mb-3">Enable WebGPU in Safari on macOS</h4>
+              <ol className="list-decimal pl-5 space-y-2 text-gray-700 dark:text-gray-300">
+                <li>Open Safari and click on <strong>Safari</strong> in the menu bar</li>
+                <li>Select <strong>Settings</strong> (or Preferences)</li>
+                <li>Go to the <strong>Advanced</strong> tab</li>
+                <li>Check the <strong>Show features for web developers</strong> checkbox</li>
+                <li>Click on <strong>Feature Flags</strong> in the menu bar (or in the Develop menu)</li>
+                <li>Find and enable the <strong>WebGPU</strong> checkbox</li>
+                <li>Restart Safari and return to this page</li>
+              </ol>
+            </div>
+          )}
+          
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 text-left">
+            <h4 className="text-lg font-medium text-blue-700 dark:text-blue-400 mb-3">Recommended Browsers</h4>
+            <p className="mb-3 text-gray-700 dark:text-gray-300">
+              The following browsers currently support WebGPU:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-300">
+              <li><strong>Google Chrome</strong> version 113 or newer</li>
+              <li><strong>Microsoft Edge</strong> version 113 or newer</li>
+              <li><strong>Safari</strong> version 17 or newer (with WebGPU enabled)</li>
+              <li><strong>Chrome for Android</strong> (on supported devices)</li>
+            </ul>
+            <p className="mt-4 text-sm text-blue-600 dark:text-blue-400">
+              <a 
+                href="https://webgpureport.org" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="underline hover:text-blue-800 dark:hover:text-blue-300"
+              >
+                Check WebGPU compatibility for your browser
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AIChatTool() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
@@ -309,6 +424,33 @@ export default function AIChatTool() {
   const isLoading = activeChat?.isLoading || false
   const loadingStatus = activeChat?.loadingStatus || ""
   const loadingProgress = activeChat?.loadingProgress || 0
+
+  // Add effect to check for mobile view and collapse sidebar by default
+  useEffect(() => {
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined') {
+      // Consider mobile view for screens less than 768px
+      const isMobileView = window.innerWidth < 768;
+      
+      // Set sidebar collapsed state based on screen size
+      setIsSidebarCollapsed(isMobileView);
+      
+      // Add resize listener to update when orientation changes
+      const handleResize = () => {
+        // Only auto-collapse when screen becomes small
+        if (window.innerWidth < 768 && !isSidebarCollapsed) {
+          setIsSidebarCollapsed(true);
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, []);
 
   // Initialize WebLLM and check WebGPU support
   useEffect(() => {
@@ -1325,7 +1467,7 @@ export default function AIChatTool() {
       {/* Main Chat Area */}
       <div className="flex-grow flex flex-col overflow-hidden">
         <Card className="flex flex-col h-full border-0 rounded-none shadow-none">
-          <CardHeader className="bg-white border-b py-3 px-4 flex-shrink-0">
+          <CardHeader className="bg-white dark:bg-gray-900 border-b dark:border-gray-700 py-3 px-4 flex-shrink-0">
             <CardTitle className="text-xl flex items-center justify-between">
               <span>Private AI Chat</span>
               {activeChat && (
@@ -1338,11 +1480,7 @@ export default function AIChatTool() {
           
           <CardContent className="p-4 flex-grow overflow-hidden flex flex-col min-h-0">
             {!webLLMSupported ? (
-              <div className="text-center py-10">
-                <h3 className="text-xl font-semibold text-red-600 mb-4">WebGPU Not Supported</h3>
-                <p className="mb-2">Your browser doesn't support WebGPU, which is required for browser-based AI models.</p>
-                <p>Please use Chrome 113+ or Edge 113+ to access this feature.</p>
-              </div>
+              <WebGPUNotSupported />
             ) : (
               <div className="space-y-4 flex flex-col h-full min-h-0 relative">
                 {/* Add loading overlay when model is loading to prevent user interaction */}
@@ -1511,8 +1649,12 @@ export default function AIChatTool() {
           
           <CardFooter className="flex-shrink-0">
             <ChatFooter
-              activeChat={activeChat}
-              isGenerating={isGenerating}
+              showScrollButton={messages.length > 5}
+              handleScrollToBottom={() => {
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
+              }}
               handleClearChat={handleClearChat}
               handleExportChat={handleExportChat}
             />
