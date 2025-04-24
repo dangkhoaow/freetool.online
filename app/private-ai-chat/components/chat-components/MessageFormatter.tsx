@@ -12,15 +12,9 @@ import bash from 'react-syntax-highlighter/dist/cjs/languages/prism/bash';
 import markdown from 'react-syntax-highlighter/dist/cjs/languages/prism/markdown';
 import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json';
 import { cn } from '@/lib/utils';
-import {
-  markdownStyles,
-} from '@/app/private-ai-chat/components/chat-components/utils';
-import { GrCode, GrCopy } from 'react-icons/gr';
-import { LuClipboardCopy, LuClipboardCheck } from 'react-icons/lu';
-import { CopyButton } from '@/components/ui/copy-button';
-import { Components } from 'react-markdown';
 import { CodeBlock } from './CodeBlock';
 import { CustomCode } from './CustomCode';
+import type { Components } from 'react-markdown';
 
 // Register languages
 SyntaxHighlighter.registerLanguage('tsx', tsx);
@@ -94,7 +88,7 @@ const hasBlockElement = (children: React.ReactNode): boolean => {
 // Custom component to prevent paragraph wrapping around block elements
 const CustomParagraph: React.FC<React.ComponentPropsWithRef<'p'> & { node?: any }> = ({ children, node, ...props }) => {
   // First check if node directly contains a code block
-  if (node?.children?.some(child => 
+  if (node?.children?.some((child: any) => 
     child.tagName === 'code' && 
     child.properties?.className?.some((cls: string) => cls.startsWith('language-'))
   )) {
@@ -108,7 +102,7 @@ const CustomParagraph: React.FC<React.ComponentPropsWithRef<'p'> & { node?: any 
         const type = child.type as any;
         
         // Check if it's the CustomCode component (not inline)
-        if (type === CustomCode && !child.props.inline) {
+        if (type === CustomCode && (child.props as any).inline === false) {
           return true;
         }
         
@@ -136,7 +130,7 @@ const CustomParagraph: React.FC<React.ComponentPropsWithRef<'p'> & { node?: any 
 };
 
 // Define shared markdown components configuration
-const markdownComponents = {
+const markdownComponents: Record<string, React.ComponentType<any> | React.FC<any>> = {
   // Use the external CustomCode component for code blocks
   code: ({ node, inline, className, children, ...props }: any) => {
     const isCodeBlock = !inline && className && /language-(\w+)/.test(className);
@@ -162,47 +156,47 @@ const markdownComponents = {
   p: CustomParagraph,
   
   // Style headers
-  h1: ({ children, ...props }) => (
+  h1: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <h1 className="text-2xl font-bold mt-6 mb-4" {...props}>{children}</h1>
   ),
-  h2: ({ children, ...props }) => (
+  h2: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <h2 className="text-xl font-bold mt-5 mb-3" {...props}>{children}</h2>
   ),
-  h3: ({ children, ...props }) => (
+  h3: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <h3 className="text-lg font-bold mt-4 mb-2" {...props}>{children}</h3>
   ),
-  h4: ({ children, ...props }) => (
+  h4: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <h4 className="text-base font-bold mt-3 mb-2" {...props}>{children}</h4>
   ),
   
   // Style lists
-  ul: ({ children, ...props }) => (
+  ul: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <ul className="list-disc pl-6 mb-4 space-y-1" {...props}>{children}</ul>
   ),
-  ol: ({ children, ...props }) => (
+  ol: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <ol className="list-decimal pl-6 mb-4 space-y-1" {...props}>{children}</ol>
   ),
   
   // Style blockquotes
-  blockquote: ({ children, ...props }) => (
+  blockquote: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <blockquote className="border-l-4 border-gray-300 dark:border-gray-700 pl-4 py-1 my-4 italic" {...props}>{children}</blockquote>
   ),
   
   // Handle tables
-  table: ({ children, ...props }) => (
+  table: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <div className="overflow-x-auto my-4">
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" {...props}>{children}</table>
     </div>
   ),
-  th: ({ children, ...props }) => (
+  th: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <th className="px-3 py-2 bg-gray-100 dark:bg-gray-800 font-semibold text-left" {...props}>{children}</th>
   ),
-  td: ({ children, ...props }) => (
+  td: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
     <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-700" {...props}>{children}</td>
   ),
   
   // Handle links
-  a: ({ children, href, ...props }) => (
+  a: ({ children, href, ...props }: { children: React.ReactNode; href?: string; [key: string]: any }) => (
     <a 
       href={href} 
       className="text-blue-600 dark:text-blue-400 hover:underline" 
@@ -215,7 +209,7 @@ const markdownComponents = {
   ),
   
   // Handle pre elements - use div wrapper to avoid nesting issues
-  pre: ({ children, ...props }) => {
+  pre: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => {
     return <div className="not-prose" {...props}>{children}</div>;
   }
 }
