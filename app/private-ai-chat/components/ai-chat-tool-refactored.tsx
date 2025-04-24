@@ -149,19 +149,60 @@ const StatsDisplay = ({ stats }: { stats: string }) => {
 
 // Add Loading Overlay component for the entire chat area
 const LoadingOverlay = ({ status, progress }: { status: string, progress: number }) => {
+  console.log("LoadingOverlay status:", status);
+  console.log("LoadingOverlay progress:", progress);
+  
+  // Identify the loading stage based on the status text
+  const isCachedLoading = status.toLowerCase().includes('cache');
+  const isRemoteLoading = status.toLowerCase().includes('start to fetch params') ||
+                          status.toLowerCase().includes('initializing') ||
+                          status.toLowerCase().includes('fetch') || 
+                          status.toLowerCase().includes('fetched') || 
+                          status.toLowerCase().includes('download') ||
+                          status.toLowerCase().includes('load') ||
+                          status.toLowerCase().includes('param') ||
+                          status.toLowerCase().includes('progress') ||
+                          (status.toLowerCase().includes('model') && status.toLowerCase().includes('complete'));
+  
+  const displayStatus = status || "Please wait while the model is loading...";
+  
+  // Choose appropriate description based on loading type
+  let description = "This may take a few minutes for larger models";
+  
+  if (isCachedLoading) {
+    description = "Loading a cached model is typically faster but still requires initialization";
+  } else if (isRemoteLoading) {
+    description = "Downloading model from the server. This may take several minutes depending on your connection speed";
+  }
+  
+  // Calculate estimated remaining time based on progress
+  let timeEstimate = "";
+  if (isRemoteLoading && progress > 0 && progress < 80) {
+    if (progress < 30) {
+      timeEstimate = "This might take 3-5 minutes for larger models";
+    } else if (progress < 60) {
+      timeEstimate = "About halfway there, please keep the browser tab open";
+    } else {
+      timeEstimate = "Almost there, finalizing download...";
+    }
+  }
+  
   return (
     <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
       <div className="flex flex-col items-center max-w-md text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700">
         <LoaderCircle className="h-10 w-10 text-blue-600 animate-spin mb-4" />
         <h3 className="text-xl font-semibold mb-2 dark:text-gray-200">Loading AI Model</h3>
-        <p className="text-gray-600 dark:text-gray-300 mb-4">{status || "Please wait while the model is loading..."}</p>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">{displayStatus}</p>
         <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
           <div 
             className="h-full bg-blue-600 transition-all duration-300"
             style={{ width: `${progress || 0}%` }}
           ></div>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">This may take a few minutes for larger models</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{description}</p>
+        {timeEstimate && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{timeEstimate}</p>
+        )}
       </div>
     </div>
   );
@@ -1032,12 +1073,48 @@ export default function AIChatTool() {
           config,
           (progress, status, isFromCache) => {
             console.log(`Loading progress: ${progress}%, Status: ${status}, FromCache: ${isFromCache}`);
-            // Always update the loading state, even for cached models
-            updateActiveChatLoadingState(false, true, status || "Loading model...", progress)
+            
+            // Detect different loading states
+            const isFetching = status ? (
+              status.toLowerCase().includes('start to fetch params') ||
+              status.toLowerCase().includes('initializing') ||
+              status.toLowerCase().includes('fetch') || 
+              status.toLowerCase().includes('fetched') || 
+              status.toLowerCase().includes('download') ||
+              status.toLowerCase().includes('load') ||
+              status.toLowerCase().includes('param') ||
+              status.toLowerCase().includes('progress') ||
+              (status.toLowerCase().includes('model') && status.toLowerCase().includes('complete'))
+            ) : false;
+              
+            // For cached models, ensure progress is never below a minimum threshold to keep overlay visible
+            const minProgress = isFromCache ? Math.max(progress, 5) : progress;
+            
+            // Special handling for remote fetching
+            let displayStatus = status || '';
+            let displayProgress = minProgress;
+            
+            if (isFetching && !isFromCache) {
+              // For remote fetching, ensure the progress is at least 20%
+              displayProgress = Math.max(displayProgress, 20);
+              
+              // If it's the "Start to fetch params" message, provide more user-friendly status
+              if (status && status.includes("Start to fetch params")) {
+                displayStatus = "Downloading model from remote server...";
+              }
+            }
+            
+            // Always update loading state to keep overlay visible
+            updateActiveChatLoadingState(
+              false, 
+              true, 
+              displayStatus || (isFromCache ? "Loading model from cache..." : "Loading model..."), 
+              displayProgress
+            );
             
             // Update cached models if loaded from cache
             if (isFromCache && !cachedModels.includes(selectedModel)) {
-              setCachedModels(prev => [...prev, selectedModel])
+              setCachedModels(prev => [...prev, selectedModel]);
             }
           }
         )
@@ -1053,9 +1130,37 @@ export default function AIChatTool() {
       // Initialize the model in a separate try-catch
       try {
         console.log("Initializing the model");
+        // Ensure loading indicator stays visible during initialization
+        updateActiveChatLoadingState(false, true, "Initializing model...", 75);
+        
+        // Add event listener to track fetch progress during initialization
+        const handleFetchStart = () => {
+          console.log("Model fetch detected during initialization");
+          updateActiveChatLoadingState(false, true, "Downloading model components...", 30);
+        };
+        
+        // Add event listener using try-catch to avoid issues if API isn't available
+        try {
+          if (typeof webLLMServiceRef.current.on === 'function') {
+            webLLMServiceRef.current.on('download', (progress: number) => {
+              console.log(`Download progress: ${progress}%`);
+              updateActiveChatLoadingState(false, true, `Downloading model data (${progress}%)...`, 
+                20 + Math.floor(progress * 0.5)); // Scale progress to 20-70% range
+            });
+          }
+        } catch (e) {
+          console.log("Event listener not supported", e);
+        }
+        
         // Initialize the model - this must complete before getting runtime stats
-        await webLLMServiceRef.current.initialize()
+        await webLLMServiceRef.current.initialize();
         console.log("Model initialized successfully");
+        
+        // Show completion progress before final state update
+        updateActiveChatLoadingState(false, true, "Finalizing model setup...", 90);
+        
+        // Small delay to ensure UI reflects the last stage of loading
+        await new Promise(resolve => setTimeout(resolve, 300));
       } catch (initError) {
         console.error("Failed to initialize model:", initError);
         updateActiveChatLoadingState(false, false, `Error initializing model: ${initError}`, 0);
@@ -1064,7 +1169,7 @@ export default function AIChatTool() {
       }
       
       // Mark the model as loaded only AFTER successfully initializing
-      updateActiveChatLoadingState(true, false)
+      updateActiveChatLoadingState(true, false);
       console.log("Model loaded successfully");
       
       // Set a small delay before attempting to get runtime stats
@@ -1286,11 +1391,45 @@ export default function AIChatTool() {
             selectedModel, 
             config,
             (progress, status, isFromCache) => {
-              updateActiveChatLoadingState(false, true, status, progress);
+              // Ensure loading state is properly updated during reload
+              const minProgress = isFromCache ? Math.max(progress, 5) : progress;
+              
+              // Enhanced loading status detection
+              const isFetching = status ? (
+                status.toLowerCase().includes('start to fetch params') ||
+                status.toLowerCase().includes('initializing') ||
+                status.toLowerCase().includes('fetch') || 
+                status.toLowerCase().includes('fetched') || 
+                status.toLowerCase().includes('download') ||
+                status.toLowerCase().includes('load') ||
+                status.toLowerCase().includes('param') ||
+                status.toLowerCase().includes('progress') ||
+                (status.toLowerCase().includes('model') && status.toLowerCase().includes('complete'))
+              ) : false;
+              
+              // Boost progress indication for fetching operations
+              let displayProgress = minProgress;
+              if (isFetching && !isFromCache) {
+                displayProgress = Math.max(displayProgress, 20);
+              }
+              
+              updateActiveChatLoadingState(
+                false, 
+                true, 
+                status || (isFromCache ? "Restoring model from cache..." : "Reloading model..."), 
+                displayProgress
+              );
             }
           );
           
+          // Show explicit initialization step
+          updateActiveChatLoadingState(false, true, "Initializing model for chat...", 75);
           await webLLMServiceRef.current.initialize();
+          
+          // Small delay to ensure UI reflects progress
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Finally mark as loaded
           updateActiveChatLoadingState(true, false);
         } catch (error) {
           console.error("Failed to reload model:", error);

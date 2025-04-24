@@ -215,37 +215,222 @@ mkdir -p $TEMP_DIR/.platform/hooks/prebuild/
 mkdir -p $TEMP_DIR/.platform/hooks/predeploy/
 mkdir -p $TEMP_DIR/.platform/hooks/postdeploy/
 
-# Create Nginx config with increased upload size limit
-cat > $TEMP_DIR/.platform/nginx/conf.d/custom.conf <<EOL
+# Get script directory and project root
+SCRIPT_DIR="$(dirname "$0")"
+NGINX_CONFIG_DIR="$PROJECT_ROOT/config/nginx"
+
+# Check if Nginx config directory exists and create it if it doesn't
+if [ ! -d "$NGINX_CONFIG_DIR" ]; then
+  echo "Creating Nginx config directory: $NGINX_CONFIG_DIR"
+  mkdir -p "$NGINX_CONFIG_DIR"
+fi
+
+# Check if required config files exist, create minimal versions if they don't
+for CONFIG_FILE in "custom.conf" "custom-fallback.conf" "next-headers.conf" "emergency.conf"; do
+  if [ ! -f "$NGINX_CONFIG_DIR/$CONFIG_FILE" ]; then
+    echo "Required Nginx config file $NGINX_CONFIG_DIR/$CONFIG_FILE does not exist. Creating a minimal version..."
+    
+    # Create minimal versions of each required file
+    if [ "$CONFIG_FILE" = "custom.conf" ]; then
+      cat > "$NGINX_CONFIG_DIR/$CONFIG_FILE" << 'EOL'
 upstream nodejs {
   server 127.0.0.1:8080;
   keepalive 256;
 }
 
-# HTTP server
 server {
   listen 80;
   server_name freetool.online;
-  
-  # Increase max file upload size to 500MB
   client_max_body_size 500M;
   
   location / {
     proxy_pass http://nodejs;
     proxy_http_version 1.1;
-    proxy_set_header Host \$host;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection "upgrade";
-    
-    # Increase proxy timeout for larger file uploads
-    proxy_connect_timeout 300s;
-    proxy_send_timeout 300s;
-    proxy_read_timeout 300s;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 }
 EOL
+    elif [ "$CONFIG_FILE" = "custom-fallback.conf" ]; then
+      cat > "$NGINX_CONFIG_DIR/$CONFIG_FILE" << 'EOL'
+upstream nodejs {
+  server 127.0.0.1:8080;
+  keepalive 256;
+}
+
+server {
+  listen 80;
+  server_name freetool.online;
+  client_max_body_size 500M;
+  
+  location / {
+    proxy_pass http://nodejs;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}
+EOL
+    elif [ "$CONFIG_FILE" = "next-headers.conf" ]; then
+      cat > "$NGINX_CONFIG_DIR/$CONFIG_FILE" << 'EOL'
+# Map for JavaScript content types
+map $uri $content_type_by_extension {
+  "~\.js$" "application/javascript";
+  "~\.css$" "text/css";
+  default "";
+}
+
+# Define a named location for headers
+location @next_headers {
+  add_header Content-Type $content_type_by_extension always;
+}
+EOL
+    elif [ "$CONFIG_FILE" = "emergency.conf" ]; then
+      # Only create emergency.conf if it doesn't exist
+      if [ ! -f "$NGINX_CONFIG_DIR/$CONFIG_FILE" ]; then
+        cat > "$NGINX_CONFIG_DIR/$CONFIG_FILE" << 'EOL'
+# Emergency minimal configuration
+upstream nodejs {
+  server 127.0.0.1:8080;
+}
+
+server {
+  listen 80;
+  server_name freetool.online;
+  
+  location / {
+    proxy_pass http://nodejs;
+  }
+}
+EOL
+        echo "Created minimal $CONFIG_FILE"
+      else
+        echo "Using existing $CONFIG_FILE"
+      fi
+    fi
+    
+    # Only echo if we created a file
+    if [ "$CONFIG_FILE" != "emergency.conf" ]; then
+      echo "Created minimal $CONFIG_FILE"
+    fi
+  fi
+done
+
+# Copy the config files to the deployment package
+echo "Copying Nginx configuration files..."
+cp "$NGINX_CONFIG_DIR/custom.conf" $TEMP_DIR/.platform/nginx/conf.d/
+cp "$NGINX_CONFIG_DIR/next-headers.conf" $TEMP_DIR/.platform/nginx/conf.d/
+cp "$NGINX_CONFIG_DIR/custom-fallback.conf" $TEMP_DIR/.platform/nginx/conf.d/
+
+# Only copy emergency.conf if it exists and verify it doesn't create duplicate upstreams
+if [ -f "$NGINX_CONFIG_DIR/emergency.conf" ]; then
+  echo "Copying emergency.conf to deployment package..."
+  cp "$NGINX_CONFIG_DIR/emergency.conf" $TEMP_DIR/.platform/nginx/conf.d/
+  
+  # Add a comment to emergency.conf to ensure it's only used in emergency situations
+  sed -i.bak '1i# This file is only used as a fallback if other configurations fail' $TEMP_DIR/.platform/nginx/conf.d/emergency.conf
+  rm -f $TEMP_DIR/.platform/nginx/conf.d/emergency.conf.bak
+else
+  echo "Warning: emergency.conf not found in $NGINX_CONFIG_DIR"
+fi
+
+# Create a predeploy script to handle Nginx configuration
+echo "Creating Nginx setup script..."
+cat > $TEMP_DIR/.platform/hooks/predeploy/02_setup_nginx.sh <<EOL
+#!/bin/bash
+# Setup Nginx configuration
+
+echo "===== SETTING UP NGINX CONFIGURATION ====="
+
+# Make sure we have the proxy directory
+mkdir -p /var/proxy/staging/nginx/conf.d
+
+# Clean up any existing custom configurations to avoid conflicts
+rm -f /var/proxy/staging/nginx/conf.d/custom.conf
+rm -f /var/proxy/staging/nginx/conf.d/next-headers.conf
+rm -f /var/proxy/staging/nginx/conf.d/custom-fallback.conf
+rm -f /var/proxy/staging/nginx/conf.d/emergency.conf
+
+# First copy the headers configuration - it doesn't have upstream blocks
+if [ -f "/var/app/current/.platform/nginx/conf.d/next-headers.conf" ]; then
+  echo "Copying next-headers.conf from application directory"
+  cp /var/app/current/.platform/nginx/conf.d/next-headers.conf /var/proxy/staging/nginx/conf.d/
+elif [ -f "/var/app/staging/.platform/nginx/conf.d/next-headers.conf" ]; then
+  echo "Copying next-headers.conf from staging directory"
+  cp /var/app/staging/.platform/nginx/conf.d/next-headers.conf /var/proxy/staging/nginx/conf.d/
+else
+  echo "Warning: Could not find next-headers.conf in expected locations"
+fi
+
+# Now try to copy our main configuration file
+if [ -f "/var/app/current/.platform/nginx/conf.d/custom.conf" ]; then
+  echo "Copying custom.conf from application directory"
+  cp /var/app/current/.platform/nginx/conf.d/custom.conf /var/proxy/staging/nginx/conf.d/
+elif [ -f "/var/app/staging/.platform/nginx/conf.d/custom.conf" ]; then
+  echo "Copying custom.conf from staging directory"
+  cp /var/app/staging/.platform/nginx/conf.d/custom.conf /var/proxy/staging/nginx/conf.d/
+else
+  echo "Warning: Could not find custom.conf in expected locations"
+fi
+
+# Test Nginx configuration
+echo "Testing Nginx configuration..."
+if ! /usr/sbin/nginx -t -c /var/proxy/staging/nginx/nginx.conf; then
+  echo "Nginx configuration test failed! Using fallback configuration..."
+  
+  # Remove the failing configuration first to avoid duplicate upstreams
+  rm -f /var/proxy/staging/nginx/conf.d/custom.conf
+  
+  # Use fallback configuration
+  if [ -f "/var/app/current/.platform/nginx/conf.d/custom-fallback.conf" ]; then
+    echo "Copying fallback configuration from application directory"
+    cp /var/app/current/.platform/nginx/conf.d/custom-fallback.conf /var/proxy/staging/nginx/conf.d/custom.conf
+  elif [ -f "/var/app/staging/.platform/nginx/conf.d/custom-fallback.conf" ]; then
+    echo "Copying fallback configuration from staging directory"
+    cp /var/app/staging/.platform/nginx/conf.d/custom-fallback.conf /var/proxy/staging/nginx/conf.d/custom.conf
+  else
+    echo "Warning: Could not find custom-fallback.conf in expected locations"
+  fi
+  
+  # Test again with fallback configuration
+  if ! /usr/sbin/nginx -t -c /var/proxy/staging/nginx/nginx.conf; then
+    echo "Fallback configuration also failed! Using emergency configuration..."
+    
+    # First, remove any existing next-headers.conf which might be causing conflicts
+    echo "Moving next-headers.conf to temporary location until we fix it"
+    mv /var/proxy/staging/nginx/conf.d/next-headers.conf /tmp/next-headers.conf.bak 2>/dev/null
+    
+    # Remove the failed fallback configuration
+    rm -f /var/proxy/staging/nginx/conf.d/custom.conf
+    
+    # Use emergency configuration from static file
+    if [ -f "/var/app/current/.platform/nginx/conf.d/emergency.conf" ]; then
+      echo "Copying emergency configuration from application directory"
+      cp /var/app/current/.platform/nginx/conf.d/emergency.conf /var/proxy/staging/nginx/conf.d/custom.conf
+    elif [ -f "/var/app/staging/.platform/nginx/conf.d/emergency.conf" ]; then
+      echo "Copying emergency configuration from staging directory"
+      cp /var/app/staging/.platform/nginx/conf.d/emergency.conf /var/proxy/staging/nginx/conf.d/custom.conf
+    else
+      echo "ERROR: Could not find emergency.conf in expected locations"
+      echo "Deployment may fail due to invalid Nginx configuration"
+    fi
+    
+    # Test with emergency configuration
+    if ! /usr/sbin/nginx -t -c /var/proxy/staging/nginx/nginx.conf; then
+      echo "Even emergency configuration failed! Nginx might not start properly"
+    else
+      echo "Emergency configuration test passed - will use minimal configuration"
+    fi
+  else
+    echo "Fallback configuration test passed"
+  fi
+fi
+
+echo "===== NGINX CONFIGURATION SETUP COMPLETE ====="
+exit 0
+EOL
+chmod +x $TEMP_DIR/.platform/hooks/predeploy/02_setup_nginx.sh
 
 # Create a predeploy script to deactivate swap before deployment
 cat > $TEMP_DIR/.platform/hooks/predeploy/01_deactivate_swap.sh <<EOL
@@ -476,6 +661,211 @@ exit 0
 EOL
 chmod +x $TEMP_DIR/.platform/hooks/postdeploy/02_verify_next.sh
 
+# Add Nginx configuration verification script
+cat > $TEMP_DIR/.platform/hooks/postdeploy/03_verify_nginx.sh <<EOL
+#!/bin/bash
+# Verify Nginx configuration after deployment
+
+echo "===== VERIFYING NGINX CONFIGURATION ====="
+
+# Check if custom Nginx configs exist
+echo "Checking Nginx configuration files..."
+NGINX_CONF_FILES=0
+
+if [ -f "/etc/nginx/conf.d/next-headers.conf" ]; then
+  echo "✅ next-headers.conf found at /etc/nginx/conf.d/"
+  NGINX_CONF_FILES=$((NGINX_CONF_FILES+1))
+else
+  echo "❌ WARNING: next-headers.conf not found in /etc/nginx/conf.d/"
+fi
+
+if [ -f "/var/proxy/staging/nginx/conf.d/custom.conf" ]; then
+  echo "✅ custom.conf found at /var/proxy/staging/nginx/conf.d/"
+  NGINX_CONF_FILES=$((NGINX_CONF_FILES+1))
+else
+  echo "❌ WARNING: custom.conf not found in /var/proxy/staging/nginx/conf.d/"
+fi
+
+if [ -f "/var/app/current/.platform/nginx/conf.d/emergency.conf" ] || [ -f "/var/app/staging/.platform/nginx/conf.d/emergency.conf" ]; then
+  echo "✅ emergency.conf found in application/staging directory"
+else
+  echo "❌ WARNING: emergency.conf not found in expected locations"
+fi
+
+if [ $NGINX_CONF_FILES -eq 0 ]; then
+  echo "❌ ERROR: No Nginx configuration files found!"
+fi
+
+# Check for duplicate upstream blocks
+echo "Checking for duplicate upstream definitions..."
+UPSTREAM_COUNT=$(grep -c "upstream nodejs" /var/proxy/staging/nginx/conf.d/* 2>/dev/null || echo "0")
+if [ "$UPSTREAM_COUNT" -gt 1 ]; then
+  echo "❌ WARNING: Multiple upstream nodejs blocks found ($UPSTREAM_COUNT). This may cause conflicts."
+  
+  # Find the files with upstream definitions
+  echo "Upstream blocks found in the following files:"
+  UPSTREAM_FILES=$(grep -l "upstream nodejs" /var/proxy/staging/nginx/conf.d/* 2>/dev/null)
+  echo "$UPSTREAM_FILES"
+  
+  # Keep custom.conf upstream block and comment out others
+  PRIORITY_ORDER=("custom.conf" "custom-fallback.conf" "emergency.conf")
+  PRIMARY_FILE=""
+  
+  # Find the highest priority file that exists and has an upstream block
+  for file in "${PRIORITY_ORDER[@]}"; do
+    if echo "$UPSTREAM_FILES" | grep -q "$file"; then
+      PRIMARY_FILE="/var/proxy/staging/nginx/conf.d/$file"
+      echo "Using upstream block from $PRIMARY_FILE (highest priority)"
+      break
+    fi
+  done
+  
+  # If no priority file found, use the first one
+  if [ -z "$PRIMARY_FILE" ]; then
+    PRIMARY_FILE=$(echo "$UPSTREAM_FILES" | head -n 1)
+    echo "Using upstream block from $PRIMARY_FILE (first found)"
+  fi
+  
+  # Comment out upstream blocks in all other files
+  for file in $UPSTREAM_FILES; do
+    if [ "$file" != "$PRIMARY_FILE" ]; then
+      echo "Commenting out upstream block in $file"
+      sed -i.bak '/upstream nodejs/,/}/s/^/#/' "$file"
+      rm -f "$file.bak"
+    fi
+  done
+  
+  echo "Fixed duplicate upstream nodejs blocks"
+else
+  echo "✅ No duplicate upstream blocks found"
+fi
+
+# Verify Nginx configuration
+echo "Testing Nginx configuration..."
+if nginx -t; then
+  echo "✅ Nginx configuration test passed"
+else
+  echo "❌ ERROR: Nginx configuration test failed"
+  echo "Attempting to fix common issues..."
+  
+  # Identify the specific error
+  NGINX_ERROR=$(nginx -t 2>&1)
+  echo "Nginx error: $NGINX_ERROR"
+  
+  if echo "$NGINX_ERROR" | grep -q "duplicate upstream"; then
+    echo "Detected duplicate upstream definition. Fixing..."
+    
+    # Find all files with upstream nodejs block
+    UPSTREAM_FILES=$(grep -l "upstream nodejs" /var/proxy/staging/nginx/conf.d/* 2>/dev/null)
+    
+    # Keep only the first one, remove upstream block from others
+    FIRST_FILE=$(echo "$UPSTREAM_FILES" | head -n 1)
+    echo "Keeping upstream block in $FIRST_FILE"
+    
+    for file in $UPSTREAM_FILES; do
+      if [ "$file" != "$FIRST_FILE" ]; then
+        echo "Removing upstream block from $file"
+        sed -i '/upstream nodejs/,/}/d' "$file"
+      fi
+    done
+    
+    # Test again
+    if nginx -t; then
+      echo "✅ Fixed duplicate upstream issue"
+    else
+      echo "❌ Error still persists after fixing upstream blocks"
+      
+      # Create a simplified basic config (backup original first)
+      mkdir -p /tmp/nginx-backup
+      cp -a /var/proxy/staging/nginx/conf.d/* /tmp/nginx-backup/
+      
+      # Remove all configs and use the emergency configuration
+      rm -f /var/proxy/staging/nginx/conf.d/*
+      
+      if [ -f "/var/app/current/.platform/nginx/conf.d/emergency.conf" ]; then
+        echo "Using emergency configuration from application directory"
+        cp /var/app/current/.platform/nginx/conf.d/emergency.conf /var/proxy/staging/nginx/conf.d/custom.conf
+      elif [ -f "/var/app/staging/.platform/nginx/conf.d/emergency.conf" ]; then
+        echo "Using emergency configuration from staging directory"
+        cp /var/app/staging/.platform/nginx/conf.d/emergency.conf /var/proxy/staging/nginx/conf.d/custom.conf
+      else
+        echo "❌ ERROR: Could not find emergency.conf in expected locations"
+        
+        # Create absolute minimal config as last resort
+        cat > /var/proxy/staging/nginx/conf.d/custom.conf << 'EOF'
+# Emergency minimal configuration (auto-generated)
+# Remove any previous configs to prevent conflicts
+# This file was generated as a last resort when all other configs failed
+
+upstream nodejs {
+  server 127.0.0.1:8080;
+  keepalive 256;
+}
+
+server {
+  listen 80;
+  server_name freetool.online;
+  client_max_body_size 500M;
+  
+  location / {
+    proxy_pass http://nodejs;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+  
+  # Emergency JavaScript handler
+  location ~ \.js$ {
+    proxy_pass http://nodejs;
+    add_header Content-Type "application/javascript" always;
+  }
+  
+  # Emergency CSS handler
+  location ~ \.css$ {
+    proxy_pass http://nodejs;
+    add_header Content-Type "text/css" always;
+  }
+}
+EOF
+      fi
+      
+      # Test again
+      if nginx -t; then
+        echo "✅ Emergency configuration test passed"
+        
+        # Try to also add back the map directives from headers file
+        if [ -f "/tmp/nginx-backup/next-headers.conf" ]; then
+          # Extract just the map directives
+          grep "map" /tmp/nginx-backup/next-headers.conf > /var/proxy/staging/nginx/conf.d/next-headers.conf
+          
+          # Test again to make sure it still works
+          if ! nginx -t; then
+            echo "❌ Adding back map directives failed, removing them"
+            rm -f /var/proxy/staging/nginx/conf.d/next-headers.conf
+          else
+            echo "✅ Successfully added back map directives"
+          fi
+        fi
+      else
+        echo "❌ ERROR: Emergency configuration also failed. Nginx may not start properly."
+      fi
+    fi
+  fi
+fi
+
+# Report final Nginx configuration status
+echo "Final Nginx configuration status:"
+if nginx -t; then
+  echo "✅ Nginx configuration is valid"
+else
+  echo "❌ ERROR: Nginx configuration remains invalid. Service may not start properly."
+fi
+
+echo "===== NGINX VERIFICATION COMPLETE ====="
+exit 0
+EOL
+chmod +x $TEMP_DIR/.platform/hooks/postdeploy/03_verify_nginx.sh
+
 # Create disk cleanup configuration
 echo "Creating disk cleanup configuration..."
 mkdir -p $TEMP_DIR/.ebextensions
@@ -559,3 +949,130 @@ container_commands:
     command: "/usr/local/bin/cleanup-disk-space.sh"
     ignoreErrors: true
 EOL
+
+# Add CloudFront compatibility configuration
+echo "Creating CloudFront compatibility configuration..."
+cat > $TEMP_DIR/.ebextensions/cloudfront-compat.config <<EOL
+files:
+  "/usr/local/bin/setup-cloudfront-compat.sh":
+    mode: "000755"
+    owner: root
+    group: root
+    content: |
+      #!/bin/bash
+      # Script to ensure compatibility with CloudFront
+      
+      echo "Setting up CloudFront compatibility..."
+      
+      # Verify config files exist
+      if [ -f "/var/proxy/nginx/conf.d/custom.conf" ]; then
+        echo "Found custom.conf in /var/proxy/nginx/conf.d/"
+      else
+        echo "Warning: custom.conf not found in expected location"
+      fi
+      
+      if [ -f "/var/proxy/nginx/conf.d/next-headers.conf" ]; then
+        echo "Found next-headers.conf in /var/proxy/nginx/conf.d/"
+      else
+        echo "Warning: next-headers.conf not found in expected location"
+      fi
+      
+      # Create a custom configuration for NGINX to work better with CloudFront
+      NGINX_CONF="/etc/nginx/conf.d/cloudfront-compat.conf"
+      
+      cat > \$NGINX_CONF <<EOF
+      # Additional configuration for CloudFront compatibility
+      
+      # Enable CORS for assets
+      map \$http_origin \$cors_origin {
+        default "";
+        "~^https?://(.*\.)?freetool\.online(:[0-9]+)?\$" "\$http_origin";
+      }
+      
+      # Set CORS headers for specific requests
+      map \$request_uri \$add_cors_headers {
+        default 0;
+        "~*\.(js|css|json|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$" 1;
+      }
+      
+      # Configure proxy caching for CloudFront
+      proxy_cache_path /var/cache/nginx/cloudfront_cache levels=1:2 keys_zone=cloudfront_cache:10m max_size=500m inactive=60m;
+      
+      # Configure AWS headers map
+      map \$http_cloudfront_forwarded_proto \$cf_proto {
+        default \$scheme;
+        "https" "https";
+        "http" "http";
+      }
+      EOF
+      
+      echo "Created CloudFront compatibility configuration."
+      
+      # Creating .well-known directory for better handling with CloudFront
+      mkdir -p /var/app/current/.well-known
+      
+      # Reload NGINX to apply changes
+      /sbin/service nginx reload
+      
+      echo "CloudFront compatibility setup complete."
+      exit 0
+
+  "/etc/nginx/conf.d/next-headers.conf":
+    mode: "000644"
+    owner: root
+    group: root
+    content: |
+      # Include the configuration file we copied to the expected location
+      include /var/proxy/staging/nginx/conf.d/next-headers.conf;
+
+container_commands:
+  01_setup_cloudfront_compat:
+    command: "chmod +x /usr/local/bin/setup-cloudfront-compat.sh && /usr/local/bin/setup-cloudfront-compat.sh"
+    ignoreErrors: true
+EOL
+
+# Print CloudFront recommendations
+echo "===== DEPLOYMENT PACKAGE CREATED SUCCESSFULLY ====="
+echo "Package location: $PROJECT_ROOT/$ZIP_FILE"
+echo "IMPORTANT: This package contains a pre-built Next.js application for deployment to Elastic Beanstalk."
+echo "IMPORTANT: Deploy to Elastic Beanstalk using the c6gd instance type for NVMe storage capabilities."
+echo "To deploy: Use the AWS Management Console or AWS CLI to deploy this package to your Elastic Beanstalk environment."
+echo ""
+echo "===== CLOUDFRONT CONFIGURATION RECOMMENDATIONS ====="
+echo "After deploying to Elastic Beanstalk, please ensure your CloudFront distribution has the following settings:"
+echo ""
+echo "1. For the Origin (Elastic Beanstalk domain):"
+echo "   - Origin Protocol Policy: HTTP Only (Elastic Beanstalk handles HTTPS termination)"
+echo "   - Origin Read Timeout: 60 seconds (to handle longer file uploads/processing)"
+echo ""
+echo "2. Cache Policy Configuration:"
+echo "   - Create a custom cache policy with:"
+echo "     * Minimum TTL: 0 seconds"
+echo "     * Maximum TTL: 31536000 seconds (1 year)"
+echo "     * Default TTL: 86400 seconds (1 day)"
+echo "     * Cached HTTP methods: GET, HEAD"
+echo "     * Headers to include in cache key: Origin, Accept, Accept-Encoding"
+echo "     * Query strings: All"
+echo "     * Cookies: None"
+echo ""
+echo "3. For JavaScript Files in _next/static/*:"
+echo "   - Create a specific behavior with:"
+echo "     * Path pattern: _next/static/chunks/*"
+echo "     * Compress objects automatically: Yes"
+echo "     * Origin request policy: Include all headers (CRITICAL for content type)"
+echo "     * Response headers policy: Create a custom policy that explicitly sets:"
+echo "       - Content-Type: application/javascript"
+echo "       - Cache-Control: public, max-age=31536000, immutable"
+echo "       - X-Content-Type-Options: nosniff"
+echo ""
+echo "4. CRITICAL: Create Response Headers Policy:"
+echo "   - Create a custom policy for JavaScript files that overrides Content-Type:"
+echo "     * For .js files in _next/static/chunks paths: Set Content-Type to application/javascript"
+echo "     * Enable CORS headers if needed"
+echo "     * Set the security headers as appropriate"
+echo ""
+echo "5. To validate content types after deployment:"
+echo "   - Use curl to check headers: curl -I https://freetool.online/_next/static/chunks/[some-file].js"
+echo "   - Verify Content-Type is 'application/javascript' not 'text/plain'"
+echo ""
+echo "===== END CLOUDFRONT RECOMMENDATIONS ====="

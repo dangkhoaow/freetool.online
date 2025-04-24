@@ -185,7 +185,25 @@ export async function getWebLLMService(
           webLLMInstance.initProgress = report;
           if (progressCallback) {
             const isFromCache = report.text.toLowerCase().includes('cache');
-            progressCallback(report.progress, report.text, isFromCache, lastModelCdnUrl || undefined);
+            const isFetching = 
+              report.text.toLowerCase().includes('fetch') || 
+              report.text.toLowerCase().includes('download') ||
+              report.text.toLowerCase().includes('load');
+            
+            // Ensure cached model loading reports proper progress
+            // When loading from cache, progress may be reported as 0 even during loading
+            let adjustedProgress = report.progress;
+            
+            // Handle different loading scenarios
+            if (isFromCache && adjustedProgress < 1) {
+              // For cache loading with 0 progress, show at least some progress
+              adjustedProgress = 10;
+            } else if (isFetching && adjustedProgress < 1) {
+              // For remote fetching with 0 progress, also show some progress
+              adjustedProgress = 20;
+            }
+            
+            progressCallback(adjustedProgress, report.text, isFromCache, lastModelCdnUrl || undefined);
           }
         }
       });
@@ -258,6 +276,13 @@ export class WebLLMService {
     
     try {
       console.log("Initializing WebLLM model:", this.instance.modelId);
+      // Update progress to indicate initialization is starting
+      this.instance.initProgress = { 
+        progress: 50, 
+        text: 'Starting model initialization...' 
+      };
+      this.triggerEvent('progress', this.instance.initProgress);
+      
       // Build configuration with enhanced context window settings
       const engineConfig: any = {
         temperature: this.instance.config.temperature,
@@ -285,6 +310,13 @@ export class WebLLMService {
         }
       }
       
+      // Update progress to indicate configuration is complete
+      this.instance.initProgress = { 
+        progress: 60, 
+        text: 'Configuring model parameters...' 
+      };
+      this.triggerEvent('progress', this.instance.initProgress);
+      
       // Configure and load the model
       await this.instance.engine.reload(
         this.instance.modelId, 
@@ -298,6 +330,13 @@ export class WebLLMService {
           this.triggerEvent('progress', report);
         }
       );
+      
+      // Update progress to indicate model is ready
+      this.instance.initProgress = { 
+        progress: 95, 
+        text: 'Model ready for use' 
+      };
+      this.triggerEvent('progress', this.instance.initProgress);
       
       this.instance.isInitialized = true;
       this.triggerEvent('loaded', this.instance.modelId);
