@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-import { Input } from "@/components/ui/input"
+import React, { useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, Send, BrainCircuit, StopCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -23,6 +22,8 @@ export function ChatInput({
   handleSendMessage,
   handleStopGeneration
 }: ChatInputProps) {
+  // Reference to the textarea element
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Handle form submission: either send message or stop generation
   const handleSubmit = (e: React.FormEvent) => {
@@ -38,22 +39,65 @@ export function ChatInput({
     handleSendMessage(e);
   };
   
+  // Auto-resize textarea based on content
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      
+      // Set the height to scrollHeight (content height)
+      // Max height will be limited by CSS
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  };
+  
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setUserInput(e.target.value);
+    adjustTextareaHeight();
+  };
+  
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter (without Shift)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      
+      // Only submit if there's content and not already generating
+      if (isModelLoaded && (isGenerating || userInput.trim())) {
+        handleSubmit(e);
+      }
+    }
+  };
+  
+  // Adjust height on initial render and when input changes
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [userInput]);
+  
   return (
     <div className="space-y-2">
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <Input
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder={
-            !isModelLoaded
-              ? "Load a model first..."
-              : isGenerating
-              ? "AI is generating a response..."
-              : "Type your message..."
-          }
-          disabled={!isModelLoaded}
-          className="flex-grow shadow-sm focus-visible:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
-        />
+      <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+        <div className="relative flex-grow">
+          <textarea
+            ref={textareaRef}
+            value={userInput}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              !isModelLoaded
+                ? "Load a model first..."
+                : isGenerating
+                ? "AI is generating a response..."
+                : "Type your message..."
+            }
+            disabled={!isModelLoaded}
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm flex-grow shadow-sm focus-visible:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:placeholder-gray-400 resize-none min-h-[40px] max-h-[200px] overflow-y-auto"
+            style={{ height: 'auto' }}
+            rows={1}
+          />
+        </div>
         <Button 
           type="submit" 
           disabled={!isModelLoaded || (!isGenerating && !userInput.trim())} 

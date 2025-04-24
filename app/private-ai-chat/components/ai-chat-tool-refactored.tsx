@@ -35,6 +35,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 import { Loader2, Database, Check, ChevronsUpDown } from "lucide-react"
+import { toast } from "sonner"
 
 interface ChatMessage {
   id: string
@@ -55,6 +56,9 @@ interface ChatSession {
   loadingStatus?: string
   loadingProgress?: number
 }
+
+// Define embedding models array
+const embeddingModels = ["snowflake-arctic-embed", "nomic-embed-text"];
 
 // Add TokenManager component to display token count and warnings
 const TokenManager = ({ 
@@ -152,6 +156,28 @@ const LoadingOverlay = ({ status, progress }: { status: string, progress: number
   console.log("LoadingOverlay status:", status);
   console.log("LoadingOverlay progress:", progress);
   
+  // Add useEffect to log when the overlay is mounted
+  useEffect(() => {
+    // Find what triggered the component to mount
+    const callStackInfo = new Error().stack?.split('\n').slice(1, 5).join('\n') || 'No stack trace available';
+    
+    console.log("🔵 LOADING OVERLAY COMPONENT MOUNTED - Component causes display in UI");
+    console.log("Status:", status, "Progress:", progress);
+    console.log("Mount context trace:", callStackInfo);
+    
+    // Return cleanup function to log when overlay is unmounted
+    return () => {
+      console.log("🔴 LOADING OVERLAY COMPONENT UNMOUNTED - Component removed from UI");
+      console.log("Last status:", status, "Last progress:", progress);
+      console.log("Unmount triggered as isLoading = false");
+    };
+  }, []);
+  
+  // Log every time the status or progress changes
+  useEffect(() => {
+    console.log(`♻️ LOADING OVERLAY UPDATED - Status: "${status}", Progress: ${progress}%`);
+  }, [status, progress]);
+  
   // Identify the loading stage based on the status text
   const isCachedLoading = status.toLowerCase().includes('cache');
   const isRemoteLoading = status.toLowerCase().includes('start to fetch params') ||
@@ -164,6 +190,9 @@ const LoadingOverlay = ({ status, progress }: { status: string, progress: number
                           status.toLowerCase().includes('progress') ||
                           (status.toLowerCase().includes('model') && status.toLowerCase().includes('complete'));
   
+  console.log("LoadingOverlay isCachedLoading:", isCachedLoading);
+  console.log("LoadingOverlay isRemoteLoading:", isRemoteLoading);
+
   const displayStatus = status || "Please wait while the model is loading...";
   
   // Choose appropriate description based on loading type
@@ -172,7 +201,7 @@ const LoadingOverlay = ({ status, progress }: { status: string, progress: number
   if (isCachedLoading) {
     description = "Loading a cached model is typically faster but still requires initialization";
   } else if (isRemoteLoading) {
-    description = "Downloading model from the server. This may take several minutes depending on your connection speed";
+    description = "Downloading model from the repository. This may take several minutes depending on your connection speed";
   }
   
   // Calculate estimated remaining time based on progress
@@ -456,16 +485,45 @@ export default function AIChatTool() {
   const [webGPUErrorMessage, setWebGPUErrorMessage] = useState<string | null>(null)
   // Add a reference to track if generation should be aborted
   const abortGenerationRef = useRef<boolean>(false)
+  
+  // Add a direct state variable to force loading overlay visibility during model loading
+  const [modelLoadingInProgress, setModelLoadingInProgress] = useState(false)
 
   // Get active chat
   const activeChat = chatSessions.find(chat => chat.id === activeChatId) || null
   const messages = activeChat?.messages || []
   
   // Getting model loading state from the active chat
+  // IMPORTANT: Force isLoading to true if modelLoadingInProgress is true
   const isModelLoaded = activeChat?.isModelLoaded || false
-  const isLoading = activeChat?.isLoading || false
+  // Use modelLoadingInProgress to override isLoading when needed
+  const isLoading = modelLoadingInProgress || (activeChat?.isLoading || false)
   const loadingStatus = activeChat?.loadingStatus || ""
   const loadingProgress = activeChat?.loadingProgress || 0
+
+  // Add effect to track loading state changes
+  useEffect(() => {
+    const timestamp = new Date().toISOString();
+    
+    // Log the state of all relevant variables that affect the loading overlay
+    const stateSnapshot = {
+      isLoading,                     // Primary control variable
+      isModelLoaded,                 // Indicates if model is loaded
+      activeChatId,                  // Current active chat
+      selectedModel,                 // Selected model
+      loadingStatus,                 // Current loading status message
+      loadingProgress,               // Current loading progress percentage
+      webLLMServiceAvailable: !!webLLMServiceRef.current // Whether WebLLM service is available
+    };
+    
+    if (isLoading) {
+      console.log(`🔵 [${timestamp}] LOADING OVERLAY DISPLAY EVENT - Control variable: isLoading=${isLoading}`);
+      console.log('Loading overlay state variables:', JSON.stringify(stateSnapshot, null, 2));
+    } else {
+      console.log(`🔴 [${timestamp}] LOADING OVERLAY HIDE EVENT - Control variable: isLoading=${isLoading}`);
+      console.log('Loading overlay state variables:', JSON.stringify(stateSnapshot, null, 2));
+    }
+  }, [isLoading, isModelLoaded, loadingStatus, loadingProgress, activeChatId, selectedModel, webLLMServiceRef.current]);
 
   // Add effect to check for mobile view and collapse sidebar by default
   useEffect(() => {
@@ -643,12 +701,49 @@ export default function AIChatTool() {
             if (mostRecent.modelId) {
               setSelectedModel(mostRecent.modelId)
             }
+          } else {
+            // Sessions array is empty, create a new chat
+            createNewChatOnFirstLoad()
           }
+        } else {
+          // No saved sessions, create a new chat
+          createNewChatOnFirstLoad()
         }
       } catch (error) {
         console.error("Error loading chat sessions:", error)
+        // If there was an error loading sessions, create a new chat
+        createNewChatOnFirstLoad()
       }
     }
+  }
+  
+  // Helper function to create a new chat on first load
+  const createNewChatOnFirstLoad = () => {
+    console.log("Creating new chat on first load")
+    const newChatId = `chat-${Date.now()}`
+    const newChat: ChatSession = {
+      id: newChatId,
+      title: 'New Chat',
+      modelId: selectedModel,
+      messages: [
+        {
+          id: "system-1",
+          role: "system" as const,
+          content: "You are a helpful AI assistant helping users. When answering complex questions or solving problems, you can show your thinking process using <think>Your reasoning steps here</think> tags. This helps users understand your approach and learn from your problem-solving methods.",
+          timestamp: Date.now(),
+        }
+      ],
+      lastUpdated: Date.now(),
+      createdAt: Date.now(),
+      isModelLoaded: false,
+      isLoading: false,
+      loadingStatus: "",
+      loadingProgress: 0
+    }
+    
+    setChatSessions([newChat])
+    setActiveChatId(newChatId)
+    saveChatSessions([newChat])
   }
   
   // Save chat sessions to localStorage
@@ -710,7 +805,70 @@ export default function AIChatTool() {
     loadingStatus?: string, 
     loadingProgress?: number
   ) => {
-    if (!activeChatId) return
+    // Log loading state changes with timestamps
+    const timestamp = new Date().toISOString();
+    
+    // Track call stack to see what triggered the loading state change
+    const callStack = new Error().stack?.split('\n').slice(1, 5).join('\n') || 'No stack trace';
+    
+    // SAFEGUARD: Check if we're trying to hide the loading overlay during an active loading process
+    // This prevents the overlay from disappearing prematurely during cache loading
+    if (!isLoading && 
+        (
+          // Check if we have a loading status suggesting ongoing work
+          (loadingStatus && 
+           (loadingStatus.toLowerCase().includes('cache') || 
+            loadingStatus.toLowerCase().includes('loading') || 
+            loadingStatus.toLowerCase().includes('initialize') || 
+            loadingStatus.toLowerCase().includes('download') ||
+            loadingStatus.toLowerCase().includes('fetch') ||
+            loadingStatus.toLowerCase().includes('progress'))) ||
+          // Also check model loading state
+          modelLoadingInProgress ||
+          // Check if we have a progress value indicating ongoing work
+          (loadingProgress !== undefined && loadingProgress > 0 && loadingProgress < 100)
+        )) {
+      console.log(`⚠️ [${timestamp}] PREVENTED PREMATURE OVERLAY HIDING - Status: "${loadingStatus}", Progress: ${loadingProgress}%, ModelLoadingInProgress: ${modelLoadingInProgress}`);
+      console.log(`Called from:\n${callStack}`);
+      // Force isLoading to remain true
+      isLoading = true;
+    }
+    
+    // Log different messages based on the state change
+    if (isLoading) {
+      console.log(`📌 [${timestamp}] LOADING STATE CHANGING - SHOW OVERLAY`);
+      console.log(`Parameters: isModelLoaded=${isModelLoaded}, isLoading=${isLoading}, loadingStatus="${loadingStatus}", loadingProgress=${loadingProgress}%`);
+      console.log(`Called from:\n${callStack}`);
+    } else if (!isLoading && activeChat?.isLoading) {
+      // Only log stopping if we were previously loading
+      console.log(`🛑 [${timestamp}] LOADING STATE CHANGING - HIDE OVERLAY`);
+      console.log(`Parameters: isModelLoaded=${isModelLoaded}, isLoading=${isLoading}, Previous status="${activeChat?.loadingStatus}"`);
+      console.log(`Called from:\n${callStack}`);
+    }
+    
+    if (!activeChatId) {
+      console.log("No active chat ID when trying to update loading state. Creating new chat first.")
+      createNewChatOnFirstLoad()
+      // Try again after a small delay to allow state update
+      setTimeout(() => {
+        if (activeChatId) {
+          console.log(`⏱️ [${timestamp}] DELAYED LOADING STATE UPDATE - Status: ${loadingStatus}, Progress: ${loadingProgress}%, ModelLoaded: ${isModelLoaded}`)
+          const updatedSessions = chatSessions.map(chat => 
+            chat.id === activeChatId ? { 
+              ...chat, 
+              isModelLoaded, 
+              isLoading,
+              loadingStatus: loadingStatus !== undefined ? loadingStatus : chat.loadingStatus,
+              loadingProgress: loadingProgress !== undefined ? loadingProgress : chat.loadingProgress
+            } : chat
+          )
+          
+          setChatSessions(updatedSessions)
+          saveChatSessions(updatedSessions)
+        }
+      }, 2000)
+      return
+    }
     
     const updatedSessions = chatSessions.map(chat => 
       chat.id === activeChatId ? { 
@@ -846,7 +1004,7 @@ export default function AIChatTool() {
           setChatSessions([newChat])
           setActiveChatId(newChatId)
           saveChatSessions([newChat])
-        }, 50)
+        }, 500)
       }
     }
   }
@@ -973,106 +1131,81 @@ export default function AIChatTool() {
   }, [messages])
 
   // Initialize the WebLLM engine with the selected model
-  const handleModelLoad = async () => {
-    if (!selectedModel || !activeChatId) return
-    
-    console.log("Starting model load process for:", selectedModel);
-    
-    // First check if this is an embedding model - these won't work for chat
-    if (isEmbeddingModel(selectedModel)) {
-      // Show error message about embedding models
-      updateActiveChatLoadingState(
-        false, 
-        false, 
-        "Error: Embedding models like this one can't be used for chat. Please select a chat/instruction model instead.", 
-        0
-      );
-      return;
-    }
-    
-    // Save the selected model to localStorage for future use
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('webllm-last-model', selectedModel)
-      console.log("Saved model selection to localStorage");
-    }
-    
-    // Update the active chat with the selected model
-    if (activeChatId) {
-      const updatedSessions = chatSessions.map(chat => 
-        chat.id === activeChatId ? { ...chat, modelId: selectedModel } : chat
-      )
-      setChatSessions(updatedSessions)
-      saveChatSessions(updatedSessions)
-      console.log("Updated chat session with selected model");
-    }
-    
-    // If we already have an engine reference, release it to prevent conflicts
-    if (webLLMServiceRef.current) {
-      try {
-        console.log("Disposing previous model instance");
-        // Only call dispose if it exists as a function
-        if (typeof webLLMServiceRef.current.dispose === 'function') {
-          await webLLMServiceRef.current.dispose();
-        } else if (typeof webLLMServiceRef.current.unload === 'function') {
-          // Try the unload method as a fallback if dispose doesn't exist
-          await webLLMServiceRef.current.unload();
-        }
-        webLLMServiceRef.current = null;
-      } catch (error) {
-        console.log("Error disposing previous model, continuing with new load", error);
-      }
-    }
-    
-    // Set loading state for this specific chat IMMEDIATELY
-    // This ensures the loading indicator shows right away
-    updateActiveChatLoadingState(false, true, "Initializing model loader...", 1)
-    
+  const handleModelLoad = async (shouldUseEmbeddingModel = false) => {
     try {
-      console.log("Setting up model configuration");
+      // Set model loading in progress flag
+      setModelLoadingInProgress(true);
+      
+      const timestamp = new Date().toISOString();
+      console.log(`🔄 [${timestamp}] handleModelLoad - Starting model load process...`);
+      updateActiveChatLoadingState(false, true, 'Initializing WebLLM engine...', 0);
+      
+      // Get the appropriate model based on type
+      const modelIdToUse = shouldUseEmbeddingModel 
+        ? (embeddingModels[0] || "nomic-embed-text") // Default to an embedding model
+        : selectedModel;
+        
+      console.log(`ℹ️ [${timestamp}] handleModelLoad - Selected model: ${modelIdToUse}`);
+      
+      // Save the selected model to localStorage
+      if (typeof window !== 'undefined') {
+        if (!shouldUseEmbeddingModel) {
+          localStorage.setItem('webllm-last-model', modelIdToUse);
+        } else {
+          localStorage.setItem('webllm-last-embedding-model', modelIdToUse);
+        }
+      }
+      
+      const modelIsForEmbedding = shouldUseEmbeddingModel || isEmbeddingModel(modelIdToUse);
+      
+      // Update active chat session with the selected model
+      if (activeChatId) {
+        const updatedSessions = chatSessions.map(chat => 
+          chat.id === activeChatId ? { 
+            ...chat, 
+            modelId: modelIdToUse,
+          } : chat
+        );
+        
+        setChatSessions(updatedSessions);
+        saveChatSessions(updatedSessions);
+      }
+      
+      // Update UI loading state
+      updateActiveChatLoadingState(false, true, `Initializing model: ${modelIdToUse}`, 10);
+      
       // Get the model's context window size
-      const model = models.find(m => m.id === selectedModel);
+      const model = models.find(m => m.id === modelIdToUse);
       const contextSize = model?.contextLength || 4096;
       
-      // Check if this is an embedding model
-      const modelIsForEmbedding = isEmbeddingModel(selectedModel);
-      
-      // Enhanced config with sliding window support for non-embedding models
+      // Enhanced config with suitable settings
       const config: any = {
-        temperature: 0.7,
-        topP: 0.9,
+        temperature: modelIsForEmbedding ? 0 : 0.7,
+        topP: modelIsForEmbedding ? 0 : 0.9,
         maxGenerateTokens: 2048,
       };
       
       // Only apply sliding window settings for non-embedding models
       if (!modelIsForEmbedding) {
-        // Choose to use sliding window rather than fixed context size
-        // WebLLM requires only one of these to be positive
         config.context_window_size = -1; // Disable fixed context window
-        // Use sliding window that's about 75% of the model's context size
         config.sliding_window_size = Math.floor(contextSize * 0.75);
       } else {
         // For embedding models, just set the context window size
         config.context_window_size = contextSize;
       }
       
-      console.log("Config prepared:", config);
-      
       // Update the state with the model's context size
       setMaxContextTokens(contextSize);
       
-      // Show "preparing to download" even before the service is created
-      updateActiveChatLoadingState(false, true, "Preparing to download model...", 5)
-      
-      // Use a try-catch block specifically for service creation
+      // Keep the loading overlay visible during service creation
       try {
-        console.log("Creating WebLLM service with model:", selectedModel);
+        console.log(`🔄 [${timestamp}] handleModelLoad - Creating WebLLM service...`);
         
-        // Use our service to create and initialize WebLLM
         webLLMServiceRef.current = await getWebLLMService(
-          selectedModel, 
+          modelIdToUse, 
           config,
           (progress, status, isFromCache) => {
-            console.log(`Loading progress: ${progress}%, Status: ${status}, FromCache: ${isFromCache}`);
+            console.log(`WebLLM service progress: ${progress}%, Status: ${status}, FromCache: ${isFromCache}`);
             
             // Detect different loading states
             const isFetching = status ? (
@@ -1086,7 +1219,7 @@ export default function AIChatTool() {
               status.toLowerCase().includes('progress') ||
               (status.toLowerCase().includes('model') && status.toLowerCase().includes('complete'))
             ) : false;
-              
+            
             // For cached models, ensure progress is never below a minimum threshold to keep overlay visible
             const minProgress = isFromCache ? Math.max(progress, 5) : progress;
             
@@ -1100,111 +1233,83 @@ export default function AIChatTool() {
               
               // If it's the "Start to fetch params" message, provide more user-friendly status
               if (status && status.includes("Start to fetch params")) {
-                displayStatus = "Downloading model from remote server...";
+                displayStatus = "Downloading model parameters from repository...";
               }
             }
             
+            // Check if this is a cache loading status message
+            const isCacheLoading = isFromCache || (status && status.toLowerCase().includes('cache'));
+            
+            // CRITICAL FIX: Ensure the isLoading flag is ALWAYS true during any type of loading
+            // This prevents the loading overlay from disappearing during cache loading
             // Always update loading state to keep overlay visible
             updateActiveChatLoadingState(
-              false, 
-              true, 
+              false, // isModelLoaded - not loaded yet
+              true,  // isLoading - ALWAYS true during any loading phase
               displayStatus || (isFromCache ? "Loading model from cache..." : "Loading model..."), 
               displayProgress
             );
+              
+            // Log cache loading events with more visibility
+            if (isCacheLoading) {
+              console.log(`🔄 CACHE LOADING UPDATE - Status: ${status}, Progress: ${displayProgress}%, FromCache: ${isFromCache}`);
+            }
             
             // Update cached models if loaded from cache
-            if (isFromCache && !cachedModels.includes(selectedModel)) {
-              setCachedModels(prev => [...prev, selectedModel]);
+            if (isFromCache && !cachedModels.includes(modelIdToUse)) {
+              setCachedModels(prev => [...prev, modelIdToUse]);
             }
           }
-        )
+        );
         
-        console.log("WebLLM service created successfully, initializing model");
-      } catch (serviceError) {
-        console.error("Failed to create WebLLM service:", serviceError);
-        updateActiveChatLoadingState(false, false, `Error creating model service: ${serviceError}`, 0);
-        webLLMServiceRef.current = null;
-        return;
-      }
-      
-      // Initialize the model in a separate try-catch
-      try {
-        console.log("Initializing the model");
-        // Ensure loading indicator stays visible during initialization
+        console.log(`✅ [${timestamp}] WebLLM service created successfully, initializing...`);
         updateActiveChatLoadingState(false, true, "Initializing model...", 75);
         
-        // Add event listener to track fetch progress during initialization
-        const handleFetchStart = () => {
-          console.log("Model fetch detected during initialization");
-          updateActiveChatLoadingState(false, true, "Downloading model components...", 30);
-        };
-        
-        // Add event listener using try-catch to avoid issues if API isn't available
-        try {
-          if (typeof webLLMServiceRef.current.on === 'function') {
-            webLLMServiceRef.current.on('download', (progress: number) => {
-              console.log(`Download progress: ${progress}%`);
-              updateActiveChatLoadingState(false, true, `Downloading model data (${progress}%)...`, 
-                20 + Math.floor(progress * 0.5)); // Scale progress to 20-70% range
-            });
-          }
-        } catch (e) {
-          console.log("Event listener not supported", e);
-        }
-        
-        // Initialize the model - this must complete before getting runtime stats
+        // Initialize the model
         await webLLMServiceRef.current.initialize();
-        console.log("Model initialized successfully");
+        console.log(`✅ [${timestamp}] Model initialized successfully!`);
         
-        // Show completion progress before final state update
-        updateActiveChatLoadingState(false, true, "Finalizing model setup...", 90);
+        // Mark model as loaded
+        updateActiveChatLoadingState(true, true, "Model ready! Starting session...", 100);
         
-        // Small delay to ensure UI reflects the last stage of loading
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } catch (initError) {
-        console.error("Failed to initialize model:", initError);
-        updateActiveChatLoadingState(false, false, `Error initializing model: ${initError}`, 0);
-        webLLMServiceRef.current = null;
-        return;
-      }
-      
-      // Mark the model as loaded only AFTER successfully initializing
-      updateActiveChatLoadingState(true, false);
-      console.log("Model loaded successfully");
-      
-      // Set a small delay before attempting to get runtime stats
-      // This gives the model time to fully initialize internal state
-      setTimeout(async () => {
-        try {
-          if (webLLMServiceRef.current) {
-            console.log("Getting runtime stats");
-            const runtimeStats = await webLLMServiceRef.current.getRuntimeStats();
-            if (runtimeStats && !runtimeStats.includes('NaN')) {
-              setStats(runtimeStats);
-              console.log("Runtime stats:", runtimeStats);
-            } else {
-              setStats("");
-              console.log("Invalid runtime stats, clearing");
+        // Small delay to show success message before hiding overlay
+        setTimeout(() => {
+          updateActiveChatLoadingState(true, false);
+          setModelLoadingInProgress(false);
+        }, 1000);
+        
+        // Get runtime stats after small delay
+        setTimeout(async () => {
+          try {
+            if (webLLMServiceRef.current) {
+              const runtimeStats = await webLLMServiceRef.current.getRuntimeStats();
+              if (runtimeStats && !runtimeStats.includes('NaN')) {
+                setStats(runtimeStats);
+              }
             }
+          } catch (error) {
+            console.error("Error getting runtime stats:", error);
           }
-        } catch (error) {
-          console.error("Error getting runtime stats, proceeding without stats", error);
-          setStats("");
+        }, 2000);
+        
+        // Update cached models since this model is now cached
+        if (!cachedModels.includes(modelIdToUse)) {
+          setCachedModels(prev => [...prev, modelIdToUse]);
         }
-      }, 500);
-      
-      // Update cached models since this model is now cached
-      if (!cachedModels.includes(selectedModel)) {
-        setCachedModels(prev => [...prev, selectedModel])
-        console.log("Updated cached models list");
+      } catch (error) {
+        console.error(`❌ [${timestamp}] Model initialization failed:`, error);
+        setModelLoadingInProgress(false);
+        updateActiveChatLoadingState(false, false);
+        toast?.error?.(`Failed to initialize model: ${(error as Error).message || "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Unhandled error in model loading process:", error)
-      updateActiveChatLoadingState(false, false, `Error: ${error}`, 0)
-      webLLMServiceRef.current = null;
+      console.error("Failed to load model:", error);
+      setModelLoadingInProgress(false);
+      updateActiveChatLoadingState(false, false);
+      toast?.error?.(`Error loading model: ${(error as Error).message || "Unknown error"}`);
     }
-  }
-  
+  };
+
   // Handle copying message content
   const handleCopyMessage = (messageId: string, content: string) => {
     navigator.clipboard.writeText(content)
@@ -1329,6 +1434,7 @@ export default function AIChatTool() {
           updateActiveChat(updatedMessages);
         }
         
+        setIsGenerating(false);
         return;
       }
       
@@ -1347,12 +1453,14 @@ export default function AIChatTool() {
           updateActiveChat(updatedMessages);
         }
         
+        setIsGenerating(false);
         return;
       }
       
       // Create a new chat if none is active
       if (!activeChatId) {
-        createNewChat()
+        createNewChat();
+        setIsGenerating(false);
         return; // Return and let the user try again after creating the chat
       }
       
@@ -1361,79 +1469,17 @@ export default function AIChatTool() {
         try {
           updateActiveChatLoadingState(false, true, "Reloading model...", 0);
           
-          // Get the model's context window size
-          const model = models.find(m => m.id === selectedModel);
-          const contextSize = model?.contextLength || 4096;
+          // Call handleModelLoad to reinitialize the model
+          await handleModelLoad();
           
-          // Check if this is an embedding model
-          const modelIsForEmbedding = isEmbeddingModel(selectedModel);
-          
-          // Enhanced config with sliding window support for non-embedding models
-          const config: any = {
-            temperature: 0.7,
-            topP: 0.9,
-            maxGenerateTokens: 2048,
-          };
-          
-          // Only apply sliding window settings for non-embedding models
-          if (!modelIsForEmbedding) {
-            // Choose to use sliding window rather than fixed context size
-            // WebLLM requires only one of these to be positive
-            config.context_window_size = -1; // Disable fixed context window
-            // Use sliding window that's about 75% of the model's context size
-            config.sliding_window_size = Math.floor(contextSize * 0.75);
-          } else {
-            // For embedding models, just set the context window size
-            config.context_window_size = contextSize;
+          // If we're still here, model loading was successful
+          if (!webLLMServiceRef.current) {
+            throw new Error("Failed to initialize model service");
           }
-          
-          webLLMServiceRef.current = await getWebLLMService(
-            selectedModel, 
-            config,
-            (progress, status, isFromCache) => {
-              // Ensure loading state is properly updated during reload
-              const minProgress = isFromCache ? Math.max(progress, 5) : progress;
-              
-              // Enhanced loading status detection
-              const isFetching = status ? (
-                status.toLowerCase().includes('start to fetch params') ||
-                status.toLowerCase().includes('initializing') ||
-                status.toLowerCase().includes('fetch') || 
-                status.toLowerCase().includes('fetched') || 
-                status.toLowerCase().includes('download') ||
-                status.toLowerCase().includes('load') ||
-                status.toLowerCase().includes('param') ||
-                status.toLowerCase().includes('progress') ||
-                (status.toLowerCase().includes('model') && status.toLowerCase().includes('complete'))
-              ) : false;
-              
-              // Boost progress indication for fetching operations
-              let displayProgress = minProgress;
-              if (isFetching && !isFromCache) {
-                displayProgress = Math.max(displayProgress, 20);
-              }
-              
-              updateActiveChatLoadingState(
-                false, 
-                true, 
-                status || (isFromCache ? "Restoring model from cache..." : "Reloading model..."), 
-                displayProgress
-              );
-            }
-          );
-          
-          // Show explicit initialization step
-          updateActiveChatLoadingState(false, true, "Initializing model for chat...", 75);
-          await webLLMServiceRef.current.initialize();
-          
-          // Small delay to ensure UI reflects progress
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          // Finally mark as loaded
-          updateActiveChatLoadingState(true, false);
         } catch (error) {
           console.error("Failed to reload model:", error);
           updateActiveChatLoadingState(false, false, `Error reloading model: ${error}`, 0);
+          setIsGenerating(false);
           return; // Exit if we couldn't reload the model
         }
       }
@@ -1442,6 +1488,7 @@ export default function AIChatTool() {
       if (!webLLMServiceRef.current) {
         console.error("WebLLM service is not available");
         updateActiveChatLoadingState(false, false, "Error: AI service not available. Please try reloading the model.", 0);
+        setIsGenerating(false);
         return;
       }
       
@@ -1460,7 +1507,7 @@ export default function AIChatTool() {
           content: "You are a helpful AI assistant helping users. When answering complex questions or solving problems, you can show your thinking process using <think>Your reasoning steps here</think> tags. This helps users understand your approach and learn from your problem-solving methods.",
           timestamp: Date.now(),
         }
-      ]
+      ];
       
       // Make sure there's a system message at the beginning
       let messagesWithSystem = [...currentMessages];
@@ -1488,7 +1535,6 @@ export default function AIChatTool() {
       updateActiveChat(updatedMessages);
       
       setUserInput("");
-      setIsGenerating(true);
       
       // Create the AI message placeholder
       const aiMessageId = `assistant-${Date.now()}`
@@ -1522,7 +1568,7 @@ export default function AIChatTool() {
           }
           // Return the original message otherwise
           return { role: msg.role, content: msg.content }
-        })
+        });
       
       try {
         // Use the service to generate the response
@@ -1577,8 +1623,8 @@ export default function AIChatTool() {
               }
             },
             onErrorCallback: (error: Error) => {
-              console.error("Generation error:", error)
-              setIsGenerating(false)
+              console.error("Generation error:", error);
+              setIsGenerating(false);
               
               // If already aborted, don't show new error
               if (abortGenerationRef.current) {
@@ -1596,14 +1642,14 @@ export default function AIChatTool() {
                 msg.id === aiMessageId 
                   ? { ...msg, content: "Error generating response. Please try again." } 
                   : msg
-              )
-              updateActiveChat(errorMessages)
+              );
+              updateActiveChat(errorMessages);
             }
           }
-        )
+        );
       } catch (error: any) {
-        console.error("Error during generation:", error)
-        setIsGenerating(false)
+        console.error("Error during generation:", error);
+        setIsGenerating(false);
         
         // If already aborted, don't show new error
         if (abortGenerationRef.current) {
@@ -1621,8 +1667,8 @@ export default function AIChatTool() {
           msg.id === aiMessageId 
             ? { ...msg, content: "Error generating response. Please try again." } 
             : msg
-        )
-        updateActiveChat(errorMessages)
+        );
+        updateActiveChat(errorMessages);
       }
     } catch (error) {
       console.error("Error during message handling:", error);
@@ -1633,7 +1679,7 @@ export default function AIChatTool() {
 
   // Clear the chat history
   const handleClearChat = () => {
-    if (!activeChatId) return
+    if (!activeChatId) return;
     
     const clearedMessages = [
       {
@@ -1642,27 +1688,27 @@ export default function AIChatTool() {
         content: "You are a helpful AI assistant helping users. When answering complex questions or solving problems, you can show your thinking process using <think>Your reasoning steps here</think> tags. This helps users understand your approach and learn from your problem-solving methods.",
         timestamp: Date.now(),
       }
-    ]
+    ];
     
-    updateActiveChat(clearedMessages)
+    updateActiveChat(clearedMessages);
   }
 
   // Download chat history as JSON
   const handleExportChat = () => {
-    if (!activeChat) return
+    if (!activeChat) return;
     
-    const exportData = activeChat.messages.filter(m => m.role !== "system")
-    const jsonStr = JSON.stringify(exportData, null, 2)
-    const blob = new Blob([jsonStr], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
+    const exportData = activeChat.messages.filter(m => m.role !== "system");
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
     
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `chat-export-${new Date().toISOString()}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat-export-${new Date().toISOString()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   // UI rendering
@@ -1711,7 +1757,13 @@ export default function AIChatTool() {
             ) : (
               <div className="space-y-4 flex flex-col h-full min-h-0 relative">
                 {/* Add loading overlay when model is loading to prevent user interaction */}
-                {isLoading && <LoadingOverlay status={loadingStatus} progress={loadingProgress} />}
+                {isLoading ? (() => {
+                  console.log(`🔍 RENDER: LoadingOverlay INCLUDED in UI - isLoading=${isLoading}`);
+                  return <LoadingOverlay status={loadingStatus} progress={loadingProgress} />;
+                })() : (() => {
+                  //console.log(`🔍 RENDER: LoadingOverlay NOT included in UI - isLoading=${isLoading}`);
+                  return null;
+                })()}
                 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -1812,7 +1864,7 @@ export default function AIChatTool() {
                       </PopoverContent>
                     </Popover>
                     <Button 
-                      onClick={handleModelLoad} 
+                      onClick={() => handleModelLoad()} 
                       disabled={isModelLoaded || isLoading || !selectedModel}
                       className={cn("whitespace-nowrap min-w-[110px]", isLoading && "bg-blue-600 hover:bg-blue-700")}
                     >
@@ -1890,4 +1942,4 @@ export default function AIChatTool() {
       </div>
     </div>
   )
-} 
+}

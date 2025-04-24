@@ -1,202 +1,321 @@
 "use client"
 
-import React from "react"
-import { CodeBlock } from "./CodeBlock"
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import React, { useContext, useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import tsx from 'react-syntax-highlighter/dist/cjs/languages/prism/tsx';
+import typescript from 'react-syntax-highlighter/dist/cjs/languages/prism/typescript';
+import scss from 'react-syntax-highlighter/dist/cjs/languages/prism/scss';
+import bash from 'react-syntax-highlighter/dist/cjs/languages/prism/bash';
+import markdown from 'react-syntax-highlighter/dist/cjs/languages/prism/markdown';
+import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json';
+import { cn } from '@/lib/utils';
+import {
+  markdownStyles,
+} from '@/app/private-ai-chat/components/chat-components/utils';
+import { GrCode, GrCopy } from 'react-icons/gr';
+import { LuClipboardCopy, LuClipboardCheck } from 'react-icons/lu';
+import { CopyButton } from '@/components/ui/copy-button';
+import { Components } from 'react-markdown';
+import { CodeBlock } from './CodeBlock';
+import { CustomCode } from './CustomCode';
+
+// Register languages
+SyntaxHighlighter.registerLanguage('tsx', tsx);
+SyntaxHighlighter.registerLanguage('typescript', typescript);
+SyntaxHighlighter.registerLanguage('scss', scss);
+SyntaxHighlighter.registerLanguage('bash', bash);
+SyntaxHighlighter.registerLanguage('markdown', markdown);
+SyntaxHighlighter.registerLanguage('json', json);
+
+interface FormatterProps {
+  content: string;
+}
+
+// Define type for markdown component props
+type MarkdownComponentProps = {
+  node?: any;
+  children: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+  href?: string;
+};
+
+// Specialized types for each HTML element
+type HeadingProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement> & MarkdownComponentProps;
+type ParagraphProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement> & MarkdownComponentProps;
+type ListProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLUListElement>, HTMLUListElement> & MarkdownComponentProps;
+type BlockQuoteProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLQuoteElement>, HTMLQuoteElement> & MarkdownComponentProps;
+type TableProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLTableElement>, HTMLTableElement> & MarkdownComponentProps;
+type TableCellProps = React.DetailedHTMLProps<React.TdHTMLAttributes<HTMLTableCellElement>, HTMLTableCellElement> & MarkdownComponentProps;
+type LinkProps = React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement> & MarkdownComponentProps;
+type CodeProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & MarkdownComponentProps;
+type DivProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement> & MarkdownComponentProps;
+
+// List of HTML block elements that cannot be nested inside paragraphs
+const BLOCK_ELEMENTS = [
+  'address', 'article', 'aside', 'blockquote', 'canvas', 'dd', 'div', 
+  'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'li', 'main', 
+  'nav', 'noscript', 'ol', 'p', 'pre', 'section', 'table', 'tfoot', 
+  'ul', 'video'
+];
+
+// Check if children contains any block elements
+const hasBlockElement = (children: React.ReactNode): boolean => {
+  const childrenArray = React.Children.toArray(children);
+  
+  for (const child of childrenArray) {
+    // Check if it's a React element
+    if (!React.isValidElement(child)) continue;
+    
+    // Check if it's a custom component that might render block elements
+    if (child.type === CodeBlock) return true;
+    
+    // Check if it's a standard HTML block element
+    if (typeof child.type === 'string' && BLOCK_ELEMENTS.includes(child.type)) {
+      return true;
+    }
+    
+    // Recursively check children of this element
+    if (child.props && typeof child.props === 'object' && 'children' in child.props) {
+      const childrenProp = child.props.children as React.ReactNode;
+      if (hasBlockElement(childrenProp)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+};
+
+// Custom component to prevent paragraph wrapping around block elements
+const CustomParagraph: React.FC<React.ComponentPropsWithRef<'p'> & { node?: any }> = ({ children, node, ...props }) => {
+  // First check if node directly contains a code block
+  if (node?.children?.some(child => 
+    child.tagName === 'code' && 
+    child.properties?.className?.some((cls: string) => cls.startsWith('language-'))
+  )) {
+    return <>{children}</>;
+  }
+
+  // Next check if children contains any block elements
+  const containsBlockElement = React.Children.toArray(children).some(
+    (child) => {
+      if (React.isValidElement(child)) {
+        const type = child.type as any;
+        
+        // Check if it's the CustomCode component (not inline)
+        if (type === CustomCode && !child.props.inline) {
+          return true;
+        }
+        
+        // Check if it's CodeBlock
+        if (type === CodeBlock || type?.displayName === 'CodeBlock') {
+          return true;
+        }
+        
+        // Check if it's a standard HTML block element
+        return ['div', 'pre', 'table', 'ul', 'ol', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(
+          typeof type === 'string' ? type : type?.displayName || ''
+        );
+      }
+      return false;
+    }
+  );
+
+  // If contains block elements, render without the paragraph wrapper
+  if (containsBlockElement) {
+    return <>{children}</>;
+  }
+
+  // Otherwise, render as a normal paragraph
+  return <p {...props}>{children}</p>;
+};
+
+// Define shared markdown components configuration
+const markdownComponents = {
+  // Use the external CustomCode component for code blocks
+  code: ({ node, inline, className, children, ...props }: any) => {
+    const isCodeBlock = !inline && className && /language-(\w+)/.test(className);
+    
+    // For code blocks, render them directly without any additional wrapper
+    if (isCodeBlock) {
+      return (
+        <CustomCode inline={inline} className={className} {...props}>
+          {children || ''}
+        </CustomCode>
+      );
+    }
+    
+    // For inline code, let CustomCode handle it
+    return (
+      <CustomCode inline={inline} className={className} {...props}>
+        {children || ''}
+      </CustomCode>
+    );
+  },
+  
+  // Use custom paragraph handler
+  p: CustomParagraph,
+  
+  // Style headers
+  h1: ({ children, ...props }) => (
+    <h1 className="text-2xl font-bold mt-6 mb-4" {...props}>{children}</h1>
+  ),
+  h2: ({ children, ...props }) => (
+    <h2 className="text-xl font-bold mt-5 mb-3" {...props}>{children}</h2>
+  ),
+  h3: ({ children, ...props }) => (
+    <h3 className="text-lg font-bold mt-4 mb-2" {...props}>{children}</h3>
+  ),
+  h4: ({ children, ...props }) => (
+    <h4 className="text-base font-bold mt-3 mb-2" {...props}>{children}</h4>
+  ),
+  
+  // Style lists
+  ul: ({ children, ...props }) => (
+    <ul className="list-disc pl-6 mb-4 space-y-1" {...props}>{children}</ul>
+  ),
+  ol: ({ children, ...props }) => (
+    <ol className="list-decimal pl-6 mb-4 space-y-1" {...props}>{children}</ol>
+  ),
+  
+  // Style blockquotes
+  blockquote: ({ children, ...props }) => (
+    <blockquote className="border-l-4 border-gray-300 dark:border-gray-700 pl-4 py-1 my-4 italic" {...props}>{children}</blockquote>
+  ),
+  
+  // Handle tables
+  table: ({ children, ...props }) => (
+    <div className="overflow-x-auto my-4">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" {...props}>{children}</table>
+    </div>
+  ),
+  th: ({ children, ...props }) => (
+    <th className="px-3 py-2 bg-gray-100 dark:bg-gray-800 font-semibold text-left" {...props}>{children}</th>
+  ),
+  td: ({ children, ...props }) => (
+    <td className="px-3 py-2 border-t border-gray-200 dark:border-gray-700" {...props}>{children}</td>
+  ),
+  
+  // Handle links
+  a: ({ children, href, ...props }) => (
+    <a 
+      href={href} 
+      className="text-blue-600 dark:text-blue-400 hover:underline" 
+      target="_blank" 
+      rel="noopener noreferrer"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  
+  // Handle pre elements - use div wrapper to avoid nesting issues
+  pre: ({ children, ...props }) => {
+    return <div className="not-prose" {...props}>{children}</div>;
+  }
+}
 
 /**
  * Formats message content with support for code blocks, thinking/reasoning tags, and Markdown.
  * 
- * This formatter supports:
+ * This formatter handles:
  * 1. Code blocks using triple backticks: ```language\ncode```
- * 2. Thinking/reasoning sections using <think>text</think> tags
+ * 2. Thinking/reasoning sections using <thinking>text</thinking> tags
  * 3. Markdown formatting including headers, lists, tables, links, etc.
  *
- * The thinking tags are displayed in a highlighted box to visually separate them
- * from the regular content, making it easier to follow the AI's reasoning process.
- * 
  * @param content The message content to format
  * @returns Formatted React node with styled code blocks, thinking sections, and markdown formatting
  */
 export function formatMessageContent(content: string): React.ReactNode {
-  // Process thinking tags first
-  const hasThinkingTags = content.includes('<think>') && content.includes('</think>')
+  if (!content) return null;
+
+  // Process content with thinking tags and code blocks
+  const hasThinkingTags = content.includes("<thinking>") && content.includes("</thinking>");
   
-  let processedContent = content
+  // Handle content with thinking tags
   if (hasThinkingTags) {
-    // Replace thinking tags with styled divs, but preserve the pattern for later splitting
-    processedContent = content.replace(/<think>([\s\S]*?)<\/think>/g, (match, thinking) => {
-      // Create a unique marker to ensure proper splitting later
-      return `<thinking>${thinking}</thinking>`
-    })
-  }
-  
-  // Check if the content contains code blocks with ```
-  if (processedContent.includes('```')) {
-    // Use a more precise regex to capture code blocks and thinking sections
-    const parts = processedContent.split(/(```(?:.*?)\n[\s\S]*?```)|(<thinking>[\s\S]*?<\/thinking>)/g)
+    // Safer regex that handles multiple thinking tags
+    const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/g;
+    const parts: Array<{type: 'thinking' | 'normal', content: string}> = [];
     
-    return parts.filter(Boolean).map((part, i) => {
-      if (part?.startsWith('```')) {
-        // Extract language if specified (e.g., ```javascript)
-        const language = part.match(/```(\w*)/)?.[1] || ''
-        // Extract the code content (everything between the backticks)
-        const code = part.replace(/```(?:\w*)\n([\s\S]*?)```/g, '$1')
-        
-        return <CodeBlock key={i} code={code} language={language} />
-      } else if (part?.startsWith('<thinking>')) {
-        // Extract the thinking content
-        const thinking = part.replace(/<thinking>([\s\S]*?)<\/thinking>/g, '$1')
-        
-        return (
-          <div key={i} className="bg-yellow-50 border-l-4 border-yellow-500 p-3 my-2 rounded">
-            <div className="text-xs font-medium text-yellow-800 mb-1">Thinking/Reasoning:</div>
-            <div className="text-gray-700">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // @ts-ignore - ReactMarkdown types are incompatible
-                  p: ({children}: any) => <p className="whitespace-pre-wrap">{children}</p>
-                }}
-              >
-                {thinking}
-              </ReactMarkdown>
-            </div>
-          </div>
-        )
-      } else {
-        // Render regular text with markdown
-        return (
-          <div key={i} className="markdown-content">
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]}
-              components={{
-                // @ts-ignore - ReactMarkdown types are incompatible
-                code: ({inline, className, children}: any) => {
-                  if (inline) {
-                    return <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">{children}</code>
-                  }
-                  return null; // Code blocks are already handled
-                },
-                // @ts-ignore - ReactMarkdown types are incompatible
-                p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
-              }}
-            >
-              {part}
-            </ReactMarkdown>
-          </div>
-        )
-      }
-    })
-  }
-  
-  // If there are thinking tags but no code blocks
-  if (hasThinkingTags) {
-    // Use a direct approach to handle multiple thinking tags consistently
-    const result: React.ReactNode[] = []
-    const textParts: string[] = []
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
     
-    // Process the content directly to ensure proper handling of multiple blocks
-    let currentIndex = 0
-    const thinkingMatches = Array.from(processedContent.matchAll(/<thinking>([\s\S]*?)<\/thinking>/g))
-    
-    thinkingMatches.forEach((match, idx) => {
-      const startIndex = match.index! // TypeScript needs the non-null assertion
-      const endIndex = startIndex + match[0].length
+    // Find all thinking tags and split content
+    while ((match = thinkingRegex.exec(content)) !== null) {
+      const startIndex = match.index;
       
-      // Add any text before this thinking block
-      if (startIndex > currentIndex) {
-        const textContent = processedContent.substring(currentIndex, startIndex)
-        textParts.push(textContent)
+      // Add normal text before thinking block
+      if (startIndex > lastIndex) {
+        parts.push({
+          type: 'normal',
+          content: content.substring(lastIndex, startIndex)
+        });
       }
       
-      // Extract the thinking content
-      const thinking = match[1]
+      // Add thinking block
+      parts.push({
+        type: 'thinking',
+        content: match[1]  // The content inside thinking tags
+      });
       
-      // Add the text before this thinking block with markdown support
-      if (textParts.length > 0) {
-        result.push(
-          <div key={`text-${idx}`}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                // @ts-ignore - ReactMarkdown types are incompatible
-                p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
-              }}
-            >
-              {textParts.join('')}
-            </ReactMarkdown>
-          </div>
-        )
-        textParts.length = 0 // Clear text parts after adding
-      }
-      
-      // Add the thinking section with markdown support
-      result.push(
-        <div key={`thinking-${idx}`} className="bg-yellow-50 border-l-4 border-yellow-500 p-3 my-2 rounded">
-          <div className="text-xs font-medium text-yellow-800 mb-1">Thinking/Reasoning:</div>
-          <div className="text-gray-700">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                // @ts-ignore - ReactMarkdown types are incompatible
-                p: ({children}: any) => <p className="whitespace-pre-wrap">{children}</p>
-              }}
-            >
-              {thinking}
-            </ReactMarkdown>
-          </div>
-        </div>
-      )
-      
-      // Update current index
-      currentIndex = endIndex
-    })
-    
-    // Add any remaining text after the last thinking block
-    if (currentIndex < processedContent.length) {
-      const remainingText = processedContent.substring(currentIndex)
-      result.push(
-        <div key="text-final">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              // @ts-ignore - ReactMarkdown types are incompatible
-              p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
-            }}
-          >
-            {remainingText}
-          </ReactMarkdown>
-        </div>
-      )
+      lastIndex = match.index + match[0].length;
     }
     
-    return result
+    // Add remaining normal text after last thinking tag
+    if (lastIndex < content.length) {
+      parts.push({
+        type: 'normal',
+        content: content.substring(lastIndex)
+      });
+    }
+    
+    // Render each part appropriately
+    return (
+      <>
+        {parts.map((part, index) => {
+          if (part.type === 'thinking') {
+            return (
+              <div key={`thinking-${index}`} className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-500 p-3 my-4 rounded">
+                <div className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mb-1">Thinking/Reasoning:</div>
+                <div className="text-gray-700 dark:text-gray-300">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {part.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            );
+          } else {
+            return (
+              <ReactMarkdown
+                key={`normal-${index}`}
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {part.content}
+              </ReactMarkdown>
+            );
+          }
+        })}
+      </>
+    );
   }
   
-  // If no code blocks or thinking tags, use ReactMarkdown for standard markdown rendering
+  // Standard markdown rendering for content without thinking tags
   return (
-    <div className="markdown-content">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          // @ts-ignore - ReactMarkdown types are incompatible
-          code: ({inline, className, children}: any) => {
-            if (inline) {
-              return <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">{children}</code>
-            }
-            // This shouldn't happen since code blocks were handled above, but just in case
-            const match = /language-(\w+)/.exec(className || '')
-            const lang = match ? match[1] : ''
-            return <CodeBlock code={String(children).replace(/\n$/, '')} language={lang} />
-          },
-          // @ts-ignore - ReactMarkdown types are incompatible
-          p: ({children}: any) => <p className="whitespace-pre-wrap mb-4">{children}</p>
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  )
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={markdownComponents}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 } 
