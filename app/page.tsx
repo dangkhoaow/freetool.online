@@ -85,6 +85,37 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Steganography Tool */}
+            <div className={cn(
+              "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
+              "transition-all hover:shadow-md flex-shrink-0 snap-start",
+              "w-[300px] flex flex-col relative"
+            )}>
+              {/* Hot Badge */}
+              <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                <Flame className="h-3 w-3 mr-1" />
+                HOT
+              </div>
+              <div className="h-40 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
+                <Eye className="h-16 w-16 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+              </div>
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-bold mb-2 dark:text-white">Steganography Tool</h3>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    Hide secret messages within images using advanced steganography techniques. 100% private.
+                  </p>
+                </div>
+                <div className="mt-4">
+                  <Button asChild className="w-full">
+                    <Link href="/steganography-tool" className="flex items-center justify-center gap-2" aria-label="Use Steganography Tool">
+                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* HEIC Converter */}
             <div className={cn(
               "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
@@ -281,45 +312,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Steganography Tool */}
-            <div className={cn(
-              "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-              "transition-all hover:shadow-md flex-shrink-0 snap-start",
-              "w-[300px] flex flex-col"
-            )}>
-              <div className="h-40 bg-gradient-to-r from-indigo-50 to-blue-50 flex items-center justify-center">
-                <Eye className="h-16 w-16 text-indigo-600" aria-hidden="true" />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2">Steganography Tool</h3>
-                  <p className="text-gray-600">
-                    Hide secret messages within images using advanced steganography techniques. 100% private.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link href="/steganography-tool" className="flex items-center justify-center gap-2" aria-label="Use Steganography Tool">
-                      Use Tool <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             {/* GIF to Frames */}
             <div className={cn(
               "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
               "transition-all hover:shadow-md flex-shrink-0 snap-start",
               "w-[300px] flex flex-col"
             )}>
-              <div className="h-40 bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-center">
-                <Film className="h-16 w-16 text-purple-500" aria-hidden="true" />
+              <div className="h-40 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
+                <Film className="h-16 w-16 text-purple-500 dark:text-purple-400" aria-hidden="true" />
               </div>
               <div className="p-6 flex flex-col flex-grow">
                 <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2">GIF to Frames</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-xl font-bold mb-2 dark:text-white">GIF to Frames</h3>
+                  <p className="text-gray-600 dark:text-gray-300">
                     Extract individual frames from animated GIFs. Choose your output format and frames per second.
                   </p>
                 </div>
@@ -339,13 +344,13 @@ export default function Home() {
               "transition-all hover:shadow-md flex-shrink-0 snap-start",
               "w-[300px] flex flex-col"
             )}>
-              <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 flex items-center justify-center">
-                <FileType className="h-16 w-16 text-green-500" aria-hidden="true" />
+              <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/30 dark:to-teal-900/30 flex items-center justify-center">
+                <FileType className="h-16 w-16 text-green-500 dark:text-green-400" aria-hidden="true" />
               </div>
               <div className="p-6 flex flex-col flex-grow">
                 <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2">PDF Tools</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-xl font-bold mb-2 dark:text-white">PDF Tools</h3>
+                  <p className="text-gray-600 dark:text-gray-300">
                     Merge, split, compress, and convert PDF files with ease. Powerful PDF manipulation.
                   </p>
                 </div>
@@ -365,13 +370,13 @@ export default function Home() {
               "transition-all hover:shadow-md flex-shrink-0 snap-start",
               "w-[300px] flex flex-col"
             )}>
-              <div className="h-40 bg-gradient-to-r from-amber-50 to-yellow-50 flex items-center justify-center">
-                <FileArchive className="h-16 w-16 text-amber-500" aria-hidden="true" />
+              <div className="h-40 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 flex items-center justify-center">
+                <FileArchive className="h-16 w-16 text-amber-500 dark:text-amber-400" aria-hidden="true" />
               </div>
               <div className="p-6 flex flex-col flex-grow">
                 <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2">Zip Compressor</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-xl font-bold mb-2 dark:text-white">Zip Compressor</h3>
+                  <p className="text-gray-600 dark:text-gray-300">
                     Compress folders online, reduce zip file size, and secure files with password protection.
                   </p>
                 </div>
