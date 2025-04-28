@@ -67,14 +67,6 @@ export default function SecuritySection() {
               entirely within your browser. This provides professional-grade video processing 
               capabilities without needing to send your data to a server.
             </p>
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>Your Browser</span>
-              <svg width="180" height="30" viewBox="0 0 180 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1 15H179" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4"/>
-                <path d="M165 8L179 15L165 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Output File</span>
-            </div>
           </div>
         </div>
       </div>
