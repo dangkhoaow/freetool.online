@@ -20,7 +20,10 @@ const RESERVED_PATHS = [
   '/sitemap.xml',
   '/manifest.webmanifest',
   '/health',
-  '/not-found'
+  '/not-found',
+  '/ffmpeg',
+  '/ffmpeg-core.js',
+  '/ffmpeg-core.wasm'
 ];
 
 // HTML for a simple 404 page that we'll return directly from middleware
@@ -114,7 +117,7 @@ export async function middleware(request: NextRequest) {
   }
   
   // Handle static resources (images, fonts, etc.)
-  const isStaticResource = !!path.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|bmp|tiff|pdf|txt|css|js|woff|woff2|ttf|otf|eot)$/i);
+  const isStaticResource = !!path.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|bmp|tiff|pdf|txt|css|js|woff|woff2|ttf|otf|eot|wasm)$/i);
   
   if (isStaticResource) {
     // Check if it's a known static resource
@@ -179,7 +182,9 @@ export async function middleware(request: NextRequest) {
     'todo-list',
     'unit-converter',
     'zip-compressor',
-    'site-management'
+    'site-management',
+    'data-visualization-tool',
+    'video-transcoder'
   ];
   
   // Check for valid top-level routes

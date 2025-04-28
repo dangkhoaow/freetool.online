@@ -31,6 +31,16 @@ const allTools = [
     isHot: true,
   },
   {
+    id: "video-transcoder",
+    title: "Video Transcoder",
+    description: "Convert, trim, split, and merge videos directly in your browser. No upload needed for complete privacy.",
+    icon: <Film className="h-16 w-16 text-cyan-600" />,
+    color: "from-cyan-50 to-blue-50",
+    textColor: "text-cyan-600",
+    category: "file",
+    isHot: true,
+  },
+  {
     id: "heic-converter",
     title: "HEIC Converter",
     description: "Convert HEIC images from your iPhone to JPG, PNG, WEBP, or PDF formats with our AI-powered optimization.",
