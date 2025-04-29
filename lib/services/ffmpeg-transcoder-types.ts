@@ -14,6 +14,8 @@ export interface VideoSettings {
   splitPoints: number[];
   mergeClips: MergeClip[];
   transition: 'none' | 'crossfade' | 'fade' | 'wipe';
+  customWidth?: string;
+  customHeight?: string;
 }
 
 export interface MergeClip {

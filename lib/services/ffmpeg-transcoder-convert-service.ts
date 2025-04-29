@@ -39,9 +39,27 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
           throw new Error(`WebM/VP9 conversion is limited to files under ${MAX_SAFE_WEBM_SIZE_MB}MB due to browser memory limits.`);
         }
         if (settings.resolution && settings.resolution !== 'original') {
-          const [width, height] = settings.resolution.split('x').map(Number);
-          if (width * height > MAX_SAFE_WEBM_RESOLUTION) {
-            throw new Error('WebM/VP9 conversion is limited to 480p (854x480) or lower for browser stability.');
+          let width = null, height = null;
+          if (/^\d+x\d+$/.test(settings.resolution)) {
+            [width, height] = settings.resolution.split('x');
+          } else if (settings.resolution === 'custom' && settings.customWidth && settings.customHeight) {
+            width = settings.customWidth;
+            height = settings.customHeight;
+          } else if (/^\d+p$/.test(settings.resolution)) {
+            const presetMap: Record<string, [string, string]> = {
+              '1080p': ['1920', '1080'],
+              '720p': ['1280', '720'],
+              '480p': ['854', '480'],
+              '360p': ['640', '360']
+            };
+            [width, height] = presetMap[settings.resolution] || [null, null];
+          }
+          if (width && height) {
+            const widthNum = Number(width);
+            const heightNum = Number(height);
+            if (widthNum * heightNum > MAX_SAFE_WEBM_RESOLUTION) {
+              throw new Error('WebM/VP9 conversion is limited to 480p (854x480) or lower for browser stability.');
+            }
           }
         }
         // Lower default bitrate for VP9
@@ -51,9 +69,27 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
       // Check for high output resolution (default: 720p max)
       const MAX_SAFE_RESOLUTION = 1280 * 720; // 720p
       if (settings.resolution && settings.resolution !== 'original') {
-        const [width, height] = settings.resolution.split('x').map(Number);
-        if (width * height > MAX_SAFE_RESOLUTION) {
-          throw new Error('Output resolution is too high for in-browser conversion. Please select 720p or lower.');
+        let width = null, height = null;
+        if (/^\d+x\d+$/.test(settings.resolution)) {
+          [width, height] = settings.resolution.split('x');
+        } else if (settings.resolution === 'custom' && settings.customWidth && settings.customHeight) {
+          width = settings.customWidth;
+          height = settings.customHeight;
+        } else if (/^\d+p$/.test(settings.resolution)) {
+          const presetMap: Record<string, [string, string]> = {
+            '1080p': ['1920', '1080'],
+            '720p': ['1280', '720'],
+            '480p': ['854', '480'],
+            '360p': ['640', '360']
+          };
+          [width, height] = presetMap[settings.resolution] || [null, null];
+        }
+        if (width && height) {
+          const widthNum = Number(width);
+          const heightNum = Number(height);
+          if (widthNum * heightNum > MAX_SAFE_RESOLUTION) {
+            throw new Error('Output resolution is too high for in-browser conversion. Please select 720p or lower.');
+          }
         }
       }
 
@@ -123,8 +159,29 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
         
         // Resolution
         if (settings.resolution !== 'original') {
-          const [width, height] = settings.resolution.split('x');
-          ffmpegArgs.push('-vf', `scale=${width}:${height}`);
+          let width = null, height = null;
+          if (/^\d+x\d+$/.test(settings.resolution)) {
+            [width, height] = settings.resolution.split('x');
+          } else if (settings.resolution === 'custom' && settings.customWidth && settings.customHeight) {
+            width = settings.customWidth;
+            height = settings.customHeight;
+          } else if (/^\d+p$/.test(settings.resolution)) {
+            const presetMap: Record<string, [string, string]> = {
+              '1080p': ['1920', '1080'],
+              '720p': ['1280', '720'],
+              '480p': ['854', '480'],
+              '360p': ['640', '360']
+            };
+            [width, height] = presetMap[settings.resolution] || [null, null];
+          }
+          if (width && height) {
+            const widthNum = Number(width);
+            const heightNum = Number(height);
+            if (widthNum * heightNum > MAX_SAFE_RESOLUTION) {
+              throw new Error('Output resolution is too high for in-browser conversion. Please select 720p or lower.');
+            }
+            ffmpegArgs.push('-vf', `scale=${width}:${height}`);
+          }
         }
         
         // Frame rate

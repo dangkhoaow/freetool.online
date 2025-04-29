@@ -21,13 +21,19 @@ const formatOptions = [
   { id: "mov-h264", name: "QuickTime", description: "For Apple devices" }
 ]
 
-// Define resolution options
+// Define resolution options (including 9:16 portrait)
 const resolutionOptions = [
   { id: "original", name: "Original" },
-  { id: "1080p", name: "1080p (1920×1080)" },
-  { id: "720p", name: "720p (1280×720)" },
-  { id: "480p", name: "480p (854×480)" },
-  { id: "360p", name: "360p (640×360)" }
+  { id: "1920x1080", name: "1080p (1920×1080)" },
+  { id: "1280x720", name: "720p (1280×720)" },
+  { id: "854x480", name: "480p (854×480)" },
+  { id: "640x360", name: "360p (640×360)" },
+  // 9:16 portrait resolutions
+  { id: "1080x1920", name: "1080x1920 (9:16 Portrait)" },
+  { id: "720x1280", name: "720x1280 (9:16 Portrait)" },
+  { id: "540x960", name: "540x960 (9:16 Portrait)" },
+  { id: "360x640", name: "360x640 (9:16 Portrait)" },
+  { id: "custom", name: "Custom..." }
 ]
 
 // Settings section component
@@ -253,6 +259,29 @@ export default function SettingsSection({
                 </option>
               ))}
             </select>
+            {/* Show custom input fields if 'custom' is selected */}
+            {settings.resolution === 'custom' && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  type="number"
+                  min={64}
+                  max={4096}
+                  placeholder="Width"
+                  value={settings.customWidth || ''}
+                  onChange={e => onUpdateSettings({ customWidth: e.target.value.replace(/\D/g, '') })}
+                  className="w-1/2"
+                />
+                <Input
+                  type="number"
+                  min={64}
+                  max={4096}
+                  placeholder="Height"
+                  value={settings.customHeight || ''}
+                  onChange={e => onUpdateSettings({ customHeight: e.target.value.replace(/\D/g, '') })}
+                  className="w-1/2"
+                />
+              </div>
+            )}
           </div>
         </TabsContent>
         
