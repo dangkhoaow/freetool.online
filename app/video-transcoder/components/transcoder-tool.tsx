@@ -440,6 +440,7 @@ export default function TranscoderTool() {
             segments={segments}
             videoBlob={outputBlob}
             task={settings.task}
+            settings={settings}
             onBackToSettings={() => setActiveTab('settings')}
           />
         </TabsContent>

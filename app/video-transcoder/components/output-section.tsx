@@ -18,13 +18,15 @@ export default function OutputSection({
   videoBlob,
   segments,
   task,
-  onBackToSettings
+  onBackToSettings,
+  settings
 }: { 
   videoUrl: string | null;
   videoBlob: Blob | null;
   segments?: any[];
   task: 'convert' | 'trim' | 'split' | 'merge';
   onBackToSettings: () => void;
+  settings: any;
 }) {
   const [copied, setCopied] = React.useState(false)
   const [mergeInfo, setMergeInfo] = useState<any>(null);
@@ -56,16 +58,22 @@ export default function OutputSection({
   // Format file name based on settings
   const getFileName = () => {
     const date = new Date().toISOString().slice(0, 10)
-    
     if (task === 'trim') {
-      return `video_trimmed_${date}.mp4`
+      return `video_trimmed_${date}.${getExt()}`
     } else if (task === 'split') {
-      return `video_split_${date}.mp4`
+      return `video_split_${date}.${getExt()}`
     } else if (task === 'merge') {
-      return `video_merged_${date}.mp4`
+      return `video_merged_${date}.${getExt()}`
     } else {
-      return `video_converted_${date}.mp4`
+      return `video_converted_${date}.${getExt()}`
     }
+  }
+
+  // Helper to get the correct extension based on output format
+  function getExt() {
+    if (settings?.format === 'mov' || settings?.format === 'quicktime') return 'mov';
+    if (settings?.format === 'webm') return 'webm';
+    return 'mp4';
   }
   
   // Handle download
@@ -208,14 +216,17 @@ export default function OutputSection({
         <div className="border rounded-lg p-4 dark:border-gray-700">
           <h4 className="text-sm font-medium mb-2 dark:text-white">Video Format</h4>
           <p className="text-gray-700 dark:text-gray-300">
-            MP4 (H.264)
+            {settings?.format === 'mp4' ? 'MP4 (H.264)' :
+             settings?.format === 'mov' || settings?.format === 'quicktime' ? 'QuickTime (MOV, H.264)' :
+             settings?.format === 'webm' ? 'WebM (VP9)' :
+             'Unknown'}
           </p>
         </div>
         
         <div className="border rounded-lg p-4 dark:border-gray-700">
           <h4 className="text-sm font-medium mb-2 dark:text-white">Resolution</h4>
           <p className="text-gray-700 dark:text-gray-300">
-            Original Resolution
+            {settings?.resolution && settings?.resolution !== 'original' ? settings.resolution + 'p' : 'Original Resolution'}
           </p>
         </div>
         

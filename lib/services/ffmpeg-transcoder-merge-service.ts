@@ -115,151 +115,33 @@ export class FFmpegTranscoderMergeService extends FFmpegTranscoderBaseService {
           outputFileName
         ]);
       } else {
-        // Create a file list for concat demuxer
+        // Always use re-encoding concat for best compatibility
         const concatListFileName = 'files.txt';
         let concatList = '';
-        
-        // Verify that each processed file exists before adding to concat list
         for (let i = 0; i < processedFiles.length; i++) {
           const file = processedFiles[i];
-          
-          try {
-            // Check if file exists by trying to read it
-            await this.ffmpeg.readFile(file);
-            
-            // File exists, add to concat list
-            concatList += `file '${file}'\n`;
-            this.onLog(`Verified file exists and added to concat: ${file}`);
-          } catch (error) {
-            this.onLog(`Error: File ${file} does not exist or can't be read: ${error}`);
-            // If this is not the first file, we can skip it, otherwise throw an error
-            if (i === 0) {
-              throw new Error(`Primary video file ${file} could not be read for merge operation`);
-            }
-          }
+          await this.ffmpeg.readFile(file); // Ensure file exists
+          concatList += `file '${file}'\n`;
         }
-        
-        if (concatList.trim() === '') {
-          throw new Error('No valid files to concat');
-        }
-        
         await this.ffmpeg.writeFile(concatListFileName, concatList);
         this.onLog('Created concat list with verified files: ' + concatList);
-        
-        // Try the simple concat demuxer first with copy codecs (this is much faster)
-        this.onLog('Starting fast concat with copy codec...');
-        const fastConcatCommand = [
+        // Use re-encoding concat method
+        const concatCommand = [
           '-f', 'concat',
           '-safe', '0',
           '-i', concatListFileName,
-          '-c', 'copy',               // Just copy streams, no re-encoding
-          '-y',                       // Overwrite output
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-crf', '28',
+          '-pix_fmt', 'yuv420p',
+          '-fflags', '+genpts',
+          '-max_muxing_queue_size', '9999',
+          '-movflags', '+faststart',
+          '-y',
           outputFileName
         ];
-        
-        this.onLog('Fast FFmpeg concat command: ' + fastConcatCommand.join(' '));
-        
-        try {
-          await this.ffmpeg.exec(fastConcatCommand);
-          this.onLog('Fast concat operation completed successfully');
-        } catch (error) {
-          this.onLog('Fast concat operation failed: ' + error);
-          
-          // Fall back to slower concat with re-encoding
-          this.onLog('Trying standard concat with re-encoding...');
-          const concatCommand = [
-            '-f', 'concat',
-            '-safe', '0',
-            '-i', concatListFileName,
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',     // Changed from medium to ultrafast
-            '-crf', '28',               // Less quality, faster encoding
-            '-pix_fmt', 'yuv420p',
-            '-fflags', '+genpts',       // Generate presentation timestamps
-            '-max_muxing_queue_size', '9999', // Increase muxing queue size
-            '-movflags', '+faststart',
-            '-y',                       // Overwrite output
-            'reencoded_output.mp4'
-          ];
-          
-          this.onLog('Standard FFmpeg concat command: ' + concatCommand.join(' '));
-          
-          try {
-            await this.ffmpeg.exec(concatCommand);
-            this.onLog('Standard concat operation completed successfully');
-            // Update the output filename for the return value
-            await this.ffmpeg.exec([
-              '-i', 'reencoded_output.mp4',
-              '-c', 'copy',
-              '-y',
-              outputFileName
-            ]);
-          } catch (secondError) {
-            this.onLog('Standard concat also failed: ' + secondError);
-            
-            // Last resort: try combining videos using the filtergraph approach
-            this.onLog('Trying filter_complex concat as last resort...');
-            
-            const inputs = [];
-            const filterInputs = [];
-            
-            for (let i = 0; i < processedFiles.length; i++) {
-              inputs.push('-i', processedFiles[i]);
-              filterInputs.push(`[${i}:v]`);
-              // Only add audio if we're sure it exists
-              try {
-                await this.ffmpeg.exec(['-i', processedFiles[i], '-c', 'copy', '-f', 'null', '-']);
-                filterInputs.push(`[${i}:a]`);
-              } catch {
-                // No audio stream in this file
-              }
-            }
-            
-            // Create a concat filter, adapting to the number of streams we have
-            const hasAudio = filterInputs.some(input => input.includes(':a'));
-            let filterGraph;
-            let outputMaps;
-            
-            if (hasAudio) {
-              filterGraph = `${filterInputs.join('')}concat=n=${processedFiles.length}:v=1:a=1[outv][outa]`;
-              outputMaps = ['-map', '[outv]', '-map', '[outa]'];
-            } else {
-              // Video only
-              filterGraph = `${filterInputs.filter(i => i.includes(':v')).join('')}concat=n=${processedFiles.length}:v=1[outv]`;
-              outputMaps = ['-map', '[outv]'];
-            }
-            
-            const alternativeCommand = [
-              ...inputs,
-              '-filter_complex', filterGraph,
-              ...outputMaps,
-              '-c:v', 'libx264',
-              '-preset', 'ultrafast',  // Use fastest preset
-              '-crf', '28',            // Lower quality for performance
-              '-pix_fmt', 'yuv420p',
-              '-movflags', '+faststart',
-              '-y',
-              'fallback_output.mp4'
-            ];
-            
-            this.onLog('Trying alternative concat command: ' + alternativeCommand.join(' '));
-            
-            try {
-              await this.ffmpeg.exec(alternativeCommand);
-              this.onLog('Alternative concat method succeeded');
-              // Copy the fallback output to main output
-              await this.ffmpeg.exec([
-                '-i', 'fallback_output.mp4',
-                '-c', 'copy',
-                '-y',
-                outputFileName
-              ]);
-            } catch (fallbackError) {
-              this.onLog('All concat methods failed: ' + fallbackError);
-              throw new Error('Unable to merge videos after trying multiple methods');
-            }
-          }
-        }
+        this.onLog('Re-encoding FFmpeg concat command: ' + concatCommand.join(' '));
+        await this.ffmpeg.exec(concatCommand);
       }
       
       this.onProgress(90);

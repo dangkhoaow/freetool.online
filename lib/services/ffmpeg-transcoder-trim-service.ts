@@ -55,20 +55,28 @@ export class FFmpegTranscoderTrimService extends FFmpegTranscoderBaseService {
       // Video codec settings
       if (settings.codec !== 'copy') {
         ffmpegArgs.push('-c:v', settings.codec);
-        
-        // Quality settings
+
+        // Use robust CRF/bitrate mapping for quality (like convert/merge)
+        let crf = 23;
+        let bitrate = 2500;
+        if (settings.quality === 1) { crf = 18; bitrate = 5000; }
+        else if (settings.quality === 2) { crf = 20; bitrate = 4000; }
+        else if (settings.quality === 3) { crf = 23; bitrate = 3000; }
+        else if (settings.quality === 4) { crf = 25; bitrate = 2000; }
+        else if (settings.quality === 5) { crf = 28; bitrate = 1000; }
+
         if (settings.codec === 'libx264' || settings.codec === 'libx265') {
-          ffmpegArgs.push('-crf', settings.quality.toString());
+          ffmpegArgs.push('-crf', crf.toString());
         } else {
-          ffmpegArgs.push('-b:v', `${settings.quality}k`);
+          ffmpegArgs.push('-b:v', `${bitrate}k`);
         }
-        
+
         // Resolution
         if (settings.resolution !== 'original') {
           const [width, height] = settings.resolution.split('x');
           ffmpegArgs.push('-vf', `scale=${width}:${height}`);
         }
-        
+
         // Ensure compatibility
         ffmpegArgs.push('-pix_fmt', 'yuv420p');
       } else {

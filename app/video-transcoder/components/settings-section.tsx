@@ -18,8 +18,6 @@ import {
 // Define output format options
 const formatOptions = [
   { id: "mp4-h264", name: "MP4 (H.264)", description: "Best compatibility" },
-  { id: "webm-vp9", name: "WebM (VP9)", description: "Better compression" },
-  { id: "mp4-av1", name: "MP4 (AV1)", description: "Next-gen codec" },
   { id: "mov-h264", name: "QuickTime", description: "For Apple devices" }
 ]
 

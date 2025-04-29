@@ -93,16 +93,12 @@ export default function ProcessingSection({
                 </div>
                 
                 <div className="text-center">
-                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estimated Time Left</h5>
+                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Elapsed Time</h5>
                   <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                    {processingStats?.time && processingStats?.speed ? 
-                      formatTimeLeft(processingStats.time, processingStats.speed) :
-                      (progress < 5 ? '--:--' : 
-                       progress > 95 ? '< 0:01' :
-                       Math.ceil((100 - progress) / (progress || 1) * (progress * 0.8)).toString() + 's')}
+                    {processingStats?.time ? processingStats.time : '--:--'}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {processingStats?.size ? `Size: ${processingStats.size}` : 'Approximate time remaining'}
+                    {processingStats?.size ? `Size: ${processingStats.size}` : 'Current processed time'}
                   </div>
                 </div>
               </div>
