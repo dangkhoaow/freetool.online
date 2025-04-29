@@ -16,11 +16,11 @@ import {
   VideoSettings,
   MergeClip,
   ProcessingResult
-} from "@/lib/services/ffmpeg-transcoder-types"
-import { FFmpegTranscoderConvertService } from "@/lib/services/ffmpeg-transcoder-convert-service"
-import { FFmpegTranscoderTrimService } from "@/lib/services/ffmpeg-transcoder-trim-service"
-import { FFmpegTranscoderSplitService } from "@/lib/services/ffmpeg-transcoder-split-service"
-import { FFmpegTranscoderMergeService } from "@/lib/services/ffmpeg-transcoder-merge-service"
+} from "@/lib/services/video-transcoder/ffmpeg-transcoder-types"
+import { FFmpegTranscoderConvertService } from "@/lib/services/video-transcoder/ffmpeg-transcoder-convert-service"
+import { FFmpegTranscoderTrimService } from "@/lib/services/video-transcoder/ffmpeg-transcoder-trim-service"
+import { FFmpegTranscoderSplitService } from "@/lib/services/video-transcoder/ffmpeg-transcoder-split-service"
+import { FFmpegTranscoderMergeService } from "@/lib/services/video-transcoder/ffmpeg-transcoder-merge-service"
 
 // Define component
 export default function TranscoderTool() {
