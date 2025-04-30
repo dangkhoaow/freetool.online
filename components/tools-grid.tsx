@@ -1,21 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Flame } from "lucide-react";
+import { ArrowRight, Flame, Zap } from "lucide-react";
 import Link from "next/link";
 import ToolsCategories from "@/components/tools-categories";
-
-interface Tool {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-  textColor: string;
-  category: string;
-  isHot: boolean;
-}
+import { ToolConfig } from "@/lib/config/tools";
 
 interface Category {
   id: string;
@@ -23,29 +13,45 @@ interface Category {
 }
 
 interface ToolsGridProps {
-  tools: Tool[];
+  tools: ToolConfig[];
   categories: Category[];
+  onCategoryChange?: (category: string) => void;
 }
 
-export default function ToolsGrid({ tools, categories }: ToolsGridProps) {
+export default function ToolsGrid({ tools, categories, onCategoryChange }: ToolsGridProps) {
   const [activeCategory, setActiveCategory] = useState("all");
 
   const filteredTools = activeCategory === "all" 
     ? tools 
     : tools.filter(tool => tool.category === activeCategory);
 
+  // Handle category change and notify parent component if callback is provided
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+    if (onCategoryChange) {
+      onCategoryChange(category);
+    }
+  };
+
+  // Initial notification to parent
+  useEffect(() => {
+    if (onCategoryChange) {
+      onCategoryChange(activeCategory);
+    }
+  }, []);
+
   return (
     <>
       <ToolsCategories 
         categories={categories} 
-        onCategoryChange={setActiveCategory} 
+        onCategoryChange={handleCategoryChange} 
       />
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTools.map((tool) => (
           <div 
             key={tool.id}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md flex flex-col relative"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md relative"
           >
             {tool.isHot && (
               <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
@@ -53,7 +59,13 @@ export default function ToolsGrid({ tools, categories }: ToolsGridProps) {
                 HOT
               </div>
             )}
-            <div className={`h-40 bg-gradient-to-r ${tool.color} dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center`}>
+            {tool.isNew && (
+              <div className="absolute top-2 right-12 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                <Zap className="h-3 w-3 mr-1" />
+                NEW
+              </div>
+            )}
+            <div className={`h-40 flex items-center justify-center bg-gradient-to-r ${tool.color} dark:from-blue-900/20 dark:to-indigo-900/20`}>
               {tool.icon}
             </div>
             <div className="p-6 flex flex-col flex-grow">
@@ -76,4 +88,4 @@ export default function ToolsGrid({ tools, categories }: ToolsGridProps) {
       </div>
     </>
   );
-} 
+}

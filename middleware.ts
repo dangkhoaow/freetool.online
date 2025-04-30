@@ -184,7 +184,8 @@ export async function middleware(request: NextRequest) {
     'zip-compressor',
     'site-management',
     'data-visualization-tool',
-    'video-transcoder'
+    'video-transcoder',
+    'ai-data-visualization'
   ];
   
   // Check for valid top-level routes

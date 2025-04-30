@@ -3,25 +3,37 @@ import Footer from "../components/footer";
 import { Button } from "../components/ui/button";
 import {
   ArrowRight,
-  Image,
-  Film,
-  FileType,
+  Flame,
   Zap,
   Shield,
-  Palette,
-  Code,
-  QrCode,
-  Ruler,
-  CheckSquare,
-  FileArchive,
-  Eye,
-  MessageSquare,
-  Flame,
-  BarChart,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import ToolsSlider from "@/components/tools-slider";
+import { tools } from "@/lib/config/tools";
+
+// Define specific order for the home page tools
+const homePageToolIds = [
+  "private-ai-chat",
+  "steganography-tool",
+  "video-transcoder",
+  "ai-data-visualization",
+  "heic-converter",
+  "code-editor",
+  "color-picker",
+  "qr-code-generator",
+  "unit-converter",
+  "todo-list",
+  "font-generator",
+  "gif-to-frames",
+  "pdf-tools",
+  "zip-compressor",
+];
+
+// Order tools based on the defined order and ensure non-null with proper TypeScript typing
+const orderedTools = homePageToolIds
+  .map(id => tools.find(tool => tool.id === id))
+  .filter((tool): tool is typeof tools[0] => !!tool);
 
 export const metadata = {
   title: "FreeTool Online - Free Browser-Based Tools for Everyday Tasks",
@@ -74,539 +86,56 @@ export default function Home() {
           </div>
 
           <ToolsSlider>
-            {/* Private AI Chat */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col relative",
-              )}
-            >
-              {/* Hot Badge */}
-              <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
-                <Flame className="h-3 w-3 mr-1" />
-                HOT
-              </div>
-              <div className="h-40 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
-                <MessageSquare
-                  className="h-16 w-16 text-blue-600 dark:text-blue-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Private AI Chat
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Chat with AI that runs entirely in your browser. No data
-                    sent to servers, ensuring complete privacy.
-                  </p>
+            {orderedTools.map((tool, index) => (
+              <div
+                key={tool.id}
+                className={cn(
+                  "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
+                  "transition-all hover:shadow-md flex-shrink-0 snap-start",
+                  "w-[300px] flex flex-col relative",
+                )}
+              >
+                {/* Hot Badge */}
+                {tool.isHot && (
+                  <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                    <Flame className="h-3 w-3 mr-1" />
+                    HOT
+                  </div>
+                )}
+                {/* New Badge */}
+                {tool.isNew && (
+                  <div className="absolute top-2 right-12 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                    <Zap className="h-3 w-3 mr-1" />
+                    NEW
+                  </div>
+                )}
+                <div className={`h-40 flex items-center justify-center bg-gradient-to-r ${tool.color} dark:from-blue-900/20 dark:to-indigo-900/20`}>
+                  {tool.icon}
                 </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/private-ai-chat"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Private AI Chat"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Steganography Tool */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col relative",
-              )}
-            >
-              {/* Hot Badge */}
-              <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
-                <Flame className="h-3 w-3 mr-1" />
-                HOT
-              </div>
-              <div className="h-40 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
-                <Eye
-                  className="h-16 w-16 text-indigo-600 dark:text-indigo-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Steganography Tool
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Hide secret messages within images using advanced
-                    steganography techniques. 100% private.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/steganography-tool"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Steganography Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
+                <div className="p-6 flex flex-col flex-grow">
+                  <div className="flex-grow">
+                    <h3 className="text-xl font-bold mb-2 dark:text-white">
+                      {tool.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      {tool.description}
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <Button asChild className="w-full">
+                      <Link
+                        href={tool.href}
+                        className="flex items-center justify-center gap-2"
+                        aria-label={`Use ${tool.title}`}
+                      >
+                        Use Tool{" "}
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Video Transcoder */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col relative",
-              )}
-            >
-              {/* Hot Badge */}
-              <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
-                <Flame className="h-3 w-3 mr-1" />
-                HOT
-              </div>
-              <div className="h-40 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 flex items-center justify-center">
-                <Film
-                  className="h-16 w-16 text-cyan-600 dark:text-cyan-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Video Transcoder
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Convert, trim, split, and merge videos directly in your
-                    browser. No upload needed for complete privacy.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/video-transcoder"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Video Transcoder Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* HEIC Converter */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                <Image
-                  className="h-16 w-16 text-blue-500 dark:text-blue-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    HEIC Converter
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Convert HEIC images from your iPhone to JPG, PNG, WEBP, or
-                    PDF formats with our AI-powered optimization.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/heic-converter"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use HEIC Converter Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Code Editor */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center">
-                <Code
-                  className="h-16 w-16 text-blue-600 dark:text-blue-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Code Editor
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Write, run, and save JavaScript code directly in your
-                    browser. No installation required.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/code-editor"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Code Editor Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Color Picker */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-red-50 to-yellow-50 dark:from-red-900/30 dark:to-yellow-900/30 flex items-center justify-center">
-                <Palette
-                  className="h-16 w-16 text-red-500 dark:text-red-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Color Picker
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Select, convert, and save colors in RGB, HEX, and HSL
-                    formats. Copy color codes with one click.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/color-picker"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Color Picker Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* QR Code Generator */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
-                <QrCode
-                  className="h-16 w-16 text-purple-600 dark:text-purple-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    QR Code Generator
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Create custom QR codes for URLs, text, and more. Customize,
-                    download, and share instantly.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/qr-code-generator"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use QR Code Generator Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Unit Converter */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/30 dark:to-teal-900/30 flex items-center justify-center">
-                <Ruler
-                  className="h-16 w-16 text-green-600 dark:text-green-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Unit Converter
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Convert between different units of measurement. Supports
-                    length, weight, temperature, and more.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/unit-converter"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Unit Converter Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Todo List */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 flex items-center justify-center">
-                <CheckSquare
-                  className="h-16 w-16 text-cyan-600 dark:text-cyan-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Todo List
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    A simple, effective way to manage your tasks with automatic
-                    saving to your browser.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/todo-list"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Todo List Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Font Generator */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/30 dark:to-purple-900/30 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="64"
-                  height="64"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-pink-600 dark:text-pink-400"
-                >
-                  <text x="3" y="18" fontSize="20" fontWeight="bold">
-                    A
-                  </text>
-                </svg>
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Font Generator
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Design and customize text with different fonts, styles, and
-                    colors. Export as images.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/font-generator"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Font Generator Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* GIF to Frames */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
-                <Film
-                  className="h-16 w-16 text-purple-500 dark:text-purple-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    GIF to Frames
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Extract individual frames from animated GIFs. Choose your
-                    output format and frames per second.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/gif-to-frames"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use GIF to Frames Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* PDF Tools */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/30 dark:to-teal-900/30 flex items-center justify-center">
-                <FileType
-                  className="h-16 w-16 text-green-500 dark:text-green-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    PDF Tools
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Merge, split, compress, and convert PDF files with ease.
-                    Powerful PDF manipulation.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/pdf-tools"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use PDF Tools"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Zip Compressor */}
-            <div
-              className={cn(
-                "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden",
-                "transition-all hover:shadow-md flex-shrink-0 snap-start",
-                "w-[300px] flex flex-col",
-              )}
-            >
-              <div className="h-40 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 flex items-center justify-center">
-                <FileArchive
-                  className="h-16 w-16 text-amber-500 dark:text-amber-400"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">
-                    Zip Compressor
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Compress folders online, reduce zip file size, and secure
-                    files with password protection.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button asChild className="w-full">
-                    <Link
-                      href="/zip-compressor"
-                      className="flex items-center justify-center gap-2"
-                      aria-label="Use Zip Compressor Tool"
-                    >
-                      Use Tool{" "}
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
+            ))}
           </ToolsSlider>
 
           {/* View All Tools Button */}

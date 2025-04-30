@@ -9,6 +9,23 @@ const config = {
     "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
+  safelist: [
+    'bg-gradient-to-r',
+    'from-blue-50', 'to-cyan-50',
+    'from-blue-50', 'to-indigo-50',
+    'from-blue-50', 'to-purple-50',
+    'from-cyan-50', 'to-blue-50',
+    'from-red-50', 'to-yellow-50',
+    'from-purple-50', 'to-blue-50',
+    'from-green-50', 'to-teal-50',
+    'from-purple-50', 'to-pink-50',
+    'from-pink-50', 'to-purple-50',
+    'from-indigo-50', 'to-blue-50',
+    'from-amber-50', 'to-yellow-50',
+    'from-teal-50', 'to-green-50',
+    // Dark mode classes
+    'dark:from-blue-900/20', 'dark:to-indigo-900/20',
+  ],
   prefix: "",
   theme: {
     container: {

@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     'pdf-tools',
     'zip-compressor',
     'video-transcoder',
+    'ai-data-visualization',
   ]
 
   // Main pages
