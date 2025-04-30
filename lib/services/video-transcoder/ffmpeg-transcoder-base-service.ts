@@ -37,8 +37,8 @@ export class FFmpegTranscoderBaseService {
       
       // Load ffmpeg core from local public directory
       await ffmpegInstance.load({
-        coreURL: '/ffmpeg-core.js',
-        wasmURL: '/ffmpeg-core.wasm'
+        coreURL: '/ffmpeg/umd/ffmpeg-core.js',
+        wasmURL: '/ffmpeg/umd/ffmpeg-core.wasm'
       });
       
       this.ffmpeg = ffmpegInstance;

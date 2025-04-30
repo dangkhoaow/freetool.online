@@ -3,10 +3,10 @@ import { metadata as toolMetadata } from "./metadata";
 
 export const metadata = toolMetadata;
 
-export default function VideoTranscoderLayout({
+export default function ToolLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode;
 }) {
-  return children
+  return children;
 }

@@ -1,6 +1,7 @@
-"use client"
+import { metadata as toolMetadata } from "./metadata"
+import AIDataVisualizationClientLayout from "./client-layout"
 
-import { WebLLMProvider } from "@/lib/services/webllm/webllm-provider"
+export const metadata = toolMetadata
 
 export default function AIDataVisualizationLayout({
   children,
@@ -8,6 +9,6 @@ export default function AIDataVisualizationLayout({
   children: React.ReactNode
 }) {
   return (
-    <WebLLMProvider>{children}</WebLLMProvider>
+    <AIDataVisualizationClientLayout>{children}</AIDataVisualizationClientLayout>
   )
 }
