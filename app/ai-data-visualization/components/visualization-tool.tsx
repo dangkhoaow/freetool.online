@@ -99,10 +99,6 @@ export default function DataVisualizationTool() {
   const [pendingChartConfig, setPendingChartConfig] = useState<any | null>(null)
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [chartRenderError, setChartRenderError] = useState<string | null>(null);
-  const pushDebugLog = (msg: string) => {
-    setDebugLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-    console.log('[Visualization Debug]', msg);
-  };
   
   // Chart refs
   const chartRef = useRef<HTMLCanvasElement | null>(null)
@@ -129,7 +125,9 @@ export default function DataVisualizationTool() {
     logs,
     supportsWebGPU,
     llmService,
-    selectedModelId,
+    selectedModelId: providerSelectedModelId,
+    setSelectedModelId: providerSetSelectedModelId,
+    isModelLoading: providerIsModelLoading,
   } = useWebLLM()
   const dataProcessor = useRef<DataProcessor | null>(null)
   const storageService = useRef<StorageService | null>(null)
@@ -139,138 +137,46 @@ export default function DataVisualizationTool() {
   // Use loadModel(modelId, progressCallback) for loading/init
   // Use isModelLoaded, isModelLoading, loadingProgress, loadingState, error from provider for UI state
 
-  // Only set modelId if not already set and providerAvailableModels is available
+  // Only call loadModel if not already loading/loaded and selectedModelId is set
   useEffect(() => {
-    if (!selectedModelId && providerAvailableModels.length > 0) {
-      // If the provider does not have a selected model, pick the first
-      loadModel(providerAvailableModels[0].id)
-    }
-  }, [providerAvailableModels, selectedModelId, loadModel])
-
-  // Load the model when selectedModelId changes (using provider's loadModel)
-  useEffect(() => {
-    if (!selectedModelId || !loadModel) return
-    // Prevent infinite loop: only load if not loaded
-    if (isModelLoaded) return
-    setLoadingState('Loading AI model...')
-    loadModel(selectedModelId, (progress: number, state?: string) => {
-      setLoadingProgress(progress)
-      if (state) {
-        setLoadingState(state)
-      }
-    })
-      .then(() => {
-        toast({
-          title: "AI Model Loaded",
-          description: "The AI model is ready to analyze your data.",
+    if (
+      providerSelectedModelId &&
+      loadModel &&
+      !isModelLoaded &&
+      !providerIsModelLoading
+    ) {
+      setLoadingState('Loading AI model...');
+      loadModel(providerSelectedModelId, (progress: number, state?: string) => {
+        setLoadingProgress(progress);
+        if (state) {
+          setLoadingState(state);
+        }
+      })
+        .then(() => {
+          toast({
+            title: "AI Model Loaded",
+            description: "The AI model is ready to analyze your data.",
+          });
         })
-      })
-      .catch((e) => {
-        console.error("Failed to load AI model:", e)
-        setError("Failed to load AI model. Please try again or choose a different model.")
-        toast({
-          variant: "destructive",
-          title: "Model Loading Failed",
-          description: "Could not load the AI model. Please try again.",
-        })
-      })
-  }, [selectedModelId, loadModel, isModelLoaded])
-
-  // Always derive modelLoadingComplete from provider state
-  const modelLoadingComplete = isModelLoaded
-
-  // Debug logging for dropdown state
-  useEffect(() => {
-    console.log('[AI Model Dropdown Debug]', {
-      providerAvailableModels,
-      supportsWebGPU,
-      providerLoadingState,
-      selectedModelId,
-      isModelLoaded,
-      loadingProgress,
-      error,
-      llmService,
-    });
-  }, [providerAvailableModels, supportsWebGPU, providerLoadingState, selectedModelId, isModelLoaded, loadingProgress, error, llmService])
-
-  // --- GENERATE VISUALIZATION (LLM USAGE) ---
-  const generateVisualization = async () => {
-    if (!inputData.trim()) {
-      toast({
-        variant: "destructive",
-        title: "No Data",
-        description: "Please input some data first.",
-      })
-      return
+        .catch((e) => {
+          console.error("Failed to load AI model:", e);
+          setError("Failed to load AI model. Please try again or choose a different model.");
+          toast({
+            variant: "destructive",
+            title: "Model Loading Failed",
+            description: "Could not load the AI model. Please try again.",
+          });
+        });
     }
-    if (!isModelLoaded || !llmService) {
-      toast({
-        variant: "destructive",
-        title: "AI Model Not Ready",
-        description: "Please wait for the AI model to load completely.",
-      })
-      return
-    }
-    setIsProcessing(true)
-    setProcessingStatus("Analyzing data...")
-    setError(null)
-    try {
-      if (!dataProcessor.current) return
-      setProcessingStatus("AI analyzing data structure...")
-      pushDebugLog(`Prompt sent to AI (llmService): ${JSON.stringify({ inputData, chartType })}`)
-      // Pass llmService to processor so it can call the model
-      const structuredData = await dataProcessor.current.processDataWithLLM(
-        inputData,
-        chartType,
-        llmService
-      )
-      pushDebugLog(`AI response (structuredData): ${JSON.stringify(structuredData)}`)
-      setProcessingStatus("Generating chart configuration...")
-      const chartConfig = await dataProcessor.current.generateChartConfig(
-        structuredData,
-        chartType,
-        chartTitle
-      )
-      pushDebugLog(`Chart config before rendering: ${JSON.stringify(chartConfig)}`)
-      setCurrentTab("chart");
-      setPendingChartConfig(chartConfig);
-      const newVisualization: VisualizationData = {
-        id: Date.now().toString(),
-        name: chartTitle,
-        chartType,
-        data: inputData,
-        chartConfig,
-        timestamp: Date.now()
-      }
-      const updatedVisualizations = [newVisualization, ...recentVisualizations].slice(0, 10)
-      setRecentVisualizations(updatedVisualizations)
-      storageService.current?.save(STORAGE_KEYS.RECENT_CHARTS.replace('ai_data_visualization_', ''), updatedVisualizations)
-      const settings = storageService.current?.load<{
-        chartType?: string
-      }>(STORAGE_KEYS.CHART_SETTINGS.replace('ai_data_visualization_', ''), {})
-      if (settings) {
-        settings.chartType = chartType
-        storageService.current?.save(STORAGE_KEYS.CHART_SETTINGS.replace('ai_data_visualization_', ''), settings)
-      }
-      toast({
-        title: "Visualization Created",
-        description: "Your data has been visualized successfully.",
-      })
-    } catch (e) {
-      pushDebugLog(`Error generating visualization: ${e instanceof Error ? e.stack : JSON.stringify(e)}`)
-      console.error("Error generating visualization:", e)
-      setError("Failed to generate visualization. Please check your data format and try again.")
-      toast({
-        variant: "destructive",
-        title: "Visualization Failed",
-        description: "Could not generate the visualization. Please check your data.",
-      })
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-  // --- END GENERATE VISUALIZATION ---
+  }, [providerSelectedModelId, loadModel, isModelLoaded, providerIsModelLoading]);
 
+  // On dropdown change, call provider's setSelectedModelId
+  const handleModelChange = (modelId: string) => {
+    if (providerSetSelectedModelId) {
+      providerSetSelectedModelId(modelId);
+    }
+  };
+  
   // Initialize services
   useEffect(() => {
     // Initialize data processor
@@ -576,6 +482,80 @@ export default function DataVisualizationTool() {
     }
   }, [debugLogs]);
 
+  // --- GENERATE VISUALIZATION (LLM USAGE) ---
+  const generateVisualization = async () => {
+    if (!inputData.trim()) {
+      toast({
+        variant: "destructive",
+        title: "No Data",
+        description: "Please input some data first.",
+      })
+      return
+    }
+    if (!isModelLoaded || !llmService) {
+      toast({
+        variant: "destructive",
+        title: "AI Model Not Ready",
+        description: "Please wait for the AI model to load completely.",
+      })
+      return
+    }
+    setIsProcessing(true)
+    setProcessingStatus("Analyzing data...")
+    setError(null)
+    try {
+      if (!dataProcessor.current) return
+      setProcessingStatus("AI analyzing data structure...")
+      const structuredData = await dataProcessor.current.processDataWithLLM(
+        inputData,
+        chartType,
+        llmService
+      )
+      setProcessingStatus("Generating chart configuration...")
+      const chartConfig = await dataProcessor.current.generateChartConfig(
+        structuredData,
+        chartType,
+        chartTitle
+      )
+      setCurrentTab("chart");
+      setPendingChartConfig(chartConfig);
+      const newVisualization: VisualizationData = {
+        id: Date.now().toString(),
+        name: chartTitle,
+        chartType,
+        data: inputData,
+        chartConfig,
+        timestamp: Date.now()
+      }
+      const updatedVisualizations = [newVisualization, ...recentVisualizations].slice(0, 10)
+      setRecentVisualizations(updatedVisualizations)
+      storageService.current?.save(STORAGE_KEYS.RECENT_CHARTS.replace('ai_data_visualization_', ''), updatedVisualizations)
+      const settings = storageService.current?.load<{
+        chartType?: string
+      }>(STORAGE_KEYS.CHART_SETTINGS.replace('ai_data_visualization_', ''), {})
+      
+      if (settings) {
+        settings.chartType = chartType
+        storageService.current?.save(STORAGE_KEYS.CHART_SETTINGS.replace('ai_data_visualization_', ''), settings)
+      }
+      toast({
+        title: "Visualization Created",
+        description: "Your data has been visualized successfully.",
+      })
+    } catch (e) {
+      console.error("Error generating visualization:", e)
+      setError("Failed to generate visualization. Please check your data format and try again.")
+      toast({
+        variant: "destructive",
+        title: "Visualization Failed",
+        description: "Could not generate the visualization. Please check your data.",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+  // --- END GENERATE VISUALIZATION ---
+
   return (
     <Card className="w-full bg-white dark:bg-gray-900 shadow-lg border-0">
       <CardHeader>
@@ -596,7 +576,7 @@ export default function DataVisualizationTool() {
       </CardHeader>
       <CardContent>
         {/* Model Loading Progress */}
-        {!modelLoadingComplete && (
+        {!isModelLoaded && (
           <div className="mb-6 p-4 bg-blue-50 dark:bg-gray-800 rounded-lg">
             <div className="flex items-center mb-2">
               <LoaderIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin mr-2" />
@@ -743,8 +723,8 @@ export default function DataVisualizationTool() {
                   <Label>Ai Model</Label>
                   <div className="mb-4">
                     <Select
-                      value={selectedModelId}
-                      onValueChange={value => loadModel(value)}
+                      value={providerSelectedModelId}
+                      onValueChange={handleModelChange}
                       disabled={!supportsWebGPU || !providerAvailableModels || providerAvailableModels.length === 0 || providerLoadingState === 'loading'}
                     >
                       <SelectTrigger>
@@ -761,7 +741,7 @@ export default function DataVisualizationTool() {
                       </SelectContent>
                     </Select>
                     {(!providerAvailableModels || providerAvailableModels.length === 0) && (
-                      <div className="text-xs text-red-600 dark:text-red-400 mb-2">No models found. Please check your setup.</div>
+                      <div className="text-xs text-red-600 dark:text-red-400 mb-2">No AI models available. Please check your connection or refresh the page.</div>
                     )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       All analysis is performed locally on your device
@@ -773,7 +753,7 @@ export default function DataVisualizationTool() {
                   className="w-full mt-6"
                   size="lg"
                   onClick={generateVisualization}
-                  disabled={isProcessing || !inputData.trim() || !modelLoadingComplete}
+                  disabled={isProcessing || !inputData.trim() || !isModelLoaded}
                 >
                   {isProcessing ? (
                     <>

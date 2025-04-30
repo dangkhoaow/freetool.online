@@ -18,6 +18,7 @@ interface WebLLMContextType {
   loadingState: string
   availableModels: WebLLMModel[]
   selectedModelId: string
+  setSelectedModelId: (modelId: string) => void
   loadModel: (modelId: string, progressCallback?: (progress: number, state?: string) => void) => Promise<void>
   supportsWebGPU: boolean
   error: string | null
@@ -32,7 +33,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
   const [isModelLoading, setIsModelLoading] = useState(false)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [loadingState, setLoadingState] = useState("")
-  const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL_ID)
+  const [selectedModelId, setSelectedModelId] = useState("")
   const [availableModels, setAvailableModels] = useState<WebLLMModel[]>([])
   const [supportsWebGPU, setSupportsWebGPU] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +72,13 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
         pushLog('Fetching available models...')
         const models = await getAvailableModels()
         setAvailableModels(models)
+        
+        // Set a default model ID only if models are available
+        if (models.length > 0 && !selectedModelId) {
+          setSelectedModelId(models[0].id)
+          pushLog('Set default model to: ' + models[0].id)
+        }
+        
         pushLog('availableModels after fetch: ' + JSON.stringify(models))
         if (models.length === 0) {
           pushLog('No models found!')
@@ -168,6 +176,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
     loadingState,
     availableModels,
     selectedModelId,
+    setSelectedModelId,
     loadModel,
     supportsWebGPU,
     error,
