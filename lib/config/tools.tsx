@@ -16,7 +16,8 @@ import {
   Flame,
   BarChart3,
   Video,
-  Camera
+  Camera,
+  Pen
 } from "lucide-react";
 import React from "react";
 
@@ -212,6 +213,17 @@ export const tools: ToolConfig[] = [
     textColor: "text-purple-600",
     category: "utility",
     href: "/privacy-media-recorder",
+    isNew: true,
+  },
+  {
+    id: "browser-design-studio",
+    title: "Browser Design Studio",
+    description: "Create professional graphics with our browser-based design suite. Vector editing, raster painting, text tools, and AI-enhanced features.",
+    icon: <Pen className="h-16 w-16" stroke="#e11d48" />,
+    color: "from-rose-50 to-orange-50",
+    textColor: "text-rose-600",
+    category: "image",
+    href: "/browser-design-studio",
     isNew: true,
   },
 ];

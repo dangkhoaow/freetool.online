@@ -187,7 +187,9 @@ export async function middleware(request: NextRequest) {
     'data-visualization-tool',
     'video-transcoder',
     'ai-data-visualization',
-    'privacy-media-recorder'
+    'privacy-media-recorder',
+    'browser-design-studio',
+    'client-site-builder'
   ];
   
   // Check for valid top-level routes
