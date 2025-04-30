@@ -130,7 +130,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
         if (state) {
           setLoadingState(state)
         }
-        pushLog(`Model loading progress: ${Math.round(progress*100)}% - ${state || ""}`)
+        pushLog(`Model loading progress: ${state || ""}`)
         if (progressCallback) {
           progressCallback(progress, state)
         }
