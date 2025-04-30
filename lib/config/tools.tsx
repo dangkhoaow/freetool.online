@@ -14,7 +14,9 @@ import {
   Eye, 
   MessageSquare, 
   Flame,
-  BarChart3
+  BarChart3,
+  Video,
+  Camera
 } from "lucide-react";
 import React from "react";
 
@@ -199,6 +201,17 @@ export const tools: ToolConfig[] = [
     textColor: "text-teal-600",
     category: "utility",
     href: "/ai-data-visualization",
+    isNew: true,
+  },
+  {
+    id: "privacy-media-recorder",
+    title: "Privacy Media Recorder",
+    description: "Record webcam, screen, and audio privately in your browser. No uploads, complete privacy with local processing.",
+    icon: <Camera className="h-16 w-16" stroke="#7c3aed" />,
+    color: "from-purple-50 to-indigo-50",
+    textColor: "text-purple-600",
+    category: "utility",
+    href: "/privacy-media-recorder",
     isNew: true,
   },
 ];

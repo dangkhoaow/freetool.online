@@ -186,7 +186,8 @@ export async function middleware(request: NextRequest) {
     'site-management',
     'data-visualization-tool',
     'video-transcoder',
-    'ai-data-visualization'
+    'ai-data-visualization',
+    'privacy-media-recorder'
   ];
   
   // Check for valid top-level routes
