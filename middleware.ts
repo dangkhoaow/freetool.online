@@ -169,6 +169,7 @@ export async function middleware(request: NextRequest) {
   
   // Known valid top-level routes
   const VALID_TOP_ROUTES = [
+    'admin',
     'tools',
     'code-editor',
     'color-picker',
@@ -237,9 +238,14 @@ export async function middleware(request: NextRequest) {
     }
     
     // Only certain parent segments can have child routes
-    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management') {
+    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin') {
       // Special known nested routes
       if (parentSegment === 'private-ai-chat' && childSegment === 'debug') {
+        return response;
+      }
+      
+      if (parentSegment === 'admin') {
+        // Allow all admin nested routes
         return response;
       }
       

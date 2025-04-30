@@ -6,23 +6,23 @@ const features = [
     title: "Hide Text & Files",
     description:
       "Securely hide text messages or files within images using advanced steganography techniques that preserve image quality.",
-    icon: <FileText className="h-8 w-8" />,
+    icon: <FileText className="h-8 w-8 text-blue-600" />,
   },
   {
     title: "Extract Hidden Content",
     description: "Easily extract hidden text messages or files from steganographic images with just a few clicks.",
-    icon: <Eye className="h-8 w-8" />,
+    icon: <Eye className="h-8 w-8 text-blue-600" />,
   },
   {
     title: "Client-Side Processing",
     description:
       "All processing happens in your browser. Your images and hidden data never leave your device, ensuring complete privacy.",
-    icon: <Lock className="h-8 w-8" />,
+    icon: <Lock className="h-8 w-8 text-blue-600" />,
   },
   {
     title: "Save & Manage",
     description: "Save your steganographic images locally and manage them easily through the built-in gallery.",
-    icon: <Save className="h-8 w-8" />,
+    icon: <Save className="h-8 w-8 text-blue-600" />,
   },
 ]
 
