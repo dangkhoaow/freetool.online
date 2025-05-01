@@ -33,7 +33,7 @@ import {
   CardTitle,
   CardDescription
 } from '@/components/ui/card'
-import { format, formatDistance } from 'date-fns'
+// import { format, formatDistance } from 'date-fns'
 import { useDesignStudio } from '@/lib/services/browser-design-studio/store-provider'
 import { useVectorStore } from '@/lib/services/browser-design-studio/stores/vector-store'
 import { useRasterStore } from '@/lib/services/browser-design-studio/stores/raster-store'
@@ -55,6 +55,38 @@ interface VersionHistoryEntry {
       height: number
     }
   }
+}
+
+// Helper functions for date formatting without date-fns
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  }).format(date);
+}
+
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.round(diffMs / 1000);
+  const diffMin = Math.round(diffSec / 60);
+  const diffHour = Math.round(diffMin / 60);
+  const diffDay = Math.round(diffHour / 24);
+
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+  if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
+  if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
+  
+  const diffMonth = Math.round(diffDay / 30);
+  if (diffMonth < 12) return `${diffMonth} month${diffMonth !== 1 ? 's' : ''} ago`;
+  
+  const diffYear = Math.round(diffDay / 365);
+  return `${diffYear} year${diffYear !== 1 ? 's' : ''} ago`;
 }
 
 export default function VersionHistoryPanel() {
@@ -308,9 +340,9 @@ export default function VersionHistoryPanel() {
                       <CardDescription className="text-xs mt-1">
                         <div className="flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
-                          {format(version.timestamp, 'MMM d, yyyy h:mm a')}
+                          {formatDate(version.timestamp)}
                           <span className="mx-1">•</span>
-                          {formatDistance(version.timestamp, new Date(), { addSuffix: true })}
+                          {formatRelativeTime(version.timestamp)}
                         </div>
                       </CardDescription>
                     </div>

@@ -17,7 +17,8 @@ import {
   BarChart3,
   Video,
   Camera,
-  Pen
+  Pen,
+  Layout
 } from "lucide-react";
 import React from "react";
 
@@ -224,6 +225,17 @@ export const tools: ToolConfig[] = [
     textColor: "text-rose-600",
     category: "image",
     href: "/browser-design-studio",
+    isNew: true,
+  },
+  {
+    id: "client-site-builder",
+    title: "Client Site Builder",
+    description: "Build professional websites with our drag-and-drop site builder. Entirely browser-based with privacy-first offline storage.",
+    icon: <Layout className="h-16 w-16" stroke="#8b5cf6" />,
+    color: "from-purple-50 to-indigo-50",
+    textColor: "text-purple-600",
+    category: "utility",
+    href: "/client-site-builder",
     isNew: true,
   },
 ];

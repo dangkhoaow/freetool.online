@@ -34,42 +34,28 @@ export function DesignStudioProvider({ children }: { children: React.ReactNode }
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [documents, setDocuments] = useState<Array<{ id: string; name: string; lastModified: Date }>>([])
 
-  // Get store actions
-  const { 
-    paths: vectorPaths, 
-    addPath: addVectorPath, 
-    clearPaths: clearVectorPaths,
-    getState: getVectorState,
-    setState: setVectorState
-  } = useVectorStore()
-
-  const {
-    layers: rasterLayers,
-    addLayer: addRasterLayer,
-    clearLayers: clearRasterLayers,
-    getState: getRasterState,
-    setState: setRasterState
-  } = useRasterStore()
-
-  const {
-    textNodes,
-    addTextNode,
-    clearTextNodes,
-    getState: getTextState,
-    setState: setTextState
-  } = useTextStore()
-
+  // Access store setters and getters through hooks
+  const vectorPaths = useVectorStore(state => state.paths)
+  const clearVectorPaths = useVectorStore(state => state.clearPaths)
+  
+  const rasterLayers = useRasterStore(state => state.layers)
+  
+  const textNodes = useTextStore(state => state.textNodes)
+  
   // Load document list on mount
   useEffect(() => {
     loadDocumentList()
     
     // Set up auto-save interval
     const autoSaveInterval = setInterval(() => {
-      saveDocument()
+      // Only save if there are actual changes to save
+      if (vectorPaths.length > 0 || rasterLayers.length > 0 || textNodes.length > 0) {
+        saveDocument()
+      }
     }, 30000) // Every 30 seconds
     
     return () => clearInterval(autoSaveInterval)
-  }, [])
+  }, []) // Empty dependency array to ensure this only runs once
 
   // Load the list of documents from IndexedDB
   const loadDocumentList = async () => {
@@ -96,9 +82,18 @@ export function DesignStudioProvider({ children }: { children: React.ReactNode }
         id: crypto.randomUUID(),
         name: documentName,
         dimensions: documentDimensions,
-        vector: getVectorState(),
-        raster: getRasterState(),
-        text: getTextState(),
+        vector: {
+          paths: vectorPaths,
+          selectedPathIds: []
+        },
+        raster: {
+          layers: rasterLayers,
+          activeLayerIndex: 0
+        },
+        text: {
+          textNodes: textNodes,
+          selectedNodeId: null
+        },
         lastModified: new Date()
       }
       
@@ -130,18 +125,33 @@ export function DesignStudioProvider({ children }: { children: React.ReactNode }
         id: documentId,
         name: documents.find(doc => doc.id === documentId)?.name || 'Loaded Document',
         dimensions: { width: 1200, height: 800 },
-        vector: { paths: [], selectedPathIds: [] },
-        raster: { layers: [], activeLayerId: null },
-        text: { textNodes: [], selectedNodeIds: [] },
+        vector: { 
+          paths: [], 
+          selectedPathIds: [] 
+        },
+        raster: { 
+          layers: [], 
+          activeLayerIndex: null 
+        },
+        text: { 
+          textNodes: [], 
+          selectedNodeId: null 
+        },
         lastModified: new Date()
       }
       
       // Update all stores with loaded data
       setDocumentName(mockDocument.name)
       setDocumentDimensions(mockDocument.dimensions)
-      setVectorState(mockDocument.vector)
-      setRasterState(mockDocument.raster)
-      setTextState(mockDocument.text)
+      
+      // Update vector store
+      useVectorStore.setState(mockDocument.vector)
+      
+      // Update raster store
+      useRasterStore.setState({ layers: mockDocument.raster.layers, activeLayerIndex: mockDocument.raster.activeLayerIndex })
+      
+      // Update text store
+      useTextStore.setState({ textNodes: mockDocument.text.textNodes, selectedNodeId: mockDocument.text.selectedNodeId })
       
       setIsLoading(false)
       return
@@ -155,9 +165,16 @@ export function DesignStudioProvider({ children }: { children: React.ReactNode }
   const resetDocument = () => {
     setDocumentName('Untitled Design')
     setDocumentDimensions({ width: 1200, height: 800 })
+    
+    // Clear vector paths
     clearVectorPaths()
-    clearRasterLayers()
-    clearTextNodes()
+    
+    // Reset raster layers
+    useRasterStore.setState({ layers: [], activeLayerIndex: null })
+    
+    // Reset text nodes
+    useTextStore.setState({ textNodes: [], selectedNodeId: null })
+    
     setLastSaved(null)
   }
 

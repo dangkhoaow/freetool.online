@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState } from "react"
 import { useVectorStore } from "@/lib/services/browser-design-studio/stores/vector-store"
 import { Button } from "@/components/ui/button"
-import { MousePointer, Pen, Square, Circle, Path } from "lucide-react"
+import { MousePointer, Pen, Square, Circle, PenTool } from "lucide-react"
 
 interface Point {
   x: number
@@ -283,7 +283,7 @@ export default function VectorCanvas() {
             size="sm"
             onClick={() => setCurrentTool("path")}
           >
-            <Path className="h-4 w-4" />
+            <PenTool className="h-4 w-4" />
           </Button>
         </div>
         

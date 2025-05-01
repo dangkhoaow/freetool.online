@@ -5,11 +5,22 @@
  * Handles sketch-to-vector conversion, style transfer, and layout suggestions
  */
 
-import * as tf from '@tensorflow/tfjs'
+// We'll dynamically import TensorFlow.js to avoid SSR issues
+let tf: any = null
+
+// Function to load TensorFlow dynamically in client context
+async function loadTensorFlow() {
+  if (typeof window !== 'undefined' && !tf) {
+    tf = await import('@tensorflow/tfjs')
+    return tf
+  }
+  return tf
+}
 
 export interface AIDesignServiceOptions {
   modelPath?: string
   useGPU?: boolean
+  progressCallback?: (progress: number) => void
 }
 
 export interface AIProcessingOptions {
@@ -20,298 +31,118 @@ export interface AIProcessingOptions {
 type ProgressCallback = (progress: number, status?: string) => void
 
 export class AIDesignService {
-  private isModelLoaded: boolean = false
-  private vectorizeModel: any = null
-  private styleTransferModel: any = null
-  private layoutGenerationModel: any = null
-  private imageGenerationModel: any = null
-  private modelPath: string = '/models/ai-design/'
-  private useGPU: boolean = true
-  
+  private modelCache: Map<string, any> = new Map()
+  private isInitialized: boolean = false
+  private useGPU: boolean = false
+  private progressCallback?: (progress: number) => void
+
   constructor(options?: AIDesignServiceOptions) {
-    if (options) {
-      this.modelPath = options.modelPath || this.modelPath
-      this.useGPU = options.useGPU !== undefined ? options.useGPU : this.useGPU
-    }
+    if (typeof window === 'undefined') return; // Skip initialization in SSR
     
-    // Check for WebGPU/WebGL support
-    this.checkGPUSupport()
-    
-    // Initialize TensorFlow.js
-    this.initializeTensorflow()
+    this.useGPU = options?.useGPU ?? true
+    this.progressCallback = options?.progressCallback
   }
-  
+
   /**
-   * Checks if GPU acceleration is available
+   * Lazy initialization of TensorFlow
    */
-  private async checkGPUSupport(): Promise<void> {
-    // Check for WebGPU API support (Chrome 113+, Edge 113+, etc.)
-    const hasWebGPU = 'gpu' in navigator
+  private async ensureInitialized(): Promise<boolean> {
+    if (this.isInitialized) return true
     
-    // Check for WebGL support
-    const hasWebGL = await tf.ready().then(() => {
-      const backend = tf.getBackend()
-      return backend === 'webgl' || backend === 'webgpu'
-    }).catch(() => false)
-    
-    this.useGPU = hasWebGPU || hasWebGL
-    
-    console.log(`GPU acceleration ${this.useGPU ? 'available' : 'not available'}`)
+    try {
+      await this.initializeTensorflow()
+      this.isInitialized = true
+      return true
+    } catch (error) {
+      console.error('Failed to initialize AI Design Service:', error)
+      return false
+    }
   }
-  
+
   /**
-   * Initializes TensorFlow.js with the appropriate backend
+   * Initialize TensorFlow with appropriate backend
    */
   private async initializeTensorflow(): Promise<void> {
     try {
+      const tensorFlow = await loadTensorFlow()
+      if (!tensorFlow) throw new Error('Failed to load TensorFlow.js')
+      
       if (this.useGPU) {
         // Try to use WebGPU first, fall back to WebGL
         if ('gpu' in navigator) {
-          await tf.setBackend('webgpu')
+          await tensorFlow.setBackend('webgpu')
         } else {
-          await tf.setBackend('webgl')
+          await tensorFlow.setBackend('webgl')
         }
       } else {
-        await tf.setBackend('cpu')
+        await tensorFlow.setBackend('webgl')
       }
       
-      // Log the backend being used
-      console.log(`Using TensorFlow.js backend: ${tf.getBackend()}`)
+      await tensorFlow.ready()
+      console.log('TensorFlow initialized with backend:', tensorFlow.getBackend())
+      
     } catch (error) {
-      console.error('Failed to initialize TensorFlow.js:', error)
-      // Fall back to CPU
-      await tf.setBackend('cpu')
-    }
-  }
-  
-  /**
-   * Loads the vectorizer model for sketch-to-vector conversion
-   */
-  private async loadVectorizerModel(
-    onProgress?: ProgressCallback
-  ): Promise<void> {
-    if (this.vectorizeModel) return
-    
-    try {
-      if (onProgress) onProgress(0.1, 'Loading vectorizer model...')
-      
-      // In a real implementation, this would load a TensorFlow.js model
-      // For this demo, we're simulating the model loading
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      if (onProgress) onProgress(0.5, 'Initializing vectorizer...')
-      
-      // Simulate model
-      this.vectorizeModel = {
-        predict: (imageData: ImageData | string) => {
-          console.log('Running vectorizer inference on input')
-          
-          // Return simulated SVG paths
-          return {
-            paths: [
-              // Sample paths that would be generated from the model
-              {
-                points: Array(10).fill(0).map((_, i) => ({
-                  x: 100 + i * 20,
-                  y: 100 + Math.sin(i * 0.5) * 50
-                })),
-                stroke: '#000000',
-                strokeWidth: 2,
-                fill: 'none',
-              },
-              {
-                points: Array(8).fill(0).map((_, i) => ({
-                  x: 150 + i * 25,
-                  y: 200 + Math.cos(i * 0.5) * 30
-                })),
-                stroke: '#000000',
-                strokeWidth: 2,
-                fill: 'none',
-              }
-            ]
-          }
-        }
-      }
-      
-      if (onProgress) onProgress(0.9, 'Vectorizer model ready')
-      console.log('Vectorizer model loaded successfully')
-    } catch (error) {
-      console.error('Failed to load vectorizer model:', error)
+      console.error('Error initializing TensorFlow:', error)
       throw error
     }
   }
-  
-  /**
-   * Loads the style transfer model
-   */
-  private async loadStyleTransferModel(
-    onProgress?: ProgressCallback
-  ): Promise<void> {
-    if (this.styleTransferModel) return
-    
-    try {
-      if (onProgress) onProgress(0.1, 'Loading style transfer model...')
-      
-      // In a real implementation, this would load a TensorFlow.js model
-      // For this demo, we're simulating the model loading
-      await new Promise(resolve => setTimeout(resolve, 1200))
-      
-      if (onProgress) onProgress(0.5, 'Initializing style transfer...')
-      
-      // Simulate model
-      this.styleTransferModel = {
-        transfer: (content: ImageData | string, style: string) => {
-          console.log(`Transferring style "${style}" to content`)
-          
-          // Return a simulated styled image
-          return {
-            imageData: new ImageData(100, 100), // Dummy image data
-            styleId: style
-          }
-        }
-      }
-      
-      if (onProgress) onProgress(0.9, 'Style transfer model ready')
-      console.log('Style transfer model loaded successfully')
-    } catch (error) {
-      console.error('Failed to load style transfer model:', error)
-      throw error
-    }
+
+  private reportProgress(progress: number): void {
+    this.progressCallback?.(progress)
   }
-  
-  /**
-   * Loads the layout generation model
-   */
-  private async loadLayoutGenerationModel(
-    onProgress?: ProgressCallback
-  ): Promise<void> {
-    if (this.layoutGenerationModel) return
-    
-    try {
-      if (onProgress) onProgress(0.1, 'Loading layout generation model...')
-      
-      // In a real implementation, this would load a TensorFlow.js model
-      // For this demo, we're simulating the model loading
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      if (onProgress) onProgress(0.5, 'Initializing layout generator...')
-      
-      // Simulate model
-      this.layoutGenerationModel = {
-        generateLayout: (prompt: string) => {
-          console.log(`Generating layout based on prompt: "${prompt}"`)
-          
-          // Return simulated layout elements
-          return {
-            elements: [
-              {
-                type: 'header',
-                x: 100,
-                y: 50,
-                width: 800,
-                height: 100,
-              },
-              {
-                type: 'content',
-                x: 100,
-                y: 200,
-                width: 800,
-                height: 400,
-                columns: 3
-              },
-              {
-                type: 'footer',
-                x: 100,
-                y: 650,
-                width: 800,
-                height: 100,
-              }
-            ]
-          }
-        }
-      }
-      
-      if (onProgress) onProgress(0.9, 'Layout generation model ready')
-      console.log('Layout generation model loaded successfully')
-    } catch (error) {
-      console.error('Failed to load layout generation model:', error)
-      throw error
-    }
+
+  private async simulateProcessing(time: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, time))
   }
-  
-  /**
-   * Loads the image generation model
-   */
-  private async loadImageGenerationModel(
-    onProgress?: ProgressCallback
-  ): Promise<void> {
-    if (this.imageGenerationModel) return
-    
-    try {
-      if (onProgress) onProgress(0.1, 'Loading image generation model...')
-      
-      // In a real implementation, this would load a TensorFlow.js model
-      // For this demo, we're simulating the model loading
-      await new Promise(resolve => setTimeout(resolve, 1800))
-      
-      if (onProgress) onProgress(0.5, 'Initializing image generator...')
-      
-      // Simulate model
-      this.imageGenerationModel = {
-        generateImage: (prompt: string) => {
-          console.log(`Generating image based on prompt: "${prompt}"`)
-          
-          // Return a simulated generated image
-          return {
-            imageUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HgAGgwJ/lK3Q6wAAAABJRU5ErkJggg==', // Dummy 1x1 transparent PNG
-          }
-        }
-      }
-      
-      if (onProgress) onProgress(0.9, 'Image generation model ready')
-      console.log('Image generation model loaded successfully')
-    } catch (error) {
-      console.error('Failed to load image generation model:', error)
-      throw error
-    }
+
+  private generateMockVectorPaths(count: number): any[] {
+    return Array(count).fill(0).map((_, i) => ({
+      points: Array(10).fill(0).map((_, j) => ({
+        x: 100 + j * 20,
+        y: 100 + Math.sin(j * 0.5) * 50
+      })),
+      stroke: '#000000',
+      strokeWidth: 2,
+      fill: 'none',
+    }))
   }
-  
+
   /**
    * Converts a sketch or bitmap image to vector paths
    */
   public async vectorizeImage(
-    imageData: ImageData | string,
+    imageData: ImageData,
     onProgress?: ProgressCallback,
     options?: AIProcessingOptions
-  ): Promise<any> {
+  ): Promise<any[]> {
+    if (!await this.ensureInitialized()) {
+      throw new Error('AI service not initialized')
+    }
+    
     try {
-      if (onProgress) onProgress(0.1, 'Preparing vectorization...')
+      this.reportProgress(0.1)
       
-      // Load model if not already loaded
-      await this.loadVectorizerModel(
-        (progress, status) => onProgress?.(progress * 0.5, status)
-      )
+      // Here we would load and run the actual model
+      // For now, we'll simulate the process
       
-      if (onProgress) onProgress(0.6, 'Processing image...')
+      // Simulate model processing time
+      await this.simulateProcessing(1500)
+      this.reportProgress(0.5)
       
-      // In a real implementation, we would process the image to tensor
-      // For this demo, we're skipping the preprocessing
+      // Generate mock vector paths
+      const mockVectorPaths = this.generateMockVectorPaths(10)
       
-      // Run inference
-      if (onProgress) onProgress(0.7, 'Running vectorization...')
-      const result = this.vectorizeModel.predict(imageData)
+      this.reportProgress(0.9)
+      await this.simulateProcessing(500)
+      this.reportProgress(1.0)
       
-      // Post-process result
-      if (onProgress) onProgress(0.9, 'Finalizing vector paths...')
-      
-      if (onProgress) onProgress(1.0, 'Vectorization complete')
-      return result
+      return mockVectorPaths
     } catch (error) {
-      console.error('Vectorization failed:', error)
+      console.error('Error in sketch-to-vector conversion:', error)
       throw error
     }
   }
-  
+
   /**
    * Applies style transfer between elements
    */
@@ -320,32 +151,48 @@ export class AIDesignService {
     onProgress?: ProgressCallback,
     options?: AIProcessingOptions
   ): Promise<any> {
+    if (!await this.ensureInitialized()) {
+      throw new Error('AI service not initialized')
+    }
+    
     try {
-      if (onProgress) onProgress(0.1, 'Preparing style transfer...')
+      this.reportProgress(0.1)
       
-      // Load model if not already loaded
-      await this.loadStyleTransferModel(
-        (progress, status) => onProgress?.(progress * 0.5, status)
-      )
+      // Here we would load and run the actual style transfer model
+      // For now, we'll simulate the process
       
-      if (onProgress) onProgress(0.6, 'Processing content...')
+      // Simulate model processing time
+      await this.simulateProcessing(2000)
+      this.reportProgress(0.6)
       
-      // In a real implementation, we would get the content from the canvas
-      // For this demo, we're using a dummy content
-      const content = new ImageData(100, 100)
+      // Create a mock result
+      const resultCanvas = document.createElement('canvas')
+      resultCanvas.width = 100
+      resultCanvas.height = 100
+      const ctx = resultCanvas.getContext('2d')!
       
-      // Run inference
-      if (onProgress) onProgress(0.7, 'Applying style transfer...')
-      const result = this.styleTransferModel.transfer(content, styleId)
+      // Draw the content image (would be the styled result in a real implementation)
+      const tempCanvas = document.createElement('canvas')
+      tempCanvas.width = 100
+      tempCanvas.height = 100
+      const tempCtx = tempCanvas.getContext('2d')!
       
-      if (onProgress) onProgress(1.0, 'Style transfer complete')
-      return result
+      // Apply a simple effect to simulate style transfer
+      ctx.filter = 'saturate(1.5) contrast(1.2)'
+      ctx.drawImage(tempCanvas, 0, 0)
+      ctx.filter = 'none'
+      
+      this.reportProgress(0.9)
+      await this.simulateProcessing(500)
+      this.reportProgress(1.0)
+      
+      return ctx.getImageData(0, 0, 100, 100)
     } catch (error) {
-      console.error('Style transfer failed:', error)
+      console.error('Error in style transfer:', error)
       throw error
     }
   }
-  
+
   /**
    * Generates layout suggestions based on a prompt
    */
@@ -353,51 +200,131 @@ export class AIDesignService {
     prompt: string,
     onProgress?: ProgressCallback,
     options?: AIProcessingOptions
-  ): Promise<any> {
+  ): Promise<any[]> {
+    if (!await this.ensureInitialized()) {
+      throw new Error('AI service not initialized')
+    }
+    
     try {
-      if (onProgress) onProgress(0.1, 'Preparing layout generation...')
+      this.reportProgress(0.1)
       
-      // Load model if not already loaded
-      await this.loadLayoutGenerationModel(
-        (progress, status) => onProgress?.(progress * 0.5, status)
-      )
+      // Here we would run the layout generation model
+      // For now, we'll simulate the process
       
-      // Run inference
-      if (onProgress) onProgress(0.7, 'Generating layout...')
-      const result = this.layoutGenerationModel.generateLayout(prompt)
+      await this.simulateProcessing(1000)
+      this.reportProgress(0.5)
       
-      if (onProgress) onProgress(1.0, 'Layout generation complete')
-      return result
+      // Generate mock layouts
+      const layouts = []
+      
+      // Layout 1: Grid
+      layouts.push({
+        name: 'Grid Layout',
+        elements: Array(9).fill(0).map((_, i) => ({
+          x: (i % 3) * 100 + 20,
+          y: Math.floor(i / 3) * 100 + 20,
+          width: 100 - 40,
+          height: 100 - 40
+        }))
+      })
+      
+      // Layout 2: Focal point
+      layouts.push({
+        name: 'Focal Point',
+        elements: Array(9).fill(0).map((_, i) => {
+          if (i === 0) {
+            // Main element in center
+            return {
+              x: 150,
+              y: 150,
+              width: 200,
+              height: 200
+            }
+          } else {
+            // Supporting elements around
+            const angle = (i - 1) * (2 * Math.PI / (9 - 1))
+            const radius = Math.min(300, 300) * 0.35
+            return {
+              x: 200 + radius * Math.cos(angle) - 50,
+              y: 200 + radius * Math.sin(angle) - 50,
+              width: 100,
+              height: 100
+            }
+          }
+        })
+      })
+      
+      // Layout 3: Horizontal flow
+      layouts.push({
+        name: 'Horizontal Flow',
+        elements: Array(9).fill(0).map((_, i) => ({
+          x: i * 100 + 10,
+          y: 150,
+          width: 100 - 20,
+          height: 200
+        }))
+      })
+      
+      this.reportProgress(0.9)
+      await this.simulateProcessing(500)
+      this.reportProgress(1.0)
+      
+      return layouts
     } catch (error) {
-      console.error('Layout generation failed:', error)
+      console.error('Error in layout generation:', error)
       throw error
     }
   }
-  
+
   /**
-   * Generates an image based on a text prompt
+   * Generates an image based on text prompt
    */
   public async generateImage(
     prompt: string,
     onProgress?: ProgressCallback,
     options?: AIProcessingOptions
-  ): Promise<any> {
+  ): Promise<ImageData> {
+    if (!await this.ensureInitialized()) {
+      throw new Error('AI service not initialized')
+    }
+    
     try {
-      if (onProgress) onProgress(0.1, 'Preparing image generation...')
+      this.reportProgress(0.1)
       
-      // Load model if not already loaded
-      await this.loadImageGenerationModel(
-        (progress, status) => onProgress?.(progress * 0.5, status)
-      )
+      // Here we would run the image generation model
+      // For now, we'll simulate the process with a placeholder
       
-      // Run inference
-      if (onProgress) onProgress(0.7, 'Generating image...')
-      const result = this.imageGenerationModel.generateImage(prompt)
+      await this.simulateProcessing(3000)
+      this.reportProgress(0.7)
       
-      if (onProgress) onProgress(1.0, 'Image generation complete')
-      return result
+      // Create a placeholder image
+      const canvas = document.createElement('canvas')
+      canvas.width = 300
+      canvas.height = 300
+      const ctx = canvas.getContext('2d')!
+      
+      // Fill with gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 300, 300)
+      gradient.addColorStop(0, '#f9a8d4')
+      gradient.addColorStop(1, '#e11d48')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, 300, 300)
+      
+      // Add text to indicate this is a placeholder
+      ctx.fillStyle = 'white'
+      ctx.font = '20px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(`AI Generated: ${prompt}`, 150, 150)
+      ctx.font = '14px sans-serif'
+      ctx.fillText('(Placeholder - Real model would generate actual image)', 150, 180)
+      
+      this.reportProgress(0.9)
+      await this.simulateProcessing(500)
+      this.reportProgress(1.0)
+      
+      return ctx.getImageData(0, 0, 300, 300)
     } catch (error) {
-      console.error('Image generation failed:', error)
+      console.error('Error in image generation:', error)
       throw error
     }
   }
