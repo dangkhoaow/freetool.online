@@ -22,6 +22,8 @@ interface RasterState {
   undo: () => void
   getLayers: () => RasterLayer[]
   loadImageData: (imageData: ImageData, options?: { layerName?: string }) => void
+  saveState: () => { layers: RasterLayer[] }
+  restoreState: (state: { layers: RasterLayer[] }) => void
 }
 
 export const useRasterStore = create<RasterState>((set, get) => ({
@@ -123,21 +125,27 @@ export const useRasterStore = create<RasterState>((set, get) => ({
 
   getLayers: () => get().layers,
 
-  loadImageData: (imageData, options = {}) => set((state) => {
-    const layerName = options.layerName || `Layer ${state.layers.length + 1}`
-    
+  loadImageData: (imageData, options = {}) => {
+    const { layerName = 'Imported Layer' } = options
     const newLayer: RasterLayer = {
-      id: `layer-${Date.now()}`,
+      id: 'layer-' + Date.now(),
       name: layerName,
-      visible: true,
-      opacity: 1,
-      blendMode: "normal",
+      visible: true, 
+      opacity: 1.0,
+      blendMode: 'normal',
       imageData
     }
-    
-    return {
-      layers: [...state.layers, newLayer],
-      activeLayerIndex: state.layers.length
-    }
+    get().addLayer(newLayer)
+  },
+  
+  // Added for state persistence and restoration
+  saveState: () => {
+    const { layers } = get()
+    return { layers }
+  },
+  
+  restoreState: (state) => set({ 
+    layers: state.layers || [],
+    activeLayerIndex: state.layers?.length > 0 ? 0 : null
   })
 }))

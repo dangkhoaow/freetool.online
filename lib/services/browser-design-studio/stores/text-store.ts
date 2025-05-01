@@ -13,7 +13,7 @@ interface TextPathData {
   points?: TextPosition[]
 }
 
-interface TextStyle {
+export interface TextStyle {
   fontFamily: string
   fontSize: number
   fontWeight: string

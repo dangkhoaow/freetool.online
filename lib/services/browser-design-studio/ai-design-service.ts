@@ -111,10 +111,10 @@ export class AIDesignService {
    * Converts a sketch or bitmap image to vector paths
    */
   public async vectorizeImage(
-    imageData: ImageData,
+    imageData: ImageData | string,
     onProgress?: ProgressCallback,
     options?: AIProcessingOptions
-  ): Promise<any[]> {
+  ): Promise<any> {
     if (!await this.ensureInitialized()) {
       throw new Error('AI service not initialized')
     }
@@ -136,7 +136,7 @@ export class AIDesignService {
       await this.simulateProcessing(500)
       this.reportProgress(1.0)
       
-      return mockVectorPaths
+      return { paths: mockVectorPaths }
     } catch (error) {
       console.error('Error in sketch-to-vector conversion:', error)
       throw error

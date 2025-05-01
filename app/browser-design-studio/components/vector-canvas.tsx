@@ -12,6 +12,7 @@ interface Point {
 
 interface PathData {
   id: string
+  type: string
   points: Point[]
   strokeColor: string
   strokeWidth: number
@@ -178,6 +179,8 @@ export default function VectorCanvas() {
     if (currentPath.length >= 2) {
       const newPath: PathData = {
         id: `path-${Date.now()}`,
+        type: currentTool === "rectangle" ? "rect" : 
+              currentTool === "circle" ? "circle" : "path",
         points: currentPath,
         strokeColor,
         strokeWidth,

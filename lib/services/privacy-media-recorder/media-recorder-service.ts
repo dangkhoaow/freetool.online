@@ -119,6 +119,7 @@ export class MediaRecorderService {
         // Request display media for screen capture
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: {
+            // @ts-ignore - cursor is supported but not in TypeScript definitions
             cursor: "always",
             ...options.resolution && {
               width: { ideal: options.resolution.width },

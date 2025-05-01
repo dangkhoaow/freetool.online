@@ -43,9 +43,9 @@ import {
 
 export default function CollaborationPanel() {
   const { documentName, setDocumentName, documentDimensions } = useDesignStudio()
-  const setVectorData = useVectorStore(state => state.setState)
-  const setRasterData = useRasterStore(state => state.setState)
-  const setTextData = useTextStore(state => state.setState)
+  const setVectorData = useVectorStore(state => state.restoreState)
+  const setRasterData = useRasterStore(state => state.restoreState)
+  const setTextData = useTextStore(state => state.restoreState)
   
   // Collaboration state
   const [collaborationState, setCollaborationState] = useState<CollaborationState>({

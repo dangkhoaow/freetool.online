@@ -137,7 +137,21 @@ export class FFmpegProcessorService {
       // Get output file
       let outputData: Uint8Array;
       try {
-        outputData = await ffmpeg.readFile(outputFileName);
+        const fileData = await ffmpeg.readFile(outputFileName);
+        // Handle different types of FileData that FFmpeg might return
+        if (fileData instanceof Uint8Array) {
+          outputData = fileData;
+        } else if (typeof fileData === 'string') {
+          // Convert base64 string to Uint8Array if needed
+          const binary = atob(fileData.split(',')[1] || fileData);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          outputData = bytes;
+        } else {
+          throw new Error("Unexpected file data format from FFmpeg");
+        }
         this.onLog(`[READ] Output file read: ${outputData.byteLength} bytes`);
       } catch (e) {
         this.onLog(`[ERROR] Failed to read output file: ${e}`);

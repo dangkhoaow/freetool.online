@@ -125,6 +125,7 @@ export class VectorEngine {
       // Create a new path with the result
       const newPath: PathData = {
         id: `path-${Date.now()}`,
+        type: 'path', 
         points: [],  // Would be the points from the operation result
         strokeColor: pathA.strokeColor,
         strokeWidth: pathA.strokeWidth,

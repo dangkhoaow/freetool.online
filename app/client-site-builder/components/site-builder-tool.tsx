@@ -219,7 +219,9 @@ export default function SiteBuilderTool() {
                     id: `block-${Date.now()}`,
                     type: component.id,
                     content: component.defaultContent || "",
-                    styles: component.defaultStyles || {},
+                    styles: component.defaultStyles ? Object.fromEntries(
+                      Object.entries(component.defaultStyles).filter(([_, v]) => v !== undefined)
+                    ) : {},
                   }
                   
                   const updatedPage = {

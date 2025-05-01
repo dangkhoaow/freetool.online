@@ -7,8 +7,11 @@ declare global {
   }
   
   interface GPUAdapter {
+    // @ts-ignore - Overriding WebGPU typings for debugging purposes
     features: Set<string>;
+    // @ts-ignore - Overriding WebGPU typings for debugging purposes
     limits: Record<string, number>;
+    // @ts-ignore - Overriding WebGPU typings for debugging purposes
     requestAdapterInfo: () => Promise<{
       vendor: string;
       architecture: string;

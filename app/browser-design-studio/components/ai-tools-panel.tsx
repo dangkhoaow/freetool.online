@@ -200,11 +200,11 @@ export default function AIToolsPanel() {
         const canvas = canvasRef.current
         if (!canvas) throw new Error("Canvas not available")
         
-        const imageData = canvas.toDataURL("image/png")
+        const imageDataUrl = canvas.toDataURL("image/png")
         
         // Process vectorization
         const result = await aiServiceRef.current.vectorizeImage(
-          imageData,
+          imageDataUrl,
           (progress, status) => {
             setProgress(progress * 100)
             if (status) setProcessingStatus(status)
@@ -215,7 +215,7 @@ export default function AIToolsPanel() {
         setResult(result)
         
         // Draw result on result canvas
-        if (resultCanvasRef.current && result.paths) {
+        if (resultCanvasRef.current && result && Array.isArray(result.paths)) {
           const ctx = resultCanvasRef.current.getContext("2d")
           if (ctx) {
             ctx.clearRect(0, 0, resultCanvasRef.current.width, resultCanvasRef.current.height)

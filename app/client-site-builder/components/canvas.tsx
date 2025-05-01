@@ -324,6 +324,7 @@ export default function Canvas({
 
   return (
     <div 
+      // @ts-ignore - React DnD typings issue with refs
       ref={drop} 
       className="flex justify-center p-4 min-h-full"
       onClick={() => onBlockSelect("")} // Deselect when clicking canvas
