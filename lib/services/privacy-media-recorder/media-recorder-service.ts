@@ -26,6 +26,9 @@ export interface RecordedMedia {
   size: number;
   duration: number;
   timestamp: number;
+  blobData?: ArrayBuffer;
+  directAccessId?: string;
+  chunks?: Blob[];
 }
 
 export class MediaRecorderService {

@@ -61,23 +61,53 @@ export class RecordingManagerService {
         this.stopRecording();
       }
       
+      console.log("Starting recording with options:", options);
+      
       this.mediaStream = mediaStream;
       this.recordedChunks = [];
       
       // Set mime type from options if provided
       if (options?.mimeType && MediaRecorder.isTypeSupported(options.mimeType)) {
         this.mimeType = options.mimeType;
+        console.log(`Using mime type: ${this.mimeType}`);
+      } else {
+        console.log(`Using default mime type: ${this.mimeType}`);
       }
       
-      // Create media recorder with settings
-      this.mediaRecorder = new MediaRecorder(mediaStream, {
+      // Calculate optimal bitrate based on resolution and frame rate
+      // Higher frame rates need higher bitrates for quality
+      let videoBitsPerSecond = undefined;
+      if (options?.resolution?.width) {
+        const pixelCount = options.resolution.width * options.resolution.height;
+        const fps = options?.frameRate || 30;
+        
+        // Scale bitrate with resolution and fps (more fps = higher bitrate needed)
+        // 720p at 30fps = ~5Mbps, 1080p at 60fps = ~12Mbps
+        videoBitsPerSecond = Math.floor((pixelCount / (1280 * 720)) * fps * 170000);
+        
+        console.log(`Calculated video bitrate: ${videoBitsPerSecond} bps for ${options.resolution.width}x${options.resolution.height} at ${fps}fps`);
+      }
+      
+      // Create media recorder with enhanced settings
+      const recorderOptions = {
         mimeType: this.mimeType,
-        videoBitsPerSecond: options?.resolution?.width ? options.resolution.width * options.resolution.height * 0.2 : undefined
+        videoBitsPerSecond: videoBitsPerSecond
+      };
+      
+      console.log("Creating MediaRecorder with options:", recorderOptions);
+      this.mediaRecorder = new MediaRecorder(mediaStream, recorderOptions);
+      
+      // Check what the MediaRecorder actually used
+      console.log("MediaRecorder created with:", {
+        mimeType: this.mediaRecorder.mimeType,
+        videoBitsPerSecond: this.mediaRecorder.videoBitsPerSecond || "browser default",
+        audioBitsPerSecond: this.mediaRecorder.audioBitsPerSecond || "browser default"
       });
       
       // Handle data available event
       this.mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
+          console.log(`Data chunk received: ${(event.data.size / 1024).toFixed(2)} KB`);
           this.recordedChunks.push(event.data);
           
           if (this.onDataAvailableCallback) {
@@ -92,6 +122,9 @@ export class RecordingManagerService {
         this.isPaused = false;
         this.stopTimeMeasurement();
         
+        const totalSize = this.recordedChunks.reduce((total, chunk) => total + chunk.size, 0);
+        console.log(`Recording stopped. Total size: ${(totalSize / (1024 * 1024)).toFixed(2)} MB, Duration: ${this.currentDuration}s`);
+        
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback({
             isRecording: false,
@@ -104,6 +137,7 @@ export class RecordingManagerService {
       
       // Handle errors
       this.mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
         if (this.onErrorCallback && event instanceof Error) {
           this.onErrorCallback(event);
         } else if (this.onErrorCallback) {
@@ -111,8 +145,11 @@ export class RecordingManagerService {
         }
       };
       
-      // Start recording
-      this.mediaRecorder.start(1000); // Collect data in 1-second chunks
+      // Start recording with smaller chunks for better quality
+      // Use 500ms chunks for better quality and more frequent updates
+      this.mediaRecorder.start(500);
+      console.log("MediaRecorder started with 500ms time slices");
+      
       this.isRecording = true;
       this.isPaused = false;
       this.startTimeMeasurement();
@@ -126,6 +163,7 @@ export class RecordingManagerService {
         });
       }
     } catch (error) {
+      console.error("Error starting recording:", error);
       if (error instanceof Error && this.onErrorCallback) {
         this.onErrorCallback(error);
       }
@@ -177,34 +215,79 @@ export class RecordingManagerService {
   /**
    * Stop the current recording and return the recorded data
    */
-  public stopRecording(): RecordedMedia | null {
-    if (this.mediaRecorder && this.isRecording) {
-      this.mediaRecorder.stop();
-      this.isRecording = false;
-      this.isPaused = false;
-      this.stopTimeMeasurement();
-      
-      // Create a single blob from all chunks
-      if (this.recordedChunks.length) {
-        const blob = new Blob(this.recordedChunks, { type: this.mimeType });
-        const url = URL.createObjectURL(blob);
-        const timestamp = Date.now();
-        
-        // Return the recorded media
-        return {
-          id: uuidv4(),
-          blob,
-          url,
-          type: this.mimeType,
-          name: `Recording_${new Date(timestamp).toISOString().replace(/[:.]/g, '-')}`,
-          size: blob.size,
-          duration: this.currentDuration,
-          timestamp
-        };
-      }
+  public async stopRecording(): Promise<RecordedMedia> {
+    if (!this.mediaRecorder || !this.isRecording) {
+      throw new Error('Recording not in progress');
     }
     
-    return null;
+    try {
+      // Stop the MediaRecorder
+      this.mediaRecorder.stop();
+      
+      // Wait for the final dataavailable event
+      await new Promise<void>(resolve => {
+        const originalOnStop = this.mediaRecorder!.onstop;
+        this.mediaRecorder!.onstop = (event: Event) => {
+          if (originalOnStop && this.mediaRecorder) {
+            originalOnStop.call(this.mediaRecorder, event);
+          }
+          resolve();
+        };
+      });
+      
+      // Make sure we have recorded chunks
+      if (this.recordedChunks.length === 0) {
+        throw new Error('No data recorded');
+      }
+      
+      // Log the individual chunks
+      console.log(`Combining ${this.recordedChunks.length} chunks with total size: ${this.getTotalSize(this.recordedChunks) / (1024 * 1024)} MB`);
+      
+      // Create a copy of all chunks to preserve the raw data
+      const savedChunks = [...this.recordedChunks];
+      
+      // Create a blob from the recorded chunks
+      const blob = new Blob(this.recordedChunks, { type: this.mimeType });
+      console.log(`Created final blob with size: ${blob.size / (1024 * 1024)} MB`);
+      
+      // Calculate the duration of the recording
+      const duration = (Date.now() - this.startTime) / 1000;
+      
+      // Create a URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create a unique ID for the recording
+      const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      
+      // Create a name for the recording
+      const name = `Recording_${new Date().toISOString().replace(/[:\.]/g, '-')}`;
+      
+      // Log the total size
+      console.log(`Recording stopped. Total size: ${blob.size / (1024 * 1024)} MB, Duration: ${Math.round(duration)}s`);
+      
+      // Return the recorded media with chunks preserved
+      const recordedMedia: RecordedMedia = {
+        id,
+        blob,
+        url,
+        type: this.mimeType,
+        name,
+        size: blob.size,
+        duration,
+        timestamp: Date.now(),
+        chunks: savedChunks // Save the raw chunks
+      };
+      
+      // Reset recording state
+      this.isRecording = false;
+      this.isPaused = false;
+      this.recordedChunks = [];
+      
+      return recordedMedia;
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+      throw error;
+    }
   }
   
   /**
@@ -250,5 +333,9 @@ export class RecordingManagerService {
       this.mediaStream.getTracks().forEach(track => track.stop());
       this.mediaStream = null;
     }
+  }
+  
+  private getTotalSize(chunks: Blob[]): number {
+    return chunks.reduce((total, chunk) => total + chunk.size, 0);
   }
 }

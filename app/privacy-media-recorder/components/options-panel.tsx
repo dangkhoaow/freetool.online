@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { InfoCircle, ShieldCheck } from "lucide-react";
+import { Info, ShieldCheck } from "lucide-react";
 
 interface OptionsProps {
   recordingOptions: {
@@ -393,7 +393,7 @@ export default function OptionsPanel({
             </div>
 
             <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-md text-xs">
-              <InfoCircle className="h-4 w-4 flex-shrink-0" />
+              <Info className="h-4 w-4 flex-shrink-0" />
               <p>
                 All processing happens locally in your browser. No data is sent to
                 any server.

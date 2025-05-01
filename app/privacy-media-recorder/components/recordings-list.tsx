@@ -14,7 +14,7 @@ import {
   Copy,
   CheckCheck,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,13 @@ import { LocalStorageService } from "@/lib/services/privacy-media-recorder/local
 import { RecordedMedia } from "@/lib/services/privacy-media-recorder/media-recorder-service";
 import { FFmpegProcessorService, ProcessingOptions } from "@/lib/services/privacy-media-recorder/ffmpeg-processor-service";
 import { toast } from "sonner";
+
+// Declare the global window property for TypeScript
+declare global {
+  interface Window {
+    _directRecordings?: Map<string, RecordedMedia>;
+  }
+}
 
 interface RecordingsListProps {
   localStorageService: LocalStorageService | null;
@@ -60,7 +67,27 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
 
     try {
       const allRecordings = await localStorageService.getAllRecordings();
-      setRecordings(allRecordings);
+      
+      // Check for recordings that have directAccessId (in-memory reference)
+      const recordingsWithUrls = allRecordings.map(r => {
+        // If this recording has a directAccessId, try to get the full recording from memory
+        if (r.directAccessId && window._directRecordings?.has(r.directAccessId)) {
+          console.log('[LOAD] Found direct memory reference for recording:', r.directAccessId);
+          const fullRecording = window._directRecordings.get(r.directAccessId);
+          return fullRecording || {
+            ...r,
+            url: URL.createObjectURL(r.blob)
+          };
+        }
+        
+        // Otherwise just create a fresh blob URL for the stored recording
+        return {
+          ...r,
+          url: URL.createObjectURL(r.blob)
+        };
+      });
+      
+      setRecordings(recordingsWithUrls);
     } catch (error) {
       console.error("Failed to load recordings:", error);
       toast.error("Failed to load recordings");
@@ -84,12 +111,25 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
   // Download a recording
   const downloadRecording = (recording: RecordedMedia) => {
     try {
+      console.log('[DOWNLOAD] Original recording before download:', {
+        name: recording.name,
+        size: recording.blob?.size,
+        url: recording.url,
+        type: recording.type,
+        duration: recording.duration
+      });
+      
+      // Create a fresh blob from the recorded media
+      // This ensures we're working with the full, in-memory blob
       const a = document.createElement("a");
       a.href = recording.url;
       a.download = recording.name;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      
+      // Log the download attempt
+      console.log('[DOWNLOAD] Download initiated with size:', recording.blob?.size || 'unknown');
     } catch (error) {
       console.error("Failed to download recording:", error);
       toast.error("Failed to download recording");
@@ -121,6 +161,15 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
       const start = Math.max(0, selectedRecording.duration * trimValues[0] / 100);
       const end = Math.min(selectedRecording.duration, selectedRecording.duration * trimValues[1] / 100);
       
+      // Log original blob size before processing
+      console.log('[PROCESS] Original recording:', {
+        name: selectedRecording.name,
+        size: selectedRecording.blob?.size,
+        url: selectedRecording.url,
+        type: selectedRecording.type,
+        duration: selectedRecording.duration
+      });
+
       // Process recording
       const processedRecording = await ffmpegProcessor.processRecording(
         selectedRecording,
@@ -130,7 +179,24 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
           trimEnd: end,
         }
       );
-      
+
+      // Log processed blob size after processing
+      console.log('[PROCESS] Processed recording:', {
+        name: processedRecording.name,
+        size: processedRecording.blob?.size,
+        url: processedRecording.url,
+        type: processedRecording.type,
+        duration: processedRecording.duration
+      });
+
+      // Log before saving
+      console.log('[SAVE] Saving processed recording:', {
+        name: processedRecording.name,
+        size: processedRecording.blob?.size,
+        type: processedRecording.type,
+        duration: processedRecording.duration
+      });
+
       // Save processed recording
       await localStorageService.saveRecording(processedRecording);
       
@@ -302,6 +368,9 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
             <DialogTitle>
               {selectedRecording?.name}
             </DialogTitle>
+            <DialogDescription>
+              View, edit, and export your recording
+            </DialogDescription>
           </DialogHeader>
           
           <div className="relative aspect-video bg-gray-900 rounded overflow-hidden">

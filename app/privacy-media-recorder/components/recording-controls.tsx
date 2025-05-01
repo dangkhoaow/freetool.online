@@ -9,7 +9,8 @@ import {
   RefreshCw, 
   Camera, 
   ScreenShare, 
-  Mic 
+  Mic,
+  FlipHorizontal
 } from "lucide-react";
 
 interface RecordingControlsProps {
@@ -19,6 +20,7 @@ interface RecordingControlsProps {
   onStopRecording: () => Promise<void>;
   onTogglePause: () => void;
   onRefreshPreview: () => Promise<void>;
+  onToggleFlip: () => void;
 }
 
 export default function RecordingControls({
@@ -27,7 +29,8 @@ export default function RecordingControls({
   onStartRecording,
   onStopRecording,
   onTogglePause,
-  onRefreshPreview
+  onRefreshPreview,
+  onToggleFlip
 }: RecordingControlsProps) {
   return (
     <div className="mt-4">
@@ -49,6 +52,14 @@ export default function RecordingControls({
               title="Refresh Preview"
             >
               <RefreshCw className="h-5 w-5" />
+            </Button>
+            <Button
+              onClick={onToggleFlip}
+              variant="outline"
+              className="rounded-full h-12 w-12 p-0 flex items-center justify-center"
+              title="Flip Horizontally"
+            >
+              <FlipHorizontal className="h-5 w-5" />
             </Button>
           </>
         ) : (
@@ -74,6 +85,14 @@ export default function RecordingControls({
               ) : (
                 <Pause className="h-5 w-5" />
               )}
+            </Button>
+            <Button
+              onClick={onToggleFlip}
+              variant="outline"
+              className="rounded-full h-12 w-12 p-0 flex items-center justify-center"
+              title="Flip Horizontally"
+            >
+              <FlipHorizontal className="h-5 w-5" />
             </Button>
           </>
         )}

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { VideoOff, MicOff, RefreshCw } from "lucide-react";
+import { VideoOff, MicOff, RefreshCw, StopCircle, PlayCircle } from "lucide-react";
 import { MediaDevice } from "@/lib/services/privacy-media-recorder/media-recorder-service";
 
 interface DeviceSelectionPanelProps {
@@ -30,7 +30,8 @@ export default function DeviceSelectionPanel({
   onRefreshDevices
 }: DeviceSelectionPanelProps) {
   const [testingVideo, setTestingVideo] = useState<string | null>(null);
-  const [testingAudio, setTestingAudio] = useState<string | null>(null);
+  const [testingAudio, setTestingAudio] = useState<MediaStream | null>(null);
+  const [audioMuted, setAudioMuted] = useState<boolean>(false);
   const videoTestRef = useRef<HTMLVideoElement>(null);
   const audioTestRef = useRef<HTMLAudioElement>(null);
   const [audioVolume, setAudioVolume] = useState<number[]>(Array(50).fill(0));
@@ -96,91 +97,196 @@ export default function DeviceSelectionPanel({
     }
   };
 
-  // Start audio device test
-  const startAudioTest = async (deviceId: string) => {
+  // Test audio device
+  const testAudioDevice = async (deviceId: string) => {
     try {
-      // Stop any active tests
-      stopVideoTest();
+      // Stop any previous test
       stopAudioTest();
       
-      // Set the device ID being tested
-      setTestingAudio(deviceId);
+      console.log("Starting audio test for device:", deviceId);
       
-      // Get audio stream
+      // Get audio stream for the selected device
       const stream = await navigator.mediaDevices.getUserMedia({
         video: false,
         audio: { deviceId: { exact: deviceId } }
       });
+      console.log("Audio stream obtained:", deviceId === 'default' ? 'Default - MacBook Air Microphone (Built-in)' : deviceId);
       
-      // Set up audio visualization
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext();
+      // Clean up previous audio context if exists
+      if (audioContextRef.current) {
+        console.log("Closed previous AudioContext");
+        audioContextRef.current.close().catch(e => console.error("Error closing AudioContext:", e));
+        audioContextRef.current = null;
+        analyserRef.current = null;
       }
       
-      const audioContext = audioContextRef.current;
-      analyserRef.current = audioContext.createAnalyser();
-      analyserRef.current.fftSize = 256;
+      // Create new audio context for visualization
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log("Created new AudioContext, state:", audioContext.state);
+      audioContextRef.current = audioContext;
       
-      const bufferLength = analyserRef.current.frequencyBinCount;
-      dataArrayRef.current = new Uint8Array(bufferLength);
+      // Create analyzer for frequency data visualization
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64; // Smaller FFT for more responsive visualization
+      console.log("Analyzer created with fftSize:", analyser.fftSize);
       
-      // Connect audio to analyzer
+      const bufferLength = analyser.frequencyBinCount;
+      console.log("Buffer length:", bufferLength);
+      
+      // Create data array for frequency data
+      const dataArray = new Uint8Array(bufferLength);
+      dataArrayRef.current = dataArray;
+      
+      // Connect audio stream to analyzer
       const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
+      source.connect(analyser);
+      console.log("Audio source connected to analyzer");
       
-      // Start visualization loop
-      visualize();
+      // Resume audio context if needed
+      if (audioContext.state !== 'running') {
+        await audioContext.resume();
+        console.log("AudioContext resumed, state:", audioContext.state);
+      }
       
-      // Display in test audio element (silent playback)
+      // Start visualization by setting state
+      setTestingAudio(stream);
+      console.log("Set testingAudio state to stream");
+      
+      // Set stream to audio element (not essential for visualization but useful for UI consistency)
       if (audioTestRef.current) {
         audioTestRef.current.srcObject = stream;
-        audioTestRef.current.muted = true; // Avoid feedback
+        audioTestRef.current.muted = false; // Ensure audio element is not muted
+        
+        console.log("Audio set to test element, muted:", audioTestRef.current.muted);
+        
+        // Add playing event listener to ensure stream is active
+        const playPromise = audioTestRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => console.log("Audio playback started successfully"))
+            .catch(e => console.error("Audio playback failed:", e));
+        }
       }
+      
+      // Store analyzer reference for visualization
+      analyserRef.current = analyser;
+      
+      // Ensure React state updates have been processed before visualization starts
+      // Use a longer timeout to ensure state is fully updated
+      setTimeout(() => {
+        // Double-check testingAudio is set here
+        if (testingAudio === null) {
+          console.log("State mismatch - setting testingAudio directly before visualization");
+          // Direct DOM manipulation approach as fallback
+          if (audioTestRef.current && audioTestRef.current.srcObject) {
+            // Type-safe check for MediaStream
+            const srcObj = audioTestRef.current.srcObject;
+            if (srcObj instanceof MediaStream) {
+              visualize(srcObj);
+            }
+          }
+        } else {
+          console.log("Starting visualization with properly set testingAudio");
+          visualize();
+        }
+      }, 250); // Increased timeout to give more time for state updates
+      
     } catch (error) {
       console.error("Failed to test audio device:", error);
       setTestingAudio(null);
     }
   };
 
+  // Interface for visualize function with timestamp tracking
+  interface VisualizeFunction {
+    (forcedStream?: MediaStream): void;
+    lastLog?: number;
+  }
+
+  // Audio visualization function
+  const visualize: VisualizeFunction = (forcedStream) => {
+    // Use a direct reference check first
+    const hasActiveStream = (forcedStream !== undefined) || (testingAudio !== null);
+    
+    console.log('Visualization function called, checking requirements:', {
+      hasAnalyser: !!analyserRef.current,
+      hasDataArray: !!dataArrayRef.current,
+      hasActiveStream: hasActiveStream,
+      forcedStream: !!forcedStream,
+      testingAudio: !!testingAudio
+    });
+    
+    if (!analyserRef.current || !dataArrayRef.current || !hasActiveStream) {
+      console.log("Visualization cancelled - missing required refs or test stopped");
+      return;
+    }
+    
+    try {
+      // Get frequency data
+      analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+      
+      // Log data occasionally to avoid console spam
+      const now = Date.now();
+      if (!visualize.lastLog || now - visualize.lastLog > 1000) { // Log once per second
+        console.log("Audio data samples:", Array.from(dataArrayRef.current).slice(0, 10));
+        console.log("Max value:", Math.max(...Array.from(dataArrayRef.current)));
+        visualize.lastLog = now;
+      }
+      
+      // Process the data to create a more dynamic visualization
+      // Map each frequency bin to a visual bar in our display (50 bars total)
+      const bins = dataArrayRef.current.length;
+      const bars = 50; // Match number of bars in the UI
+      const volumeData = Array(bars).fill(0);
+      
+      // Sample frequency data to create visual bars
+      for (let i = 0; i < bars; i++) {
+        // Find which frequency bin corresponds to this visualization bar
+        const binIndex = Math.floor(i * bins / bars);
+        // Get normalized value (0-1)
+        const value = dataArrayRef.current[binIndex] / 255;
+        // Apply non-linear scaling to emphasize changes and ensure minimum height
+        volumeData[i] = Math.max(0.05, Math.pow(value, 0.7) * 0.95 + 0.05);
+      }
+      
+      // Update volume display
+      setAudioVolume(volumeData);
+      
+      // Continue visualization loop if still testing
+      // Check testingAudio state and forcedStream to determine if we should continue
+      if (testingAudio !== null || forcedStream !== undefined) {
+        requestAnimationFrame(() => visualize(forcedStream));
+      } else {
+        console.log("Stopping visualization loop - no active stream");
+      }
+    } catch (error) {
+      console.error("Error in visualization:", error);
+      // Try to recover
+      setTimeout(() => {
+        if (testingAudio !== null || forcedStream !== undefined) {
+          visualize(forcedStream);
+        }
+      }, 500);
+    }
+  };
+
+  // Initialize the lastLog property
+  visualize.lastLog = 0;
+
   // Stop audio device test
   const stopAudioTest = () => {
     if (testingAudio && audioTestRef.current && audioTestRef.current.srcObject) {
+      console.log("Stopping audio test");
       const stream = audioTestRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
       audioTestRef.current.srcObject = null;
       setTestingAudio(null);
       
       // Clear visualization
-      setAudioVolume(Array(50).fill(0));
-    }
-  };
-
-  // Audio visualization function
-  const visualize = () => {
-    if (!analyserRef.current || !dataArrayRef.current || testingAudio === null) {
-      return;
-    }
-    
-    analyserRef.current.getByteFrequencyData(dataArrayRef.current);
-    
-    // Calculate average volume level
-    let sum = 0;
-    for (let i = 0; i < dataArrayRef.current.length; i++) {
-      sum += dataArrayRef.current[i];
-    }
-    const average = sum / dataArrayRef.current.length;
-    
-    // Update volume display with moving average
-    setAudioVolume(prev => {
-      const newVolumes = [...prev];
-      newVolumes.shift();
-      newVolumes.push(average / 256); // Normalize to 0-1
-      return newVolumes;
-    });
-    
-    // Continue visualization loop if still testing
-    if (testingAudio !== null) {
-      requestAnimationFrame(visualize);
+      setAudioVolume(Array(50).fill(0.05)); // Minimum height for visual elements
+      console.log("Audio test stopped and visualization reset");
+    } else if (testingAudio) {
+      setTestingAudio(null);
     }
   };
 
@@ -191,6 +297,30 @@ export default function DeviceSelectionPanel({
       stopAudioTest();
     };
   }, []);
+
+  // Add validation logic for device IDs when mapping
+  const validVideoDevices = availableDevices.videoinput.filter(device => device.deviceId && device.deviceId.trim() !== '');
+  const validAudioDevices = availableDevices.audioinput.filter(device => device.deviceId && device.deviceId.trim() !== '');
+
+  // Update effect to check for valid selections when devices change
+  useEffect(() => {
+    // Ensure selected device IDs are still valid
+    if (selectedDevices.videoDeviceId && !validVideoDevices.some(d => d.deviceId === selectedDevices.videoDeviceId)) {
+      // Selected video device no longer available, reset or pick first valid one
+      setSelectedDevices(prev => ({
+        ...prev,
+        videoDeviceId: validVideoDevices.length > 0 ? validVideoDevices[0].deviceId : ''
+      }));
+    }
+    
+    if (selectedDevices.audioDeviceId && !validAudioDevices.some(d => d.deviceId === selectedDevices.audioDeviceId)) {
+      // Selected audio device no longer available, reset or pick first valid one
+      setSelectedDevices(prev => ({
+        ...prev,
+        audioDeviceId: validAudioDevices.length > 0 ? validAudioDevices[0].deviceId : ''
+      }));
+    }
+  }, [availableDevices, selectedDevices.videoDeviceId, selectedDevices.audioDeviceId]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
@@ -210,8 +340,8 @@ export default function DeviceSelectionPanel({
               className="mr-2 h-5 w-5 text-purple-600"
             >
               <path d="M8 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3z" />
-              <path d="m15 7 2 2" />
-              <path d="m15 11 2-2" />
+              <path d="M15 7 2 2" />
+              <path d="M15 11 2-2" />
               <path d="M13 17v2" />
               <path d="M9 17v2" />
               <path d="M9 17h5" />
@@ -221,7 +351,7 @@ export default function DeviceSelectionPanel({
           <CardDescription>Select and test your camera devices</CardDescription>
         </CardHeader>
         <CardContent>
-          {availableDevices.videoinput.length > 0 ? (
+          {validVideoDevices.length > 0 ? (
             <>
               <Select 
                 value={selectedDevices.videoDeviceId}
@@ -231,8 +361,11 @@ export default function DeviceSelectionPanel({
                   <SelectValue placeholder="Select a camera" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableDevices.videoinput.map(device => (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                  {validVideoDevices.map(device => (
+                    <SelectItem 
+                      key={device.deviceId} 
+                      value={device.deviceId || `device-${Math.random().toString(36).substring(2, 9)}`}
+                    >
                       {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
                     </SelectItem>
                   ))}
@@ -313,7 +446,7 @@ export default function DeviceSelectionPanel({
           <CardDescription>Select and test your microphone devices</CardDescription>
         </CardHeader>
         <CardContent>
-          {availableDevices.audioinput.length > 0 ? (
+          {validAudioDevices.length > 0 ? (
             <>
               <Select 
                 value={selectedDevices.audioDeviceId}
@@ -323,8 +456,11 @@ export default function DeviceSelectionPanel({
                   <SelectValue placeholder="Select a microphone" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableDevices.audioinput.map(device => (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                  {validAudioDevices.map(device => (
+                    <SelectItem 
+                      key={device.deviceId} 
+                      value={device.deviceId || `device-${Math.random().toString(36).substring(2, 9)}`}
+                    >
                       {device.label || `Microphone ${device.deviceId.slice(0, 5)}`}
                     </SelectItem>
                   ))}
@@ -344,27 +480,81 @@ export default function DeviceSelectionPanel({
                 ))}
               </div>
               
-              <audio ref={audioTestRef} autoPlay muted className="hidden" />
+              {/* Hidden audio element for testing */}
+              <audio 
+                ref={audioTestRef} 
+                autoPlay 
+                controls={false} 
+                muted={audioMuted} 
+                className="hidden" 
+              />
               
               <div className="flex justify-center mt-4">
-                {testingAudio === selectedDevices.audioDeviceId ? (
-                  <Button 
-                    variant="outline" 
-                    onClick={stopAudioTest}
-                    className="gap-1"
-                  >
-                    <MicOff className="h-4 w-4" />
-                    Stop Test
-                  </Button>
+                {selectedDevices.audioDeviceId ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <Button 
+                      variant={testingAudio ? "destructive" : "default"} 
+                      onClick={() => testingAudio ? stopAudioTest() : testAudioDevice(selectedDevices.audioDeviceId)}
+                      className="gap-1"
+                    >
+                      {testingAudio ? (
+                        <>
+                          <StopCircle className="h-4 w-4" />
+                          Stop Test
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className="h-4 w-4" />
+                          Test Microphone
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button 
+                      variant="default" 
+                      onClick={() => setAudioMuted(!audioMuted)}
+                      className="gap-1"
+                    >
+                      {audioMuted ? (
+                        <>
+                          <MicOff className="h-4 w-4" />
+                          Unmute
+                        </>
+                      ) : (
+                        <>
+                          <MicOff className="h-4 w-4" />
+                          Mute
+                        </>
+                      )}
+                    </Button>
+                    
+                    {/* Microphone visualization */}
+                    <div className="hidden flex h-8 w-full items-end gap-px overflow-hidden rounded-md bg-gray-100 p-1 dark:bg-gray-800">
+                      {audioVolume.map((volume, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 bg-gradient-to-t from-purple-600 to-blue-500 rounded-t transition-all duration-75"
+                          style={{
+                            height: `${Math.max(4, volume * 100)}%`,
+                            opacity: testingAudio ? 1 : 0.3
+                          }}
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
-                  <Button 
-                    variant="default" 
-                    onClick={() => startAudioTest(selectedDevices.audioDeviceId)}
-                    className="gap-1"
-                    disabled={!selectedDevices.audioDeviceId}
-                  >
-                    Test Microphone
-                  </Button>
+                  <div className="text-center py-8">
+                    <MicOff className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                    <p className="text-gray-500">No audio devices detected</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={onRefreshDevices}
+                      className="mt-4 gap-1"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Refresh Devices
+                    </Button>
+                  </div>
                 )}
               </div>
             </>

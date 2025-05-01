@@ -12,28 +12,8 @@ import { cn } from "@/lib/utils";
 import ToolsSlider from "@/components/tools-slider";
 import { tools } from "@/lib/config/tools";
 
-// Define specific order for the home page tools
-const homePageToolIds = [
-  "private-ai-chat",
-  "steganography-tool",
-  "video-transcoder",
-  "ai-data-visualization",
-  "heic-converter",
-  "code-editor",
-  "color-picker",
-  "qr-code-generator",
-  "unit-converter",
-  "todo-list",
-  "font-generator",
-  "gif-to-frames",
-  "pdf-tools",
-  "zip-compressor",
-];
-
-// Order tools based on the defined order and ensure non-null with proper TypeScript typing
-const orderedTools = homePageToolIds
-  .map(id => tools.find(tool => tool.id === id))
-  .filter((tool): tool is typeof tools[0] => !!tool);
+// Select featured tools for the homepage - tools with isHot or isNew flags
+const featuredTools = tools.filter(tool => tool.isHot || tool.isNew);
 
 export const metadata = {
   title: "FreeTool Online - Free Browser-Based Tools for Everyday Tasks",
@@ -86,7 +66,7 @@ export default function Home() {
           </div>
 
           <ToolsSlider>
-            {orderedTools.map((tool, index) => (
+            {featuredTools.map((tool, index) => (
               <div
                 key={tool.id}
                 className={cn(

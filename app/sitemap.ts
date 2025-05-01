@@ -19,6 +19,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     'zip-compressor',
     'video-transcoder',
     'ai-data-visualization',
+    'privacy-media-recorder',
+    'client-site-builder',
+    'browser-design-studio',
   ]
 
   // Main pages

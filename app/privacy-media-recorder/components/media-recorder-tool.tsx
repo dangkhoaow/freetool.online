@@ -7,7 +7,7 @@ import DeviceSelectionPanel from "./device-selection-panel";
 import RecordingControls from "./recording-controls";
 import RecordingsList from "./recordings-list";
 import OptionsPanel from "./options-panel";
-import { MediaRecorderService } from "@/lib/services/privacy-media-recorder/media-recorder-service";
+import { MediaRecorderService, MediaDevice, RecordedMedia } from "@/lib/services/privacy-media-recorder/media-recorder-service";
 import { RecordingManagerService } from "@/lib/services/privacy-media-recorder/recording-manager-service";
 import { LocalStorageService } from "@/lib/services/privacy-media-recorder/local-storage-service";
 import { PrivacyProtectionService } from "@/lib/services/privacy-media-recorder/privacy-protection-service";
@@ -24,7 +24,10 @@ export default function MediaRecorderTool() {
     videoDeviceId: "",
     audioDeviceId: "",
   });
-  const [availableDevices, setAvailableDevices] = useState({
+  const [availableDevices, setAvailableDevices] = useState<{
+    videoinput: MediaDevice[];
+    audioinput: MediaDevice[];
+  }>({
     videoinput: [],
     audioinput: [],
   });
@@ -41,6 +44,7 @@ export default function MediaRecorderTool() {
     blurIntensity: 5,
     stripMetadata: true,
   });
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderServiceRef = useRef<MediaRecorderService | null>(null);
@@ -79,6 +83,9 @@ export default function MediaRecorderTool() {
       }
     );
 
+    // Load recordings without requesting permissions
+    loadDevicesWithoutPermissions();
+
     // Clean up on unmount
     return () => {
       if (mediaStreamRef.current) {
@@ -90,7 +97,55 @@ export default function MediaRecorderTool() {
     };
   }, []);
 
-  // Fetch available devices
+  // Fetch available devices without requesting permissions
+  const loadDevicesWithoutPermissions = async () => {
+    try {
+      if (!mediaRecorderServiceRef.current) return;
+      
+      // Just enumerate devices without requesting permissions
+      // This will only show labels for devices that have been previously allowed
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      
+      const videoinput = devices
+        .filter(device => device.kind === 'videoinput')
+        .map(device => ({
+          deviceId: device.deviceId,
+          kind: device.kind,
+          label: device.label || `Camera ${device.deviceId.slice(0, 5)}`,
+          groupId: device.groupId
+        }));
+        
+      const audioinput = devices
+        .filter(device => device.kind === 'audioinput')
+        .map(device => ({
+          deviceId: device.deviceId,
+          kind: device.kind,
+          label: device.label || `Microphone ${device.deviceId.slice(0, 5)}`,
+          groupId: device.groupId
+        }));
+      
+      setAvailableDevices({ videoinput, audioinput });
+      
+      // Auto-select first devices if none selected
+      if (!selectedDevices.videoDeviceId && videoinput.length > 0) {
+        setSelectedDevices(prev => ({
+          ...prev,
+          videoDeviceId: videoinput[0].deviceId
+        }));
+      }
+      
+      if (!selectedDevices.audioDeviceId && audioinput.length > 0) {
+        setSelectedDevices(prev => ({
+          ...prev,
+          audioDeviceId: audioinput[0].deviceId
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to enumerate devices:", error);
+    }
+  };
+
+  // Fetch available devices with permissions
   const loadDevices = async () => {
     try {
       if (!mediaRecorderServiceRef.current) return;
@@ -148,6 +203,8 @@ export default function MediaRecorderTool() {
       // Display in video preview
       if (videoPreviewRef.current && mediaStreamRef.current) {
         videoPreviewRef.current.srcObject = mediaStreamRef.current;
+        // Apply horizontal flip if enabled
+        videoPreviewRef.current.style.transform = isFlipped ? 'scaleX(-1)' : 'scaleX(1)';
       }
     } catch (error) {
       console.error("Failed to start preview:", error);
@@ -176,17 +233,21 @@ export default function MediaRecorderTool() {
   // Stop recording
   const stopRecording = async () => {
     try {
-      if (!recordingManagerRef.current || !localStorageRef.current) return;
+      if (!recordingManagerRef.current) return;
       
-      const recording = recordingManagerRef.current.stopRecording();
+      setIsRecording(false);
+      setIsPaused(false);
       
-      if (recording) {
+      // Stop the recording
+      const finalRecording = await recordingManagerRef.current.stopRecording();
+      
+      if (finalRecording) {
         // Strip metadata if privacy option is enabled
-        let finalRecording = recording;
+        let finalRecordingToSave = finalRecording;
         if (privacyOptions.stripMetadata && privacyServiceRef.current) {
-          const cleanBlob = await privacyServiceRef.current.stripMetadata(recording.blob);
-          finalRecording = {
-            ...recording,
+          const cleanBlob = await privacyServiceRef.current.stripMetadata(finalRecording.blob);
+          finalRecordingToSave = {
+            ...finalRecording,
             blob: cleanBlob,
             size: cleanBlob.size,
             url: URL.createObjectURL(cleanBlob)
@@ -194,18 +255,53 @@ export default function MediaRecorderTool() {
         }
         
         // Save recording to local storage
-        await localStorageRef.current.saveRecording(finalRecording);
+        await saveRecording(finalRecordingToSave);
         
         toast.success("Recording saved successfully");
         setActiveTab("recordings");
       }
-      
-      setIsRecording(false);
-      setIsPaused(false);
-      setRecordingDuration(0);
     } catch (error) {
       console.error("Failed to stop recording:", error);
       toast.error("Failed to save recording");
+    }
+  };
+
+  // Save recording to localStorage and return the final recorded media
+  const saveRecording = async (recording: RecordedMedia): Promise<RecordedMedia> => {
+    try {
+      console.log('[MEDIA_TOOL] Recording to save:', {
+        name: recording.name,
+        size: recording.blob.size,
+        duration: recording.duration,
+        type: recording.type
+      });
+      
+      // Store a direct reference to the recording in an in-memory map for immediate access
+      // This bypasses storage issues with large blobs
+      window._directRecordings = window._directRecordings || new Map();
+      window._directRecordings.set(recording.id, recording);
+      
+      // Create a lightweight version for storage
+      // For the stored version, create a smaller preview version if it's large
+      let storageRecording = recording;
+      
+      if (recording.blob.size > 1024 * 1024 * 5) { // If larger than 5MB
+        console.log('[MEDIA_TOOL] Creating lightweight preview for large recording');
+        
+        // Keep the original values but reference the in-memory version for access
+        storageRecording = {
+          ...recording,
+          directAccessId: recording.id, // Reference to the direct access map
+          // No need to change the URL as it points to the original blob
+        };
+      }
+      
+      // Save to storage
+      await localStorageRef.current?.saveRecording(storageRecording);
+      return recording; // Return the full recording
+    } catch (error) {
+      console.error('Failed to save recording:', error);
+      throw error;
     }
   };
 
@@ -222,17 +318,20 @@ export default function MediaRecorderTool() {
     }
   };
 
+  // Toggle horizontal flip
+  const toggleFlip = () => {
+    setIsFlipped(!isFlipped);
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.style.transform = !isFlipped ? 'scaleX(-1)' : 'scaleX(1)';
+    }
+  };
+
   // Format seconds to mm:ss
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // Load devices on component mount
-  useEffect(() => {
-    loadDevices();
-  }, []);
 
   return (
     <Card className="border border-purple-100 dark:border-purple-900 shadow-md">
@@ -292,7 +391,8 @@ export default function MediaRecorderTool() {
                   onStartRecording={startRecording}
                   onStopRecording={stopRecording}
                   onTogglePause={togglePause}
-                  onRefreshPreview={startPreview}
+                  onRefreshPreview={loadDevices}
+                  onToggleFlip={toggleFlip}
                 />
               </div>
               
@@ -323,4 +423,10 @@ export default function MediaRecorderTool() {
       </CardContent>
     </Card>
   );
+}
+
+declare global {
+  interface Window {
+    _directRecordings?: Map<string, RecordedMedia>;
+  }
 }
