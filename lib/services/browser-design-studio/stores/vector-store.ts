@@ -7,11 +7,34 @@ interface Point {
 
 export interface PathData {
   id: string
+  type: string // 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon'
   points: Point[]
   strokeColor: string
+  stroke?: string
   strokeWidth: number
   fill: string
   closed: boolean
+  // Properties for path type
+  d?: string
+  // Properties for rect type
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  // Properties for circle type
+  cx?: number
+  cy?: number
+  r?: number
+  // Properties for ellipse type
+  rx?: number
+  ry?: number
+  // Properties for line type
+  x1?: number
+  y1?: number
+  x2?: number
+  y2?: number
+  // Other properties
+  opacity?: number
 }
 
 interface VectorState {

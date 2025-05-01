@@ -172,12 +172,23 @@ export default function ExportPanel() {
           if (data.status) setExportStatus(data.status)
         } else if (type === 'complete') {
           // Create a download URL from the exported data
-          const blob = new Blob([data.result], { type: getContentType(selectedFormat) })
-          const url = URL.createObjectURL(blob)
+          let blob;
+          
+          // SVG needs special handling as a string, not binary data
+          if (selectedFormat === 'svg') {
+            // Handle SVG as a string, not binary data
+            blob = new Blob([data.result], { type: 'image/svg+xml;charset=utf-8' });
+          } else if (selectedFormat === 'css') {
+            // Handle CSS as a string as well
+            blob = new Blob([data.result], { type: 'text/css;charset=utf-8' });
+          } else {
+            // Handle binary formats
+            blob = new Blob([data.result], { type: getContentType(selectedFormat) });
+          }
           
           // Set the exported file
           setExportedFile({
-            url,
+            url: URL.createObjectURL(blob),
             name: `${fileName}.${currentFormat.defaultExtension}`
           })
           

@@ -100,92 +100,53 @@ export class ExportService {
 `
       }
       
-      // Add vector paths
+      // Add vector paths if needed
       if (includeVector && vectorPaths.length > 0) {
-        if (onProgress) onProgress(0.5, 'Adding vector paths...')
+        if (onProgress) onProgress(0.5, 'Processing vector elements...')
         
+        // Iterate through vector paths
         vectorPaths.forEach(path => {
-          if (path.points.length < 2) return
+          if (!path) return
           
-          // Generate path data
-          let pathData = `M ${path.points[0].x} ${path.points[0].y}`
-          
-          for (let i = 1; i < path.points.length; i++) {
-            pathData += ` L ${path.points[i].x} ${path.points[i].y}`
-          }
-          
-          if (path.closed) {
-            pathData += ' Z'
-          }
-          
-          // Add path element
-          svg += `  <path d="${pathData}" stroke="${path.strokeColor}" stroke-width="${path.strokeWidth}" fill="${path.fill}" />
+          if (path.type === 'path' && path.d) {
+            svg += `  <path d="${path.d}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />
 `
+          } else if (path.type === 'rect') {
+            svg += `  <rect x="${path.x || 0}" y="${path.y || 0}" width="${path.width}" height="${path.height}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" />
+`
+          } else if (path.type === 'circle') {
+            svg += `  <circle cx="${path.cx || 0}" cy="${path.cy || 0}" r="${path.r}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" />
+`
+          } 
         })
       }
       
-      // Add text nodes
+      // Add text nodes if needed
       if (includeText && textNodes.length > 0) {
-        if (onProgress) onProgress(0.7, 'Adding text elements...')
+        if (onProgress) onProgress(0.7, 'Processing text elements...')
         
+        // Iterate through text nodes
         textNodes.forEach(node => {
-          if (!node.text.trim()) return
+          if (!node) return
           
-          let textElement = ''
-          if (node.onPath && node.pathData) {
-            // Text on path - generate a path and textPath
-            const pathId = `text-path-${node.id}`
-            
-            if (node.pathData.type === 'arc') {
-              const { radius = 100, startAngle = 0, endAngle = Math.PI } = node.pathData
-              
-              // Generate path data for arc
-              const startX = node.position.x + radius * Math.cos(startAngle)
-              const startY = node.position.y + radius * Math.sin(startAngle)
-              
-              const endX = node.position.x + radius * Math.cos(endAngle)
-              const endY = node.position.y + radius * Math.sin(endAngle)
-              
-              // Use SVG arc command
-              const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0
-              const pathData = `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`
-              
-              // Add path and text with textPath
-              svg += `  <path id="${pathId}" d="${pathData}" fill="none" stroke="none" />
-  <text font-family="${node.style.fontFamily}" font-size="${node.style.fontSize}" fill="${node.style.color}"
-        font-weight="${node.style.fontWeight}" font-style="${node.style.fontStyle}" 
-        text-decoration="${node.style.textDecoration}">
-    <textPath href="#${pathId}">${node.text}</textPath>
-  </text>
+          svg += `  <text x="${node.x || 0}" y="${node.y || 0}" font-family="${node.fontFamily || 'Arial'}" font-size="${node.fontSize || 16}px" fill="${node.fill || '#000'}">${node.text || ''}</text>
 `
-            }
-          } else {
-            // Regular text
-            svg += `  <text x="${node.position.x}" y="${node.position.y}" font-family="${node.style.fontFamily}" 
-        font-size="${node.style.fontSize}" fill="${node.style.color}"
-        font-weight="${node.style.fontWeight}" font-style="${node.style.fontStyle}" 
-        text-decoration="${node.style.textDecoration}"
-        text-anchor="${node.style.textAlign === 'center' ? 'middle' : node.style.textAlign === 'right' ? 'end' : 'start'}">
-    ${node.text}
-  </text>
-`
-          }
         })
       }
       
       // Close SVG document
-      svg += '</svg>'
+      svg += `</svg>`
       
-      // Optimize SVG if requested
       if (optimizeSize && this.isWasmLoaded) {
         if (onProgress) onProgress(0.9, 'Optimizing SVG...')
         svg = this.exportWasmModule.optimizeSVG(svg)
       }
       
       if (onProgress) onProgress(1.0, 'SVG export complete')
+      
       return svg
     } catch (error) {
-      console.error('SVG export failed:', error)
+      console.error('Error exporting to SVG:', error)
       throw error
     }
   }

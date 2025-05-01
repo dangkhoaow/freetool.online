@@ -32,6 +32,15 @@ export interface TextNode {
   position: TextPosition
   onPath: boolean
   pathData?: TextPathData
+  // Direct properties for SVG export
+  x?: number
+  y?: number
+  fontFamily?: string
+  fontSize?: number
+  fill?: string
+  fontWeight?: string
+  fontStyle?: string
+  opacity?: number
 }
 
 interface TextState {

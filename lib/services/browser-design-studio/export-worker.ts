@@ -132,24 +132,62 @@ function sendProgress(progress: number, status?: string) {
 
 async function exportSvg(vectorPaths: any[], textNodes: any[], options: any): Promise<string> {
   sendProgress(0.3, 'Generating SVG structure...')
-  await simulateProcessing(500)
+  await simulateProcessing(300)
+  
+  // Start SVG document
+  let svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="${options.width || 1200}" height="${options.height || 800}" viewBox="0 0 ${options.width || 1200} ${options.height || 800}" xmlns="http://www.w3.org/2000/svg">
+`
+  
+  // Add background if needed
+  if (options.includeBackground) {
+    svg += `  <rect width="${options.width || 1200}" height="${options.height || 800}" fill="white" />\n`
+  }
   
   sendProgress(0.5, 'Processing vector paths...')
   await simulateProcessing(300)
   
-  sendProgress(0.7, 'Processing text elements...')
-  await simulateProcessing(300)
+  // Process and add actual vector paths from the drawing
+  if (vectorPaths && vectorPaths.length > 0) {
+    sendProgress(0.6, 'Adding vector paths...')
+    
+    vectorPaths.forEach(path => {
+      if (path.type === 'path' && path.d) {
+        svg += `  <path d="${path.d}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      } else if (path.type === 'rect') {
+        svg += `  <rect x="${path.x || 0}" y="${path.y || 0}" width="${path.width}" height="${path.height}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      } else if (path.type === 'circle') {
+        svg += `  <circle cx="${path.cx || 0}" cy="${path.cy || 0}" r="${path.r}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      } else if (path.type === 'ellipse') {
+        svg += `  <ellipse cx="${path.cx || 0}" cy="${path.cy || 0}" rx="${path.rx}" ry="${path.ry}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      } else if (path.type === 'line') {
+        svg += `  <line x1="${path.x1 || 0}" y1="${path.y1 || 0}" x2="${path.x2 || 0}" y2="${path.y2 || 0}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      } else if (path.type === 'polyline') {
+        svg += `  <polyline points="${path.points}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      } else if (path.type === 'polygon') {
+        svg += `  <polygon points="${path.points}" fill="${path.fill || 'none'}" stroke="${path.stroke || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`
+      }
+    });
+  }
+  
+  sendProgress(0.8, 'Adding text elements...')
+  await simulateProcessing(200)
+  
+  // Process and add text nodes
+  if (textNodes && textNodes.length > 0) {
+    
+    textNodes.forEach(node => {
+      svg += `  <text x="${node.x || 0}" y="${node.y || 0}" font-family="${node.fontFamily || 'Arial'}" font-size="${node.fontSize || 16}px" fill="${node.fill || '#000'}" ${node.opacity !== undefined ? `opacity="${node.opacity}"` : ''} ${node.fontWeight ? `font-weight="${node.fontWeight}"` : ''} ${node.fontStyle ? `font-style="${node.fontStyle}"` : ''}>${node.text || ''}</text>\n`
+    });
+  }
+  
+  // Close SVG tag
+  svg += `</svg>`
   
   sendProgress(0.9, 'Finalizing SVG...')
   await simulateProcessing(200)
   
-  // Return a simple SVG for demo purposes
-  return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="${options.width || 1200}" height="${options.height || 800}" viewBox="0 0 ${options.width || 1200} ${options.height || 800}" xmlns="http://www.w3.org/2000/svg">
-  <!-- Sample SVG content -->
-  <rect width="${options.width || 1200}" height="${options.height || 800}" fill="white" />
-  <!-- This would include vector paths and text elements in a real implementation -->
-</svg>`
+  return svg
 }
 
 async function exportPng(vectorPaths: any[], rasterLayers: any[], textNodes: any[], options: any): Promise<Uint8Array> {

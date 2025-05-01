@@ -58,8 +58,15 @@ export default function RasterCanvas() {
     // Set up canvas size
     const parent = canvas.parentElement
     if (parent) {
-      canvas.width = parent.clientWidth
-      canvas.height = parent.clientHeight
+      // Ensure minimum dimensions
+      const width = Math.max(parent.clientWidth, 800)
+      const height = Math.max(parent.clientHeight, 600)
+      canvas.width = width
+      canvas.height = height
+    } else {
+      // Fallback to default dimensions if no parent
+      canvas.width = 800
+      canvas.height = 600
     }
     
     // Set initial background
@@ -67,16 +74,20 @@ export default function RasterCanvas() {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     // Load initial layer if none exists
-    if (layers.length === 0) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      addLayer({
-        id: `layer-${Date.now()}`,
-        name: "Background",
-        visible: true,
-        opacity: 1,
-        blendMode: "normal",
-        imageData,
-      })
+    if (layers.length === 0 && canvas.width > 0 && canvas.height > 0) {
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        addLayer({
+          id: `layer-${Date.now()}`,
+          name: "Background",
+          visible: true,
+          opacity: 1,
+          blendMode: "normal",
+          imageData,
+        })
+      } catch (error) {
+        console.error("Error creating initial layer:", error)
+      }
     } else {
       // Render existing layers
       renderLayers()
