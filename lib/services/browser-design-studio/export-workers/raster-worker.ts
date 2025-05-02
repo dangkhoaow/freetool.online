@@ -49,7 +49,23 @@ export async function exportPng(
     // Add raster data if available and requested
     if (options.includeRaster && rasterImageData) {
       console.log('[Export Worker] Adding raster data to PNG');
-      ctx.putImageData(rasterImageData, 0, 0);
+      
+      // Clone the raster image data to avoid modifying the original
+      const tempCanvas = new OffscreenCanvas(width, height);
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (tempCtx) {
+        // Put the raster data onto the temp canvas
+        tempCtx.putImageData(rasterImageData, 0, 0);
+        
+        // Draw the temp canvas onto our main canvas (this preserves colors better)
+        ctx.drawImage(tempCanvas, 0, 0);
+        console.log('[Export Worker] Added raster data to PNG using drawImage');
+      } else {
+        // Fallback to direct putImageData if temp canvas fails
+        ctx.putImageData(rasterImageData, 0, 0);
+        console.log('[Export Worker] Added raster data to PNG using putImageData');
+      }
     }
     
     sendProgress(0.5, 'Adding vector paths...');
@@ -200,7 +216,23 @@ export async function exportJpg(
     // Add raster data if available and requested
     if (options.includeRaster && rasterImageData) {
       console.log('[Export Worker] Adding raster data to JPG');
-      ctx.putImageData(rasterImageData, 0, 0);
+      
+      // Clone the raster image data to avoid modifying the original
+      const tempCanvas = new OffscreenCanvas(width, height);
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (tempCtx) {
+        // Put the raster data onto the temp canvas
+        tempCtx.putImageData(rasterImageData, 0, 0);
+        
+        // Draw the temp canvas onto our main canvas (this preserves colors better)
+        ctx.drawImage(tempCanvas, 0, 0);
+        console.log('[Export Worker] Added raster data to JPG using drawImage');
+      } else {
+        // Fallback to direct putImageData if temp canvas fails
+        ctx.putImageData(rasterImageData, 0, 0);
+        console.log('[Export Worker] Added raster data to JPG using putImageData');
+      }
     }
     
     sendProgress(0.5, 'Adding vector paths...');
