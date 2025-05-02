@@ -50,6 +50,13 @@ interface SystemMetrics {
     mountPoint?: string;
     device?: string;
   };
+  nvmeMounts?: {
+    mountPoint: string;
+    type?: string;
+    size?: string;
+    isBound?: boolean;
+    percentage: number;
+  }[];
   swap?: {
     total: number;
     used: number;
@@ -332,8 +339,8 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Device: {metrics.nvmeDisk.device}</p>
-                <p className="text-sm text-gray-500">Mount Point: {metrics.nvmeDisk.mountPoint}</p>
+                <p className="text-sm text-gray-500">Device: {metrics.nvmeDisk.device || 'Unknown Device'}</p>
+                <p className="text-sm text-gray-500">Mount Point: {metrics.nvmeDisk.mountPoint || '/mnt/nvme_data'}</p>
               </div>
               <div>
                 <div className="flex items-center mb-2">
@@ -351,6 +358,50 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+            
+            {/* NVMe Mount Points */}
+            {metrics.nvmeMounts && metrics.nvmeMounts.length > 0 && (
+              <div className="mt-4 border-t pt-4">
+                <h3 className="text-sm font-semibold mb-3">Mount Points ({metrics.nvmeMounts.length})</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {metrics.nvmeMounts.map((mount, index) => (
+                    <div key={index} className="bg-gray-50 p-3 rounded-md">
+                      <div className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium truncate max-w-[400px]" title={mount.mountPoint}>
+                            {mount.mountPoint}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {mount.type || (mount.isBound ? 'Bind Mount' : 'Direct Mount')}
+                            {mount.size && ` (${mount.size})`}
+                          </span>
+                        </div>
+                        {mount.percentage > 0 && (
+                          <span className="text-xs text-gray-500">
+                            {mount.percentage.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                      {mount.percentage > 0 && (
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div 
+                            className="bg-orange-300 h-1.5 rounded-full" 
+                            style={{ 
+                              width: `${mount.percentage}%`,
+                              backgroundColor: mount.percentage > 90 
+                                ? '#ef4444' 
+                                : mount.percentage > 70 
+                                  ? '#f59e0b' 
+                                  : '#22c55e'
+                            }}
+                          ></div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

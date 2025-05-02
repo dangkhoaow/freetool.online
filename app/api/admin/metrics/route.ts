@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const memoryPercentage = (usedMem / totalMem) * 100;
     
     // Get disk information for both root and NVMe disks
-    const { rootDisk, nvmeDisk, swapInfo } = getDiskInfo();
+    const { rootDisk, nvmeDisk, nvmeMounts, swapInfo } = getDiskInfo();
     
     // Get uptime
     const uptime = os.uptime();
@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       },
       disk: rootDisk,
       nvmeDisk,
+      nvmeMounts,
       swap: swapInfo,
       uptime,
     });
@@ -87,10 +88,10 @@ function getCpuUsage(): number {
 function getDiskInfo() {
   try {
     const rootDir = '/';
-    const uploadsDir = '/var/app/current/uploads';
     const result: any = {
       rootDisk: null,
       nvmeDisk: null,
+      nvmeMounts: [],
       swapInfo: null
     };
     
@@ -112,59 +113,202 @@ function getDiskInfo() {
       percentage: rootPercentage,
     };
     
-    // Check if NVMe disk is mounted to uploads directory
-    try {
-      // Get device name for uploads directory
-      const mountOutput = execSync(`findmnt -n -o SOURCE ${uploadsDir}`).toString().trim();
-      
-      if (mountOutput && mountOutput.includes('nvme')) {
-        // NVMe disk is mounted
-        const nvmeDfOutput = execSync(`df -k ${uploadsDir}`).toString();
-        const nvmeLines = nvmeDfOutput.trim().split('\n');
-        const nvmeStats = nvmeLines[1].split(/\s+/);
+    // First check if NVMe info file exists (created by our postdeploy hook)
+    const nvmeInfoPath = '/var/app/current/nvme-info.json';
+    if (fs.existsSync(nvmeInfoPath)) {
+      try {
+        console.log('NVMe info file found, reading data...');
+        const nvmeInfo = JSON.parse(fs.readFileSync(nvmeInfoPath, 'utf8'));
+        console.log('NVMe info parsed:', JSON.stringify(nvmeInfo));
         
-        // Parse NVMe disk information
-        const nvmeTotal = parseInt(nvmeStats[1]) * 1024; // Convert to bytes
-        const nvmeUsed = parseInt(nvmeStats[2]) * 1024;
-        const nvmeFree = parseInt(nvmeStats[3]) * 1024;
-        const nvmePercentage = (nvmeUsed / nvmeTotal) * 100;
-        
-        result.nvmeDisk = {
-          total: nvmeTotal,
-          used: nvmeUsed,
-          free: nvmeFree,
-          percentage: nvmePercentage,
-          mountPoint: uploadsDir,
-          device: mountOutput
-        };
+        // Check if NVMe is available
+        if (nvmeInfo.nvmeAvailable) {
+          console.log('NVMe is available according to info file');
+          // Convert human-readable sizes to bytes (approximate)
+          const sizeToBytes = (size: string): number => {
+            if (!size || size === '0') return 0;
+            
+            const num = parseFloat(size.replace(/[^0-9.]/g, ''));
+            if (size.includes('G')) return num * 1024 * 1024 * 1024;
+            if (size.includes('M')) return num * 1024 * 1024;
+            if (size.includes('K')) return num * 1024;
+            return num;
+          };
+          
+          // Update nvmeDisk info from file
+          result.nvmeDisk = {
+            total: sizeToBytes(nvmeInfo.diskInfo.total),
+            used: sizeToBytes(nvmeInfo.diskInfo.used),
+            free: sizeToBytes(nvmeInfo.diskInfo.available),
+            percentage: nvmeInfo.diskInfo.usedPercent,
+            mountPoint: nvmeInfo.mountPoint,
+            device: nvmeInfo.device || '/dev/nvme1n1'
+          };
+          
+          // Process mounts array if available
+          if (nvmeInfo.mounts && Array.isArray(nvmeInfo.mounts)) {
+            result.nvmeMounts = nvmeInfo.mounts.map((mount: any) => {
+              // For each mount, create a standardized mount object
+              return {
+                mountPoint: mount.mountPoint,
+                device: nvmeInfo.device, // Use parent device
+                type: mount.type,
+                size: mount.size,
+                // These are placeholder values since we can't easily get per-directory usage
+                total: sizeToBytes(mount.size),
+                used: 0,
+                free: 0,
+                percentage: 0
+              };
+            });
+          } else if (nvmeInfo.cacheDirectories && Array.isArray(nvmeInfo.cacheDirectories)) {
+            // Old format support - convert cache directories to mounts
+            result.nvmeMounts = nvmeInfo.cacheDirectories.map((dir: string) => {
+              return {
+                mountPoint: `${nvmeInfo.mountPoint}/${dir}`,
+                device: nvmeInfo.device || '/dev/nvme1n1',
+                type: dir.replace(/-/g, ' '),
+                // Placeholder values
+                total: 0,
+                used: 0,
+                free: 0,
+                percentage: 0
+              };
+            });
+          }
+          
+          // Add swap info if available in the NVMe info file
+          if (nvmeInfo.swapEnabled) {
+            // Try to get swap from system
+            try {
+              const swapOutput = execSync('swapon --show=SIZE,USED --bytes').toString().trim();
+              if (swapOutput && swapOutput.length > 0) {
+                const swapLines = swapOutput.trim().split('\n');
+                // Skip header line
+                if (swapLines.length > 1) {
+                  const swapStats = swapLines[1].split(/\s+/);
+                  const swapTotal = parseInt(swapStats[0]);
+                  const swapUsed = parseInt(swapStats[1]);
+                  const swapFree = swapTotal - swapUsed;
+                  const swapPercentage = (swapUsed / swapTotal) * 100;
+                  
+                  result.swapInfo = {
+                    total: swapTotal,
+                    used: swapUsed,
+                    free: swapFree,
+                    percentage: swapPercentage
+                  };
+                }
+              }
+            } catch (error) {
+              console.error('Error getting swap info:', error);
+              // Provide fallback values
+              result.swapInfo = {
+                total: 1024 * 1024 * 1024, // 1GB (default swap size)
+                used: 0,
+                free: 1024 * 1024 * 1024,
+                percentage: 0
+              };
+            }
+          }
+          
+          // Return early since we have complete NVMe data
+          return result;
+        } else {
+          console.log('NVMe not available according to info file');
+        }
+      } catch (error) {
+        console.error('Error parsing NVMe info file:', error);
       }
-    } catch (error) {
-      console.error('Error checking for NVMe disk:', error);
     }
     
-    // Get swap information
-    try {
-      const swapOutput = execSync('swapon --show=SIZE,USED --bytes').toString().trim();
-      if (swapOutput && swapOutput.length > 0) {
-        const swapLines = swapOutput.trim().split('\n');
-        // Skip header line
-        if (swapLines.length > 1) {
-          const swapStats = swapLines[1].split(/\s+/);
-          const swapTotal = parseInt(swapStats[0]);
-          const swapUsed = parseInt(swapStats[1]);
-          const swapFree = swapTotal - swapUsed;
-          const swapPercentage = (swapUsed / swapTotal) * 100;
+    // Fallback to legacy detection if no NVMe info file or if reading failed
+    console.log('Falling back to legacy NVMe detection...');
+    
+    // Try to detect NVMe mount at common locations
+    const nvmeMountPoints = [
+      '/mnt/nvme_data',
+      '/mnt/nvme',
+      '/var/app/current/uploads' // Legacy location
+    ];
+    
+    for (const mountPoint of nvmeMountPoints) {
+      try {
+        if (fs.existsSync(mountPoint)) {
+          // Get device name for the mount point
+          const mountOutput = execSync(`findmnt -n -o SOURCE ${mountPoint} 2>/dev/null`).toString().trim();
           
-          result.swapInfo = {
-            total: swapTotal,
-            used: swapUsed,
-            free: swapFree,
-            percentage: swapPercentage
-          };
+          if (mountOutput && mountOutput.includes('nvme')) {
+            // NVMe disk is mounted
+            const nvmeDfOutput = execSync(`df -k ${mountPoint}`).toString();
+            const nvmeLines = nvmeDfOutput.trim().split('\n');
+            const nvmeStats = nvmeLines[1].split(/\s+/);
+            
+            // Parse NVMe disk information
+            const nvmeTotal = parseInt(nvmeStats[1]) * 1024; // Convert to bytes
+            const nvmeUsed = parseInt(nvmeStats[2]) * 1024;
+            const nvmeFree = parseInt(nvmeStats[3]) * 1024;
+            const nvmePercentage = (nvmeUsed / nvmeTotal) * 100;
+            
+            result.nvmeDisk = {
+              total: nvmeTotal,
+              used: nvmeUsed,
+              free: nvmeFree,
+              percentage: nvmePercentage,
+              mountPoint: mountPoint,
+              device: mountOutput
+            };
+            
+            // Add common directories as mounts
+            const nvmeDirs = ['node_modules', 'npm-cache', 'nginx-cache'];
+            for (const dir of nvmeDirs) {
+              const dirPath = `${mountPoint}/${dir}`;
+              if (fs.existsSync(dirPath)) {
+                result.nvmeMounts.push({
+                  mountPoint: dirPath,
+                  device: mountOutput,
+                  type: dir.replace(/-/g, ' '),
+                  total: nvmeTotal,
+                  used: nvmeUsed,
+                  free: nvmeFree,
+                  percentage: nvmePercentage
+                });
+              }
+            }
+            
+            break; // Found NVMe, no need to check other mount points
+          }
         }
+      } catch (error) {
+        console.error(`Error checking for NVMe disk at ${mountPoint}:`, error);
       }
-    } catch (error) {
-      console.error('Error getting swap info:', error);
+    }
+    
+    // Get swap information if not already set
+    if (!result.swapInfo) {
+      try {
+        const swapOutput = execSync('swapon --show=SIZE,USED --bytes').toString().trim();
+        if (swapOutput && swapOutput.length > 0) {
+          const swapLines = swapOutput.trim().split('\n');
+          // Skip header line
+          if (swapLines.length > 1) {
+            const swapStats = swapLines[1].split(/\s+/);
+            const swapTotal = parseInt(swapStats[0]);
+            const swapUsed = parseInt(swapStats[1]);
+            const swapFree = swapTotal - swapUsed;
+            const swapPercentage = (swapUsed / swapTotal) * 100;
+            
+            result.swapInfo = {
+              total: swapTotal,
+              used: swapUsed,
+              free: swapFree,
+              percentage: swapPercentage
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error getting swap info:', error);
+      }
     }
     
     return result;
@@ -179,6 +323,7 @@ function getDiskInfo() {
         percentage: 30,
       },
       nvmeDisk: null,
+      nvmeMounts: [],
       swapInfo: null
     };
   }
