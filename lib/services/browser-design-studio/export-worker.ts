@@ -164,6 +164,17 @@ async function exportSvg(vectorPaths: any[], textNodes: any[], options: any, ras
     svg += `  <rect width="${width}" height="${height}" fill="white" />\n`;
   }
   
+  // Define interface for path-text relationship
+  interface PathWithText {
+    pathId: string;
+    textId: string;
+    path: any;
+    d: string;
+  }
+  
+  // Store paths that have associated text for later reference
+  const pathsWithText: PathWithText[] = [];
+  
   // Process and add vector paths
   if (options.includeVector && vectorPaths && vectorPaths.length > 0) {
     sendProgress(0.5, 'Processing vector paths...')
@@ -172,9 +183,114 @@ async function exportSvg(vectorPaths: any[], textNodes: any[], options: any, ras
     sendProgress(0.6, 'Adding vector paths...')
     console.log('[Export Worker] Adding vector paths...');
     
+    // Add a defs section to store paths for text-on-path
+    svg += `  <defs>\n`;
+    
+    // Process all paths first to identify those with text
     for (let i = 0; i < vectorPaths.length; i++) {
       const path = vectorPaths[i];
-      console.log(`[Export Worker] Processing path ${i+1}/${vectorPaths.length}:`, path);
+      console.log(`[Export Worker] Pre-processing path ${i}/${vectorPaths.length}:`, path);
+      console.log(`[Export Worker] Path type: ${path.type}, has textId: ${!!path.textId}, id: ${path.id}`);
+      
+      if (path.textId) {
+        try {
+          const pathId = `path-${i}`;
+          let d = '';
+          
+          if (path.type === 'path' && path.points && path.points.length > 0) {
+            d = `M ${path.points[0].x} ${path.points[0].y}`;
+            
+            for (let j = 1; j < path.points.length; j++) {
+              d += ` L ${path.points[j].x} ${path.points[j].y}`;
+            }
+            
+            if (path.closed) {
+              d += ' Z';
+            }
+          } else if (path.type === 'circle' && path.points && path.points.length > 0) {
+            // For circles, calculate center and radius from points
+            const xValues = path.points.map((p: { x: number }) => p.x);
+            const yValues = path.points.map((p: { y: number }) => p.y);
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+            
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const radiusX = (maxX - minX) / 2;
+            const radiusY = (maxY - minY) / 2;
+            
+            // Use elliptical arc for circle path definition
+            d = `M ${centerX + radiusX} ${centerY} `;
+            d += `A ${radiusX} ${radiusY} 0 1 1 ${centerX - radiusX} ${centerY} `;
+            d += `A ${radiusX} ${radiusY} 0 1 1 ${centerX + radiusX} ${centerY}`;
+          } else if (path.type === 'rect' && path.points && path.points.length >= 4) {
+            // For rectangles, use the points to define a path
+            const minX = Math.min(...path.points.map((p: { x: number }) => p.x));
+            const minY = Math.min(...path.points.map((p: { y: number }) => p.y));
+            const maxX = Math.max(...path.points.map((p: { x: number }) => p.x));
+            const maxY = Math.max(...path.points.map((p: { y: number }) => p.y));
+            
+            d = `M ${minX} ${minY} L ${maxX} ${minY} L ${maxX} ${maxY} L ${minX} ${maxY} Z`;
+          } else if (path.type === 'ellipse' && path.points && path.points.length > 0) {
+            // For ellipses, calculate center and radius from points
+            const xValues = path.points.map((p: { x: number }) => p.x);
+            const yValues = path.points.map((p: { y: number }) => p.y);
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+            
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const radiusX = (maxX - minX) / 2;
+            const radiusY = (maxY - minY) / 2;
+            
+            // Use elliptical arc for ellipse path definition
+            d = `M ${centerX + radiusX} ${centerY} `;
+            d += `A ${radiusX} ${radiusY} 0 1 1 ${centerX - radiusX} ${centerY} `;
+            d += `A ${radiusX} ${radiusY} 0 1 1 ${centerX + radiusX} ${centerY}`;
+          } else if (path.points && path.points.length > 0) {
+            // For any other shape with points, create a path
+            d = `M ${path.points[0].x} ${path.points[0].y}`;
+            
+            for (let j = 1; j < path.points.length; j++) {
+              d += ` L ${path.points[j].x} ${path.points[j].y}`;
+            }
+            
+            if (path.closed) {
+              d += ' Z';
+            }
+          }
+          
+          if (d) {
+            // Only add to defs if we were able to create a valid path
+            console.log(`[Export Worker] Adding path to defs with id: ${pathId}`);
+            svg += `    <path id="${pathId}" d="${d}" />\n`;
+            
+            pathsWithText.push({
+              pathId,
+              textId: path.textId,
+              path,
+              d
+            });
+          } else {
+            console.error(`[Export Worker] Could not generate path data for path ${i} with textId ${path.textId}`);
+          }
+        } catch (error) {
+          console.error(`[Export Worker] Error processing path ${i} for text:`, error);
+        }
+      }
+    }
+    
+    // Close defs section after adding all path definitions
+    svg += `  </defs>\n`;
+    
+    // Now add the visible paths
+    for (let i = 0; i < vectorPaths.length; i++) {
+      const path = vectorPaths[i];
+      console.log(`[Export Worker] Rendering visible path ${i+1}/${vectorPaths.length}:`, path);
       
       try {
         if (path.type === 'path') {
@@ -190,20 +306,55 @@ async function exportSvg(vectorPaths: any[], textNodes: any[], options: any, ras
               d += ' Z';
             }
             
+            // Always add the visible path element (whether it has text or not)
             svg += `  <path d="${d}" fill="${path.fill || 'transparent'}" stroke="${path.strokeColor || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`;
+          }
+        } else if (path.type === 'circle') {
+          // Handle circles - extract coordinates from points
+          if (path.points && path.points.length > 0) {
+            const xValues = path.points.map((p: { x: number }) => p.x);
+            const yValues = path.points.map((p: { y: number }) => p.y);
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+            
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const radiusX = (maxX - minX) / 2;
+            const radiusY = (maxY - minY) / 2;
+            
+            svg += `  <circle cx="${centerX}" cy="${centerY}" r="${radiusX}" fill="${path.fill || 'rgba(255, 255, 255, 0.1)'}" stroke="${path.strokeColor || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`;
           }
         } else if (path.type === 'rect') {
           // Handle rectangles - extract coordinates from points
           if (path.points && path.points.length >= 4) {
-            const minX = Math.min(...path.points.map((p: { x: number; y: number }) => p.x));
-            const minY = Math.min(...path.points.map((p: { x: number; y: number }) => p.y));
-            const maxX = Math.max(...path.points.map((p: { x: number; y: number }) => p.x));
-            const maxY = Math.max(...path.points.map((p: { x: number; y: number }) => p.y));
+            const minX = Math.min(...path.points.map((p: { x: number }) => p.x));
+            const minY = Math.min(...path.points.map((p: { y: number }) => p.y));
+            const maxX = Math.max(...path.points.map((p: { x: number }) => p.x));
+            const maxY = Math.max(...path.points.map((p: { y: number }) => p.y));
             
             const rectWidth = maxX - minX;
             const rectHeight = maxY - minY;
             
             svg += `  <rect x="${minX}" y="${minY}" width="${rectWidth}" height="${rectHeight}" fill="${path.fill || 'rgba(255, 255, 255, 0.1)'}" stroke="${path.strokeColor || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`;
+          }
+        } else if (path.type === 'ellipse') {
+          // Handle ellipses - extract coordinates from points
+          if (path.points && path.points.length > 0) {
+            const xValues = path.points.map((p: { x: number }) => p.x);
+            const yValues = path.points.map((p: { y: number }) => p.y);
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+            
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const radiusX = (maxX - minX) / 2;
+            const radiusY = (maxY - minY) / 2;
+            
+            svg += `  <ellipse cx="${centerX}" cy="${centerY}" rx="${radiusX}" ry="${radiusY}" fill="${path.fill || 'rgba(255, 255, 255, 0.1)'}" stroke="${path.strokeColor || '#000'}" stroke-width="${path.strokeWidth || 1}" ${path.opacity !== undefined ? `opacity="${path.opacity}"` : ''} />\n`;
           }
         }
         // Other vector types...
@@ -257,12 +408,66 @@ async function exportSvg(vectorPaths: any[], textNodes: any[], options: any, ras
     sendProgress(0.8, 'Adding text elements...')
     console.log('[Export Worker] Adding text elements...');
     
+    // First, create a map of text nodes by id for easier lookup
+    const textNodesMap = textNodes.reduce((map: Record<string, any>, node: any) => {
+      if (node.id) {
+        map[node.id] = node;
+      }
+      return map;
+    }, {});
+    
+    console.log('[Export Worker] Text nodes map created:', Object.keys(textNodesMap));
+    
+    // Add text paths (text attached to paths)
+    if (pathsWithText.length > 0) {
+      console.log('[Export Worker] Adding text-on-path elements. Count:', pathsWithText.length);
+      
+      pathsWithText.forEach(({ pathId, textId, path, d }: PathWithText) => {
+        const textNode = textNodesMap[textId];
+        
+        if (textNode) {
+          console.log(`[Export Worker] Adding text-on-path for textId: ${textId}, pathId: ${pathId}`);
+          const { text, fontSize, fontFamily, fontWeight, fontStyle, fill } = textNode;
+          
+          // Calculate text properties based on path length
+          // This is important for distributing text properly along the path
+          const letterSpacing = path.letterSpacing || 'normal';
+          
+          svg += `  <text font-family="${fontFamily || 'Arial'}" font-size="${fontSize || 16}px" font-weight="${fontWeight || 'normal'}" font-style="${fontStyle || 'normal'}" fill="${fill || path.strokeColor || '#000'}" letter-spacing="${letterSpacing}">\n`;
+          
+          // Adjust startOffset and method based on path type
+          let startOffset = '0%';
+          if (path.type === 'circle') {
+            // For circles, we often want to start at the top
+            startOffset = '25%';
+          }
+          
+          // Add textPath with the correct reference and text content
+          svg += `    <textPath href="#${pathId}" startOffset="${startOffset}" method="align" spacing="auto">${text}</textPath>\n`;
+          svg += `  </text>\n`;
+          
+          console.log(`[Export Worker] Added textPath with text: ${text}`);
+        } else {
+          console.error(`[Export Worker] Could not find text node with id: ${textId}`);
+        }
+      });
+    } else {
+      console.log('[Export Worker] No text-on-path elements to add');
+    }
+    
+    // Add standalone text nodes (not attached to paths)
     textNodes.forEach((textNode: any) => {
-      try {
-        const { x, y, text, fontSize, fontFamily, fontWeight, fontStyle, fill } = textNode;
-        svg += `  <text x="${x}" y="${y}" font-family="${fontFamily || 'Arial'}" font-size="${fontSize || 16}px" font-weight="${fontWeight || 'normal'}" font-style="${fontStyle || 'normal'}" fill="${fill || '#000'}">${text}</text>\n`;
-      } catch (error) {
-        console.error('[Export Worker] Error processing text node:', error);
+      // Skip text nodes that are already attached to paths
+      const isAttachedToPath = pathsWithText.some((item: PathWithText) => item.textId === textNode.id);
+      
+      if (!isAttachedToPath) {
+        try {
+          const { x, y, text, fontSize, fontFamily, fontWeight, fontStyle, fill, id } = textNode;
+          console.log(`[Export Worker] Adding standalone text node: ${id}`);
+          svg += `  <text x="${x}" y="${y}" font-family="${fontFamily || 'Arial'}" font-size="${fontSize || 16}px" font-weight="${fontWeight || 'normal'}" font-style="${fontStyle || 'normal'}" fill="${fill || '#000'}">${text}</text>\n`;
+        } catch (error) {
+          console.error('[Export Worker] Error processing standalone text node:', error);
+        }
       }
     });
   } else {
