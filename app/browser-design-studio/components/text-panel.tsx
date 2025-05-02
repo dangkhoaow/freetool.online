@@ -20,6 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTextStore } from "@/lib/services/browser-design-studio/stores/text-store"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useVectorStore } from "@/lib/services/browser-design-studio/stores/vector-store"
 
 interface FontOption {
   name: string
@@ -70,7 +71,9 @@ export default function TextPanel() {
   const [textOnPath, setTextOnPath] = useState(false)
   const [customFonts, setCustomFonts] = useState<FontOption[]>([])
   const [previewText, setPreviewText] = useState<string>("The quick brown fox jumps over the lazy dog")
-  
+  const [isCreatingPathForText, setIsCreatingPathForText] = useState(false)
+  const [pendingTextId, setPendingTextId] = useState<string | null>(null)
+
   // Text store for state management
   const { 
     textNodes, 
@@ -80,6 +83,9 @@ export default function TextPanel() {
     selectedNodeId, 
     setSelectedNodeId 
   } = useTextStore()
+
+  // Get the vector store to access paths
+  const { paths, selectedPathId } = useVectorStore()
 
   // Initialize canvas after component mount
   useEffect(() => {
@@ -131,8 +137,30 @@ export default function TextPanel() {
     const textY = canvas.height / 2
     
     if (textOnPath) {
-      // Draw text on curved path
-      drawTextAlongArc(ctx, previewText, canvas.width / 2, canvas.height / 2, 100, 0, Math.PI)
+      // Check if we're editing a selected node with path data
+      const selectedNode = selectedNodeId ? textNodes.find(node => node.id === selectedNodeId) : null;
+      
+      if (selectedNode && selectedNode.pathData) {
+        console.log("[TextPanel] Rendering preview with path data from selected node");
+        if (selectedNode.pathData.type === 'custom' && selectedNode.pathData.points) {
+          // Draw custom path text
+          drawTextAlongPath(ctx, previewText, selectedNode.pathData.points);
+        } else {
+          // Draw arc text (fallback)
+          drawTextAlongArc(
+            ctx, 
+            previewText, 
+            canvas.width / 2, 
+            canvas.height / 2, 
+            selectedNode.pathData.radius || 100, 
+            selectedNode.pathData.startAngle || 0, 
+            selectedNode.pathData.endAngle || Math.PI
+          );
+        }
+      } else {
+        // Default arc if no path data
+        drawTextAlongArc(ctx, previewText, canvas.width / 2, canvas.height / 2, 100, 0, Math.PI);
+      }
     } else {
       // Draw normal text
       ctx.fillText(previewText, textX, textY)
@@ -203,18 +231,122 @@ export default function TextPanel() {
     ctx.restore()
   }
 
+  // Function to draw text along a custom path
+  const drawTextAlongPath = (
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    points: { x: number, y: number }[]
+  ) => {
+    if (!points || points.length < 2) {
+      console.error("[TextPanel] Cannot draw text on path: invalid path points");
+      return;
+    }
+
+    console.log("[TextPanel] Drawing text along custom path with", points.length, "points");
+    
+    // Save context
+    ctx.save();
+    
+    try {
+      // Calculate the total path length
+      let pathLength = 0;
+      let pathSegments: number[] = [];
+      
+      for (let i = 1; i < points.length; i++) {
+        const dx = points[i].x - points[i-1].x;
+        const dy = points[i].y - points[i-1].y;
+        const segmentLength = Math.sqrt(dx*dx + dy*dy);
+        pathLength += segmentLength;
+        pathSegments.push(segmentLength);
+      }
+      
+      // Calculate spacing for text
+      const textLength = text.length;
+      const spacingPerChar = pathLength / (textLength - 1);
+      
+      let currentPos = 0;
+      let segmentIndex = 0;
+      let segmentPos = 0;
+      
+      // Draw each character along the path
+      for (let i = 0; i < textLength; i++) {
+        // Find the segment for the current position
+        while (segmentIndex < pathSegments.length && segmentPos + pathSegments[segmentIndex] < currentPos) {
+          segmentPos += pathSegments[segmentIndex];
+          segmentIndex++;
+        }
+        
+        // If we're beyond the path, stop
+        if (segmentIndex >= pathSegments.length) break;
+        
+        // Calculate position on the current segment
+        const segmentFraction = (currentPos - segmentPos) / pathSegments[segmentIndex];
+        const p1 = points[segmentIndex];
+        const p2 = points[segmentIndex + 1];
+        
+        // Interpolate position
+        const x = p1.x + (p2.x - p1.x) * segmentFraction;
+        const y = p1.y + (p2.y - p1.y) * segmentFraction;
+        
+        // Calculate angle (perpendicular to path direction)
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) + Math.PI/2;
+        
+        // Save position
+        ctx.save();
+        
+        // Translate and rotate to position
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        
+        // Draw character
+        ctx.fillText(text[i], 0, 0);
+        
+        // Restore position
+        ctx.restore();
+        
+        // Move to next position
+        currentPos += spacingPerChar;
+      }
+    } catch (error) {
+      console.error("[TextPanel] Error drawing text on path:", error);
+    }
+    
+    // Restore context
+    ctx.restore();
+  }
+
+  // Add a debug effect to log the text nodes when they change
+  useEffect(() => {
+    console.log("[TextPanel] Text nodes changed:", textNodes.map(node => ({
+      id: node.id, 
+      text: node.text,
+      onPath: node.onPath
+    })));
+  }, [textNodes]);
+
   // Add current text as a new text node
   const addText = () => {
     if (!currentText.trim()) return
     
+    const newNodeId = `text-${Date.now()}`;
+    console.log("[TextPanel] Adding new text node:", {
+      id: newNodeId,
+      text: currentText,
+      onPath: textOnPath
+    });
+    
     addTextNode({
-      id: `text-${Date.now()}`,
+      id: newNodeId,
       text: currentText,
       style: { ...textStyle },
       position: { x: 100, y: 100 },
       onPath: textOnPath,
       pathData: textOnPath ? { type: "arc", radius: 100, startAngle: 0, endAngle: Math.PI } : undefined,
     })
+    
+    // Select the newly added node
+    setSelectedNodeId(newNodeId);
+    console.log("[TextPanel] New text node selected:", newNodeId);
     
     setCurrentText("")
   }
@@ -294,6 +426,98 @@ export default function TextPanel() {
       textAlign: align,
     })
   }
+
+  // Listen for events from other components
+  useEffect(() => {
+    // Listen for events to know when we're back from vector tab
+    const handlePathCreatedForText = (event: CustomEvent) => {
+      console.log("[TextPanel] Received path-created-for-text event:", event.detail);
+      if (event.detail && event.detail.pathId && pendingTextId) {
+        // Update the text node with the path data
+        const pathData = paths.find(p => p.id === event.detail.pathId);
+        if (pathData) {
+          console.log("[TextPanel] Updating text node with path data:", pathData);
+          
+          // Create a deep copy of the points to avoid reference issues
+          const pathPoints = pathData.points.map(point => ({ ...point }));
+          
+          // Update the text node with the path data
+          updateTextNode(pendingTextId, {
+            onPath: true,
+            pathData: {
+              type: 'custom',
+              points: pathPoints
+            }
+          });
+          
+          // Force selection of this node to ensure it's visible in the UI
+          setSelectedNodeId(pendingTextId);
+          
+          // Force render the preview with the new path data
+          setTimeout(() => {
+            console.log("[TextPanel] Force rendering text preview with new path data");
+            renderTextPreview();
+          }, 100);
+        } else {
+          console.error("[TextPanel] Path data not found for ID:", event.detail.pathId);
+        }
+        
+        // Reset the pending states
+        setIsCreatingPathForText(false);
+        setPendingTextId(null);
+      }
+    };
+
+    window.addEventListener('path-created-for-text', handlePathCreatedForText as EventListener);
+    
+    return () => {
+      window.removeEventListener('path-created-for-text', handlePathCreatedForText as EventListener);
+    };
+  }, [pendingTextId, paths, updateTextNode, setSelectedNodeId]);
+
+  // Re-render preview when selected node or textNodes changes
+  useEffect(() => {
+    console.log("[TextPanel] Text nodes or selection changed, updating preview");
+    renderTextPreview();
+  }, [selectedNodeId, textNodes]);
+
+  // Handle edit path button click
+  const handleEditPath = () => {
+    console.log("[TextPanel] Edit Path button clicked");
+    
+    // Store the current text node for later use
+    if (selectedNodeId) {
+      const selectedNode = textNodes.find(node => node.id === selectedNodeId);
+      console.log("[TextPanel] Setting pending text ID:", selectedNodeId, "Text content:", selectedNode?.text);
+      
+      setPendingTextId(selectedNodeId);
+      setIsCreatingPathForText(true);
+      setTextOnPath(true); // Ensure text-on-path is enabled
+      
+      // Update the node to ensure it's marked for path rendering
+      updateTextNode(selectedNodeId, {
+        onPath: true,
+        // Initialize with default arc if no path data exists
+        pathData: selectedNode?.pathData || { type: "arc", radius: 100, startAngle: 0, endAngle: Math.PI }
+      });
+      
+      // Dispatch event to switch to vector tab and activate path tool
+      // Use 'path' instead of 'pen' to ensure correct tool activation
+      // Pass the text node ID so Vector tab can show the text while drawing
+      const event = new CustomEvent('switch-to-vector-for-text', { 
+        detail: { 
+          activateTool: 'path',
+          textId: selectedNodeId
+        } 
+      });
+      console.log("[TextPanel] Dispatching switch-to-vector-for-text event with tool: path and textId:", selectedNodeId);
+      window.dispatchEvent(event);
+    } else {
+      console.log("[TextPanel] No text node selected for path editing");
+      // Show a message to select a text node first
+      alert("Please select a text node first before editing its path.");
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -439,7 +663,7 @@ export default function TextPanel() {
                     </label>
                     
                     {textOnPath && (
-                      <Button size="sm" className="ml-2">
+                      <Button size="sm" className="ml-2" onClick={handleEditPath}>
                         <PenTool className="h-4 w-4 mr-1" />
                         Edit Path
                       </Button>

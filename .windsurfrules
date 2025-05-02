@@ -1,0 +1,33 @@
+- Don't uses zsh
+
+- Please always analyze codebase (all files) before editing any file, do not create new file if not necessary, when you want to create new file, please reanalyze codebase again. For make sure we don't have duplicate file and logic
+
+- Create each file MUST BE LESS THAN 300 LINES of code, if beyond, pls split to smaller files. 
+
+- If you plan to edit code, please analyze codebase again to make sure you understand the codebase and logic before editing
+
+- When you analyze specific file, please analyze all related files (references, imports, exports) to make sure you understand the codebase and logic at least 3 levels that reference to each other (1 level is the file you are analyzing, 2 level is the files that reference to the file you are analyzing, 3 level is the files that reference to the files that reference to the file you are analyzing)
+
+- If you plan to edit code, please analyze codebase again to make sure you understand the codebase and logic before editing. And analyze all related files (references, imports, exports) to make sure you understand the codebase and logic before editing
+
+- If the editing need add lines more than 300, please split to smaller files
+
+- After editing, please analyze codebase again to make sure you understand the codebase and logic after editing. Then add README.md for each folder to explain the logic of the code and your current context
+
+- Each file must add detailed log for easy to debug, add log after each line of code if the variable is changed
+
+- Approach to read code file(s) for reading by breaking it down into smaller, more manageable part, then can be edited able on each part
+
+- NPM install with the --legacy-peer-deps flag to bypass dependency conflicts
+
+- Retry if facing 'Cascade error No credits consumed on this tool call.' when editing code
+
+- Please dont use any hardcoded solution to fix any issue, always try to find the root cause by analyzing the codebase and fix it
+
+- Please always use port 3000 for nextjs frontend web (freetool.online) if any process inuse, please kill it first
+
+- Always run freetool.online frontend by: lsof -t -i :3000 | xargs -r kill -9 && cd /Users/ktran/Documents/Code/NewCode/freetool/freetool.online && npm run dev -- -p 3000
+
+- Always restart freetool.online frontend when you edited code need to be restart, for frontend code that can be hot reload, do not restart it
+
+- Let's keep the conversation context as much as possible, if you lost the context, please reanalyze codebase and latest changes, conversation history, or even last chat with me to get the context

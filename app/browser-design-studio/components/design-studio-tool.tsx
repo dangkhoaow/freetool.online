@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -43,9 +44,9 @@ import { WebLLMProvider, useWebLLM } from "@/lib/services/webllm/webllm-provider
 import { WebLLMModel } from "@/lib/services/webllm/config"
 import { Progress } from "@/components/ui/progress"
 import { FileDropzone } from "@/components/ui/file-dropzone"
-import { Switch } from "@/components/ui/switch"
 import { DesignStudioProvider, useDesignStudio } from "@/lib/services/browser-design-studio/store-provider"
 import { useRasterStore } from "@/lib/services/browser-design-studio/stores/raster-store"
+import { useTextStore, TextNode } from "@/lib/services/browser-design-studio/stores/text-store"
 
 // Import design studio services
 import { VectorEngine } from "@/lib/services/browser-design-studio/vector-engine"
@@ -107,6 +108,9 @@ function DesignStudioToolContent() {
   const [undoStack, setUndoStack] = useState<any[]>([])
   const [redoStack, setRedoStack] = useState<any[]>([])
 
+  // Text attachment state
+  const [attachTextToPath, setAttachTextToPath] = useState(true)
+
   // Service refs
   const vectorEngineRef = useRef<VectorEngine | null>(null)
   const rasterEngineRef = useRef<RasterEngine | null>(null)
@@ -145,6 +149,75 @@ function DesignStudioToolContent() {
       clearInterval(autoSaveInterval)
     }
   }, [])
+
+  useEffect(() => {
+    // Listen for text-to-vector events
+    const handleSwitchToVectorForText = (event: CustomEvent) => {
+      console.log("[DesignStudioTool] Received switch-to-vector-for-text event:", event.detail);
+      
+      // Set active tab to vector and store text information in component data for sharing between tabs
+      setActiveTab("vector");
+      
+      // Store the text node ID in a global data attribute for components to access
+      if (event.detail && event.detail.textId) {
+        document.body.setAttribute('data-pending-text-id', event.detail.textId);
+        console.log("[DesignStudioTool] Stored pending text ID in DOM:", event.detail.textId);
+      }
+      
+      // Get the requested tool name from the event (default to 'path')
+      const toolName = event.detail?.activateTool || 'path';
+      
+      // Add a slight delay to ensure the tab switch completes before activating the tool
+      setTimeout(() => {
+        console.log("[DesignStudioTool] Activating tool:", toolName);
+        
+        // Update vector tool state
+        setVectorToolState(toolName);
+        
+        // Try to set the tool directly on the VectorCanvas component if available
+        if (vectorComponentRef.current?.setCurrentTool) {
+          vectorComponentRef.current.setCurrentTool(toolName);
+        }
+        
+        // Also dispatch an event as a fallback mechanism
+        const toolEvent = new CustomEvent('vector-tool-change', { 
+          detail: { tool: toolName } 
+        });
+        window.dispatchEvent(toolEvent);
+      }, 100);
+    };
+    
+    window.addEventListener('switch-to-vector-for-text', handleSwitchToVectorForText as EventListener);
+    
+    return () => {
+      window.removeEventListener('switch-to-vector-for-text', handleSwitchToVectorForText as EventListener);
+    };
+  }, [setActiveTab, setVectorToolState]);
+
+  useEffect(() => {
+    // Listen for path creation events to switch back to text tab
+    const handlePathCreatedForText = (event: CustomEvent) => {
+      console.log("[DesignStudioTool] Received path-created-for-text event:", event.detail);
+      
+      // We're removing the automatic tab switch back to text
+      // This allows the user to continue working in the Vector tab after path creation
+      // If the event explicitly requests to switch tabs, then we'll do it
+      if (event.detail?.switchToTextTab === true) {
+        setTimeout(() => {
+          console.log("[DesignStudioTool] Switching back to text tab after path creation (explicitly requested)");
+          setActiveTab("text");
+        }, 200);
+      } else {
+        console.log("[DesignStudioTool] Path created for text, but staying in Vector tab");
+      }
+    };
+    
+    window.addEventListener('path-created-for-text', handlePathCreatedForText as EventListener);
+    
+    return () => {
+      window.removeEventListener('path-created-for-text', handlePathCreatedForText as EventListener);
+    };
+  }, [setActiveTab]);
 
   useEffect(() => {
     // Find and store reference to VectorCanvas component
@@ -603,10 +676,81 @@ function DesignStudioToolContent() {
                       <ArrowDownToLine className="h-4 w-4" />
                     </Button>
                   </div>
+                  
+                  {/* Text on Path dropdown - only show in Vector tab when applicable */}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs whitespace-nowrap font-medium">Text on Path:</span>
+                      <Select 
+                        value={attachTextToPath ? (document.body.getAttribute('data-pending-text-id') || '') : 'none'}
+                        onValueChange={(value) => {
+                          if (value === 'none') {
+                            // Detach text
+                            setAttachTextToPath(false);
+                            // Notify vector canvas of attachment change
+                            if (typeof window !== "undefined") {
+                              const event = new CustomEvent("vector-text-attachment-change", { 
+                                detail: { attachText: false } 
+                              });
+                              window.dispatchEvent(event);
+                              console.log("[DesignStudioTool] Text attachment disabled");
+                            }
+                          } else {
+                            // Attach text with selected ID
+                            setAttachTextToPath(true);
+                            // Update the pending text ID
+                            document.body.setAttribute('data-pending-text-id', value);
+                            
+                            // Notify vector canvas of changes
+                            if (typeof window !== "undefined") {
+                              // Enable text attachment
+                              const attachEvent = new CustomEvent("vector-text-attachment-change", { 
+                                detail: { attachText: true } 
+                              });
+                              window.dispatchEvent(attachEvent);
+                              
+                              // Update selected text
+                              const textEvent = new CustomEvent("vector-text-change", { 
+                                detail: { textId: value } 
+                              });
+                              window.dispatchEvent(textEvent);
+                              
+                              console.log("[DesignStudioTool] Text attachment enabled with ID:", value);
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-8 min-h-8 w-[180px] bg-white dark:bg-gray-800 text-xs">
+                          <SelectValue placeholder="Select text" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Option to detach text */}
+                          <SelectItem value="none">None (Detach Text)</SelectItem>
+                          
+                          {/* Text nodes from the Text tab */}
+                          {(() => {
+                            const textNodes = useTextStore.getState().textNodes;
+                            console.log("[DesignStudioTool] Available text nodes for dropdown:", 
+                              textNodes.map(n => ({ id: n.id, text: n.text })));
+                            
+                            if (textNodes.length === 0) {
+                              return <SelectItem value="no-texts" disabled>No text nodes available</SelectItem>;
+                            }
+                            
+                            return textNodes.map((node: TextNode) => (
+                              <SelectItem key={node.id} value={node.id}>
+                                {node.text.substring(0, 20)}{node.text.length > 20 ? '...' : ''}
+                              </SelectItem>
+                            ));
+                          })()}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden" ref={vectorCanvasRef}>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden h-[600px] flex flex-col" ref={vectorCanvasRef}>
                 <VectorCanvas />
               </div>
             </TabsContent>
