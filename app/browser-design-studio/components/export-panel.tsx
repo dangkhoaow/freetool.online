@@ -126,7 +126,7 @@ export default function ExportPanel() {
   
   // Get services and store data
   const { paths: vectorPaths } = useVectorStore()
-  const { layers: rasterLayers } = useRasterStore()
+  const { layers: rasterLayers, canvasRef: rasterCanvasRef } = useRasterStore()
   const { textNodes } = useTextStore()
   
   // Reset file name when design is loaded
@@ -152,6 +152,80 @@ export default function ExportPanel() {
     }))
   }
   
+  // Capture raster canvas data
+  const captureRasterCanvas = (): Promise<ImageData | null> => {
+    return new Promise((resolve) => {
+      try {
+        // First try getting the canvas from the store's canvasRef
+        if (rasterCanvasRef?.current) {
+          const canvas = rasterCanvasRef.current;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            console.log("Successfully captured raster canvas data from store reference");
+            resolve(imageData);
+            return;
+          }
+        }
+        
+        // Try using the persistent canvas (added to the DOM by DesignStudioTool)
+        const persistentCanvas = document.getElementById('persistent-raster-canvas') as HTMLCanvasElement;
+        if (persistentCanvas) {
+          try {
+            const ctx = persistentCanvas.getContext('2d');
+            if (ctx) {
+              const imageData = ctx.getImageData(0, 0, persistentCanvas.width, persistentCanvas.height);
+              console.log("Successfully captured raster canvas data from persistent canvas");
+              resolve(imageData);
+              return;
+            }
+          } catch (error) {
+            console.error("Error capturing persistent raster canvas:", error);
+          }
+        }
+        
+        // Fallback to DOM search if store reference doesn't work
+        const rasterCanvas = document.querySelector('#raster-main-canvas') as HTMLCanvasElement;
+        
+        if (rasterCanvas) {
+          try {
+            const ctx = rasterCanvas.getContext('2d');
+            if (ctx) {
+              const imageData = ctx.getImageData(0, 0, rasterCanvas.width, rasterCanvas.height);
+              console.log("Successfully captured raster canvas data from DOM");
+              resolve(imageData);
+              return;
+            } else {
+              console.error("Could not get 2d context from raster canvas");
+            }
+          } catch (error) {
+            console.error("Error capturing raster canvas:", error);
+          }
+        } 
+        
+        console.log("No raster canvas found in DOM");
+        // Create a blank image data object to avoid errors
+        const blankCanvas = document.createElement('canvas');
+        blankCanvas.width = 1200;
+        blankCanvas.height = 800;
+        const blankCtx = blankCanvas.getContext('2d');
+        if (blankCtx) {
+          // Return blank image data (white background)
+          blankCtx.fillStyle = '#ffffff';
+          blankCtx.fillRect(0, 0, blankCanvas.width, blankCanvas.height);
+          const blankImageData = blankCtx.getImageData(0, 0, blankCanvas.width, blankCanvas.height);
+          console.log("Created blank image data as fallback");
+          resolve(blankImageData);
+        } else {
+          resolve(null);
+        }
+      } catch (error) {
+        console.error("Error in captureRasterCanvas:", error);
+        resolve(null);
+      }
+    });
+  };
+  
   // Export the current design
   const exportDesign = async () => {
     setIsExporting(true)
@@ -160,6 +234,16 @@ export default function ExportPanel() {
     setExportedFile(null)
     
     try {
+      // Capture raster canvas data if needed
+      let rasterImageData = null;
+      if (exportOptions.includeRaster) {
+        setExportStatus("Capturing raster data...");
+        rasterImageData = await captureRasterCanvas();
+      }
+      
+      console.log("Starting export process for format:", selectedFormat);
+      console.log("Vector paths:", vectorPaths);
+      
       // Create a web worker to handle the export process
       const worker = new Worker(new URL('@/lib/services/browser-design-studio/export-worker.ts', import.meta.url))
       
@@ -171,12 +255,16 @@ export default function ExportPanel() {
           setExportProgress(data.progress * 100)
           if (data.status) setExportStatus(data.status)
         } else if (type === 'complete') {
+          // Log the result data for debugging
+          console.log("Export complete. Result data:", data.result);
+          
           // Create a download URL from the exported data
           let blob;
           
           // SVG needs special handling as a string, not binary data
           if (selectedFormat === 'svg') {
             // Handle SVG as a string, not binary data
+            console.log("Creating SVG blob from result:", typeof data.result, data.result.substring(0, 100) + "...");
             blob = new Blob([data.result], { type: 'image/svg+xml;charset=utf-8' });
           } else if (selectedFormat === 'css') {
             // Handle CSS as a string as well
@@ -200,6 +288,7 @@ export default function ExportPanel() {
           // Terminate the worker
           worker.terminate()
         } else if (type === 'error') {
+          console.error("Export worker error:", data.message);
           throw new Error(data.message)
         }
       }
@@ -212,12 +301,14 @@ export default function ExportPanel() {
           options: exportOptions,
           vectorPaths,
           rasterLayers,
+          rasterImageData,
           textNodes,
         }
       })
       
-      // Simulate export for demonstration
-      simulateExport()
+      // FOR REAL EXPORT: Comment out the simulateExport line below
+      // and let the worker handle the actual export
+      // simulateExport()
     } catch (error) {
       console.error("Export error:", error)
       setExportStatus(`Error: ${error instanceof Error ? error.message : "Export failed"}`)
@@ -307,6 +398,77 @@ export default function ExportPanel() {
             />
           </div>
           
+          <div className="space-y-3">
+            <Label className="text-base font-medium">What to Export</Label>
+            <div className="grid grid-cols-1 gap-2 border rounded-md p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="export-vector"
+                    checked={exportOptions.includeVector}
+                    onCheckedChange={(checked) => 
+                      handleOptionChange('includeVector', checked)
+                    }
+                    disabled={!currentFormat.supportsVector}
+                  />
+                  <Label htmlFor="export-vector" className="font-medium cursor-pointer">
+                    Vector Content
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Shapes, lines, and vector drawings
+                    </p>
+                  </Label>
+                </div>
+                {!currentFormat.supportsVector && (
+                  <span className="text-xs text-gray-500">Not supported in {currentFormat.name}</span>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="export-raster"
+                    checked={exportOptions.includeRaster}
+                    onCheckedChange={(checked) => 
+                      handleOptionChange('includeRaster', checked)
+                    }
+                    disabled={!currentFormat.supportsRaster}
+                  />
+                  <Label htmlFor="export-raster" className="font-medium cursor-pointer">
+                    Raster Content
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Brush strokes, pixel art, and raster drawings
+                    </p>
+                  </Label>
+                </div>
+                {!currentFormat.supportsRaster && (
+                  <span className="text-xs text-gray-500">Not supported in {currentFormat.name}</span>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="export-text"
+                    checked={exportOptions.includeText}
+                    onCheckedChange={(checked) => 
+                      handleOptionChange('includeText', checked)
+                    }
+                    disabled={!currentFormat.supportsText}
+                  />
+                  <Label htmlFor="export-text" className="font-medium cursor-pointer">
+                    Text Content
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Text layers and typography
+                    </p>
+                  </Label>
+                </div>
+                {!currentFormat.supportsText && (
+                  <span className="text-xs text-gray-500">Not supported in {currentFormat.name}</span>
+                )}
+              </div>
+            </div>
+          </div>
+          
           <div>
             <Label className="mb-2 block">Export Format</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -351,43 +513,27 @@ export default function ExportPanel() {
             <div className="space-y-3 border rounded-md p-3">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  id="include-vector"
-                  checked={exportOptions.includeVector}
+                  id="include-background"
+                  checked={exportOptions.includeBackground}
                   onCheckedChange={(checked) => 
-                    handleOptionChange('includeVector', checked)
+                    handleOptionChange('includeBackground', checked)
                   }
-                  disabled={!currentFormat.supportsVector}
                 />
-                <Label htmlFor="include-vector" className="text-sm cursor-pointer">
-                  Include Vector Layers
+                <Label htmlFor="include-background" className="text-sm cursor-pointer">
+                  Include Background
                 </Label>
               </div>
               
               <div className="flex items-center gap-2">
                 <Checkbox
-                  id="include-raster"
-                  checked={exportOptions.includeRaster}
+                  id="optimize-size"
+                  checked={exportOptions.optimizeSize}
                   onCheckedChange={(checked) => 
-                    handleOptionChange('includeRaster', checked)
+                    handleOptionChange('optimizeSize', checked)
                   }
-                  disabled={!currentFormat.supportsRaster}
                 />
-                <Label htmlFor="include-raster" className="text-sm cursor-pointer">
-                  Include Raster Layers
-                </Label>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="include-text"
-                  checked={exportOptions.includeText}
-                  onCheckedChange={(checked) => 
-                    handleOptionChange('includeText', checked)
-                  }
-                  disabled={!currentFormat.supportsText}
-                />
-                <Label htmlFor="include-text" className="text-sm cursor-pointer">
-                  Include Text Layers
+                <Label htmlFor="optimize-size" className="text-sm cursor-pointer">
+                  Optimize File Size
                 </Label>
               </div>
               
@@ -408,32 +554,6 @@ export default function ExportPanel() {
                       }
                       disabled={selectedFormat === 'svg' || selectedFormat === 'css'}
                     />
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="include-background"
-                      checked={exportOptions.includeBackground}
-                      onCheckedChange={(checked) => 
-                        handleOptionChange('includeBackground', checked)
-                      }
-                    />
-                    <Label htmlFor="include-background" className="text-sm cursor-pointer">
-                      Include Background
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="optimize-size"
-                      checked={exportOptions.optimizeSize}
-                      onCheckedChange={(checked) => 
-                        handleOptionChange('optimizeSize', checked)
-                      }
-                    />
-                    <Label htmlFor="optimize-size" className="text-sm cursor-pointer">
-                      Optimize File Size
-                    </Label>
                   </div>
                 </>
               )}

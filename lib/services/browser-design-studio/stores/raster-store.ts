@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import * as React from 'react'
 
 export interface RasterLayer {
   id: string
@@ -13,6 +14,7 @@ interface RasterState {
   layers: RasterLayer[]
   activeLayerIndex: number | null
   history: ImageData[]
+  canvasRef: React.RefObject<HTMLCanvasElement> | null
   addLayer: (layer: RasterLayer) => void
   updateLayer: (index: number, layer: Partial<RasterLayer>) => void
   deleteLayer: (index: number) => void
@@ -24,12 +26,14 @@ interface RasterState {
   loadImageData: (imageData: ImageData, options?: { layerName?: string }) => void
   saveState: () => { layers: RasterLayer[] }
   restoreState: (state: { layers: RasterLayer[] }) => void
+  setCanvasRef: (ref: React.RefObject<HTMLCanvasElement> | null) => void
 }
 
 export const useRasterStore = create<RasterState>((set, get) => ({
   layers: [],
   activeLayerIndex: null,
   history: [],
+  canvasRef: null,
 
   addLayer: (layer) => set((state) => {
     const newLayers = [...state.layers, layer]
@@ -147,5 +151,7 @@ export const useRasterStore = create<RasterState>((set, get) => ({
   restoreState: (state) => set({ 
     layers: state.layers || [],
     activeLayerIndex: state.layers?.length > 0 ? 0 : null
-  })
+  }),
+
+  setCanvasRef: (ref: React.RefObject<HTMLCanvasElement> | null) => set({ canvasRef: ref })
 }))

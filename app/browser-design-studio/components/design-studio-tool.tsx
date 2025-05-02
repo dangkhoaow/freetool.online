@@ -45,6 +45,7 @@ import { Progress } from "@/components/ui/progress"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Switch } from "@/components/ui/switch"
 import { DesignStudioProvider, useDesignStudio } from "@/lib/services/browser-design-studio/store-provider"
+import { useRasterStore } from "@/lib/services/browser-design-studio/stores/raster-store"
 
 // Import design studio services
 import { VectorEngine } from "@/lib/services/browser-design-studio/vector-engine"
@@ -480,168 +481,6 @@ function DesignStudioToolContent() {
       </div>
       
       <div className="flex">
-        {/* Tools panel */}
-        <div className="w-48 border-r border-gray-200 dark:border-gray-800 p-2">
-          <Tabs defaultValue="draw" value={activeToolTab} onValueChange={setActiveToolTab}>
-            <TabsList className="w-full">
-              <TabsTrigger value="draw">Draw</TabsTrigger>
-              <TabsTrigger value="edit">Edit</TabsTrigger>
-              <TabsTrigger value="layers">Layers</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="draw" className="space-y-4 pt-4">
-              <div className="grid grid-cols-3 gap-1">
-                <Button 
-                  variant={vectorTool === "select" ? "default" : "outline"} 
-                  size="sm" 
-                  className="flex flex-col py-1 px-1 h-auto text-xs"
-                  onClick={() => {
-                    setVectorTool("select");
-                    // Update current tool in vector canvas
-                    if (typeof window !== "undefined") {
-                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "select" } });
-                      window.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  <MousePointer className="h-4 w-4" />
-                  <span className="text-[10px]">Select</span>
-                </Button>
-                <Button 
-                  variant={vectorTool === "pen" ? "default" : "outline"} 
-                  size="sm" 
-                  className="flex flex-col py-1 px-1 h-auto text-xs"
-                  onClick={() => {
-                    setVectorTool("pen");
-                    // Update current tool in vector canvas
-                    if (typeof window !== "undefined") {
-                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "pen" } });
-                      window.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  <Pen className="h-4 w-4" />
-                  <span className="text-[10px]">Pen</span>
-                </Button>
-                <Button 
-                  variant={vectorTool === "rectangle" ? "default" : "outline"} 
-                  size="sm" 
-                  className="flex flex-col py-1 px-1 h-auto text-xs"
-                  onClick={() => {
-                    setVectorTool("rectangle");
-                    // Update current tool in vector canvas
-                    if (typeof window !== "undefined") {
-                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "rectangle" } });
-                      window.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  <Square className="h-4 w-4" />
-                  <span className="text-[10px]">Rect</span>
-                </Button>
-                <Button 
-                  variant={vectorTool === "circle" ? "default" : "outline"} 
-                  size="sm" 
-                  className="flex flex-col py-1 px-1 h-auto text-xs"
-                  onClick={() => {
-                    setVectorTool("circle");
-                    // Update current tool in vector canvas
-                    if (typeof window !== "undefined") {
-                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "circle" } });
-                      window.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  <Circle className="h-4 w-4" />
-                  <span className="text-[10px]">Ellipse</span>
-                </Button>
-                <Button 
-                  variant={vectorTool === "path" ? "default" : "outline"} 
-                  size="sm" 
-                  className="flex flex-col py-1 px-1 h-auto text-xs"
-                  onClick={() => {
-                    setVectorTool("path");
-                    // Update current tool in vector canvas
-                    if (typeof window !== "undefined") {
-                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "path" } });
-                      window.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  <PenTool className="h-4 w-4" />
-                  <span className="text-[10px]">Path</span>
-                </Button>
-              </div>
-              
-              <div className="pt-2">
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <Label className="text-xs">Color</Label>
-                  <Label className="text-xs">Width</Label>
-                </div>
-                <div className="flex items-center justify-between gap-1">
-                  <input
-                    type="color"
-                    value={vectorStrokeColor}
-                    onChange={(e) => setVectorStrokeColor(e.target.value)}
-                    className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
-                  />
-                  <Select onValueChange={(value) => setVectorStrokeWidth(parseInt(value))}>
-                    <SelectTrigger className="h-7">
-                      <SelectValue placeholder={`${vectorStrokeWidth}px`} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1px</SelectItem>
-                      <SelectItem value="2">2px</SelectItem>
-                      <SelectItem value="4">4px</SelectItem>
-                      <SelectItem value="8">8px</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="edit" className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="flex flex-col py-1 px-1 h-auto text-xs">
-                  <Move className="h-4 w-4" />
-                  <span className="text-[10px]">Move</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-1 px-1 h-auto text-xs">
-                  <ArrowUpToLine className="h-4 w-4" />
-                  <span className="text-[10px]">Forward</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-1 px-1 h-auto text-xs">
-                  <ArrowDownToLine className="h-4 w-4" />
-                  <span className="text-[10px]">Backward</span>
-                </Button>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="layers" className="pt-4">
-              <div className="space-y-2">
-                <div className="border rounded p-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Square className="h-4 w-4" />
-                    <span className="text-sm">Layer 1</span>
-                  </div>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <ArrowUpToLine className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="border rounded p-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Circle className="h-4 w-4" />
-                    <span className="text-sm">Layer 2</span>
-                  </div>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <ArrowUpToLine className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-        
         {/* Main canvas area */}
         <div className="flex-1 relative">
           <Tabs defaultValue="vector" value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -657,14 +496,123 @@ function DesignStudioToolContent() {
               </TabsList>
             </div>
             
-            <TabsContent value="vector" className="p-4">
+            <TabsContent value="vector" className="p-4 pt-0">
+              {/* Vector Toolbar */}
+              <div className="mb-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant={vectorTool === "select" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => {
+                      setVectorTool("select");
+                      if (typeof window !== "undefined") {
+                        const event = new CustomEvent("vector-tool-change", { detail: { tool: "select" } });
+                        window.dispatchEvent(event);
+                      }
+                    }}
+                  >
+                    <MousePointer className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={vectorTool === "pen" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => {
+                      setVectorTool("pen");
+                      if (typeof window !== "undefined") {
+                        const event = new CustomEvent("vector-tool-change", { detail: { tool: "pen" } });
+                        window.dispatchEvent(event);
+                      }
+                    }}
+                  >
+                    <Pen className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={vectorTool === "rectangle" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => {
+                      setVectorTool("rectangle");
+                      if (typeof window !== "undefined") {
+                        const event = new CustomEvent("vector-tool-change", { detail: { tool: "rectangle" } });
+                        window.dispatchEvent(event);
+                      }
+                    }}
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={vectorTool === "circle" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => {
+                      setVectorTool("circle");
+                      if (typeof window !== "undefined") {
+                        const event = new CustomEvent("vector-tool-change", { detail: { tool: "circle" } });
+                        window.dispatchEvent(event);
+                      }
+                    }}
+                  >
+                    <Circle className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={vectorTool === "path" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => {
+                      setVectorTool("path");
+                      if (typeof window !== "undefined") {
+                        const event = new CustomEvent("vector-tool-change", { detail: { tool: "path" } });
+                        window.dispatchEvent(event);
+                      }
+                    }}
+                  >
+                    <PenTool className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs whitespace-nowrap">Stroke:</span>
+                    <input
+                      type="color"
+                      value={vectorStrokeColor}
+                      onChange={(e) => setVectorStrokeColor(e.target.value)}
+                      className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs whitespace-nowrap">Width:</span>
+                    <Select onValueChange={(value) => setVectorStrokeWidth(parseInt(value))} value={vectorStrokeWidth.toString()}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder={`${vectorStrokeWidth}px`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1px</SelectItem>
+                        <SelectItem value="2">2px</SelectItem>
+                        <SelectItem value="4">4px</SelectItem>
+                        <SelectItem value="8">8px</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      <Move className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpToLine className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <ArrowDownToLine className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
               <div className="bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden" ref={vectorCanvasRef}>
                 <VectorCanvas />
               </div>
             </TabsContent>
             
-            <TabsContent value="raster" className="p-4">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden" ref={rasterCanvasRef}>
+            <TabsContent value="raster" className="p-4 pt-0">
+              <div className="bg-white dark:bg-gray-900 rounded-md overflow-hidden h-[600px] flex flex-col" ref={rasterCanvasRef}>
                 <RasterCanvas />
               </div>
             </TabsContent>
@@ -677,7 +625,7 @@ function DesignStudioToolContent() {
               <AIToolsPanel />
             </TabsContent>
             
-            <TabsContent value="export" className="p-4">
+            <TabsContent value="export" className="p-4 pt-0">
               <ExportPanel />
             </TabsContent>
             
@@ -741,6 +689,37 @@ function DesignStudioToolContent() {
 
 // Wrap the component with the provider
 export default function DesignStudioTool() {
+  // Get raster store
+  const { setCanvasRef } = useRasterStore()
+  
+  // Set up a persistent canvas that will be used for exporting
+  useEffect(() => {
+    // Create a persistent canvas element for raster content
+    const persistentCanvas = document.createElement('canvas');
+    persistentCanvas.width = 1200;
+    persistentCanvas.height = 800;
+    persistentCanvas.id = 'persistent-raster-canvas';
+    persistentCanvas.style.display = 'none';
+    document.body.appendChild(persistentCanvas);
+    
+    // Create a ref object for the persistent canvas
+    const persistentRef = {
+      current: persistentCanvas
+    };
+    
+    // Register the persistent canvas with the store
+    console.log("Registering persistent raster canvas with the store");
+    setCanvasRef(persistentRef as React.RefObject<HTMLCanvasElement>);
+    
+    return () => {
+      console.log("Cleaning up persistent raster canvas");
+      setCanvasRef(null);
+      if (persistentCanvas && document.body.contains(persistentCanvas)) {
+        document.body.removeChild(persistentCanvas);
+      }
+    };
+  }, [setCanvasRef]);
+
   return (
     <DesignStudioProvider>
       <DesignStudioToolContent />
