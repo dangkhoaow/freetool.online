@@ -34,7 +34,8 @@ import {
   RotateCcw, 
   FolderOpen, 
   Trash2, 
-  Plus
+  Plus,
+  PenTool
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { StorageService } from "@/lib/storage"
@@ -94,6 +95,9 @@ function DesignStudioToolContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [activeTab, setActiveTab] = useState("vector")
   const [activeToolTab, setActiveToolTab] = useState("draw")
+  const [vectorTool, setVectorToolState] = useState("pen")
+  const [vectorStrokeColor, setVectorStrokeColorState] = useState("#000000")
+  const [vectorStrokeWidth, setVectorStrokeWidthState] = useState(2)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [loadingState, setLoadingState] = useState("")
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -113,7 +117,8 @@ function DesignStudioToolContent() {
   // Canvas refs
   const vectorCanvasRef = useRef<HTMLDivElement | null>(null)
   const rasterCanvasRef = useRef<HTMLDivElement | null>(null)
-  
+  const vectorComponentRef = useRef<any>(null);
+
   const { toast } = useToast()
 
   // Initialize services
@@ -139,6 +144,53 @@ function DesignStudioToolContent() {
       clearInterval(autoSaveInterval)
     }
   }, [])
+
+  useEffect(() => {
+    // Find and store reference to VectorCanvas component
+    const canvas = document.querySelector('[data-component-name="VectorCanvas"]');
+    if (canvas) {
+      vectorComponentRef.current = (canvas as any).__reactFiber$?.return?.stateNode;
+    }
+  }, []);
+
+  const setVectorTool = (tool: string) => {
+    setVectorToolState(tool);
+    if (vectorComponentRef.current?.setCurrentTool) {
+      vectorComponentRef.current.setCurrentTool(tool);
+    } else {
+      // Fallback to custom event
+      if (typeof window !== "undefined") {
+        const event = new CustomEvent("vector-tool-change", { detail: { tool } });
+        window.dispatchEvent(event);
+      }
+    }
+  };
+
+  const setVectorStrokeColor = (color: string) => {
+    setVectorStrokeColorState(color);
+    if (vectorComponentRef.current?.setStrokeColor) {
+      vectorComponentRef.current.setStrokeColor(color);
+    } else {
+      // Fallback to custom event
+      if (typeof window !== "undefined") {
+        const event = new CustomEvent("vector-stroke-color-change", { detail: { color } });
+        window.dispatchEvent(event);
+      }
+    }
+  };
+
+  const setVectorStrokeWidth = (width: number) => {
+    setVectorStrokeWidthState(width);
+    if (vectorComponentRef.current?.setStrokeWidth) {
+      vectorComponentRef.current.setStrokeWidth(width);
+    } else {
+      // Fallback to custom event
+      if (typeof window !== "undefined") {
+        const event = new CustomEvent("vector-stroke-width-change", { detail: { width } });
+        window.dispatchEvent(event);
+      }
+    }
+  };
 
   // Load recent documents
   const loadRecentDocuments = () => {
@@ -286,7 +338,7 @@ function DesignStudioToolContent() {
     return (
       <Card className="bg-white dark:bg-gray-900 shadow-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Browser Design Studio</CardTitle>
+          <CardTitle className="text-center text-2xl font-bold">Browser Design Studio</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 space-y-6">
@@ -429,7 +481,7 @@ function DesignStudioToolContent() {
       
       <div className="flex">
         {/* Tools panel */}
-        <div className="w-64 border-r border-gray-200 dark:border-gray-800 p-4">
+        <div className="w-48 border-r border-gray-200 dark:border-gray-800 p-2">
           <Tabs defaultValue="draw" value={activeToolTab} onValueChange={setActiveToolTab}>
             <TabsList className="w-full">
               <TabsTrigger value="draw">Draw</TabsTrigger>
@@ -438,81 +490,129 @@ function DesignStudioToolContent() {
             </TabsList>
             
             <TabsContent value="draw" className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <MousePointer className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Select</span>
+              <div className="grid grid-cols-3 gap-1">
+                <Button 
+                  variant={vectorTool === "select" ? "default" : "outline"} 
+                  size="sm" 
+                  className="flex flex-col py-1 px-1 h-auto text-xs"
+                  onClick={() => {
+                    setVectorTool("select");
+                    // Update current tool in vector canvas
+                    if (typeof window !== "undefined") {
+                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "select" } });
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                >
+                  <MousePointer className="h-4 w-4" />
+                  <span className="text-[10px]">Select</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <Pen className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Pen</span>
+                <Button 
+                  variant={vectorTool === "pen" ? "default" : "outline"} 
+                  size="sm" 
+                  className="flex flex-col py-1 px-1 h-auto text-xs"
+                  onClick={() => {
+                    setVectorTool("pen");
+                    // Update current tool in vector canvas
+                    if (typeof window !== "undefined") {
+                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "pen" } });
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                >
+                  <Pen className="h-4 w-4" />
+                  <span className="text-[10px]">Pen</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <Square className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Rectangle</span>
+                <Button 
+                  variant={vectorTool === "rectangle" ? "default" : "outline"} 
+                  size="sm" 
+                  className="flex flex-col py-1 px-1 h-auto text-xs"
+                  onClick={() => {
+                    setVectorTool("rectangle");
+                    // Update current tool in vector canvas
+                    if (typeof window !== "undefined") {
+                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "rectangle" } });
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                >
+                  <Square className="h-4 w-4" />
+                  <span className="text-[10px]">Rect</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <Circle className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Ellipse</span>
+                <Button 
+                  variant={vectorTool === "circle" ? "default" : "outline"} 
+                  size="sm" 
+                  className="flex flex-col py-1 px-1 h-auto text-xs"
+                  onClick={() => {
+                    setVectorTool("circle");
+                    // Update current tool in vector canvas
+                    if (typeof window !== "undefined") {
+                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "circle" } });
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                >
+                  <Circle className="h-4 w-4" />
+                  <span className="text-[10px]">Ellipse</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <Type className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Text</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <Crop className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Crop</span>
+                <Button 
+                  variant={vectorTool === "path" ? "default" : "outline"} 
+                  size="sm" 
+                  className="flex flex-col py-1 px-1 h-auto text-xs"
+                  onClick={() => {
+                    setVectorTool("path");
+                    // Update current tool in vector canvas
+                    if (typeof window !== "undefined") {
+                      const event = new CustomEvent("vector-tool-change", { detail: { tool: "path" } });
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                >
+                  <PenTool className="h-4 w-4" />
+                  <span className="text-[10px]">Path</span>
                 </Button>
               </div>
               
-              <div className="pt-4">
-                <Label className="text-sm mb-2 block">Color</Label>
-                <div className="flex gap-2 mb-4">
-                  <Button variant="outline" size="sm" className="w-8 h-8 p-0">
-                    <div className="w-6 h-6 rounded-full bg-black"></div>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-8 h-8 p-0">
-                    <div className="w-6 h-6 rounded-full bg-red-500"></div>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-8 h-8 p-0">
-                    <div className="w-6 h-6 rounded-full bg-blue-500"></div>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-8 h-8 p-0">
-                    <div className="w-6 h-6 rounded-full bg-green-500"></div>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-8 h-8 p-0">
-                    <Palette className="h-4 w-4" />
-                  </Button>
+              <div className="pt-2">
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <Label className="text-xs">Color</Label>
+                  <Label className="text-xs">Width</Label>
                 </div>
-                
-                <Label className="text-sm mb-2 block">Thickness</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="2px" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1px</SelectItem>
-                    <SelectItem value="2">2px</SelectItem>
-                    <SelectItem value="4">4px</SelectItem>
-                    <SelectItem value="8">8px</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-1">
+                  <input
+                    type="color"
+                    value={vectorStrokeColor}
+                    onChange={(e) => setVectorStrokeColor(e.target.value)}
+                    className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
+                  />
+                  <Select onValueChange={(value) => setVectorStrokeWidth(parseInt(value))}>
+                    <SelectTrigger className="h-7">
+                      <SelectValue placeholder={`${vectorStrokeWidth}px`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1px</SelectItem>
+                      <SelectItem value="2">2px</SelectItem>
+                      <SelectItem value="4">4px</SelectItem>
+                      <SelectItem value="8">8px</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </TabsContent>
             
             <TabsContent value="edit" className="space-y-4 pt-4">
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <Move className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Move</span>
+                <Button variant="outline" size="sm" className="flex flex-col py-1 px-1 h-auto text-xs">
+                  <Move className="h-4 w-4" />
+                  <span className="text-[10px]">Move</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <ArrowUpToLine className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Forward</span>
+                <Button variant="outline" size="sm" className="flex flex-col py-1 px-1 h-auto text-xs">
+                  <ArrowUpToLine className="h-4 w-4" />
+                  <span className="text-[10px]">Forward</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex flex-col py-3 h-auto">
-                  <ArrowDownToLine className="h-5 w-5 mb-1" />
-                  <span className="text-xs">Backward</span>
+                <Button variant="outline" size="sm" className="flex flex-col py-1 px-1 h-auto text-xs">
+                  <ArrowDownToLine className="h-4 w-4" />
+                  <span className="text-[10px]">Backward</span>
                 </Button>
               </div>
             </TabsContent>
@@ -550,9 +650,9 @@ function DesignStudioToolContent() {
                 <TabsTrigger value="vector" onClick={() => setActiveTab("vector")}>Vector</TabsTrigger>
                 <TabsTrigger value="raster" onClick={() => setActiveTab("raster")}>Raster</TabsTrigger>
                 <TabsTrigger value="text" onClick={() => setActiveTab("text")}>Text</TabsTrigger>
-                <TabsTrigger value="ai" onClick={() => setActiveTab("ai")}>AI Tools</TabsTrigger>
+                <TabsTrigger style={{ display: "none" }} value="ai" onClick={() => setActiveTab("ai")}>AI Tools</TabsTrigger>
                 <TabsTrigger value="export" onClick={() => setActiveTab("export")}>Export</TabsTrigger>
-                <TabsTrigger value="collaborate" onClick={() => setActiveTab("collaborate")}>Collaborate</TabsTrigger>
+                <TabsTrigger style={{ display: "none" }}value="collaborate" onClick={() => setActiveTab("collaborate")}>Collaborate</TabsTrigger>
                 <TabsTrigger value="history" onClick={() => setActiveTab("history")}>History</TabsTrigger>
               </TabsList>
             </div>

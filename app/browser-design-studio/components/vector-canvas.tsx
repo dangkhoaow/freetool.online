@@ -39,6 +39,44 @@ export default function VectorCanvas() {
     setSelectedPathId
   } = useVectorStore()
 
+  // Make component methods available externally
+  useEffect(() => {
+    // Add data attribute for component reference finding
+    const canvas = canvasRef.current?.parentElement;
+    if (canvas) {
+      canvas.setAttribute('data-component-name', 'VectorCanvas');
+    }
+
+    // Listen for tool change events from sidebar
+    const handleToolChange = (event: CustomEvent) => {
+      if (event.detail && event.detail.tool) {
+        setCurrentTool(event.detail.tool);
+      }
+    };
+
+    const handleStrokeColorChange = (event: CustomEvent) => {
+      if (event.detail && event.detail.color) {
+        setStrokeColor(event.detail.color);
+      }
+    };
+
+    const handleStrokeWidthChange = (event: CustomEvent) => {
+      if (event.detail && event.detail.width) {
+        setStrokeWidth(event.detail.width);
+      }
+    };
+
+    window.addEventListener('vector-tool-change', handleToolChange as EventListener);
+    window.addEventListener('vector-stroke-color-change', handleStrokeColorChange as EventListener);
+    window.addEventListener('vector-stroke-width-change', handleStrokeWidthChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('vector-tool-change', handleToolChange as EventListener);
+      window.removeEventListener('vector-stroke-color-change', handleStrokeColorChange as EventListener);
+      window.removeEventListener('vector-stroke-width-change', handleStrokeWidthChange as EventListener);
+    };
+  }, []);
+
   // Initialize canvas and rendering context
   useEffect(() => {
     const canvas = canvasRef.current
@@ -104,8 +142,11 @@ export default function VectorCanvas() {
     
     if (path.closed) {
       ctx.closePath()
-      ctx.fillStyle = path.fill
-      ctx.fill()
+      // Use a semi-transparent fill for better visibility
+      if (path.type === "rect" || path.type === "circle") {
+        ctx.fillStyle = path.fill !== "transparent" ? path.fill : "rgba(255, 255, 255, 0.1)"
+        ctx.fill()
+      }
     }
     
     ctx.stroke()
@@ -155,10 +196,68 @@ export default function VectorCanvas() {
     setCurrentPath([{ x, y }])
   }
 
+  // Special handling for shape tools
+  const startPoint = useRef<Point | null>(null);
+  const handleShapeTool = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !startPoint.current) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    console.log("Drawing from:", { x: startPoint.current.x, y: startPoint.current.y }, "to:", { x, y });
+
+    if (currentTool === "rectangle") {
+      // Rectangle drawing logic
+      const minX = Math.min(startPoint.current.x, x);
+      const maxX = Math.max(startPoint.current.x, x);
+      const minY = Math.min(startPoint.current.y, y);
+      const maxY = Math.max(startPoint.current.y, y);
+
+      const points = [
+        { x: minX, y: minY },
+        { x: maxX, y: minY },
+        { x: maxX, y: maxY },
+        { x: minX, y: maxY },
+        { x: minX, y: minY },
+      ];
+      setCurrentPath(points);
+    } else if (currentTool === "circle") {
+      // Circle drawing logic
+      const radius = Math.sqrt(
+        Math.pow(x - startPoint.current.x, 2) + Math.pow(y - startPoint.current.y, 2)
+      );
+
+      const points = [];
+      const steps = 64;
+      for (let i = 0; i < steps; i++) {
+        const angle = (i / steps) * Math.PI * 2;
+        points.push({
+          x: startPoint.current.x + Math.cos(angle) * radius,
+          y: startPoint.current.y + Math.sin(angle) * radius,
+        });
+      }
+      if (points.length > 0) {
+        points.push({ ...points[0] });
+      }
+      setCurrentPath(points);
+    }
+  }
+
   // Handle mouse move event to continue drawing
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return
     
+    // For rectangle and circle tools, use the specialized handler
+    if (currentTool === "rectangle" || currentTool === "circle") {
+      handleShapeTool(e)
+      return
+    }
+    
+    // For other tools (pen, path, etc.)
     const canvas = canvasRef.current
     if (!canvas) return
     
@@ -177,6 +276,12 @@ export default function VectorCanvas() {
     
     // Only add the path if it has at least 2 points
     if (currentPath.length >= 2) {
+      let actualFill = fillColor;
+      // For MS Paint-like behavior, use a light fill for shapes by default if none is set
+      if ((currentTool === "rectangle" || currentTool === "circle") && fillColor === "transparent") {
+        actualFill = "rgba(255, 255, 255, 0.1)";
+      }
+      
       const newPath: PathData = {
         id: `path-${Date.now()}`,
         type: currentTool === "rectangle" ? "rect" : 
@@ -184,7 +289,7 @@ export default function VectorCanvas() {
         points: currentPath,
         strokeColor,
         strokeWidth,
-        fill: fillColor,
+        fill: actualFill,
         closed: currentTool === "rectangle" || currentTool === "circle"
       }
       
@@ -192,138 +297,34 @@ export default function VectorCanvas() {
     }
     
     setCurrentPath([])
-  }
-
-  // Special handling for shape tools
-  const handleShapeTool = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (currentTool !== "rectangle" && currentTool !== "circle") return
-    
-    if (!isDrawing) {
-      // Start drawing the shape
-      handleMouseDown(e)
-    } else {
-      // We're already drawing, update the shape
-      const canvas = canvasRef.current
-      if (!canvas) return
-      
-      const rect = canvas.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
-      
-      // For rectangle and circle, we only need start and current points
-      if (currentPath.length >= 1) {
-        const startPoint = currentPath[0]
-        
-        if (currentTool === "rectangle") {
-          setCurrentPath([
-            startPoint,
-            { x: x, y: startPoint.y },
-            { x, y },
-            { x: startPoint.x, y },
-            startPoint // Close the path
-          ])
-        } else if (currentTool === "circle") {
-          // Calculate radius and center for circle
-          const radiusX = Math.abs(x - startPoint.x) / 2
-          const radiusY = Math.abs(y - startPoint.y) / 2
-          const centerX = Math.min(startPoint.x, x) + radiusX
-          const centerY = Math.min(startPoint.y, y) + radiusY
-          
-          // Generate points for an ellipse approximation
-          const numPoints = 40
-          const points: Point[] = []
-          
-          for (let i = 0; i < numPoints; i++) {
-            const angle = (i / numPoints) * 2 * Math.PI
-            const pointX = centerX + radiusX * Math.cos(angle)
-            const pointY = centerY + radiusY * Math.sin(angle)
-            points.push({ x: pointX, y: pointY })
-          }
-          
-          // Close the path
-          points.push(points[0])
-          
-          setCurrentPath(points)
-        }
-      }
-    }
+    startPoint.current = null;
   }
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={currentTool === "select" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentTool("select")}
-          >
-            <MousePointer className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={currentTool === "pen" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentTool("pen")}
-          >
-            <Pen className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={currentTool === "rectangle" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentTool("rectangle")}
-          >
-            <Square className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={currentTool === "circle" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentTool("circle")}
-          >
-            <Circle className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={currentTool === "path" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentTool("path")}
-          >
-            <PenTool className="h-4 w-4" />
-          </Button>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <input
-            type="color"
-            value={strokeColor}
-            onChange={(e) => setStrokeColor(e.target.value)}
-            className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600"
-          />
-          <select
-            value={strokeWidth}
-            onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
-            className="rounded border border-gray-300 dark:border-gray-600 bg-transparent px-2 py-1 text-sm"
-          >
-            <option value="1">1px</option>
-            <option value="2">2px</option>
-            <option value="4">4px</option>
-            <option value="8">8px</option>
-          </select>
-        </div>
-      </div>
-      
-      <div className="flex-1 relative bg-gray-50 dark:bg-gray-900 overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full border border-gray-200 dark:border-gray-700"
-          onMouseDown={currentTool === "select" ? undefined : handleMouseDown}
-          onMouseMove={
-            currentTool === "rectangle" || currentTool === "circle"
-              ? handleShapeTool
-              : handleMouseMove
+      {/* Toolbar removed entirely to maximize drawing space */}
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full bg-white dark:bg-gray-900"
+        onMouseDown={(e) => {
+          if (currentTool === "select") return;
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          setIsDrawing(true);
+          setCurrentPath([{ x, y }]);
+          startPoint.current = { x, y };
+        }}
+        onMouseMove={(e) => {
+          if (isDrawing) {
+            handleMouseMove(e);
           }
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        />
-      </div>
+        }}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      />
     </div>
   )
 }

@@ -32,8 +32,8 @@ export default function BrowserDesignStudioPage() {
       />
 
       {/* Main Design Studio Tool */}
-      <section id="design-studio" className="py-12 px-4 md:py-16">
-        <div className="container mx-auto max-w-7xl">
+      <section id="design-studio">
+        <div>
           <Suspense fallback={<div>Loading...</div>}>
             <DesignStudioTool />
           </Suspense>
