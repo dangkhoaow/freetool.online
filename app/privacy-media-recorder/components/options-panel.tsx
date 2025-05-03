@@ -126,7 +126,7 @@ export default function OptionsPanel({
       <div>
         <h3 className="text-lg font-medium mb-3">Recording Options</h3>
         <Tabs defaultValue="capture">
-          <TabsList className="grid grid-cols-2 mb-4">
+          <TabsList style={{ display: "none" }} className="grid grid-cols-2 mb-4">
             <TabsTrigger
               value="capture"
               className="data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900"
@@ -329,7 +329,7 @@ export default function OptionsPanel({
             </div>
           </TabsContent>
 
-          <TabsContent value="privacy" className="space-y-4">
+          <TabsContent style={{ display: "none" }} value="privacy" className="space-y-4">
             <div className="flex items-center justify-between">
               <Label
                 htmlFor="face-blur"
