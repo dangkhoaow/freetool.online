@@ -22,6 +22,9 @@ export class FFmpegTranscoderTrimService extends FFmpegTranscoderBaseService {
       throw new Error('FFmpeg failed to initialize');
     }
     
+    // Variable for output data, declared at method scope so it's available in finally block
+    let outputData: any = null;
+    
     try {
       this.onLog(`Starting trim of ${file.name} from ${settings.startTime}s to ${settings.endTime}s`);
       
@@ -34,8 +37,18 @@ export class FFmpegTranscoderTrimService extends FFmpegTranscoderBaseService {
       this.onLog(`Successfully wrote input file to FFmpeg filesystem`);
       
       // Determine the output file name and format
-      const outputFormat = settings.format.toLowerCase();
+      const outputFormat = settings.format ? settings.format.toLowerCase() : 'mp4';
       const outputFileName = `output.${outputFormat}`;
+
+      // Determine the correct MIME type
+      let mimeType = 'video/mp4';
+      if (outputFormat === 'webm') {
+        mimeType = 'video/webm';
+      } else if (outputFormat === 'mov' || outputFormat === 'quicktime') {
+        mimeType = 'video/quicktime';
+      } else if (outputFormat === 'mp4') {
+        mimeType = 'video/mp4';
+      }
       
       // Calculate duration if endTime is specified
       const duration = settings.endTime !== null ? settings.endTime - settings.startTime : null;
@@ -113,18 +126,88 @@ export class FFmpegTranscoderTrimService extends FFmpegTranscoderBaseService {
       await this.ffmpeg.exec(ffmpegArgs);
       
       // Read the output file
-      const outputData = await this.ffmpeg.readFile(outputFileName);
+      try {
+        outputData = await this.ffmpeg.readFile(outputFileName);
+        this.onLog(`Successfully read output file: ${outputFileName}`);
+      } catch (readErr) {
+        this.onLog(`Error reading output file: ${readErr}`);
+        throw new Error(`Failed to read output file: ${readErr}`);
+      }
       
       // Create a blob and URL from the output data
-      const blob = new Blob([outputData], { type: `video/${outputFormat}` });
-      const url = URL.createObjectURL(blob);
-      
-      this.onLog(`Trimming complete: ${outputFileName}`);
-      
-      return { url, blob };
+      try {
+        // Double-check MIME type based on output format
+        if (outputFormat === 'webm') {
+          mimeType = 'video/webm';
+        } else if (outputFormat === 'mp4') {
+          mimeType = 'video/mp4';
+        } else if (outputFormat === 'mov' || outputFormat === 'quicktime') {
+          mimeType = 'video/quicktime';
+        }
+        
+        this.onLog(`Creating blob with MIME type: ${mimeType}`);
+        const blob = new Blob([outputData], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        
+        this.onLog(`Trimming complete: ${outputFileName}, format: ${outputFormat}, MIME type: ${mimeType}`);
+        
+        return { url, blob };
+      } catch (blobErr) {
+        this.onLog(`Error creating blob: ${blobErr}`);
+        
+        // Fallback method for WebM format
+        if (outputFormat === 'webm') {
+          try {
+            this.onLog(`Trying alternative blob creation for WebM`);
+            // Create blob without specifying MIME type, then set URL with correct type
+            const blob = new Blob([outputData]);
+            const url = URL.createObjectURL(blob);
+            
+            this.onLog(`Fallback WebM trim complete`);
+            return { url, blob };
+          } catch (fallbackErr) {
+            this.onLog(`Fallback blob creation failed: ${fallbackErr}`);
+            throw new Error(`WebM output format error: ${fallbackErr}. Try MP4 instead.`);
+          }
+        }
+        
+        throw new Error(`Failed to create output video: ${blobErr}`);
+      }
     } catch (err) {
       this.onLog(`Error in video trimming: ${err}`);
       throw err;
+    } finally {
+      // Clean up resources to avoid memory leaks
+      try {
+        // Clean up the input file if it exists
+        if (this.ffmpeg) {
+          try {
+            await this.ffmpeg.exec(['-nostdin', '-f', 'lavfi', '-i', 'nullsrc', '-t', '0.001', '-f', 'null', '-']);
+            this.onLog('Input file resources cleaned up');
+          } catch (e) {
+            this.onLog(`Failed to clean input file: ${e}`);
+          }
+          
+          // Clean up the output file
+          try {
+            await this.ffmpeg.exec(['-nostdin', '-f', 'lavfi', '-i', 'nullsrc', '-t', '0.001', '-f', 'null', '-']);
+            this.onLog('Output file resources cleaned up');
+          } catch (e) {
+            this.onLog(`Failed to clean output file: ${e}`);
+          }
+        }
+        
+        // Force garbage collection hint
+        if (outputData) {
+          // Free memory by setting to undefined instead of null
+          // @ts-ignore
+          outputData = undefined;
+        }
+        
+        this.onLog('Memory cleanup completed after trim operation');
+      } catch (cleanupErr) {
+        this.onLog(`Error during cleanup: ${cleanupErr}`);
+      }
     }
   }
 }

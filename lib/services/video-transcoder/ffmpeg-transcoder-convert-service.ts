@@ -14,13 +14,36 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
    * @returns Promise with the URL and blob of the converted video
    */
   public async convertVideo(file: File, settings: VideoSettings): Promise<ProcessingResult> {
-    if (!this.ffmpeg || !this.ffmpegLoaded) {
+    try {
+      this.onLog(`DEBUG: Starting conversion with file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+      this.logMemoryUsage('START_CONVERSION');
+      
+      // Initialize FFmpeg if not already done
       await this.initialize();
+      this.logMemoryUsage('AFTER_INIT');
+    } catch (err) {
+      throw new Error(`FFmpeg failed to initialize: ${err}`);
     }
     
-    if (!this.ffmpeg) {
-      throw new Error('FFmpeg failed to initialize');
+    if (!this.ffmpeg || !this.ffmpegLoaded) {
+      throw new Error('FFmpeg initialization failed');
     }
+    
+    // Declare variables at method scope for cleanup in finally block
+    let outputData: any = null;
+    let inputFileName: string = '';
+    let outputFileName: string = '';
+    
+    // Log every step of the process to identify startsWith error
+    this.onLog(`DEBUG: Settings: ${JSON.stringify({
+      format: settings.format,
+      codec: settings.codec,
+      resolution: settings.resolution,
+      frameRate: settings.frameRate,
+      audioBitrate: settings.audioBitrate,
+      audioCodec: settings.audioCodec,
+      performanceMode: settings.performanceMode,
+    })}`);
     
     try {
       this.onLog(`Starting conversion of ${file.name}`);
@@ -98,31 +121,49 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
         this.onLog('Warning: VP9/AV1 codecs are memory-intensive and may fail in-browser. Use H.264 for best results.');
       }
       
-      // Write the input file to the FFmpeg virtual file system
-      const inputFileName = 'input.' + file.name.split('.').pop();
-      const fileData = await fetchFile(file);
-      const fileDataArray = await this.convertToUint8Array(fileData);
-      
-      await this.ffmpeg.writeFile(inputFileName, fileDataArray);
-      this.onLog(`Successfully wrote input file to FFmpeg filesystem`);
-      
-      // Map format/codec to extension and mime type
-      let outputExtension = 'mp4';
-      let mimeType = 'video/mp4';
-      if (settings.format === 'mov' || settings.format === 'quicktime') {
-        outputExtension = 'mov';
-        mimeType = 'video/quicktime';
-      } else if (settings.format === 'mp4') {
-        outputExtension = 'mp4';
-        mimeType = 'video/mp4';
-      } else if (settings.format === 'webm') {
-        outputExtension = 'webm';
-        mimeType = 'video/webm';
+      // Write input file to memory file system
+      try {
+        this.logMemoryUsage('BEFORE_WRITE_FILE');
+        inputFileName = 'input.' + file.name.split('.').pop();
+        const fileData = await fetchFile(file);
+        const fileDataArray = await this.convertToUint8Array(fileData);
+        
+        await this.ffmpeg.writeFile(inputFileName, fileDataArray);
+        this.onLog(`Successfully wrote input file to FFmpeg filesystem`);
+        this.logMemoryUsage('AFTER_WRITE_FILE');
+      } catch (writeErr) {
+        throw new Error(`Failed to write input file to FFmpeg filesystem: ${writeErr}`);
       }
-
-      // Output file name
-      const outputFileName = `output.${outputExtension}`;
-
+      
+      // Output format and file extension
+      const outputFormat = settings.format?.toLowerCase() || 'mp4';
+      const outputExtension = this.getExtensionForFormat(outputFormat);
+      // Setup MIME type for the output
+      let mimeType = 'video/mp4'; // Default
+      if (outputExtension === 'webm') {
+        mimeType = 'video/webm';
+      } else if (outputExtension === 'mov') {
+        mimeType = 'video/quicktime';
+      }
+      
+      this.onLog(`Output format: ${outputFormat}, extension: ${outputExtension}, MIME type: ${mimeType}`);
+      
+      // Set the output filename
+      outputFileName = `output.${outputExtension}`;
+      
+      // Use specialized WebM handler for WebM format to avoid startsWith errors
+      if (outputFormat === 'webm') {
+        try {
+          this.onLog('Detected WebM format, using specialized safe WebM handler');
+          // Pass input file name and the settings
+          return await this.handleWebMConversion(inputFileName, settings);
+        } catch (webmErr) {
+          this.onLog(`Specialized WebM handler failed: ${webmErr}`);
+          this.onLog('Falling back to standard conversion path');
+          // Continue with standard flow
+        }
+      }
+      
       // Ensure valid audio codec for WebM
       let audioCodec = settings.audioCodec;
       if (outputExtension === 'webm') {
@@ -241,11 +282,14 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
       ffmpegArgs.push(outputFileName);
       
       this.onLog(`Running FFmpeg command with args: ${ffmpegArgs.join(' ')}`);
+      this.logMemoryUsage('BEFORE_FFMPEG_EXEC');
       
-      // Execute the FFmpeg command
+      // Execute the FFmpeg command with enhanced error handling
       try {
         await this.ffmpeg.exec(ffmpegArgs);
+        this.logMemoryUsage('AFTER_FFMPEG_EXEC');
       } catch (ffmpegErr) {
+        this.logMemoryUsage('FFMPEG_EXEC_ERROR');
         // Enhanced error handling for WASM memory errors
         if (settings.format === 'webm' || settings.codec === 'libvpx-vp9') {
           const msg = String(ffmpegErr);
@@ -257,19 +301,309 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
         throw ffmpegErr;
       }
       
-      // Read the output file
-      const outputData = await this.ffmpeg.readFile(outputFileName);
-      
+      // Read the output file with explicit error handling for memory issues
+      try {
+        this.logMemoryUsage('BEFORE_READ_FILE');
+        this.onLog(`Attempting to read output file: ${outputFileName}`);
+        outputData = await this.ffmpeg.readFile(outputFileName);
+        this.onLog(`Successfully read output file: ${outputFileName}, data type: ${typeof outputData}, length: ${outputData?.length || 'unknown'}`);
+        this.logMemoryUsage('AFTER_READ_FILE');
+        
+        // Immediately verify we have valid data before proceeding
+        if (!outputData || !(outputData instanceof Uint8Array) || outputData.length === 0) {
+          throw new Error('Invalid or empty output data from FFmpeg');
+        }
+      } catch (readErr) {
+        this.logMemoryUsage('READ_FILE_ERROR');
+        this.onLog(`Error reading output file: ${readErr}`);
+        
+        // Special handling for memory errors
+        if (String(readErr).includes('memory access out of bounds')) {
+          this.onLog('CRITICAL: Memory access error detected. WebM/VP9 processing likely exceeded browser memory limits.');
+          throw new Error('Video processing failed due to browser memory constraints. Try using MP4 format instead of WebM, or reduce video resolution.');
+        }
+        
+        throw new Error(`Failed to read output file: ${readErr}`);
+      }
+
       // Create a blob and URL from the output data
-      const blob = new Blob([outputData], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      
-      this.onLog(`Conversion complete: ${outputFileName}`);
-      
-      return { url, blob };
+      try {
+        this.logMemoryUsage('BEFORE_BLOB_CREATION');
+        // Double-check that we have valid blob data before proceeding
+        if (!outputData) {
+          this.onLog('No output data - cannot create blob');
+          throw new Error('No output data available from FFmpeg');
+        }
+
+        // Set appropriate MIME type with extra safety checks
+        if (typeof outputExtension === 'string') {
+          if (outputExtension === 'webm') {
+            mimeType = 'video/webm';
+          } else if (outputExtension === 'mp4') {
+            mimeType = 'video/mp4';
+          } else if (outputExtension === 'mov') {
+            mimeType = 'video/quicktime';
+          }
+        } else {
+          // Fallback to a safe default if extension is somehow undefined
+          this.onLog('WARNING: outputExtension is not a string, using default MIME type');
+          mimeType = 'video/mp4';
+        }
+        
+        this.onLog(`Creating blob with MIME type: ${mimeType}`);
+        
+        // Safeguard blob creation for memory issues
+        let blob: Blob;
+        try {
+          blob = new Blob([outputData], { type: mimeType });
+          if (blob.size === 0) {
+            throw new Error('Created blob has zero size - invalid output data');
+          }
+        } catch (blobCreateErr) {
+          this.logMemoryUsage('BLOB_CREATION_ERROR');
+          this.onLog(`Error creating blob: ${blobCreateErr}`);
+          throw blobCreateErr;
+        }
+        
+        // Create URL with explicit safety
+        let url: string;
+        try {
+          const tempUrl = URL.createObjectURL(blob);
+          if (!tempUrl) throw new Error('URL creation returned null or undefined');
+          url = tempUrl;
+        } catch (urlErr) {
+          this.logMemoryUsage('URL_CREATION_ERROR');
+          this.onLog(`Error creating URL: ${urlErr}`);
+          throw urlErr;
+        }
+        
+        this.onLog(`Conversion complete: ${outputFileName}`);
+        
+        // Create a proper result object with null checks
+        const result: ProcessingResult = { 
+          url: url, 
+          blob: blob
+        };
+        
+        return result;
+      } catch (blobErr) {
+        // Safe handling of error object for debugging
+        if (blobErr instanceof Error) {
+          this.onLog(`Error details: ${blobErr.toString()}, Stack: ${blobErr.stack || 'no stack'}`);
+        }
+        
+        // Fallback method specifically for WebM format
+        if (typeof outputExtension === 'string' && outputExtension === 'webm') {
+          try {
+            this.onLog(`Trying alternative blob creation for WebM`);
+            
+            // Create blob without specifying MIME type
+            const blob = new Blob([outputData]);
+            this.onLog(`Blob created without MIME type. Size: ${blob.size}`);
+            
+            // Create URL with safety checks
+            let url = null;
+            try {
+              url = URL.createObjectURL(blob);
+              this.onLog(`Alternative URL created: ${typeof url === 'string' ? 'success' : 'failed'}`);
+            } catch (urlErr) {
+              this.onLog(`Error creating URL in fallback: ${urlErr}`);
+              throw urlErr;
+            }
+            
+            if (!url) {
+              throw new Error('URL creation failed in fallback path');
+            }
+            
+            this.onLog(`Fallback WebM conversion complete`);
+            
+            // Return with the same structured result
+            return { 
+              url: url, 
+              blob: blob
+            };
+          } catch (fallbackErr) {
+            this.onLog(`Fallback blob creation failed: ${fallbackErr}`);
+            throw new Error(`WebM output format error: ${fallbackErr}. Try MP4 instead.`);
+          }
+        }
+        
+        this.onLog(`Error creating blob: ${blobErr}`);
+        throw new Error(`Failed to create output video: ${blobErr}`);
+      }
     } catch (err) {
       this.onLog(`Error in video conversion: ${err}`);
       throw err;
+    } finally {
+      // Clean up resources to avoid memory leaks
+      this.logMemoryUsage('START_CLEANUP');
+      try {
+        // Clear any stored data in the convert service
+        if (outputData) {
+          this.onLog(`DEBUG CLEANUP: outputData exists and is type: ${typeof outputData}`);
+          // Clear large data references to help garbage collection
+          outputData = undefined;
+        }
+        
+        // Array of temp files to clean
+        let tempArray: any = [];
+        if (inputFileName) {
+          tempArray.push(inputFileName);
+        }
+        if (outputFileName) {
+          tempArray.push(outputFileName);
+        }
+        
+        // Try to clean input file
+        try {
+          if (inputFileName) {
+            await this.ffmpeg.deleteFile(inputFileName);
+            this.onLog(`Cleaned input file: ${inputFileName}`);
+          }
+        } catch (cleanErr) {
+          this.onLog(`Failed to clean input file: ${cleanErr}`);
+        }
+        
+        // Try to clean output file
+        try {
+          if (outputFileName) {
+            await this.ffmpeg.deleteFile(outputFileName);
+            this.onLog(`Cleaned output file: ${outputFileName}`);
+          }
+        } catch (cleanErr) {
+          this.onLog(`Failed to clean output file: ${cleanErr}`);
+        }
+        
+        // Release temp array
+        tempArray = undefined;
+        
+        // Force garbage collection hint
+        if (typeof window !== 'undefined') {
+          // Only try to use gc() if it's available (Chrome with special flag)
+          try {
+            // @ts-ignore
+            if (window.gc) window.gc();
+          } catch (e) {
+            // Ignore if gc() not available
+          }
+        }
+        
+        // Explicitly revoke any blob URLs before garbage collection
+        try {
+          if (typeof window !== 'undefined' && window.URL && typeof window.URL.revokeObjectURL === 'function') {
+            this.onLog(`URL API is available for cleanup`);
+          } else {
+            this.onLog(`URL API is not available for blob URL cleanup`);
+          }
+        } catch (urlErr) {
+          this.onLog(`Error checking URL API: ${urlErr}`);
+        }
+        
+        this.logMemoryUsage('END_CLEANUP');
+        this.onLog('Memory cleanup completed');
+      } catch (cleanupErr) {
+        this.onLog(`Error during cleanup: ${cleanupErr}`);
+      }
+    }
+  }
+
+  // Helper method to get the file extension for a given format
+  private getExtensionForFormat(format: string): string {
+    // Ensure we have a valid output format with a fallback
+    if (format === 'webm') return 'webm';
+    if (format === 'mov' || format === 'quicktime') return 'mov';
+    return 'mp4'; // Default fallback
+  }
+
+  // Method to handle the WebM format specifically
+  private async handleWebMConversion(inputFile: string, outputSettings: any): Promise<ProcessingResult> {
+    this.onLog('Using direct WebM handling path for safer conversion');
+    this.logMemoryUsage('WEBM_HANDLER_START');
+    
+    try {
+      // Set up safer WebM specific settings
+      const args = [
+        '-i', inputFile,
+        '-c:v', 'libvpx',  // Use regular libvpx instead of libvpx-vp9 for stability
+        '-b:v', '1000k',   // Use lower bitrate
+        '-c:a', 'libvorbis',
+        '-b:a', '128k',
+        'safer_output.webm'
+      ];
+      
+      // Run the simpler command
+      if (!this.ffmpeg) {
+        throw new Error('FFmpeg not initialized');
+      }
+      
+      await this.ffmpeg.exec(args);
+      
+      // Read the output with extra caution
+      const outputData = await this.ffmpeg.readFile('safer_output.webm');
+      if (!outputData || outputData.length === 0) {
+        throw new Error('WebM conversion failed - empty output file');
+      }
+      
+      this.logMemoryUsage('WEBM_BEFORE_BLOB');
+      // Create blob with explicit try/catch
+      let blob: Blob;
+      try {
+        blob = new Blob([outputData], { type: 'video/webm' });
+        if (blob.size === 0) {
+          throw new Error('Created blob has zero size');
+        }
+      } catch (blobErr) {
+        this.onLog(`WebM blob creation failed: ${blobErr}`);
+        throw blobErr;
+      }
+      
+      // Create URL with explicit safety
+      let url: string;
+      try {
+        const tempUrl = URL.createObjectURL(blob);
+        if (!tempUrl) throw new Error('URL creation returned null or undefined');
+        url = tempUrl;
+      } catch (urlErr) {
+        this.logMemoryUsage('URL_CREATION_ERROR');
+        this.onLog(`WebM URL creation failed: ${urlErr}`);
+        throw urlErr;
+      }
+      
+      this.logMemoryUsage('WEBM_HANDLER_END');
+      
+      // Try to clean up the temp file
+      try {
+        await this.ffmpeg.deleteFile('safer_output.webm');
+        this.onLog('Cleaned up WebM temp file');
+      } catch (cleanupErr) {
+        this.onLog(`Failed to clean up WebM temp file: ${cleanupErr}`);
+      }
+      
+      return {
+        url: url,
+        blob: blob
+      };
+    } catch (err) {
+      this.onLog(`WebM handler failed: ${err}`);
+      // Try to clean up anyway on error
+      try {
+        if (this.ffmpeg) {
+          await this.ffmpeg.deleteFile('safer_output.webm');
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      throw new Error(`Alternative WebM conversion failed: ${err}. Please try MP4 format.`);
+    }
+  }
+
+  private logMemoryUsage(stage: string) {
+    if (typeof window !== 'undefined' && window.performance && window.performance.memory) {
+      // @ts-ignore - performance.memory is Chrome-specific and not in TypeScript types
+      const memoryInfo = window.performance.memory;
+      this.onLog(`MEMORY [${stage}] - Used JS Heap: ${Math.round(memoryInfo.usedJSHeapSize / (1024 * 1024))}MB / ${Math.round(memoryInfo.jsHeapSizeLimit / (1024 * 1024))}MB (${Math.round((memoryInfo.usedJSHeapSize / memoryInfo.jsHeapSizeLimit) * 100)}%)`);
+    } else {
+      this.onLog(`MEMORY [${stage}] - Memory metrics not available in this browser`);
     }
   }
 }

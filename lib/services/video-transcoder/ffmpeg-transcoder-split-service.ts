@@ -40,7 +40,17 @@ export class FFmpegTranscoderSplitService extends FFmpegTranscoderBaseService {
       this.onLog(`Successfully wrote input file to FFmpeg filesystem`);
       
       // Determine the output format
-      const outputFormat = settings.format.toLowerCase();
+      const outputFormat = settings.format ? settings.format.toLowerCase() : 'mp4';
+      
+      // Determine the correct MIME type
+      let mimeType = 'video/mp4';
+      if (outputFormat === 'webm') {
+        mimeType = 'video/webm';
+      } else if (outputFormat === 'mov' || outputFormat === 'quicktime') {
+        mimeType = 'video/quicktime';
+      } else if (outputFormat === 'mp4') {
+        mimeType = 'video/mp4';
+      }
       
       // Create segments array to store results
       const segments: ProcessingResult[] = [];
@@ -128,10 +138,17 @@ export class FFmpegTranscoderSplitService extends FFmpegTranscoderBaseService {
         const outputData = await this.ffmpeg.readFile(outputFileName);
         
         // Create a blob and URL from the output data
-        const blob = new Blob([outputData], { type: `video/${outputFormat}` });
-        const url = URL.createObjectURL(blob);
-        
-        segments.push({ url, blob });
+        try {
+          const blob = new Blob([outputData], { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          
+          this.onLog(`Created segment ${i+1}/${numSegments}, format: ${outputFormat}, MIME type: ${mimeType}`);
+          
+          segments.push({ url, blob });
+        } catch (blobErr) {
+          this.onLog(`Error creating blob for segment ${i+1}: ${blobErr}`);
+          throw new Error(`Failed to create output segment: ${blobErr}`);
+        }
         
         this.onLog(`Segment ${i+1} complete: ${outputFileName}`);
       }

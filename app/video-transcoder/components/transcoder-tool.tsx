@@ -290,14 +290,8 @@ export default function TranscoderTool() {
 
   // Start processing the video
   const startProcessing = async () => {
-    if (files.length === 0) {
-      setError('No file selected');
-      return;
-    }
-
     try {
       setProcessingStatus('processing');
-      setProgress(0);
       setError(null);
       setOutputUrl(null);
       setOutputBlob(null);
@@ -313,18 +307,45 @@ export default function TranscoderTool() {
       console.log('Starting processing task:', settings.task);
 
       let result: ProcessingResult | null = null;
+      
+      // Add try-catch wrappers with detailed debugging for each service
+      const handleWithDebug = async (fn: () => Promise<any>, serviceName: string) => {
+        try {
+          return await fn();
+        } catch (err) {
+          console.error(`Error in ${serviceName}:`, err);
+          // Debug the exact cause of startsWith errors
+          if (err instanceof Error && err.message.includes('startsWith')) {
+            console.error('startsWith error details:', {
+              message: err.message,
+              stack: err.stack,
+              service: serviceName
+            });
+          }
+          throw err;
+        }
+      };
 
       switch (settings.task) {
         case 'convert':
-          result = await convertService.convertVideo(files[0], settings);
+          result = await handleWithDebug(() => 
+            convertService.convertVideo(files[0], settings), 
+            'convert service'
+          );
           break;
           
         case 'trim':
-          result = await trimService.trimVideo(files[0], settings);
+          result = await handleWithDebug(() => 
+            trimService.trimVideo(files[0], settings),
+            'trim service'
+          );
           break;
           
         case 'split':
-          const splitResult = await splitService.splitVideo(files[0], settings);
+          const splitResult = await handleWithDebug(() => 
+            splitService.splitVideo(files[0], settings),
+            'split service'
+          );
           setSegments(splitResult.segments);
           // Use first segment as primary result
           result = splitResult.segments[0];
@@ -333,13 +354,55 @@ export default function TranscoderTool() {
         case 'merge':
           console.log('Processing merge task with clips:', settings.mergeClips);
           console.log('Using transition:', settings.transition);
-          result = await mergeService.mergeVideos(settings.mergeClips, settings);
+          result = await handleWithDebug(() => 
+            mergeService.mergeVideos(settings.mergeClips, settings),
+            'merge service'
+          );
           break;
       }
 
+      // Debug any object with startsWith methods to ensure we're not creating undefined properties
+      const safeStringify = (obj: any) => {
+        try {
+          const cache: any[] = [];
+          const safeObj = JSON.stringify(obj, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+              if (cache.includes(value)) return '[Circular]';
+              cache.push(value);
+            }
+            return value;
+          }, 2);
+          return safeObj;
+        } catch (e) {
+          return `[Cannot stringify: ${e}]`;
+        }
+      };
+
       if (result) {
-        setOutputUrl(result.url);
-        setOutputBlob(result.blob);
+        // Debug the result object before using it
+        console.log('Processing result:', safeStringify({
+          hasUrl: !!result.url,
+          hasBlob: !!result.blob,
+          blobType: result.blob?.type,
+          urlType: typeof result.url
+        }));
+        
+        // Safely set the output URL
+        if (result.url && typeof result.url === 'string') {
+          setOutputUrl(result.url);
+        } else {
+          console.error('Invalid URL in result:', result.url);
+          setOutputUrl(null);
+        }
+        
+        // Safely set the output blob
+        if (result.blob && result.blob instanceof Blob) {
+          setOutputBlob(result.blob);
+        } else {
+          console.error('Invalid blob in result:', result.blob);
+          setOutputBlob(null);
+        }
+        
         setProcessingStatus('complete');
         setActiveTab('output');
       }

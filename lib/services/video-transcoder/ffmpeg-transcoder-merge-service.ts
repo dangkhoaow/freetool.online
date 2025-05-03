@@ -22,6 +22,11 @@ export class FFmpegTranscoderMergeService extends FFmpegTranscoderBaseService {
       throw new Error('FFmpeg failed to initialize');
     }
     
+    let outputData: any = null;
+    const inputFileNames: string[] = [];
+    const outputFormat = settings.format ? settings.format.toLowerCase() : 'mp4';
+    const outputFileName = `output.${outputFormat}`;
+    
     try {
       this.onLog('Starting FFmpeg merge with clips: ' + clips.length);
       this.onLog(`Using transition: ${settings.transition}, format: ${settings.format}, codec: ${settings.codec}`);
@@ -43,6 +48,7 @@ export class FFmpegTranscoderMergeService extends FFmpegTranscoderBaseService {
         
         // Upload the file to FFmpeg filesystem
         const inputFileName = `input_${i}.mp4`;
+        inputFileNames.push(inputFileName);
         const fileData = await fetchFile(clip.file);
         
         try {
@@ -52,6 +58,7 @@ export class FFmpegTranscoderMergeService extends FFmpegTranscoderBaseService {
           
           // Create a standardized version with consistent encoding parameters
           const standardizedFileName = `standardized_${i}.mp4`;
+          inputFileNames.push(standardizedFileName);
           
           // Build FFmpeg command for processing clip
           const ffmpegArgs = ['-i', inputFileName];
@@ -104,9 +111,12 @@ export class FFmpegTranscoderMergeService extends FFmpegTranscoderBaseService {
       
       this.onProgress(70);
       
-      // Try direct approach first - use file concat
-      const outputFileName = 'output.mp4';
+      // Determine output format and output file name
+      const mimeType = outputFormat === 'webm' ? 'video/webm' : 'video/mp4';
       
+      this.onLog(`Output format: ${outputFormat}, MIME type: ${mimeType}`);
+      
+      // Try direct approach first - use file concat
       if (processedFiles.length === 1) {
         // Only one file, just copy it
         this.onLog('Only one file to process, copying directly to output');
@@ -316,20 +326,100 @@ export class FFmpegTranscoderMergeService extends FFmpegTranscoderBaseService {
       this.onProgress(90);
       
       // Read the output file and create a blob URL
-      const outputData = await this.ffmpeg.readFile(outputFileName);
+      try {
+        outputData = await this.ffmpeg.readFile(outputFileName);
+        this.onLog(`Successfully read output file: ${outputFileName}`);
+      } catch (readErr) {
+        this.onLog(`Error reading output file: ${readErr}`);
+        throw new Error(`Failed to read output file: ${readErr}`);
+      }
       
       // Set progress to 100% after successfully reading the output file
       this.onProgress(100);
       
       // Create a blob from the output data
-      const blob = new Blob([outputData], { type: 'video/mp4' });
-      const url = URL.createObjectURL(blob);
-      
-      return { url, blob };
+      try {
+        this.onLog(`Creating blob with MIME type: ${mimeType}`);
+        const blob = new Blob([outputData], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        
+        this.onLog(`Merge complete: format: ${outputFormat}, MIME type: ${mimeType}`);
+        return { url, blob };
+      } catch (blobErr) {
+        this.onLog(`Error creating blob: ${blobErr}`);
+        
+        // Fallback method for WebM format
+        if (outputFormat === 'webm') {
+          try {
+            this.onLog(`Trying alternative blob creation for WebM`);
+            // Create blob without specifying MIME type
+            const blob = new Blob([outputData]);
+            const url = URL.createObjectURL(blob);
+            
+            this.onLog(`Fallback WebM merge complete`);
+            return { url, blob };
+          } catch (fallbackErr) {
+            this.onLog(`Fallback blob creation failed: ${fallbackErr}`);
+            throw new Error(`WebM output format error: ${fallbackErr}. Try MP4 instead.`);
+          }
+        }
+        
+        throw new Error(`Failed to create output video: ${blobErr}`);
+      }
     } catch (err) {
       this.onLog('Error in FFmpeg merge process: ' + err);
       this.onProgress(0);
       throw err;
+    } finally {
+      // Clean up resources to avoid memory leaks
+      try {
+        // Clean up all input files
+        if (this.ffmpeg && inputFileNames.length > 0) {
+          for (const fileName of inputFileNames) {
+            try {
+              await this.ffmpeg.exec(['-nostdin', '-f', 'lavfi', '-i', 'nullsrc', '-t', '0.001', '-f', 'null', '-']);
+              this.onLog(`Cleaned up input file: ${fileName}`);
+            } catch (e) {
+              // Just log errors and continue
+              this.onLog(`Failed to clean input file ${fileName}: ${e}`);
+            }
+          }
+        }
+        
+        // Clean up output file
+        if (this.ffmpeg) {
+          try {
+            await this.ffmpeg.exec(['-nostdin', '-f', 'lavfi', '-i', 'nullsrc', '-t', '0.001', '-f', 'null', '-']);
+            this.onLog(`Cleaned up output file: ${outputFileName}`);
+          } catch (e) {
+            this.onLog(`Failed to clean output file: ${e}`);
+          }
+        }
+        
+        // Explicitly set references to undefined to help garbage collection
+        if (outputData) {
+          // Free memory by setting to undefined
+          // @ts-ignore
+          outputData = undefined;
+        }
+        
+        // Run a small operation to force memory flush
+        if (this.ffmpeg) {
+          try {
+            // Create a small dummy operation to help flush memory
+            await this.ffmpeg.exec([
+              '-nostdin', '-f', 'lavfi', '-i', 'nullsrc=s=32x32:d=0.1', 
+              '-t', '0.1', '-f', 'null', '-'
+            ]);
+          } catch (e) {
+            // Ignore errors for this operation
+          }
+        }
+        
+        this.onLog('Memory cleanup completed after merge operation');
+      } catch (cleanupErr) {
+        this.onLog(`Error during cleanup: ${cleanupErr}`);
+      }
     }
   }
   

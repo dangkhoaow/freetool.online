@@ -170,18 +170,37 @@ export class PrivacyProtectionService {
   }
   
   /**
+   * Helper method to safely check if a string starts with a prefix.
+   * This prevents "Cannot read properties of undefined (reading 'startsWith')" errors.
+   */
+  private safeStartsWith(str: any, prefix: string): boolean {
+    return typeof str === 'string' && str.startsWith(prefix);
+  }
+
+  /**
    * Strip metadata from a media file
    * @param blob Media blob to process
    * @returns Clean blob without metadata
    */
-  public async stripMetadata(blob: Blob): Promise<Blob> {
+  public async stripMetadata(blob: Blob | null | undefined): Promise<Blob> {
+    // Make sure blob and blob.type are valid before using startsWith
+    if (!blob) {
+      console.warn('No blob provided to stripMetadata');
+      // Return an empty blob as fallback
+      return new Blob([], { type: 'application/octet-stream' });
+    }
+    
+    // Use safe type checking for blob.type
+    const blobType = blob.type || '';
+    console.log(`Stripping metadata from blob with type: ${blobType}`);
+    
     // For video/audio: create a new MediaSource and transcode without metadata
-    if (blob.type.startsWith('video/') || blob.type.startsWith('audio/')) {
+    if (this.safeStartsWith(blobType, 'video/') || this.safeStartsWith(blobType, 'audio/')) {
       return this.stripVideoMetadata(blob);
     }
     
     // If it's an image, use canvas to strip EXIF data
-    if (blob.type.startsWith('image/')) {
+    if (this.safeStartsWith(blobType, 'image/')) {
       return this.stripImageMetadata(blob);
     }
     

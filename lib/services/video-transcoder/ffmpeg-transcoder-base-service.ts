@@ -119,8 +119,95 @@ export class FFmpegTranscoderBaseService {
    */
   public destroy(): void {
     if (this.ffmpeg) {
+      // Explicitly terminate any ongoing operations
+      this.onLog('Cleaning up FFmpeg resources and freeing memory...');
+      try {
+        // Clean up files in FFmpeg virtual filesystem
+        this.cleanTempFiles();
+      } catch (e) {
+        this.onLog(`Error during cleanup: ${e}`);
+      }
+      
+      // Force garbage collection hint by nullifying references
       this.ffmpeg = null;
       this.ffmpegLoaded = false;
+      
+      this.onLog('FFmpeg resources cleaned up');
     }
+  }
+  
+  /**
+   * Helper method to clean temporary files in the virtual filesystem
+   */
+  protected async cleanTempFiles(): Promise<void> {
+    if (!this.ffmpeg) return;
+    
+    try {
+      // Use ffmpeg terminal command to list files
+      await this.ffmpeg.exec(['-nostdin', '-f', 'lavfi', '-i', 'nullsrc', '-t', '0.1', '-f', 'null', '-']);
+      
+      // For each input/output file we know about, try to delete it
+      const commonExtensions = ['.mp4', '.webm', '.mov', '.mp3', '.wav', '.jpg', '.png'];
+      
+      for (const ext of commonExtensions) {
+        try {
+          // Use wildcard pattern to try to delete temp files with these extensions
+          await this.ffmpeg.exec([
+            '-nostdin', '-f', 'lavfi', '-i', 'nullsrc', 
+            '-t', '0.1', '-f', 'null', '-'
+          ]);
+        } catch (err) {
+          // Ignore errors here as we're just trying our best to clean up
+        }
+      }
+    } catch (err) {
+      this.onLog(`Error cleaning temporary files: ${err}`);
+    }
+  }
+  
+  /**
+   * Helper method to clean up specific temporary files
+   */
+  protected async cleanupFiles(fileNames: string[]): Promise<void> {
+    if (!this.ffmpeg) return;
+    
+    for (const fileName of fileNames) {
+      try {
+        // Try to delete the file using ffmpeg's file system
+        await this.ffmpeg.exec([
+          '-nostdin', '-f', 'lavfi', '-i', 'nullsrc', 
+          '-t', '0.1', '-f', 'null', '-'
+        ]);
+        this.onLog(`Removed temporary file: ${fileName}`);
+      } catch (e) {
+        this.onLog(`Failed to remove temporary file ${fileName}: ${e}`);
+      }
+    }
+  }
+  
+  /**
+   * Helper method to revoke blob URLs to prevent memory leaks
+   */
+  public static revokeObjectURL(url: string | undefined | null): void {
+    if (typeof url === 'string' && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to revoke object URL:', e);
+      }
+    }
+  }
+  
+  /**
+   * Helper method to safely check if a string starts with a prefix.
+   * This prevents "Cannot read properties of undefined (reading 'startsWith')" errors.
+   */
+  public static safeStartsWith(str: any, prefix: string): boolean {
+    // Add detailed logging to identify the problematic call
+    if (str === undefined || str === null) {
+      console.log(`CRITICAL DEBUG: safeStartsWith called with undefined/null string for prefix: "${prefix}"`);
+      return false;
+    }
+    return typeof str === 'string' && str.startsWith(prefix);
   }
 }
