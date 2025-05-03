@@ -14,6 +14,8 @@
 
 - After editing, please analyze codebase again to make sure you understand the codebase and logic after editing. Then add README.md for each folder to explain the logic of the code and your current context
 
+- Please do not change the UI and Layout of the website if I don't ask you to, focus the logic and functionality of the website
+
 - Each file must add detailed log for easy to debug, add log after each line of code if the variable is changed
 
 - Approach to read code file(s) for reading by breaking it down into smaller, more manageable part, then can be edited able on each part
