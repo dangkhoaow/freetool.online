@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DeviceSelectionPanel from "./device-selection-panel";
@@ -437,7 +437,7 @@ export default function MediaRecorderTool() {
   };
 
   // Start recording
-  const startRecording = async () => {
+  const startRecording = useCallback(async () => {
     try {
       // Start the preview if not already started
       if (!mediaStreamRef.current) {
@@ -453,8 +453,8 @@ export default function MediaRecorderTool() {
         
         // Create a flipped stream if flip is enabled
         const streamToRecord = isFlipped ? 
-          createProcessedStreamWithFlip(mediaStreamRef.current) : 
-          mediaStreamRef.current;
+          createProcessedStreamWithFlip(mediaStreamRef.current!) : 
+          mediaStreamRef.current!;
         
         // Start recording with the appropriate stream
         console.log('[RECORDING] Starting new recording with flip state:', isFlipped);
@@ -482,7 +482,7 @@ export default function MediaRecorderTool() {
         console.log(`[RECORDING] Created new segment ${segmentId} with flip=${isFlipped}`);
         
         // Start the recording - pass isFlipped parameter to the service
-        recordingManagerRef.current.startRecording(streamToRecord, serviceOptions, false, isFlipped);
+        recordingManagerRef.current?.startRecording(streamToRecord, serviceOptions, false, isFlipped);
         
         setIsRecording(true);
         setIsPaused(false);
@@ -491,11 +491,11 @@ export default function MediaRecorderTool() {
       console.error("Failed to start recording:", error);
       toast.error("Failed to start recording");
     }
-  };
+  }, [isFlipped, mediaStreamRef, recordingManagerRef, recordingOptions]);
 
   // Toggle horizontal flip
-  const toggleFlip = async () => {
-    console.log('[FLIP] Toggling horizontal flip from', isFlipped, 'to', !isFlipped);
+  const toggleFlip = useCallback(() => {
+    console.log(`[FLIP] Toggling horizontal flip from ${isFlipped} to ${!isFlipped}`);
     
     // Store the current flip state before updating it
     const currentFlipState = isFlipped;
@@ -517,16 +517,16 @@ export default function MediaRecorderTool() {
       }
       
       // Wait a bit for any remaining chunks to be processed
-      await new Promise((resolve) => setTimeout(resolve, 200)); // Increased wait time for chunk processing
-      
-      // Log current segments state for debugging
-      console.log(`[FLIP_DEBUG] Current segments before closing: ${recordingSegmentsRef.current.length}`);
-      recordingSegmentsRef.current.forEach((segment, index) => {
-        console.log(`[FLIP_DEBUG] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}`);
-      });
-      
-      // Close the current segment
-      currentSegmentRef.current = null;
+      setTimeout(() => {
+        // Log current segments state for debugging
+        console.log(`[FLIP_DEBUG] Current segments before closing: ${recordingSegmentsRef.current.length}`);
+        recordingSegmentsRef.current.forEach((segment, index) => {
+          console.log(`[FLIP_DEBUG] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}`);
+        });
+        
+        // Close the current segment
+        currentSegmentRef.current = null;
+      }, 200);
     }
     
     // Update flip state
@@ -543,147 +543,144 @@ export default function MediaRecorderTool() {
       console.log('[FLIP] Restarting recording with new flip setting');
       
       // Short delay to allow state updates to propagate
-      await new Promise((resolve) => setTimeout(resolve, 200)); // Increased wait time
-      
-      // Create a new stream with or without flipping
-      const newStream = !currentFlipState ? 
-        createProcessedStreamWithFlip(mediaStreamRef.current) : 
-        mediaStreamRef.current;
-      
-      console.log(`[FLIP] New stream created, flipped=${!currentFlipState}, current duration=${currentDuration}s`);
-      
-      // Create a new segment
-      const segmentId = Date.now().toString();
-      const newSegment = {
-        id: segmentId,
-        startTime: Date.now(),
-        isFlipped: !currentFlipState,
-        chunks: [] as Blob[]
-      };
-      
-      // Set as current segment
-      currentSegmentRef.current = segmentId;
-      
-      // Add to segments collection - using function form to ensure we have latest state
-      setRecordingSegments(prevSegments => {
-        const updatedSegments = [...prevSegments, newSegment];
-        // Also update our ref for consistency
-        recordingSegmentsRef.current = updatedSegments;
-        console.log(`[FLIP_DEBUG] Segments after adding new one: ${updatedSegments.length}`);
-        return updatedSegments;
-      });
-      
-      console.log(`[RECORDING] Created new segment ${segmentId} with flip=${!currentFlipState}`);
-      
-      // Restart recording with the new stream and preserve timing
-      console.log(`[FLIP] Resuming recording with new stream, flipped=${!currentFlipState}, preserving timing`);
-      
-      // Convert to RecordingOptions format expected by the service
-      const serviceOptions: RecordingOptions = {
-        ...recordingOptions
-      };
-      
-      try {
-        // Pass the isFlipped parameter to the recording manager
-        recordingManagerRef.current.startRecording(newStream, serviceOptions, true, !currentFlipState);
+      setTimeout(() => {
+        // Create a new stream with or without flipping
+        const newStream = !currentFlipState ? 
+          createProcessedStreamWithFlip(mediaStreamRef.current!) : 
+          mediaStreamRef.current!;
         
-        // Restore paused state if needed
-        if (wasPaused) {
-          console.log('[FLIP] Restoring paused state');
-          recordingManagerRef.current.pauseRecording();
+        console.log(`[FLIP] New stream created, flipped=${!currentFlipState}, current duration=${currentDuration}s`);
+        
+        // Create a new segment
+        const segmentId = Date.now().toString();
+        const newSegment = {
+          id: segmentId,
+          startTime: Date.now(),
+          isFlipped: !currentFlipState,
+          chunks: [] as Blob[]
+        };
+        
+        // Set as current segment
+        currentSegmentRef.current = segmentId;
+        
+        // Add to segments collection - using function form to ensure we have latest state
+        setRecordingSegments(prevSegments => {
+          const updatedSegments = [...prevSegments, newSegment];
+          // Also update our ref for consistency
+          recordingSegmentsRef.current = updatedSegments;
+          console.log(`[FLIP_DEBUG] Segments after adding new one: ${updatedSegments.length}`);
+          return updatedSegments;
+        });
+        
+        console.log(`[RECORDING] Created new segment ${segmentId} with flip=${!currentFlipState}`);
+        
+        // Restart recording with the new stream and preserve timing
+        console.log(`[FLIP] Resuming recording with new stream, flipped=${!currentFlipState}, preserving timing`);
+        
+        // Convert to RecordingOptions format expected by the service
+        const serviceOptions: RecordingOptions = {
+          ...recordingOptions
+        };
+        
+        try {
+          // Pass the isFlipped parameter to the recording manager
+          recordingManagerRef.current?.startRecording(newStream, serviceOptions, true, !currentFlipState);
+          
+          // Restore paused state if needed
+          if (wasPaused) {
+            console.log('[FLIP] Restoring paused state');
+            recordingManagerRef.current?.pauseRecording();
+          }
+        } catch (error) {
+          console.error('[FLIP] Error restarting recording after flip:', error);
+          toast.error('Error when flipping video during recording. Try again.');
         }
-      } catch (error) {
-        console.error('[FLIP] Error restarting recording after flip:', error);
-        toast.error('Error when flipping video during recording. Try again.');
-      }
+      }, 200);
     }
-  };
+  }, [isFlipped, mediaStreamRef, recordingManagerRef, recordingOptions]);
 
   // Stop recording
-  const stopRecording = async () => {
+  const stopRecording = useCallback(async () => {
+    console.log(`[STOP] Stopping recording`);
+    console.log(`[STOP_DEBUG] recordingSegments state has ${recordingSegments.length} segments`);
+    console.log(`[STOP_DEBUG] recordingSegmentsRef has ${recordingSegmentsRef.current.length} segments`);
+    
+    // Debug log segments before flip
+    recordingSegments.forEach((segment, index) => {
+      console.log(`[STOP_DEBUG] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}, started at ${new Date(segment.startTime).toISOString()}`);
+    });
+    
+    if (!isRecording) {
+      console.log(`[STOP] No recording in progress`);
+      return;
+    }
+    
+    // Use the recording manager service to stop recording
+    console.log(`[STOP_DEBUG] Calling stopRecording on RecordingManagerService`);
+    
+    // Pass our UI segments to the service for synchronization
+    recordingManagerRef.current?.syncSegments(recordingSegments);
+    
     try {
-      if (!recordingManagerRef.current) return;
-
-      console.log('[STOP] Stopping recording');
-      console.log(`[STOP_DEBUG] recordingSegments state has ${recordingSegments.length} segments`);
-      console.log(`[STOP_DEBUG] recordingSegmentsRef has ${recordingSegmentsRef.current.length} segments`);
+      const finalRecording = await recordingManagerRef.current?.stopRecording(recordingSegments);
       
-      // Log the state of all segments
-      recordingSegmentsRef.current.forEach((segment, index) => {
-        console.log(`[STOP_DEBUG] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}, started at ${new Date(segment.startTime).toISOString()}`);
+      if (!finalRecording) {
+        console.error(`[STOP] Failed to get final recording from service`);
+        return;
+      }
+      
+      console.log(`[STOP_DEBUG] stopRecording completed`);
+      console.log(`[STOP_DEBUG] Final recording returned with size: ${(finalRecording.blob.size / (1024 * 1024)).toFixed(2)} MB`);
+      
+      // Log information about our segments
+      console.log(`[RECORDING] Recording finished with ${recordingSegments.length} segments:`);
+      let totalChunks = 0;
+      recordingSegments.forEach((segment, index) => {
+        console.log(`[RECORDING] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}`);
+        totalChunks += segment.chunks.length;
       });
+      console.log(`[RECORDING] Total chunks across segments: ${totalChunks}`);
       
-      setIsRecording(false);
-      setIsPaused(false);
+      // Apply privacy protection if needed
+      console.log(`[STOP] Applying privacy protection to final recording`);
       
-      // Clear current segment
-      currentSegmentRef.current = null;
-
-      // Stop the recording
-      console.log('[STOP_DEBUG] Calling stopRecording on RecordingManagerService');
-      const finalRecording = await recordingManagerRef.current.stopRecording();
-      console.log('[STOP_DEBUG] stopRecording completed');
-
-      if (finalRecording) {
-        console.log('[STOP_DEBUG] Final recording returned with size:', (finalRecording.blob.size / (1024 * 1024)).toFixed(2), 'MB');
+      // Process with privacy protection if needed
+      if (privacyServiceRef.current && privacyOptions.stripMetadata) {
+        console.log('[STOP] Applying privacy protection to final recording');
         
-        // Log segments information - use the ref for stability
-        console.log(`[RECORDING] Recording finished with ${recordingSegmentsRef.current.length} segments:`);
-        
-        // Make local copy to ensure we're working with stable data
-        const segments = [...recordingSegmentsRef.current];
-        
-        // Count the number of chunks across all segments for logging
-        const totalChunksInSegments = segments.reduce((total, segment) => total + segment.chunks.length, 0);
-        console.log(`[RECORDING] Total chunks across segments: ${totalChunksInSegments}`);
+        // Strip metadata from the final blob
+        const cleanBlob = await privacyServiceRef.current.stripMetadata(finalRecording.blob);
+        finalRecording.blob = cleanBlob;
+        finalRecording.size = cleanBlob.size;
+        finalRecording.url = URL.createObjectURL(cleanBlob);
+      }
 
-        // Get the final recording (already processed by the recording manager)
-        let finalRecordingToSave = finalRecording;
+      try {
+        // Save recording to local storage
+        await saveRecording(finalRecording);
         
-        // Process with privacy protection if needed
-        if (privacyServiceRef.current && privacyOptions.stripMetadata) {
-          console.log('[STOP] Applying privacy protection to final recording');
-          
-          // Strip metadata from the final blob
-          const cleanBlob = await privacyServiceRef.current.stripMetadata(finalRecording.blob);
-          finalRecordingToSave = {
-            ...finalRecording,
-            blob: cleanBlob,
-            size: cleanBlob.size,
-            url: URL.createObjectURL(cleanBlob),
-          };
-        }
+        // Reset our recording state
+        setAllRecordedChunks([]);
+        setRecordingSegments([]);
+        recordingSegmentsRef.current = [];
 
-        try {
-          // Save recording to local storage
-          await saveRecording(finalRecordingToSave);
-          
-          // Reset our recording state
-          setAllRecordedChunks([]);
-          setRecordingSegments([]);
-          recordingSegmentsRef.current = [];
-
-          toast.success("Recording saved successfully");
-          console.log('[STOP] Recording saved, switching to recordings tab');
-          
-          // Switch to the recordings tab with a small delay to ensure state is updated
-          setTimeout(() => {
-            setActiveTab("recordings");
-            console.log('[STOP] Tab switched to recordings');
-          }, 100);
-        } catch (error) {
-          console.error('[STOP] Error saving recording:', error);
-          toast.error('Failed to save recording');
-        }
-      } else {
-        console.error('[STOP] No final recording returned from stopRecording');
-        toast.error('Failed to process recording');
+        toast.success("Recording saved successfully");
+        console.log('[STOP] Recording saved, switching to recordings tab');
+        
+        // Switch to the recordings tab with a small delay to ensure state is updated
+        setTimeout(() => {
+          setActiveTab("recordings");
+          console.log('[STOP] Tab switched to recordings');
+        }, 100);
+      } catch (error) {
+        console.error('[STOP] Error saving recording:', error);
+        toast.error('Failed to save recording');
       }
     } catch (error) {
       console.error("Failed to stop recording:", error);
       toast.error("Failed to save recording");
     }
-  };
+  }, [isRecording, recordingManagerRef, recordingSegments, recordingSegmentsRef, privacyOptions, privacyServiceRef]);
 
   // Save recording to localStorage and return the final recorded media
   const saveRecording = async (recording: RecordedMedia): Promise<RecordedMedia> => {

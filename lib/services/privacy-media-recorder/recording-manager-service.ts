@@ -220,8 +220,15 @@ export class RecordingManagerService {
    */
   private addChunkToCurrentSegment(chunk: Blob): void {
     if (!this.currentSegmentId) {
-      console.log(`[RECORDING_MANAGER] Warning: No current segment to add chunk to`);
-      return;
+      console.log(`[RECORDING_MANAGER] Warning: No current segment to add chunk to, creating new segment`);
+      // Create a new segment if we don't have one
+      this.startNewSegment();
+      
+      // Exit early if we still don't have a segment ID (shouldn't happen, but just in case)
+      if (!this.currentSegmentId) {
+        console.error(`[RECORDING_MANAGER] Failed to create a new segment - unexpected state`);
+        return;
+      }
     }
     
     // Find current segment and add chunk
@@ -229,9 +236,19 @@ export class RecordingManagerService {
     if (segmentIndex !== -1) {
       this.recordingSegments[segmentIndex].chunks.push(chunk);
       const chunkCount = this.recordingSegments[segmentIndex].chunks.length;
-      console.log(`[RECORDING_MANAGER] Added chunk to segment ${this.currentSegmentId}, now has ${chunkCount} chunks`);
+      const chunkSizeKB = (chunk.size / 1024).toFixed(2);
+      console.log(`[RECORDING_MANAGER] Added chunk (${chunkSizeKB} KB) to segment ${this.currentSegmentId}, now has ${chunkCount} chunks`);
     } else {
-      console.error(`[RECORDING_MANAGER] Could not find segment with id ${this.currentSegmentId}`);
+      console.error(`[RECORDING_MANAGER] Could not find segment with id ${this.currentSegmentId}, storing in a new segment`);
+      this.startNewSegment();
+      if (this.currentSegmentId) {
+        const newSegmentIndex = this.recordingSegments.findIndex(s => s.id === this.currentSegmentId);
+        if (newSegmentIndex !== -1) {
+          this.recordingSegments[newSegmentIndex].chunks.push(chunk);
+          const newChunkCount = this.recordingSegments[newSegmentIndex].chunks.length;
+          console.log(`[RECORDING_MANAGER] Added chunk to new segment ${this.currentSegmentId}, now has ${newChunkCount} chunks`);
+        }
+      }
     }
   }
   
@@ -346,7 +363,7 @@ export class RecordingManagerService {
   /**
    * Stop the current recording and return the recorded data
    */
-  public async stopRecording(): Promise<RecordedMedia> {
+  public async stopRecording(uiSegments?: RecordingSegment[]): Promise<RecordedMedia> {
     if (!this.mediaRecorder || !this.isRecording) {
       throw new Error('Recording not in progress');
     }
@@ -355,11 +372,19 @@ export class RecordingManagerService {
       // Finalize the current segment
       this.finalizeCurrentSegment();
       
+      // If provided, sync segments from UI to ensure consistency
+      if (uiSegments) {
+        this.syncSegments(uiSegments);
+      }
+      
       // Log segments information
       console.log(`[RECORDING_MANAGER] Stopping recording with ${this.recordingSegments.length} segments:`);
+      let totalChunks = 0;
       this.recordingSegments.forEach((segment, index) => {
-        console.log(`[RECORDING_MANAGER] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}`);
+        console.log(`[RECORDING_MANAGER] Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}, startTime=${new Date(segment.startTime).toISOString()}`);
+        totalChunks += segment.chunks.length;
       });
+      console.log(`[RECORDING_MANAGER] Total chunks across all segments: ${totalChunks}`);
       
       // Stop the MediaRecorder
       this.mediaRecorder.stop();
@@ -375,36 +400,83 @@ export class RecordingManagerService {
         };
       });
       
-      // Make sure we have recorded chunks
-      if (this.recordedChunks.length === 0) {
-        throw new Error('No data recorded');
+      // Verify we have segments with chunks
+      if (this.recordingSegments.length === 0) {
+        console.error('[RECORDING_MANAGER] No segments found, falling back to recorded chunks');
+        if (this.recordedChunks.length === 0) {
+          throw new Error('No data recorded');
+        }
+      } else {
+        // Ensure no segments have zero chunks (could be a corruption source)
+        console.log('[RECORDING_MANAGER] Checking for empty segments...');
+        const emptySegments = this.recordingSegments.filter(segment => segment.chunks.length === 0);
+        if (emptySegments.length > 0) {
+          console.warn(`[RECORDING_MANAGER] Found ${emptySegments.length} empty segments, removing them`);
+          this.recordingSegments = this.recordingSegments.filter(segment => segment.chunks.length > 0);
+          console.log(`[RECORDING_MANAGER] After cleanup: ${this.recordingSegments.length} segments remain`);
+        }
       }
       
       // Log the individual chunks
-      console.log(`[RECORDING_MANAGER] Total chunks count: ${this.recordedChunks.length}`);
+      console.log(`[RECORDING_MANAGER] Total chunks count in recorder: ${this.recordedChunks.length}`);
+      console.log(`[RECORDING_MANAGER] Total chunks count in segments: ${totalChunks}`);
+      
+      // Sort segments by start time to ensure chronological order
+      this.recordingSegments.sort((a, b) => a.startTime - b.startTime);
+      console.log('[RECORDING_MANAGER] Segments sorted by start time:');
+      this.recordingSegments.forEach((segment, index) => {
+        console.log(`[RECORDING_MANAGER] Sorted segment #${index + 1}: id=${segment.id}, startTime=${new Date(segment.startTime).toISOString()}, chunks=${segment.chunks.length}`);
+      });
+      
       const totalSizeMB = (this.getTotalSize(this.recordedChunks) / (1024 * 1024)).toFixed(2);
-      console.log(`[RECORDING_MANAGER] Combining ${this.recordedChunks.length} chunks with total size: ${totalSizeMB} MB`);
+      console.log(`[RECORDING_MANAGER] Combining chunks with total size: ${totalSizeMB} MB`);
       
       // Create a blob based on recording segments
       let finalBlob: Blob;
       
-      if (this.recordingSegments.length > 1) {
+      if (this.recordingSegments.length > 0) {
         console.log(`[RECORDING_MANAGER] Multiple segments detected (${this.recordingSegments.length}), combining properly`);
         
-        // For WebM format, we need to be careful about how we combine segments
-        // Each segment has its own header and metadata, so just concatenating the chunks won't work correctly
+        // For WebM format, we need to handle the segments properly
+        // Simply collecting all chunks together for WebM format
+        const allChunks: Blob[] = [];
         
-        // The simplest safe approach is to use the most recent segment's data
-        // This ensures we have proper WebM formatting and headers
-        const lastSegment = this.recordingSegments[this.recordingSegments.length - 1];
+        // Collect all chunks from all segments in chronological order (already sorted by startTime)
+        this.recordingSegments.forEach((segment, index) => {
+          console.log(`[RECORDING_MANAGER] Processing segment #${index + 1} (id=${segment.id}): ${segment.chunks.length} chunks, flipped=${segment.isFlipped}`);
+          
+          // Add this segment's chunks to our collection
+          if (segment.chunks.length > 0) {
+            // Track sizes for easier debugging
+            const segmentSizeMB = (this.getTotalSize(segment.chunks) / (1024 * 1024)).toFixed(2);
+            console.log(`[RECORDING_MANAGER] Adding segment #${index + 1} chunks to final collection, size: ${segmentSizeMB} MB`);
+            
+            allChunks.push(...segment.chunks);
+            
+            // Log the first and last chunk in each segment
+            if (segment.chunks.length > 0) {
+              const firstChunkSize = (segment.chunks[0].size / 1024).toFixed(2);
+              const lastChunkSize = (segment.chunks[segment.chunks.length - 1].size / 1024).toFixed(2);
+              console.log(`[RECORDING_MANAGER] Segment #${index + 1} first chunk: ${firstChunkSize} KB, last chunk: ${lastChunkSize} KB`);
+            }
+          } else {
+            console.warn(`[RECORDING_MANAGER] Segment #${index + 1} has no chunks, skipping`);
+          }
+        });
         
-        // Log what we're doing
-        console.log(`[RECORDING_MANAGER] Using the most recent segment (id=${lastSegment.id}) with ${lastSegment.chunks.length} chunks for reliable WebM output`);
+        console.log(`[RECORDING_MANAGER] Combined ${allChunks.length} chunks from ${this.recordingSegments.length} segments`);
         
-        // Create a blob from the last segment's chunks
-        finalBlob = new Blob(lastSegment.chunks, { type: this.mimeType });
-        const blobSizeMB = (finalBlob.size / (1024 * 1024)).toFixed(2);
-        console.log(`[RECORDING_MANAGER] Created final blob from last segment: ${blobSizeMB} MB`);
+        if (allChunks.length > 0) {
+          // Create a blob from all collected chunks
+          finalBlob = new Blob(allChunks, { type: this.mimeType });
+          const blobSizeMB = (finalBlob.size / (1024 * 1024)).toFixed(2);
+          console.log(`[RECORDING_MANAGER] Created final blob from all segments: ${blobSizeMB} MB`);
+        } else {
+          console.warn('[RECORDING_MANAGER] No chunks found in segments, falling back to recorded chunks');
+          finalBlob = new Blob(this.recordedChunks, { type: this.mimeType });
+          const fallbackSizeMB = (finalBlob.size / (1024 * 1024)).toFixed(2);
+          console.log(`[RECORDING_MANAGER] Created fallback blob: ${fallbackSizeMB} MB`);
+        }
       } else {
         // Just use all recorded chunks for a single segment
         finalBlob = new Blob(this.recordedChunks, { type: this.mimeType });
@@ -503,6 +575,73 @@ export class RecordingManagerService {
       clearInterval(this.recordingTimerId);
       this.recordingTimerId = null;
     }
+  }
+  
+  /**
+   * Synchronize segments from UI to ensure consistency
+   * This is critical when toggling flip to ensure segments are properly tracked
+   */
+  public syncSegments(uiSegments: RecordingSegment[]): void {
+    console.log(`[RECORDING_MANAGER] Syncing ${uiSegments.length} segments from UI`);
+    
+    // Log all UI segments for debugging
+    uiSegments.forEach((segment, index) => {
+      console.log(`[RECORDING_MANAGER] UI Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}, startTime=${new Date(segment.startTime).toISOString()}`);
+    });
+    
+    // Log our current segments
+    console.log(`[RECORDING_MANAGER] Current service segments: ${this.recordingSegments.length}`);
+    this.recordingSegments.forEach((segment, index) => {
+      console.log(`[RECORDING_MANAGER] Service Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}, startTime=${new Date(segment.startTime).toISOString()}`);
+    });
+    
+    // Merge segments based on startTime, keeping our chunks but updating UI metadata
+    const mergedSegments: RecordingSegment[] = [];
+    
+    // First, sort both segment arrays by startTime
+    const sortedUISegments = [...uiSegments].sort((a, b) => a.startTime - b.startTime);
+    const sortedServiceSegments = [...this.recordingSegments].sort((a, b) => a.startTime - b.startTime);
+    
+    // For each UI segment, find the corresponding service segment
+    for (const uiSegment of sortedUISegments) {
+      // Find the closest service segment by startTime
+      const closestServiceSegment = sortedServiceSegments.find(s => 
+        Math.abs(s.startTime - uiSegment.startTime) < 1000 && s.isFlipped === uiSegment.isFlipped
+      );
+      
+      if (closestServiceSegment) {
+        console.log(`[RECORDING_MANAGER] Found matching service segment for UI segment ${uiSegment.id} (service: ${closestServiceSegment.id})`);
+        
+        // Update the ID to match the UI segment ID to keep synchronization
+        closestServiceSegment.id = uiSegment.id;
+        mergedSegments.push(closestServiceSegment);
+      } else {
+        console.log(`[RECORDING_MANAGER] No matching service segment found for UI segment ${uiSegment.id}, using UI segment`);
+        // If no matching service segment, use the UI segment
+        mergedSegments.push(uiSegment);
+      }
+    }
+    
+    // Make sure we didn't miss any service segments with data
+    for (const serviceSegment of sortedServiceSegments) {
+      if (!mergedSegments.some(m => m.id === serviceSegment.id || Math.abs(m.startTime - serviceSegment.startTime) < 1000)) {
+        if (serviceSegment.chunks.length > 0) {
+          console.log(`[RECORDING_MANAGER] Adding missing service segment ${serviceSegment.id} with ${serviceSegment.chunks.length} chunks`);
+          mergedSegments.push(serviceSegment);
+        }
+      }
+    }
+    
+    // Sort final segments by startTime
+    mergedSegments.sort((a, b) => a.startTime - b.startTime);
+    
+    // Update our segments with the merged set
+    this.recordingSegments = mergedSegments;
+    
+    console.log(`[RECORDING_MANAGER] After sync: ${this.recordingSegments.length} segments`);
+    this.recordingSegments.forEach((segment, index) => {
+      console.log(`[RECORDING_MANAGER] Synced Segment #${index + 1}: id=${segment.id}, chunks=${segment.chunks.length}, flipped=${segment.isFlipped}, startTime=${new Date(segment.startTime).toISOString()}`);
+    });
   }
   
   /**
