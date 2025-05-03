@@ -85,7 +85,29 @@ export default function SettingsSection({
   
   // Handle format selection
   const handleFormatChange = (formatId: string) => {
-    const [format, codec] = formatId.split('-')
+    console.log('Format ID selected:', formatId)
+    
+    // Parse the format ID to get format and codec
+    let format = '', codec = '';
+    
+    if (formatId.includes('-')) {
+      const parts = formatId.split('-');
+      format = parts[0];
+      
+      // Join remaining parts for codecs with hyphens (like libvpx-vp9)
+      if (parts.length > 2) {
+        // Handle case where codec itself contains hyphens
+        codec = parts.slice(1).join('-');
+      } else {
+        codec = parts[1];
+      }
+    } else {
+      format = formatId;
+      // Set default codec based on format
+      if (format === 'mp4') codec = 'libx264';
+      else if (format === 'webm') codec = 'libvpx-vp9';
+      else if (format === 'mov') codec = 'libx264';
+    }
     
     // Set appropriate audio codec for the selected format
     let audioCodec = settings.audioCodec;
@@ -249,7 +271,7 @@ export default function SettingsSection({
                   onClick={() => handleFormatChange(format.id)}
                   className={`
                     p-4 border rounded-lg text-center cursor-pointer transition
-                    ${settings.format + '-' + settings.codec === format.id
+                    ${format.id === `${settings.format}-${settings.codec}`
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
                   `}
@@ -559,7 +581,7 @@ export default function SettingsSection({
                   onClick={() => handleFormatChange(format.id)}
                   className={`
                     p-4 border rounded-lg text-center cursor-pointer transition
-                    ${settings.format + '-' + settings.codec === format.id
+                    ${format.id === `${settings.format}-${settings.codec}`
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
                   `}
@@ -770,7 +792,7 @@ export default function SettingsSection({
                   onClick={() => handleFormatChange(format.id)}
                   className={`
                     p-4 border rounded-lg text-center cursor-pointer transition
-                    ${settings.format + '-' + settings.codec === format.id
+                    ${format.id === `${settings.format}-${settings.codec}`
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
                   `}
@@ -1248,7 +1270,7 @@ export default function SettingsSection({
                     onClick={() => handleFormatChange(format.id)}
                     className={`
                       p-4 border rounded-lg text-center cursor-pointer transition
-                      ${settings.format + '-' + settings.codec === format.id
+                      ${format.id === `${settings.format}-${settings.codec}`
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
                         : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
                     `}

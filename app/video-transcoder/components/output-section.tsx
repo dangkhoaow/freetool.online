@@ -268,12 +268,25 @@ export default function OutputSection({
           <pre className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
             {JSON.stringify({
               task: task,
+              format: settings.format,
+              codec: settings.codec,
+              quality: settings.quality,
+              performanceMode: settings.performanceMode || 'balanced',
+              resolution: settings.resolution,
+              ...(settings.resolution === 'custom' && {
+                customWidth: settings.customWidth,
+                customHeight: settings.customHeight
+              }),
               ...(task === 'trim' && {
-                startTime: '00:00',
-                endTime: '00:00'
+                startTime: formatTime(settings.startTime),
+                endTime: formatTime(settings.endTime || 0)
               }),
               ...(task === 'split' && {
-                splitPoints: ['00:00']
+                splitPoints: settings.splitPoints?.map((p: number) => formatTime(p)) || []
+              }),
+              ...(task === 'merge' && {
+                mergeClips: settings.mergeClips?.length || 0,
+                transition: settings.transition
               })
             }, null, 2)}
           </pre>

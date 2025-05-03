@@ -333,7 +333,7 @@ export default function TranscoderTool() {
         case 'merge':
           console.log('Processing merge task with clips:', settings.mergeClips);
           console.log('Using transition:', settings.transition);
-          result = await mergeService.mergeVideos(settings.mergeClips, settings.transition);
+          result = await mergeService.mergeVideos(settings.mergeClips, settings);
           break;
       }
 
