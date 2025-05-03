@@ -90,7 +90,7 @@ export default function FaqSection() {
       <div className="mt-12 text-center">
         <p className="text-gray-600 dark:text-gray-300">
           Still have questions about video processing?{" "}
-          <a href="https://freetoolonline.com/contact-us.html?utm_source=external&utm_medium=freetool&utm_content=video-transcoder" className="text-blue-600 hover:underline dark:text-blue-400">
+          <a target="_blank" href="https://freetoolonline.com/contact-us.html?utm_source=external&utm_medium=freetool&utm_content=video-transcoder" className="text-blue-600 hover:underline dark:text-blue-400">
             Contact our support team
           </a>{" "}
           for more information

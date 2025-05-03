@@ -91,8 +91,8 @@ export default function FaqSection() {
           we're here to help.
         </p>
         <div className="flex justify-center">
-          <a
-            href="/contact"
+          <a target="_blank"
+            href="https://freetoolonline.com/contact-us.html?utm_source=external&utm_medium=freetool&utm_content=privacy-media-recorder"
             className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
           >
             Contact Support

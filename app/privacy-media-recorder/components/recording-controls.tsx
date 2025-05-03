@@ -50,14 +50,6 @@ export default function RecordingControls({
               <Camera className="h-6 w-6 text-blue-600" />
             </Button>
             <Button
-              onClick={onStartRecording}
-              variant="default"
-              className="bg-red-600 hover:bg-red-700 text-white rounded-full h-12 w-12 p-0 flex items-center justify-center"
-              title="Start Recording"
-            >
-              <Play className="h-6 w-6" />
-            </Button>
-            <Button
               onClick={onRefreshPreview}
               variant="outline"
               className="rounded-full h-12 w-12 p-0 flex items-center justify-center"
@@ -65,14 +57,25 @@ export default function RecordingControls({
             >
               <RefreshCw className="h-5 w-5" />
             </Button>
+            {!isRecording && (
+              <Button
+                onClick={onToggleFlip}
+                variant="outline"
+                className={`rounded-full h-12 w-12 p-0 flex items-center justify-center border transition-colors duration-150 ${isFlipped ? 'bg-blue-100 border-blue-500 text-blue-700' : ''}`}
+                title="Flip Horizontally"
+              >
+                <FlipHorizontal className="h-5 w-5" />
+              </Button>
+            )}
             <Button
-              onClick={onToggleFlip}
-              variant="outline"
-              className={`rounded-full h-12 w-12 p-0 flex items-center justify-center border transition-colors duration-150 ${isFlipped ? 'bg-blue-100 border-blue-500 text-blue-700' : ''}`}
-              title="Flip Horizontally"
+              onClick={onStartRecording}
+              variant="default"
+              className="bg-red-600 hover:bg-red-700 text-white rounded-full h-12 w-12 p-0 flex items-center justify-center"
+              title="Start Recording"
             >
-              <FlipHorizontal className="h-5 w-5" />
+              <Play className="h-6 w-6" />
             </Button>
+            
           </>
         ) : (
           <>
@@ -97,14 +100,6 @@ export default function RecordingControls({
               ) : (
                 <Pause className="h-5 w-5" />
               )}
-            </Button>
-            <Button
-              onClick={onToggleFlip}
-              variant="outline"
-              className={`rounded-full h-12 w-12 p-0 flex items-center justify-center border transition-colors duration-150 ${isFlipped ? 'bg-blue-100 border-blue-500 text-blue-700' : ''}`}
-              title="Flip Horizontally"
-            >
-              <FlipHorizontal className="h-5 w-5" />
             </Button>
           </>
         )}
