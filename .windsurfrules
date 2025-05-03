@@ -1,3 +1,7 @@
+- Firstly, please must follow all rules in this file strictly before doing any editing and think.
+
+- After editing, please summary your following actions and changes in the code to demonstrate you are following all rules in this file strictly.
+
 - Don't uses zsh
 
 - Please always analyze codebase (all files) before editing any file, do not create new file if not necessary, when you want to create new file, please reanalyze codebase again. For make sure we don't have duplicate file and logic
