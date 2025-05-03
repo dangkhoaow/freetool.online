@@ -32,7 +32,7 @@ export default function TranscoderTool() {
   const [settings, setSettings] = useState<VideoSettings>({
     format: 'mp4',
     codec: 'libx264',
-    quality: 23,
+    quality: 3, // Set to middle quality (1-5 scale) as default
     resolution: 'original',
     frameRate: null,
     audioCodec: 'aac',

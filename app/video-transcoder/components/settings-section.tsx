@@ -17,8 +17,18 @@ import {
 
 // Define output format options
 const formatOptions = [
-  { id: "mp4-h264", name: "MP4 (H.264)", description: "Best compatibility" },
-  { id: "mov-h264", name: "QuickTime", description: "For Apple devices" }
+  { id: "mp4-libx264", name: "MP4 (H.264)", description: "Best compatibility" },
+  { id: "webm-libvpx-vp9", name: "WebM (VP9)", description: "Better compression" },
+  { id: "mov-libx264", name: "QuickTime", description: "For Apple devices" }
+]
+
+// Define quality levels with descriptions
+const qualityLevels = [
+  { value: 1, label: "Highest", description: "Best quality, larger file" },
+  { value: 2, label: "High", description: "Very good quality" },
+  { value: 3, label: "Medium", description: "Balanced (recommended)" },
+  { value: 4, label: "Low", description: "Smaller file size" },
+  { value: 5, label: "Lowest", description: "Smallest file, reduced quality" }
 ]
 
 // Define resolution options (including 9:16 portrait)
@@ -70,7 +80,17 @@ export default function SettingsSection({
   // Handle format selection
   const handleFormatChange = (formatId: string) => {
     const [format, codec] = formatId.split('-')
-    onUpdateSettings({ format, codec })
+    
+    // Set appropriate audio codec for the selected format
+    let audioCodec = settings.audioCodec;
+    if (format === 'webm') {
+      audioCodec = 'libvorbis'; // WebM requires Vorbis or Opus audio
+    } else if (format === 'mp4' || format === 'mov') {
+      audioCodec = 'aac'; // MP4/MOV work best with AAC
+    }
+    
+    console.log(`Format changed to ${format}, setting codec: ${codec}, audio codec: ${audioCodec}`)
+    onUpdateSettings({ format, codec, audioCodec })
   }
   
   // Handle quality change
@@ -210,7 +230,7 @@ export default function SettingsSection({
         <TabsContent value="convert" className="space-y-6">
           <div>
             <h4 className="font-medium mb-3 dark:text-white">Output Format</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {formatOptions.map(format => (
                 <div
                   key={format.id}
@@ -227,11 +247,24 @@ export default function SettingsSection({
                 </div>
               ))}
             </div>
+            <div className="mt-2 text-xs text-gray-500">
+              <p>• MP4 (H.264): Most compatible format for all devices and browsers</p>
+              <p>• WebM (VP9): Better compression, but limited browser support</p>
+              <p>• QuickTime: Best for macOS and iOS devices</p>
+            </div>
           </div>
           
           <div>
             <h4 className="font-medium mb-3 dark:text-white">Quality</h4>
             <div className="px-2">
+              <div className="mb-2 flex justify-between">
+                <span className="text-sm font-medium">
+                  {qualityLevels.find(q => q.value === settings.quality)?.label || "Medium"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {qualityLevels.find(q => q.value === settings.quality)?.description || "Balanced quality and size"}
+                </span>
+              </div>
               <Slider
                 value={[settings.quality]}
                 min={1}
@@ -240,8 +273,8 @@ export default function SettingsSection({
                 onValueChange={handleQualityChange}
               />
               <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span>Smaller file size</span>
                 <span>Higher quality</span>
+                <span>Smaller file</span>
               </div>
             </div>
           </div>
@@ -261,25 +294,36 @@ export default function SettingsSection({
             </select>
             {/* Show custom input fields if 'custom' is selected */}
             {settings.resolution === 'custom' && (
-              <div className="flex gap-2 mt-2">
-                <Input
-                  type="number"
-                  min={64}
-                  max={4096}
-                  placeholder="Width"
-                  value={settings.customWidth || ''}
-                  onChange={e => onUpdateSettings({ customWidth: e.target.value.replace(/\D/g, '') })}
-                  className="w-1/2"
-                />
-                <Input
-                  type="number"
-                  min={64}
-                  max={4096}
-                  placeholder="Height"
-                  value={settings.customHeight || ''}
-                  onChange={e => onUpdateSettings({ customHeight: e.target.value.replace(/\D/g, '') })}
-                  className="w-1/2"
-                />
+              <div className="space-y-2 mt-3">
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <label className="text-xs mb-1 block">Width (px)</label>
+                    <Input
+                      type="number"
+                      min={64}
+                      max={4096}
+                      placeholder="Width"
+                      value={settings.customWidth || ''}
+                      onChange={e => onUpdateSettings({ customWidth: e.target.value.replace(/\D/g, '') })}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="text-xs mb-1 block">Height (px)</label>
+                    <Input
+                      type="number"
+                      min={64}
+                      max={4096}
+                      placeholder="Height"
+                      value={settings.customHeight || ''}
+                      onChange={e => onUpdateSettings({ customHeight: e.target.value.replace(/\D/g, '') })}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Custom resolution should be between 64px and 4096px
+                </div>
               </div>
             )}
           </div>

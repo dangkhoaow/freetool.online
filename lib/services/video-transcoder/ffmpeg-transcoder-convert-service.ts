@@ -124,9 +124,12 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
       const outputFileName = `output.${outputExtension}`;
 
       // Ensure valid audio codec for WebM
+      let audioCodec = settings.audioCodec;
       if (outputExtension === 'webm') {
-        settings.audioCodec = 'libvorbis'; // Or 'libopus' if preferred
+        audioCodec = 'libvorbis'; // Or 'libopus' if preferred
         if (!settings.audioBitrate || settings.audioBitrate < 32) settings.audioBitrate = 128;
+      } else if (outputExtension === 'mp4' || outputExtension === 'mov') {
+        audioCodec = 'aac'; // MP4/MOV work best with AAC
       }
       
       // Build FFmpeg arguments based on settings
@@ -196,9 +199,9 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
       }
       
       // Audio codec settings
-      if (settings.audioCodec !== 'copy') {
+      if (audioCodec !== 'copy') {
         ffmpegArgs.push(
-          '-c:a', settings.audioCodec,
+          '-c:a', audioCodec,
           '-b:a', `${settings.audioBitrate}k`
         );
       } else {

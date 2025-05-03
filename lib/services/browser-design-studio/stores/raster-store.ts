@@ -14,7 +14,7 @@ interface RasterState {
   layers: RasterLayer[]
   activeLayerIndex: number | null
   history: ImageData[]
-  canvasRef: React.RefObject<HTMLCanvasElement> | null
+  canvasRef: React.RefObject<HTMLCanvasElement | null> | null
   addLayer: (layer: RasterLayer) => void
   updateLayer: (index: number, layer: Partial<RasterLayer>) => void
   deleteLayer: (index: number) => void
@@ -26,7 +26,7 @@ interface RasterState {
   loadImageData: (imageData: ImageData, options?: { layerName?: string }) => void
   saveState: () => { layers: RasterLayer[] }
   restoreState: (state: { layers: RasterLayer[] }) => void
-  setCanvasRef: (ref: React.RefObject<HTMLCanvasElement> | null) => void
+  setCanvasRef: (ref: React.RefObject<HTMLCanvasElement | null> | null) => void
 }
 
 export const useRasterStore = create<RasterState>((set, get) => ({
@@ -153,5 +153,5 @@ export const useRasterStore = create<RasterState>((set, get) => ({
     activeLayerIndex: state.layers?.length > 0 ? 0 : null
   }),
 
-  setCanvasRef: (ref: React.RefObject<HTMLCanvasElement> | null) => set({ canvasRef: ref })
+  setCanvasRef: (ref: React.RefObject<HTMLCanvasElement | null> | null) => set({ canvasRef: ref })
 }))
