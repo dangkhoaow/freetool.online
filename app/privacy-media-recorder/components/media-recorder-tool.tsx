@@ -333,10 +333,21 @@ export default function MediaRecorderTool() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Handle tab change - ensure recording is stopped when leaving the record tab
+  const handleTabChange = (newTab: string) => {
+    // If we're navigating away from the recording tab and still recording, stop it
+    if (activeTab === "record" && newTab !== "record" && isRecording) {
+      console.log('[TAB_CHANGE] Automatically stopping recording when changing tabs');
+      stopRecording();
+    }
+    
+    setActiveTab(newTab);
+  };
+
   return (
     <Card className="border border-purple-100 dark:border-purple-900 shadow-md">
       <CardContent className="p-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-b">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3 sm:mb-0">
               Privacy Media Recorder

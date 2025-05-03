@@ -405,10 +405,11 @@ export class FFmpegProcessorService {
       // Write input file to FFmpeg virtual file system
       ffmpeg.writeFile(inputFileName, await fetchFile(recording.blob));
       
-      // Extract frame from the middle of the video
+      // Extract frame from the video at 2 seconds instead of 1
+      this.onLog(`Extracting thumbnail from recording at 00:00:02`);
       await ffmpeg.exec([
         '-i', inputFileName,
-        '-ss', '00:00:01', // Take frame at 1 second
+        '-ss', '00:00:02', // Take frame at 2 seconds (changed from 1 to 2)
         '-vframes', '1',
         '-q:v', '2', // Quality factor (lower is better)
         '-y', outputFileName
@@ -419,7 +420,9 @@ export class FFmpegProcessorService {
       const thumbnailBlob = new Blob([thumbnailData], { type: 'image/jpeg' });
       
       // Create and return URL for thumbnail
-      return URL.createObjectURL(thumbnailBlob);
+      const thumbnailUrl = URL.createObjectURL(thumbnailBlob);
+      this.onLog(`Thumbnail extracted successfully: ${thumbnailUrl.substring(0, 30)}...`);
+      return thumbnailUrl;
     } catch (error) {
       this.onLog(`Error extracting thumbnail: ${error}`);
       throw error;

@@ -49,6 +49,8 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
   });
   const [trimValues, setTrimValues] = useState<number[]>([0, 100]);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Store poster images for video elements (simplified from thumbnails)
+  const [posters, setPosters] = useState<{[id: string]: boolean}>({});
 
   // Initialize FFmpeg processor
   const ffmpegProcessor = new FFmpegProcessorService(
@@ -287,8 +289,29 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
                 {recording.type.includes("video") ? (
                   <video
                     src={recording.url}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain cursor-pointer"
                     onClick={() => openRecording(recording)}
+                    // Don't autoplay in the list to save resources
+                    preload="metadata"
+                    muted
+                    // Add onLoadedMetadata to handle when video is ready
+                    onLoadedMetadata={(e) => {
+                      // Set the current time to 2 seconds (or end if shorter) to show a better thumbnail
+                      const video = e.currentTarget;
+                      const seekTime = Math.min(2, recording.duration);
+                      
+                      // Only seek if we haven't already done so for this recording
+                      if (!posters[recording.id]) {
+                        console.log(`[VIDEO] Setting seek time to ${seekTime}s for recording ${recording.id}`);
+                        video.currentTime = seekTime;
+                        
+                        // Mark this video as having its poster set
+                        setPosters(prev => ({
+                          ...prev, 
+                          [recording.id]: true
+                        }));
+                      }
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
