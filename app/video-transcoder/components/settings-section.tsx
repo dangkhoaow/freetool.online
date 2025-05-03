@@ -31,6 +31,12 @@ const qualityLevels = [
   { value: 5, label: "Lowest", description: "Smallest file, reduced quality" }
 ]
 
+// Define performance modes
+const performanceModes = [
+  { id: "balanced", name: "Balanced", description: "Default performance" },
+  { id: "max-performance", name: "Maximum Performance", description: "Uses more CPU" }
+]
+
 // Define resolution options (including 9:16 portrait)
 const resolutionOptions = [
   { id: "original", name: "Original" },
@@ -96,6 +102,12 @@ export default function SettingsSection({
   // Handle quality change
   const handleQualityChange = (value: number[]) => {
     onUpdateSettings({ quality: value[0] })
+  }
+  
+  // Handle performance mode change
+  const handlePerformanceModeChange = (mode: string) => {
+    console.log(`Performance mode changed to: ${mode}`)
+    onUpdateSettings({ performanceMode: mode })
   }
   
   // Handle resolution change
@@ -277,6 +289,33 @@ export default function SettingsSection({
                 <span>Smaller file</span>
               </div>
             </div>
+          </div>
+          
+          <div>
+            <h4 className="font-medium mb-3 dark:text-white">Performance Mode</h4>
+            <div className="grid grid-cols-2 gap-3">
+              {performanceModes.map(mode => (
+                <div
+                  key={mode.id}
+                  onClick={() => handlePerformanceModeChange(mode.id)}
+                  className={`
+                    p-3 border rounded-lg text-center cursor-pointer transition
+                    ${settings.performanceMode === mode.id
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                  `}
+                >
+                  <div className="font-medium mb-1">{mode.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{mode.description}</div>
+                </div>
+              ))}
+            </div>
+            {settings.performanceMode === 'max-performance' && (
+              <div className="mt-2 text-xs text-amber-500">
+                <p>• Maximum performance may use more system resources and battery</p>
+                <p>• Your computer's fan may become louder during conversion</p>
+              </div>
+            )}
           </div>
           
           <div>
@@ -481,6 +520,81 @@ export default function SettingsSection({
               </div>
             </div>
           </div>
+          
+          {/* Performance mode for Trim task */}
+          <div>
+            <h4 className="font-medium mb-3 dark:text-white">Performance Mode</h4>
+            <div className="grid grid-cols-2 gap-3">
+              {performanceModes.map(mode => (
+                <div
+                  key={mode.id}
+                  onClick={() => handlePerformanceModeChange(mode.id)}
+                  className={`
+                    p-3 border rounded-lg text-center cursor-pointer transition
+                    ${settings.performanceMode === mode.id
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                  `}
+                >
+                  <div className="font-medium mb-1">{mode.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{mode.description}</div>
+                </div>
+              ))}
+            </div>
+            {settings.performanceMode === 'max-performance' && (
+              <div className="mt-2 text-xs text-amber-500">
+                <p>• Maximum performance may use more system resources and battery</p>
+                <p>• Your computer's fan may become louder during processing</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Output Format and Quality for Trim task */}
+          <div>
+            <h4 className="font-medium mb-3 dark:text-white">Output Format</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {formatOptions.map(format => (
+                <div
+                  key={format.id}
+                  onClick={() => handleFormatChange(format.id)}
+                  className={`
+                    p-4 border rounded-lg text-center cursor-pointer transition
+                    ${settings.format + '-' + settings.codec === format.id
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                  `}
+                >
+                  <div className="font-medium mb-1">{format.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{format.description}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="font-medium mb-3 dark:text-white">Quality</h4>
+            <div className="px-2">
+              <div className="mb-2 flex justify-between">
+                <span className="text-sm font-medium">
+                  {qualityLevels.find(q => q.value === settings.quality)?.label || "Medium"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {qualityLevels.find(q => q.value === settings.quality)?.description || "Balanced quality and size"}
+                </span>
+              </div>
+              <Slider
+                value={[settings.quality]}
+                min={1}
+                max={5}
+                step={1}
+                onValueChange={handleQualityChange}
+              />
+              <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <span>Higher quality</span>
+                <span>Smaller file</span>
+              </div>
+            </div>
+          </div>
         </TabsContent>
         
         {/* Split settings */}
@@ -567,9 +681,11 @@ export default function SettingsSection({
                     document.addEventListener('mousemove', handleMouseMove);
                     document.addEventListener('mouseup', handleMouseUp);
                   }}
-                />
-                <div className="absolute -bottom-6 text-xs text-center w-12 -ml-4 text-gray-600 dark:text-gray-400">
-                  {formatTime(point)}
+                >
+                  <div className="h-full w-1 bg-white invisible"></div>
+                  <div className="absolute -bottom-6 text-xs text-center w-12 -ml-4 text-gray-600 dark:text-gray-400">
+                    {formatTime(point)}
+                  </div>
                 </div>
               </div>
               ))}
@@ -613,6 +729,81 @@ export default function SettingsSection({
                   </div>
                 ))
               )}
+            </div>
+          </div>
+          
+          {/* Performance mode for Split task */}
+          <div className="mt-6">
+            <h4 className="font-medium mb-3 dark:text-white">Performance Mode</h4>
+            <div className="grid grid-cols-2 gap-3">
+              {performanceModes.map(mode => (
+                <div
+                  key={mode.id}
+                  onClick={() => handlePerformanceModeChange(mode.id)}
+                  className={`
+                    p-3 border rounded-lg text-center cursor-pointer transition
+                    ${settings.performanceMode === mode.id
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                  `}
+                >
+                  <div className="font-medium mb-1">{mode.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{mode.description}</div>
+                </div>
+              ))}
+            </div>
+            {settings.performanceMode === 'max-performance' && (
+              <div className="mt-2 text-xs text-amber-500">
+                <p>• Maximum performance may use more system resources and battery</p>
+                <p>• Your computer's fan may become louder during processing</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Output Format and Quality for Split task */}
+          <div>
+            <h4 className="font-medium mb-3 dark:text-white">Output Format</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {formatOptions.map(format => (
+                <div
+                  key={format.id}
+                  onClick={() => handleFormatChange(format.id)}
+                  className={`
+                    p-4 border rounded-lg text-center cursor-pointer transition
+                    ${settings.format + '-' + settings.codec === format.id
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                  `}
+                >
+                  <div className="font-medium mb-1">{format.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{format.description}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="font-medium mb-3 dark:text-white">Quality</h4>
+            <div className="px-2">
+              <div className="mb-2 flex justify-between">
+                <span className="text-sm font-medium">
+                  {qualityLevels.find(q => q.value === settings.quality)?.label || "Medium"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {qualityLevels.find(q => q.value === settings.quality)?.description || "Balanced quality and size"}
+                </span>
+              </div>
+              <Slider
+                value={[settings.quality]}
+                min={1}
+                max={5}
+                step={1}
+                onValueChange={handleQualityChange}
+              />
+              <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <span>Higher quality</span>
+                <span>Smaller file</span>
+              </div>
             </div>
           </div>
         </TabsContent>
@@ -1017,25 +1208,79 @@ export default function SettingsSection({
                   <option value="wipe">Wipe</option>
                 </select>
               </div>
-              
-              <div>
-                <h4 className="font-medium mb-2 dark:text-white">Output Format</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {formatOptions.slice(0, 2).map(format => (
-                    <div
-                      key={format.id}
-                      onClick={() => handleFormatChange(format.id)}
-                      className={`
-                        p-4 border rounded-lg text-center cursor-pointer transition
-                        ${settings.format + '-' + settings.codec === format.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
-                      `}
-                    >
-                      <div className="font-medium mb-1">{format.name}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{format.description}</div>
-                    </div>
-                  ))}
+            </div>
+            
+            {/* Performance mode for Merge task */}
+            <div className="mt-6">
+              <h4 className="font-medium mb-3 dark:text-white">Performance Mode</h4>
+              <div className="grid grid-cols-2 gap-3">
+                {performanceModes.map(mode => (
+                  <div
+                    key={mode.id}
+                    onClick={() => handlePerformanceModeChange(mode.id)}
+                    className={`
+                      p-3 border rounded-lg text-center cursor-pointer transition
+                      ${settings.performanceMode === mode.id
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                    `}
+                  >
+                    <div className="font-medium mb-1">{mode.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{mode.description}</div>
+                  </div>
+                ))}
+              </div>
+              {settings.performanceMode === 'max-performance' && (
+                <div className="mt-2 text-xs text-amber-500">
+                  <p>• Maximum performance may use more system resources and battery</p>
+                  <p>• Your computer's fan may become louder during processing</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Output Format and Quality for Merge task */}
+            <div>
+              <h4 className="font-medium mb-3 dark:text-white">Output Format</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {formatOptions.map(format => (
+                  <div
+                    key={format.id}
+                    onClick={() => handleFormatChange(format.id)}
+                    className={`
+                      p-4 border rounded-lg text-center cursor-pointer transition
+                      ${settings.format + '-' + settings.codec === format.id
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-white'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:text-gray-300'}
+                    `}
+                  >
+                    <div className="font-medium mb-1">{format.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{format.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-3 dark:text-white">Quality</h4>
+              <div className="px-2">
+                <div className="mb-2 flex justify-between">
+                  <span className="text-sm font-medium">
+                    {qualityLevels.find(q => q.value === settings.quality)?.label || "Medium"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {qualityLevels.find(q => q.value === settings.quality)?.description || "Balanced quality and size"}
+                  </span>
+                </div>
+                <Slider
+                  value={[settings.quality]}
+                  min={1}
+                  max={5}
+                  step={1}
+                  onValueChange={handleQualityChange}
+                />
+                <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>Higher quality</span>
+                  <span>Smaller file</span>
                 </div>
               </div>
             </div>

@@ -16,6 +16,7 @@ export interface VideoSettings {
   transition: 'none' | 'crossfade' | 'fade' | 'wipe';
   customWidth?: string;
   customHeight?: string;
+  performanceMode?: 'balanced' | 'max-performance';
 }
 
 export interface MergeClip {

@@ -7,6 +7,12 @@ const nextConfig = {
       canvas: false,
     };
 
+    // Add WASM support
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+    };
+
     return config;
   },
   reactStrictMode: true,

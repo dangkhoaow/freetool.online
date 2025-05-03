@@ -42,7 +42,8 @@ export default function TranscoderTool() {
     endTime: null,
     splitPoints: [],
     mergeClips: [],
-    transition: 'none'
+    transition: 'none',
+    performanceMode: 'balanced' // Default to balanced mode
   })
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle')
   const [progress, setProgress] = useState(0)

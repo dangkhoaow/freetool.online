@@ -134,6 +134,30 @@ export class FFmpegTranscoderConvertService extends FFmpegTranscoderBaseService 
       
       // Build FFmpeg arguments based on settings
       const ffmpegArgs = ['-i', inputFileName];
+      
+      // Apply performance mode settings
+      if (settings.performanceMode === 'max-performance') {
+        this.onLog('Using maximum performance mode');
+        // Add thread count setting to use more CPU threads
+        ffmpegArgs.push('-threads', '0'); // 0 means use all available threads
+        
+        // For x264, add faster preset while maintaining quality
+        if (settings.codec === 'libx264') {
+          // Use a faster preset for encoding
+          ffmpegArgs.push('-preset', 'veryfast');
+        } else if (settings.codec === 'libvpx-vp9') {
+          // For VP9, use row-based multithreading and a faster quality setting
+          ffmpegArgs.push('-row-mt', '1', '-cpu-used', '4');
+        }
+      } else {
+        // Default balanced mode 
+        if (settings.codec === 'libx264') {
+          ffmpegArgs.push('-preset', 'medium'); // Default preset
+        } else if (settings.codec === 'libvpx-vp9') {
+          ffmpegArgs.push('-row-mt', '1', '-cpu-used', '2'); // Moderate CPU usage
+        }
+      }
+      
       // For VP9/WebM, lower bitrate if not set
       let forceBitrate = null;
       if ((settings.format === 'webm' || settings.codec === 'libvpx-vp9') && (!settings.quality || settings.quality > 4)) {
