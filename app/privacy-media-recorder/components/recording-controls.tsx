@@ -16,27 +16,39 @@ import {
 interface RecordingControlsProps {
   isRecording: boolean;
   isPaused: boolean;
+  isFlipped: boolean;
   onStartRecording: () => Promise<void>;
   onStopRecording: () => Promise<void>;
   onTogglePause: () => void;
   onRefreshPreview: () => Promise<void>;
   onToggleFlip: () => void;
+  onStartPreview: () => Promise<void>;
 }
 
 export default function RecordingControls({
   isRecording,
   isPaused,
+  isFlipped,
   onStartRecording,
   onStopRecording,
   onTogglePause,
   onRefreshPreview,
-  onToggleFlip
+  onToggleFlip,
+  onStartPreview
 }: RecordingControlsProps) {
   return (
     <div className="mt-4">
       <div className="flex flex-wrap justify-center gap-3">
         {!isRecording ? (
           <>
+            <Button
+              onClick={onStartPreview}
+              variant="outline"
+              className="rounded-full h-12 w-12 p-0 flex items-center justify-center border transition-colors duration-150"
+              title="Start Camera Preview"
+            >
+              <Camera className="h-6 w-6 text-blue-600" />
+            </Button>
             <Button
               onClick={onStartRecording}
               variant="default"
@@ -56,7 +68,7 @@ export default function RecordingControls({
             <Button
               onClick={onToggleFlip}
               variant="outline"
-              className="rounded-full h-12 w-12 p-0 flex items-center justify-center"
+              className={`rounded-full h-12 w-12 p-0 flex items-center justify-center border transition-colors duration-150 ${isFlipped ? 'bg-blue-100 border-blue-500 text-blue-700' : ''}`}
               title="Flip Horizontally"
             >
               <FlipHorizontal className="h-5 w-5" />
@@ -89,7 +101,7 @@ export default function RecordingControls({
             <Button
               onClick={onToggleFlip}
               variant="outline"
-              className="rounded-full h-12 w-12 p-0 flex items-center justify-center"
+              className={`rounded-full h-12 w-12 p-0 flex items-center justify-center border transition-colors duration-150 ${isFlipped ? 'bg-blue-100 border-blue-500 text-blue-700' : ''}`}
               title="Flip Horizontally"
             >
               <FlipHorizontal className="h-5 w-5" />

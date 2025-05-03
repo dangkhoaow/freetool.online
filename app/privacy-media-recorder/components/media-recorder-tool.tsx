@@ -64,7 +64,7 @@ export default function MediaRecorderTool() {
       height: 720
     },
     frameRate: 30,
-    mimeType: 'video/webm'
+    mimeType: 'video/mp4' // Set MP4 as default
   });
   const [privacyOptions, setPrivacyOptions] = useState({
     faceBlur: false,
@@ -736,9 +736,13 @@ export default function MediaRecorderTool() {
 
   // Format seconds to mm:ss
   const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    // Ensure input is a non-negative number
+    let safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+    // Always round down to the nearest integer
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = Math.floor(safeSeconds % 60);
+    const result = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return result;
   };
 
   // Handle tab change - ensure recording is stopped and streams are released
@@ -803,11 +807,13 @@ export default function MediaRecorderTool() {
                 <RecordingControls
                   isRecording={isRecording}
                   isPaused={isPaused}
+                  isFlipped={isFlipped}
                   onStartRecording={startRecording}
                   onStopRecording={stopRecording}
                   onTogglePause={togglePause}
                   onRefreshPreview={loadDevices}
                   onToggleFlip={toggleFlip}
+                  onStartPreview={startPreview}
                 />
               </div>
 

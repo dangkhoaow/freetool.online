@@ -391,7 +391,7 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
             <DialogTitle>
               {selectedRecording?.name}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription style={{ display: "none" }}>
               View, edit, and export your recording
             </DialogDescription>
           </DialogHeader>
@@ -409,7 +409,7 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
             )}
           </div>
           
-          <Tabs defaultValue="process">
+          <Tabs style={{ display: "none" }} defaultValue="process">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="process">
                 <Scissors className="h-4 w-4 mr-2" />
@@ -624,7 +624,7 @@ export default function RecordingsList({ localStorageService }: RecordingsListPr
             </TabsContent>
           </Tabs>
           
-          <DialogFooter>
+          <DialogFooter style={{ display: "none" }}>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Close
             </Button>
