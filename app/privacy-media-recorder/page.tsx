@@ -24,36 +24,36 @@ export default function PrivacyMediaRecorderPage() {
       />
 
       {/* Main Media Recorder Tool */}
-      <section id="recorder" className="py-12 px-4 md:py-16">
-        <div className="container mx-auto max-w-7xl">
+      <section id="recorder" className="py-12 px-4">
+        <div className="container mx-auto max-w-6xl">
           <MediaRecorderTool />
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 px-4">
+      <section id="features" className="py-12 px-4">
         <div className="container mx-auto max-w-6xl">
           <FeaturesSection />
         </div>
       </section>
 
       {/* Tool Guide */}
-      <section className="py-16 px-4 bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-950">
-        <div className="container mx-auto max-w-4xl">
+      <section className="py-12 px-4 bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-950">
+        <div className="container mx-auto max-w-6xl">
           <ToolGuide />
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16 px-4 bg-white dark:bg-gray-900">
-        <div className="container mx-auto max-w-4xl">
+      <section className="py-12 px-4 bg-white dark:bg-gray-900">
+        <div className="container mx-auto max-w-6xl">
           <FaqSection />
         </div>
       </section>
 
       {/* Security Section */}
-      <section className="py-16 px-4 bg-gray-50 dark:bg-gray-950">
-        <div className="container mx-auto max-w-4xl">
+      <section className="py-12 px-4 bg-gray-50 dark:bg-gray-950">
+        <div className="container mx-auto max-w-6xl">
           <SecuritySection />
         </div>
       </section>

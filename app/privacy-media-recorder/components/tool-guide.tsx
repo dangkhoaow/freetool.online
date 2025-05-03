@@ -33,7 +33,7 @@ export default function ToolGuide() {
   ];
 
   return (
-    <div className="container mx-auto max-w-4xl">
+    <div className="container mx-auto max-w-6xl mb-4 px-0">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold mb-4">How to Use Privacy Media Recorder</h2>
         <p className="text-lg text-gray-600 dark:text-gray-300">

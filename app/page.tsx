@@ -13,7 +13,18 @@ import ToolsSlider from "@/components/tools-slider";
 import { tools } from "@/lib/config/tools";
 
 // Select featured tools for the homepage - tools with isHot or isNew flags
-const featuredTools = tools.filter(tool => tool.isHot || tool.isNew);
+const featuredTools = tools.sort((a, b) => {
+  // First sort by isHot (true comes first)
+  if (a.isHot !== b.isHot) {
+    return a.isHot ? -1 : 1;
+  }
+  // Then sort by isNew (true comes first)
+  if (a.isNew !== b.isNew) {
+    return a.isNew ? -1 : 1;
+  }
+  // If both flags are the same, keep original order
+  return 0;
+});
 
 export const metadata = {
   title: "FreeTool Online - Free Browser-Based Tools for Everyday Tasks",
@@ -84,7 +95,7 @@ export default function Home() {
                 )}
                 {/* New Badge */}
                 {tool.isNew && (
-                  <div className="absolute top-2 right-12 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                  <div className="absolute top-2 right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
                     <Zap className="h-3 w-3 mr-1" />
                     NEW
                   </div>

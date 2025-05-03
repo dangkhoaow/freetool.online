@@ -256,7 +256,7 @@ export default function Navbar() {
             {/* Add Trustpilot Review Link to Mobile Menu */}
             <a 
               href="https://www.trustpilot.com/review/freetoolonline.com?utm_medium=trustbox&utm_source=TrustBoxReviewCollector"
-              className="text-[#00b67a] hover:text-[#00b67a] font-medium transition-colors py-2 flex items-center"
+              className="text-[#00b67a] hover:text-[#00b67a] font-medium transition-colors py-2 flex items-center border rounded-md border-[#00b67a] inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setIsMobileMenuOpen(false)}

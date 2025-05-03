@@ -60,7 +60,7 @@ export default function ToolsGrid({ tools, categories, onCategoryChange }: Tools
               </div>
             )}
             {tool.isNew && (
-              <div className="absolute top-2 right-12 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+              <div className="absolute top-2 right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
                 <Zap className="h-3 w-3 mr-1" />
                 NEW
               </div>

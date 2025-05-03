@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="container mx-auto max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-white dark:text-white text-lg font-bold mb-4">FreeTool.Online</h3>
+            <h3 className="text-white dark:text-white text-lg font-bold mb-4"><a href="/">FreeTool.Online</a></h3>
             <p className="text-sm">
               Your one-stop destination for a wide range of free online tools for developers, testers, students, and
               office workers.

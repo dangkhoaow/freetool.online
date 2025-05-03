@@ -66,7 +66,7 @@ export const tools: ToolConfig[] = [
     textColor: "text-cyan-600",
     category: "file",
     href: "/video-transcoder",
-    isHot: true,
+    isNew: true,
   },
   {
     id: "heic-converter",
@@ -77,6 +77,7 @@ export const tools: ToolConfig[] = [
     textColor: "text-blue-500",
     category: "image",
     href: "/heic-converter",
+    isHot: true,
   },
   {
     id: "code-editor",
@@ -173,6 +174,7 @@ export const tools: ToolConfig[] = [
     textColor: "text-purple-500",
     category: "image",
     href: "/gif-to-frames",
+    isHot: true,
   },
   {
     id: "pdf-tools",
@@ -183,6 +185,7 @@ export const tools: ToolConfig[] = [
     textColor: "text-green-500",
     category: "file",
     href: "/pdf-tools",
+    isHot: true,
   },
   {
     id: "zip-compressor",
@@ -193,6 +196,7 @@ export const tools: ToolConfig[] = [
     textColor: "text-amber-500",
     category: "file",
     href: "/zip-compressor",
+    isHot: true,
   },
   {
     id: "ai-data-visualization",
@@ -221,8 +225,8 @@ export const tools: ToolConfig[] = [
     title: "Browser Design Studio",
     description: "Create professional graphics with our browser-based design suite. Vector editing, raster painting, text tools, and AI-enhanced features.",
     icon: <Pen className="h-16 w-16" stroke="#e11d48" />,
-    color: "from-rose-50 to-orange-50",
-    textColor: "text-rose-600",
+    color: "from-pink-50 to-purple-50",
+    textColor: "text-pink-600",
     category: "image",
     href: "/browser-design-studio",
     isNew: true,
@@ -235,7 +239,6 @@ export const tools: ToolConfig[] = [
     color: "from-purple-50 to-indigo-50",
     textColor: "text-purple-600",
     category: "utility",
-    href: "/client-site-builder",
-    isNew: true,
+    href: "/client-site-builder"
   },
 ];

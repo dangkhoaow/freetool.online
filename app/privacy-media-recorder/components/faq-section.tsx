@@ -84,7 +84,7 @@ export default function FaqSection() {
         ))}
       </Accordion>
 
-      <div className="mt-12 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-center">
+      <div className="mt-8 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-center container mx-auto max-w-6xl">
         <h3 className="text-xl font-semibold mb-3">Still have questions?</h3>
         <p className="text-gray-600 dark:text-gray-300 mb-4">
           If you need more information or have specific questions about our Privacy Media Recorder,

@@ -25,7 +25,7 @@ export default function PdfToolsSection() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8">
+        <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-24 md:mb-8">
           <TabsTrigger value="merge-pdf" className="flex flex-col items-center gap-2 py-3 px-2">
             <Combine className="h-5 w-5" />
             <span className="text-xs">Merge PDF</span>
@@ -52,7 +52,7 @@ export default function PdfToolsSection() {
           </TabsTrigger>
         </TabsList>
 
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mt-8 md:mt-4 pt-4 md:pt-0">
           <TabsContent value="merge-pdf">
             <MergePdfTool />
           </TabsContent>

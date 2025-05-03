@@ -3,8 +3,9 @@
 import { Shield, Lock, XOctagon } from "lucide-react";
 
 export default function SecuritySection() {
+  // Remove max-w-* and container classes from outermost div, maximize width
   return (
-    <div className="container mx-auto max-w-4xl">
+    <div className="container mx-auto max-w-6xl px-0">
       <div className="text-center mb-12">
         <div className="inline-flex items-center justify-center p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-full mb-3">
           <Shield className="h-6 w-6" />

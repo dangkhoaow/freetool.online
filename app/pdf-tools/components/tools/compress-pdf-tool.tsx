@@ -146,8 +146,8 @@ export default function CompressPdfTool() {
   }
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="text-center mb-8">
+    <div className="container mx-auto max-w-md px-2 py-6 md:max-w-2xl md:px-8">
+      <div className="text-center mb-8 pt-16 sm:pt-10 md:pt-0">
         <h3 className="text-2xl font-bold">Compress PDF File</h3>
         <p className="text-gray-600 mt-2">Reduce the file size of your PDF document</p>
       </div>
