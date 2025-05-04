@@ -1,101 +1,10 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
+import { STATIC_RESOURCES, RESERVED_PATHS, CUSTOM_404_HTML } from './lib/static-resources'
 
-// Known static resources that should exist
-const KNOWN_STATIC_RESOURCES = [
-  '/favicon.ico',
-  '/apple-touch-icon.png',
-  '/favicon-16x16.png',
-  '/favicon-32x32.png',
-  '/robots.txt'
-];
-
-// Reserved paths that aren't part of the public-facing app routes
-const RESERVED_PATHS = [
-  '/_next',
-  '/api',
-  '/favicon.ico',
-  '/robots.txt',
-  '/sitemap.xml',
-  '/favicon-16x16.png',
-  '/favicon-32x32.png',
-  '/apple-touch-icon.png',
-  '/ads.txt',
-  '/manifest.webmanifest',
-  '/health',
-  '/not-found',
-  '/ffmpeg',
-  '/ffmpeg-core.js',
-  '/ffmpeg-core.wasm'
-];
-
-// HTML for a simple 404 page that we'll return directly from middleware
-// This avoids the need to rely on Next.js's internal error handling
-const SIMPLE_404_HTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>404 - Page Not Found</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f5f5f5;
-      color: #333;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
-    .container {
-      max-width: 500px;
-      text-align: center;
-      background-color: white;
-      padding: 40px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    h1 {
-      font-size: 48px;
-      margin: 0 0 16px;
-      color: #e53e3e;
-    }
-    h2 {
-      font-size: 24px;
-      font-weight: 500;
-      margin: 0 0 24px;
-    }
-    p {
-      margin: 0 0 32px;
-      color: #666;
-    }
-    a {
-      display: inline-block;
-      background-color: #3182ce;
-      color: white;
-      text-decoration: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-weight: 500;
-      transition: background-color 0.2s;
-    }
-    a:hover {
-      background-color: #2c5282;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>404</h1>
-    <h2>Page Not Found</h2>
-    <p>The page you are looking for doesn't exist or has been moved.</p>
-    <a href="/">Back to Home</a>
-  </div>
-</body>
-</html>`;
+// Log the number of dynamic resources loaded
+console.log(`Middleware loaded with ${STATIC_RESOURCES.length} static resources and ${RESERVED_PATHS.length} reserved paths`);
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
@@ -116,7 +25,7 @@ export async function middleware(request: NextRequest) {
   }
   
   // Always skip Next.js internal routes, API routes, and other special paths
-  if (RESERVED_PATHS.some(reservedPath => path === reservedPath || path.startsWith(reservedPath + '/'))) {
+  if (RESERVED_PATHS.some((reservedPath: string) => path === reservedPath || path.startsWith(reservedPath + '/'))) {
     return response;
   }
   
@@ -125,7 +34,7 @@ export async function middleware(request: NextRequest) {
   
   if (isStaticResource) {
     // Check if it's a known static resource
-    if (KNOWN_STATIC_RESOURCES.includes(path)) {
+    if (STATIC_RESOURCES.includes(path)) {
       return response;
     }
     
@@ -203,7 +112,7 @@ export async function middleware(request: NextRequest) {
     // Invalid segment format
     if (!isValidSegment(segment)) {
       console.log(`Invalid segment format: ${path}`);
-      return new NextResponse(SIMPLE_404_HTML, {
+      return new NextResponse(CUSTOM_404_HTML, {
         status: 404,
         headers: {
           'content-type': 'text/html; charset=utf-8',
@@ -215,7 +124,7 @@ export async function middleware(request: NextRequest) {
     // Check against known valid routes
     if (!VALID_TOP_ROUTES.includes(segment)) {
       console.log(`Unknown route: ${path}`);
-      return new NextResponse(SIMPLE_404_HTML, {
+      return new NextResponse(CUSTOM_404_HTML, {
         status: 404,
         headers: {
           'content-type': 'text/html; charset=utf-8',
@@ -235,7 +144,7 @@ export async function middleware(request: NextRequest) {
     // Invalid segment format
     if (!isValidSegment(parentSegment) || !isValidSegment(childSegment)) {
       console.log(`Invalid nested segment format: ${path}`);
-      return new NextResponse(SIMPLE_404_HTML, {
+      return new NextResponse(CUSTOM_404_HTML, {
         status: 404,
         headers: {
           'content-type': 'text/html; charset=utf-8',
@@ -280,7 +189,7 @@ export async function middleware(request: NextRequest) {
     
     // Unknown nested route
     console.log(`Unknown nested route: ${path}`);
-    return new NextResponse(SIMPLE_404_HTML, {
+    return new NextResponse(CUSTOM_404_HTML, {
       status: 404,
       headers: {
         'content-type': 'text/html; charset=utf-8',
@@ -292,7 +201,7 @@ export async function middleware(request: NextRequest) {
   // Any deeper nesting is likely invalid
   if (segments.length > 2) {
     console.log(`Deeply nested route not supported: ${path}`);
-    return new NextResponse(SIMPLE_404_HTML, {
+    return new NextResponse(CUSTOM_404_HTML, {
       status: 404,
       headers: {
         'content-type': 'text/html; charset=utf-8',
@@ -303,7 +212,7 @@ export async function middleware(request: NextRequest) {
   
   // If we somehow get here, return a 404
   console.log(`Catch-all 404 for: ${path}`);
-  return new NextResponse(SIMPLE_404_HTML, {
+  return new NextResponse(CUSTOM_404_HTML, {
     status: 404,
     headers: {
       'content-type': 'text/html; charset=utf-8',
