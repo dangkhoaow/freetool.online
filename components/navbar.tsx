@@ -73,7 +73,7 @@ export default function Navbar() {
             {isHomePage ? (
               /* Home page navigation */
               <>
-                <Link href="#tools" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+                <Link href="/tools" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
                   Tools
                 </Link>
                 <Link href="#features" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
@@ -106,7 +106,7 @@ export default function Navbar() {
                 <Link href="#features" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
                   Features
                 </Link>
-                <Link href="/#tools" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+                <Link href="/tools" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
                   All Tools
                 </Link>
               </>
@@ -170,7 +170,7 @@ export default function Navbar() {
               /* Home page mobile navigation */
               <>
                 <Link
-                  href="#tools"
+                  href="/tools"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -184,7 +184,7 @@ export default function Navbar() {
                   Features
                 </Link>
                 <Button className="w-full" asChild>
-                  <Link href="#tools" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link href="/tools" onClick={() => setIsMobileMenuOpen(false)}>
                     Explore Tools
                   </Link>
                 </Button>
@@ -232,7 +232,7 @@ export default function Navbar() {
                   Features
                 </Link>
                 <Link
-                  href="/#tools"
+                  href="/tools"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
