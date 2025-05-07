@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FolderOpen } from "lucide-react"
+import { saveCurrentFolderPath, logAllStorageKeys } from "../utils/storage-utils"
 
 interface FolderSelectorProps {
   isOpen: boolean
@@ -72,21 +73,33 @@ export function FolderSelector({ isOpen, onClose, onFolderSelected }: FolderSele
   }
 
   const handleConfirm = () => {
-    console.log("Confirming folder selection with path:", manualPath)
+    console.log("FolderSelector: Confirming folder selection with path:", manualPath);
     
     if (!manualPath) {
-      setError("Please provide a valid folder path")
-      return
+      console.log("FolderSelector: Empty path provided");
+      setError("Please provide a valid folder path");
+      return;
     }
     
     // Validate that the path looks reasonable
     if (!manualPath.includes('/')) {
-      setError("Please enter a valid absolute path starting with /")
-      return
+      console.log("FolderSelector: Invalid path format, missing /");
+      setError("Please enter a valid absolute path starting with /");
+      return;
     }
     
-    onFolderSelected(manualPath)
-    onClose()
+    // Save to storage immediately - this ensures it's persisted even if the VSCodeEditor
+    // component doesn't handle it properly
+    const saved = saveCurrentFolderPath(manualPath);
+    console.log(`FolderSelector: Saved folder path to storage: ${manualPath}, success: ${saved}`);
+    
+    // Log storage state for debugging
+    logAllStorageKeys();
+    
+    // Call the parent component's handler
+    console.log("FolderSelector: Calling onFolderSelected with path:", manualPath);
+    onFolderSelected(manualPath);
+    onClose();
   }
 
   return (
@@ -103,7 +116,7 @@ export function FolderSelector({ isOpen, onClose, onFolderSelected }: FolderSele
             <Button
               onClick={handleFolderButtonClick}
               variant="outline"
-              className="gap-2 w-full"
+              className="gap-2 w-full text-black"
             >
               <FolderOpen size={16} />
               Browse for Folder
@@ -146,7 +159,7 @@ export function FolderSelector({ isOpen, onClose, onFolderSelected }: FolderSele
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button className="text-black" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={!manualPath}>

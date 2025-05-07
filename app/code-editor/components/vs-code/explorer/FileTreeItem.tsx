@@ -85,13 +85,13 @@ export function FileTreeItem({
             <ChevronRight size={16} className="mr-1" />
           )}
           <Folder size={16} className="mr-2" style={{ color: "#dcb67a" }} />
-          <span>{item.name}</span>
+          <span className="text-xs">{item.name}</span>
         </div>
         
         {isOpen && item.children && (
-          <div className="pl-6">
+          <div className="pl-4">  {/* Reduced padding for better nested display */}
             {item.children.length === 0 ? (
-              <div className="text-gray-400 py-1">Empty folder</div>
+              <div className="text-gray-400 py-1 text-xs">Empty folder</div>
             ) : (
               item.children.map((child, childIndex) => (
                 <FileTreeItem 
@@ -126,7 +126,7 @@ export function FileTreeItem({
       onContextMenu={(e) => onContextMenu(e, item)}
     >
       <FileText size={16} className="mr-2" style={{ color: getFileColor(item.name) }} />
-      <span>{item.name}</span>
+      <span className="text-xs">{item.name}</span>
     </div>
   );
 }

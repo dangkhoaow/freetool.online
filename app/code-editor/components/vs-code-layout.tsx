@@ -22,7 +22,8 @@ import {
 // Activity Bar icons similar to VS Code with proper colorful styling
 const DEFAULT_ACTIVITY_BAR_ITEMS: ActivityBarItem[] = [
   { icon: <FileText size={24} stroke="#64D2FF" />, name: 'Explorer', activeIcon: 'explorer' },
-  { icon: <Search size={24} stroke="#F8C275" />, name: 'Search', activeIcon: 'search' },
+  // Search feature not yet implemented
+  // { icon: <Search size={24} stroke="#F8C275" />, name: 'Search', activeIcon: 'search' },
 ];
 
 // Bottom activity bar icons

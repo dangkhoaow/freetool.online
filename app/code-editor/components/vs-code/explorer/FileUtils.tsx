@@ -132,12 +132,6 @@ export async function fetchFileContent(
     }
   } catch (error) {
     console.error('Error opening file:', error);
-    // Show error in UI
-    setToast({
-      message: `Error opening file: ${error instanceof Error ? error.message : String(error)}`,
-      type: 'error',
-      duration: 5000
-    });
   }
 }
 
@@ -154,7 +148,6 @@ export async function fetchFileContent(
 export async function createNewFile(
   parentPath: string,
   fileName: string,
-  setToast: (toast: ToastMessage | null) => void,
   refreshExplorerView: () => void,
   setIsNewFileDialogOpen: (open: boolean) => void,
 ): Promise<void> {
@@ -162,11 +155,6 @@ export async function createNewFile(
   
   if (!fileName) {
     console.error('Cannot create file: No file name provided');
-    setToast({
-      message: 'Please enter a file name',
-      type: 'error',
-      duration: 3000
-    });
     return;
   }
   
@@ -193,21 +181,11 @@ export async function createNewFile(
       refreshExplorerView();
       console.log('File created successfully');
       
-      setToast({
-        message: `File ${fileName} created successfully`,
-        type: 'success',
-        duration: 3000
-      });
     } else {
       throw new Error(data.error || 'Unknown error creating file');
     }
   } catch (error) {
     console.error('Error creating file:', error);
-    setToast({
-      message: `Error creating file: ${error instanceof Error ? error.message : String(error)}`,
-      type: 'error',
-      duration: 5000
-    });
   }
 }
 
@@ -232,11 +210,6 @@ export async function createNewFolder(
   
   if (!folderName) {
     console.error('Cannot create folder: No folder name provided');
-    setToast({
-      message: 'Please enter a folder name',
-      type: 'error',
-      duration: 3000
-    });
     return;
   }
   
@@ -262,20 +235,10 @@ export async function createNewFolder(
       refreshExplorerView();
       console.log('Folder created successfully');
       
-      setToast({
-        message: `Folder ${folderName} created successfully`,
-        type: 'success',
-        duration: 3000
-      });
     } else {
       throw new Error(data.error || 'Unknown error creating folder');
     }
   } catch (error) {
     console.error('Error creating folder:', error);
-    setToast({
-      message: `Error creating folder: ${error instanceof Error ? error.message : String(error)}`,
-      type: 'error',
-      duration: 5000
-    });
   }
 }

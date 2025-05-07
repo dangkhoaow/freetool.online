@@ -145,3 +145,74 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+// Handle POST requests for file operations (create, save, delete, etc.)
+export async function POST(request: NextRequest) {
+  try {
+    // Parse the request body
+    const body = await request.json();
+    const { action, path: filePath, content } = body;
+    
+    console.log(`Filesystem API: Received ${action} request for path: ${filePath}`);
+    
+    // Validate that the path is provided and is a string
+    if (!filePath || typeof filePath !== 'string') {
+      console.error('Invalid path provided:', filePath);
+      return NextResponse.json({
+        success: false,
+        error: 'A valid file path must be provided'
+      }, { status: 400 });
+    }
+    
+    // Handle different actions
+    switch (action) {
+      case 'saveFile':
+        // Validate that content is provided
+        if (content === undefined) {
+          console.error('No content provided for saveFile action');
+          return NextResponse.json({
+            success: false,
+            error: 'File content must be provided for saveFile action'
+          }, { status: 400 });
+        }
+        
+        try {
+          // Make sure parent directory exists
+          const dirName = path.dirname(filePath);
+          if (!fs.existsSync(dirName)) {
+            console.log(`Creating directory structure: ${dirName}`);
+            fs.mkdirSync(dirName, { recursive: true });
+          }
+          
+          // Write the file content to disk
+          fs.writeFileSync(filePath, content, 'utf8');
+          console.log(`File saved successfully: ${filePath}`);
+          
+          return NextResponse.json({
+            success: true,
+            message: `File saved successfully: ${filePath}`
+          });
+        } catch (err) {
+          console.error(`Error saving file ${filePath}:`, err);
+          return NextResponse.json({
+            success: false,
+            error: `Failed to save file: ${(err as Error).message}`
+          }, { status: 500 });
+        }
+      
+      default:
+        console.error(`Unsupported action: ${action}`);
+        return NextResponse.json({
+          success: false,
+          error: `Unsupported action: ${action}`
+        }, { status: 400 });
+    }
+    
+  } catch (error) {
+    console.error('Error processing file operation:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, { status: 500 });
+  }
+}

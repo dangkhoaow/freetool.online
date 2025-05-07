@@ -131,8 +131,8 @@ const useVSCodeStore = create<VSCodeStore>()(
         // Save to server if file has a real path
         if (file.realPath) {
           console.log(`File has real path: ${file.realPath}, saving to disk`);
-          // Save to server
-          fetch('/api/file-operation', {
+          // Save to server using the correct API endpoint
+          fetch('/api/filesystem', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -143,12 +143,31 @@ const useVSCodeStore = create<VSCodeStore>()(
               content: content
             }),
           })
-          .then(response => response.json())
+          .then(response => {
+            console.log('Save file API response status:', response.status);
+            return response.json();
+          })
           .then(data => {
             if (data.success) {
               console.log(`File saved successfully to disk: ${file.realPath}`);
+              // Mark file as saved in the UI
+              const rootNodeCopy = { ...get().rootNode };
+              const updateFileState = (node: ExtendedFileNode): ExtendedFileNode => {
+                if (node.id === fileId) {
+                  return { ...node, isDirty: false, updatedAt: Date.now() };
+                }
+                if (node.children) {
+                  return {
+                    ...node,
+                    children: node.children.map(child => updateFileState(child as ExtendedFileNode))
+                  };
+                }
+                return node;
+              };
+              const updatedRootNode = updateFileState(rootNodeCopy);
+              set({ rootNode: updatedRootNode });
             } else {
-              console.error(`Error saving file to disk: ${data.error}`);
+              console.error(`Error saving file to disk: ${data.error || 'Unknown error'}`);
             }
           })
           .catch(error => {

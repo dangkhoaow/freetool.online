@@ -14,20 +14,30 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { 
+  ChevronDown, 
+  RefreshCcw, 
+  FileText, 
   File, 
-  FolderOpen, 
-  Save, 
-  SaveAll, 
   FilePlus, 
   FolderPlus,
-  ClipboardCopy,
-  ClipboardPaste,
-  Scissors,
+  Save, 
+  SaveAll,
+  FolderOpen, 
+  ZoomIn, 
+  ZoomOut, 
+  Download,
   Undo,
   Redo,
+  Trash,
+  Code,
   Search,
-  Settings
+  Terminal,
+  RefreshCw,
+  ClipboardCopy,
+  ClipboardPaste,
+  Scissors
 } from 'lucide-react'
+import { getCurrentFolderPath, STORAGE_KEYS, logAllStorageKeys } from '../utils/storage-utils'
 
 interface VSCodeMenuBarProps {
   createNewFile: (parentId: string, fileName: string, content?: string, language?: string) => void
@@ -41,6 +51,9 @@ interface VSCodeMenuBarProps {
   activeFileId: string | null
   editorContent: string
   refreshExplorer: () => void
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  currentPath?: string
 }
 
 // Utility function to download a folder as zip
@@ -90,7 +103,10 @@ export function VSCodeMenuBar({
   onOpenFolder,
   activeFileId,
   editorContent,
-  refreshExplorer
+  refreshExplorer,
+  onZoomIn = () => {},
+  onZoomOut = () => {},
+  currentPath = ''
 }: VSCodeMenuBarProps) {
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false)
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false)
@@ -111,31 +127,68 @@ export function VSCodeMenuBar({
   }
 
   const handleCreateNewFile = () => {
+    console.log('VSCodeMenuBar: handleCreateNewFile called with fileName:', newFileName);
+    
     if (newFileName.trim()) {
-      createNewFile(rootNodeId, newFileName)
-      setIsNewFileDialogOpen(false)
-      console.log(`Creating new file: ${newFileName} in ${rootNodeId}`)
+      console.log(`VSCodeMenuBar: Creating new file: ${newFileName} in ${rootNodeId}`);
+      
+      // Call createNewFile with the parameters matching the props interface
+      createNewFile(rootNodeId, newFileName);
+      setIsNewFileDialogOpen(false);
+    } else {
+      console.log('VSCodeMenuBar: File name is empty, not creating file');
+      setIsNewFileDialogOpen(false);
     }
   }
 
   const handleCreateNewFolder = () => {
+    console.log('VSCodeMenuBar: handleCreateNewFolder called with folderName:', newFolderName);
+    
     if (newFolderName.trim()) {
-      createNewFolder(rootNodeId, newFolderName)
-      setIsNewFolderDialogOpen(false)
-      console.log(`Creating new folder: ${newFolderName} in ${rootNodeId}`)
+      console.log(`VSCodeMenuBar: Creating new folder: ${newFolderName} in ${rootNodeId}`);
+      
+      // Call createNewFolder with the parameters matching the props interface
+      createNewFolder(rootNodeId, newFolderName);
+      setIsNewFolderDialogOpen(false);
+    } else {
+      console.log('VSCodeMenuBar: Folder name is empty, not creating folder');
+      setIsNewFolderDialogOpen(false);
     }
   }
 
   const handleSave = () => {
-    if (activeFileId && editorContent) {
-      saveFile(activeFileId, editorContent)
-      console.log(`Saving file: ${activeFileId}`)
+    if (activeFileId) {
+      console.log(`VSCodeMenuBar: Attempting to save file with ID: ${activeFileId}`);
+      
+      // Get the content directly from the editor instance
+      // This ensures we always have the latest content that might not be synced to props yet
+      // Create a custom event to request the latest content for the active file
+      console.log(`VSCodeMenuBar: Dispatching get-editor-content event for saving file: ${activeFileId}`);
+      
+      // Instead of using editorContent, dispatch a save event and let the editor component handle it
+      const saveEvent = new CustomEvent('save-file-content', {
+        detail: {
+          fileId: activeFileId
+        }
+      });
+      
+      // Dispatch the event to the editor component to handle the saving with current content
+      document.dispatchEvent(saveEvent);
+      console.log(`VSCodeMenuBar: Save request event dispatched for fileId: ${activeFileId}`);
+    } else {
+      console.warn('VSCodeMenuBar: Cannot save - No active file');
     }
   }
 
   const handleSaveAll = () => {
-    saveAllFiles()
-    console.log('Saving all files')
+    console.log('VSCodeMenuBar: Attempting to save all open files');
+    
+    try {
+      saveAllFiles();
+      console.log('VSCodeMenuBar: Save all files request sent');
+    } catch (error) {
+      console.error('VSCodeMenuBar: Error during save all files operation:', error);
+    }
   }
 
   return (
@@ -147,61 +200,96 @@ export function VSCodeMenuBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
           <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={handleNewFile}
           >
-            <FilePlus className="h-4 w-4" />
-            <span>New File</span>
-            <span className="ml-auto opacity-60">Ctrl+N</span>
+            <FilePlus className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">New File</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+N</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={handleNewFolder}
           >
-            <FolderPlus className="h-4 w-4" />
-            <span>New Folder</span>
+            <FolderPlus className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">New Folder</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
           <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
-            onClick={onOpenFile}
-          >
-            <File className="h-4 w-4" />
-            <span>Open File...</span>
-            <span className="ml-auto opacity-60">Ctrl+O</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={onOpenFolder}
           >
-            <FolderOpen className="h-4 w-4" />
-            <span>Open Folder...</span>
+            <FolderOpen className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Open Folder...</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+K Ctrl+O</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            onClick={onOpenFile}
+          >
+            <File className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Open File...</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+O</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
           <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={handleSave}
           >
-            <Save className="h-4 w-4" />
-            <span>Save</span>
-            <span className="ml-auto opacity-60">Ctrl+S</span>
+            <Save className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Save</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+S</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={handleSaveAll}
           >
-            <SaveAll className="h-4 w-4" />
-            <span>Save All</span>
-            <span className="ml-auto opacity-60">Ctrl+K S</span>
+            <SaveAll className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Save All</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+K S</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
           <DropdownMenuItem 
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={refreshExplorer}
           >
-            <FolderOpen className="h-4 w-4" />
-            <span>Refresh Explorer</span>
+            <FolderOpen className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Refresh Explorer</span>
           </DropdownMenuItem>
+          <DropdownMenuItem 
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            onClick={() => {
+              // Get folder path from props or from our storage utils as fallback
+              let folderPath = currentPath;
+              
+              // If no current path from props, use our storage utils
+              if (!folderPath || folderPath.trim() === '') {
+                console.log('VSCodeMenuBar: No currentPath in props, checking storage...');
+                folderPath = getCurrentFolderPath();
+                console.log('VSCodeMenuBar: Got folder path from storage utils:', folderPath);
+                
+                // Log all storage keys for debugging
+                logAllStorageKeys();
+              }
+              
+              console.log('VSCodeMenuBar: Refreshing folder from disk:', folderPath);
+              if (folderPath && folderPath.trim() !== '') {
+                // Force a complete refresh from disk by triggering the refresh explorer event
+                const refreshEvent = new CustomEvent('refresh-explorer', {
+                  detail: { path: folderPath, forceRefresh: true }
+                });
+                document.dispatchEvent(refreshEvent);
+                console.log('VSCodeMenuBar: Dispatched refresh-explorer event with forceRefresh true for path:', folderPath);
+              } else {
+                console.log('VSCodeMenuBar: No valid folder path available from any source');
+                alert('Please open a folder first');
+              }
+            }}
+          >
+            <RefreshCw className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Refresh From Disk</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -211,31 +299,31 @@ export function VSCodeMenuBar({
           <button className="px-2 py-1 hover:bg-[#505050] rounded">Edit</button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <Undo className="h-4 w-4" />
-            <span>Undo</span>
-            <span className="ml-auto opacity-60">Ctrl+Z</span>
+          <DropdownMenuItem className="text-xs text-gray-300 flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <Undo className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Undo</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Z</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <Redo className="h-4 w-4" />
-            <span>Redo</span>
-            <span className="ml-auto opacity-60">Ctrl+Y</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <Redo className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Redo</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Y</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <Scissors className="h-4 w-4" />
-            <span>Cut</span>
-            <span className="ml-auto opacity-60">Ctrl+X</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <Scissors className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Cut</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+X</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <ClipboardCopy className="h-4 w-4" />
-            <span>Copy</span>
-            <span className="ml-auto opacity-60">Ctrl+C</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <ClipboardCopy className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Copy</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+C</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <ClipboardPaste className="h-4 w-4" />
-            <span>Paste</span>
-            <span className="ml-auto opacity-60">Ctrl+V</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <ClipboardPaste className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Paste</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+V</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -246,18 +334,41 @@ export function VSCodeMenuBar({
           <button className="px-2 py-1 hover:bg-[#505050] rounded">View</button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span>Explorer</span>
-            <span className="ml-auto opacity-60">Ctrl+Shift+E</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <span className="text-gray-300">Explorer</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Shift+E</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span>Search</span>
-            <span className="ml-auto opacity-60">Ctrl+Shift+F</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <span className="text-gray-300">Search</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Shift+F</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span>Terminal</span>
-            <span className="ml-auto opacity-60">Ctrl+`</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <span className="text-gray-300">Terminal</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+`</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
+          <DropdownMenuItem 
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            onClick={() => {
+              console.log('Zoom in clicked');
+              onZoomIn();
+            }}
+          >
+            <ZoomIn className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Zoom In</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl++</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
+            onClick={() => {
+              console.log('Zoom out clicked');
+              onZoomOut();
+            }}
+          >
+            <ZoomOut className="h-4 w-4 text-gray-300" />
+            <span className="text-gray-300">Zoom Out</span>
+            <span className="ml-auto opacity-60 text-gray-300">Ctrl+-</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -268,15 +379,15 @@ export function VSCodeMenuBar({
           <button className="px-2 py-1 hover:bg-[#505050] rounded">Help</button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span>Welcome</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <span className="text-gray-300">Welcome</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span>Documentation</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <span className="text-gray-300">Documentation</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span>About</span>
+          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
+            <span className="text-gray-300">About</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

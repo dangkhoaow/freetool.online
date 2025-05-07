@@ -89,7 +89,7 @@ export function VSCodeEditorTabs({
               {getFileIcon(file.name)}
               
               {/* File name */}
-              <span className="truncate">{file.name}</span>
+              <span className="truncate text-xs">{file.name}</span>
               
               {/* Unsaved indicator */}
               {isUnsaved && (

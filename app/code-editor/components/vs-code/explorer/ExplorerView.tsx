@@ -6,6 +6,7 @@ import { ExplorerViewProps, FileSystemItem, ContextMenuState, ToastMessage } fro
 import { FileTreeItem } from './FileTreeItem';
 import { fetchFileSystem, fetchFileContent, createNewFile, createNewFolder } from './FileUtils';
 import { FolderSelector } from '../../folder-selector';
+import { VSCodeFileBrowser } from '../../vs-code-file-browser';
 import ContextMenu from '../../context-menu';
 
 /**
@@ -36,6 +37,7 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
   
   // UI state
   const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState(false);
+  const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [openFileIds, setOpenFileIds] = useState<Record<string, string>>({});
   
@@ -64,6 +66,27 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
     y: 0
   });
   
+  // Helper function to ensure all items in the file structure have proper paths
+  const processStructureWithPaths = (items: FileSystemItem[], basePath: string): FileSystemItem[] => {
+    return items.map(item => {
+      // Ensure every item has a path property
+      const fullPath = item.path ? item.path : `${basePath}/${item.name}`;
+      console.log(`ExplorerView: Processing item ${item.name}, setting path to ${fullPath}`);
+      
+      const processedItem: FileSystemItem = {
+        ...item,
+        path: fullPath
+      };
+      
+      // Process children recursively if this is a folder
+      if (item.type === 'folder' && item.children && Array.isArray(item.children)) {
+        processedItem.children = processStructureWithPaths(item.children, fullPath);
+      }
+      
+      return processedItem;
+    });
+  };
+  
   // Initial setup on component mount - no longer auto-loading folders
   useEffect(() => {
     // Critical fix: Only run this effect once on the client side
@@ -78,6 +101,83 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
     setIsLoading(false);
     // Set folderOpened to false to show the initial empty state
     setFolderOpened(false);
+    
+    // Add event listener for the refresh-explorer event
+    const handleRefreshExplorer = (event: CustomEvent) => {
+      console.log('ExplorerView: Received refresh-explorer event with detail:', event.detail);
+      
+      // Check if a path is provided in the event detail
+      if (event.detail && event.detail.path) {
+        const folderPath = event.detail.path;
+        const forceRefresh = event.detail.forceRefresh === true;
+        console.log(`ExplorerView: Refreshing folder with path: ${folderPath}, forceRefresh: ${forceRefresh}`);
+        
+        // Manual fetch instead of using fetchFileSystem to avoid type issues
+        console.log('ExplorerView: Making API request to /api/filesystem');
+        setIsLoading(true);
+        
+        // Use the same API call as fetchFileSystem but with proper typing
+        // Add cache-busting parameter if forceRefresh is true
+        const cacheBuster = forceRefresh ? `&_=${Date.now()}` : '';
+        // Fix the API endpoint URL to match the actual endpoint (filesystem instead of file-system)
+        console.log('ExplorerView: Using correct API endpoint: /api/filesystem');
+        fetch(`/api/filesystem?path=${encodeURIComponent(folderPath)}${cacheBuster}`)
+          .then(response => {
+            console.log('ExplorerView: API response status:', response.status);
+            if (!response.ok) {
+              return response.json().then(errorData => {
+                throw new Error(errorData.error || `API error: ${response.status}`);
+              });
+            }
+            return response.json();
+          })
+          .then(data => {
+            // The API returns structure instead of items
+            console.log('ExplorerView: File system data received:', data);
+            console.log('ExplorerView: Item count:', data.structure?.length || 0);
+            
+            if (forceRefresh) {
+              console.log('ExplorerView: Force refresh requested, clearing any cached data');
+              // Could add store reset logic here if needed
+            }
+            
+            if (data.success && Array.isArray(data.structure)) {
+              // Process the structure to ensure all items have proper paths
+              const processedStructure = processStructureWithPaths(data.structure, folderPath);
+              console.log('ExplorerView: Processed file structure with proper paths, count:', processedStructure.length);
+              
+              setFolderStructure(processedStructure);
+              setCurrentPath(folderPath);
+              setFolderOpened(true);
+              setError(null);
+              console.log(`ExplorerView: Explorer view refreshed successfully${forceRefresh ? ' (forced from disk)' : ''}`);
+            } else {
+              console.error('ExplorerView: API returned unexpected data format:', data);
+              setError('Failed to refresh folder: Unexpected data format from API');
+              setFolderStructure([]);
+            }
+          })
+          .catch(error => {
+            console.error('ExplorerView: Error refreshing folder:', error);
+            const errorMessage = `Failed to refresh folder: ${error.message || String(error)}`;
+            setError(errorMessage);
+            setFolderStructure([]);
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      } else {
+        console.log('ExplorerView: No path provided in refresh-explorer event');
+      }
+    };
+    
+    // Add the event listener - use document instead of window to match how the event is dispatched
+    document.addEventListener('refresh-explorer', handleRefreshExplorer as EventListener);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      document.removeEventListener('refresh-explorer', handleRefreshExplorer as EventListener);
+    };
   }, []);
   
   // Handle folder selected from the folder selector
@@ -85,13 +185,23 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
     console.log('Folder selected:', folderPath);
     setIsFolderSelectorOpen(false);
     
+    // Set loading state
+    setIsLoading(true);
+    setError(null);
+    
+    // Call fetchFileSystem with all required parameters
     fetchFileSystem(
       folderPath,
-      setIsLoading,
-      setFolderStructure,
-      setCurrentPath,
-      setError,
-      setFolderOpened
+      (data: FileSystemItem[]) => {
+        // Process the structure to ensure all items have proper paths
+        const processedStructure = processStructureWithPaths(data, folderPath);
+        console.log('ExplorerView: Processed file structure with proper paths, count:', processedStructure.length);
+        setFolderStructure(processedStructure);
+      },
+      (loading: boolean) => setIsLoading(loading),
+      (path: string) => setCurrentPath(path),
+      (err: string | null) => setError(err),
+      (opened: boolean) => setFolderOpened(opened)
     );
   };
   
@@ -136,6 +246,81 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
     setIsNewFolderDialogOpen(true);
   };
   
+  // Handle file selected from file browser
+  const handleFileSelected = (file: File) => {
+    console.log(`File selected from browser: ${file.name}`);
+    setIsFilePickerOpen(false);
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target && typeof e.target.result === 'string') {
+          const content = e.target.result;
+          const fileName = file.name;
+          
+          // Extract file extension for language detection
+          const fileExtension = fileName.split('.').pop() || '';
+          
+          // Map common extensions to languages (similar to file-content API)
+          const languageMap: Record<string, string> = {
+            js: 'javascript',
+            jsx: 'javascript',
+            ts: 'typescript',
+            tsx: 'typescript',
+            html: 'html',
+            css: 'css',
+            json: 'json',
+            md: 'markdown',
+            py: 'python',
+            java: 'java',
+            c: 'c',
+            cpp: 'cpp',
+            cs: 'csharp',
+            go: 'go',
+            php: 'php',
+            rb: 'ruby',
+            rs: 'rust',
+            swift: 'swift',
+            txt: 'plaintext',
+            // Add more language mappings as needed
+          };
+          
+          // Generate a unique file ID for this file
+          const fileId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          console.log('Generated file ID for browser-selected file:', fileId);
+          
+          // Store the file ID in our local state
+          setOpenFileIds(prev => ({
+            ...prev,
+            [fileName]: fileId
+          }));
+          
+          // Dispatch the same event used when opening files from folder view
+          window.dispatchEvent(new CustomEvent('open-file-in-editor', {
+            detail: {
+              fileId,
+              path: fileName, // Not a real path, just using filename as identifier
+              name: fileName,
+              content: content,
+              language: languageMap[fileExtension] || 'plaintext'
+            }
+          }));
+          
+          console.log(`File content loaded and dispatched to editor: ${content.substring(0, 100)}...`);
+        }
+      };
+      
+      reader.readAsText(file);
+    } catch (error) {
+      console.error('Error processing selected file:', error);
+      setToast({
+        message: `Error opening file: ${error}`,
+        type: 'error',
+        duration: 3000
+      });
+    }
+  };
+  
   // Handle downloading a folder as ZIP
   const handleDownloadFolder = async (folderPath: string) => {
     console.log('Downloading folder:', folderPath);
@@ -172,11 +357,15 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
   const handleNewFileSubmit = () => {
     console.log('Submitting new file creation:', newFileName, 'in folder:', newItemParentPath);
     
+    // Close dialog immediately to prevent UI from getting stuck
+    setIsNewFileDialogOpen(false);
+    
     createNewFile(
       newItemParentPath, 
       newFileName, 
       setToast, 
       refreshExplorerView, 
+      // We're still passing this for compatibility, but we've already closed the dialog above
       setIsNewFileDialogOpen
     );
   };
@@ -185,11 +374,15 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
   const handleNewFolderSubmit = () => {
     console.log('Submitting new folder creation:', newFolderName, 'in folder:', newItemParentPath);
     
+    // Close dialog immediately to prevent UI from getting stuck
+    setIsNewFolderDialogOpen(false);
+    
     createNewFolder(
       newItemParentPath, 
       newFolderName, 
       setToast, 
       refreshExplorerView, 
+      // We're still passing this for compatibility, but we've already closed the dialog above
       setIsNewFolderDialogOpen
     );
   };
@@ -198,7 +391,20 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
   const handleFileDoubleClick = (item: FileSystemItem) => {
     console.log('Double clicked file:', item.name, 'Path:', item.path);
     
-    fetchFileContent(item, setOpenFileIds, setToast);
+    // Make sure the item has a proper path before fetching content
+    if (!item.path && currentPath) {
+      console.log('File item missing path, setting path to:', `${currentPath}/${item.name}`);
+      item.path = `${currentPath}/${item.name}`;
+    }
+    
+    // Log the path to ensure it's correctly set
+    console.log('Fetching file content with path:', item.path);
+    
+    // Call fetchFileContent with the correct number of parameters
+    fetchFileContent(item, setOpenFileIds);
+    
+    // If there's an error, we'll handle it separately
+    // We can add error toast handling here if needed
   };
   
   // Function to render explorer content based on state
@@ -217,26 +423,21 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
     if (!folderOpened || folderStructure.length === 0) {
       console.log("No folder opened, showing empty state");
       return (
-        <div className="p-4 text-center">
-          <div className="text-gray-300 mb-6 mt-8">NO FOLDER OPENED</div>
-          <div className="text-gray-400 text-sm mb-6">Select an option below to get started</div>
-          <div className="flex flex-col space-y-3 items-center">
+        <div className="p-3 text-center">
+          <div className="text-gray-300 text-xs mb-4 mt-6">NO FOLDER OPENED</div>
+          <div className="text-gray-400 text-xs mb-4">Select an option below to get started</div>
+          <div className="flex flex-col space-y-2 items-center">
             <button
-              className="bg-[#0e639c] text-white px-4 py-2 rounded hover:bg-[#1177bb] w-full max-w-xs"
+              className="bg-[#0e639c] text-white px-3 py-1.5 rounded hover:bg-[#1177bb] w-full max-w-[200px] text-xs"
               onClick={handleOpenFolder}
             >
               Open Folder
             </button>
             <button
-              className="bg-[#3a3d41] text-white px-4 py-2 rounded hover:bg-[#45494e] w-full max-w-xs border border-[#5f5f5f]"
+              className="bg-[#3a3d41] text-white px-3 py-1.5 rounded hover:bg-[#45494e] w-full max-w-[200px] border border-[#5f5f5f] text-xs"
               onClick={() => {
-                // TODO: Implement file selection dialog
                 console.log('Open file button clicked');
-                setToast({
-                  message: 'File selection will be implemented in the next release',
-                  type: 'success',
-                  duration: 3000
-                });
+                setIsFilePickerOpen(true);
               }}
             >
               Open File
@@ -282,7 +483,7 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
   // Render the explorer view with context menu and dialogs
   return (
     <div className="p-2">
-      <div className="text-sm text-gray-300 mb-2 flex justify-between items-center">
+      <div className="text-xs text-gray-300 mb-2 flex justify-between items-center">
         <span>WORKSPACE</span>
         <div className="flex space-x-1">
           <button
@@ -424,6 +625,15 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
         </div>
       )}
       
+      {/* File Browser Dialog */}
+      <VSCodeFileBrowser
+        isOpen={isFilePickerOpen}
+        onClose={() => setIsFilePickerOpen(false)}
+        onFileSelected={handleFileSelected}
+        title="Open File"
+        acceptTypes="*.*"
+      />
+
       {/* Toast */}
       {toast && (
         <div 

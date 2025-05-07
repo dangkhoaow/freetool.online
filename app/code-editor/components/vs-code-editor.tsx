@@ -19,13 +19,22 @@ import { VSCodeFileExplorer } from './vs-code-file-explorer';
 import { VSCodeEditorTabs } from './vs-code-editor-tabs';
 import { VSCodeStatusBar } from './vs-code-status-bar';
 import { VSCodeCommandPalette, VSCodeCommand, getStandardCommands } from './vs-code-command-palette';
+import { FolderSelector } from './folder-selector';
 import { VSCodeQuickPicker } from './vs-code-quick-picker';
 import { VSCodeMenuBar } from './vs-code-menu-bar';
 import { VSCodeFileBrowser } from './vs-code-file-browser';
 import useVSCodeStore from '../store/vs-code-store';
-import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
+import { saveCurrentFolderPath, getCurrentFolderPath, STORAGE_KEYS, logAllStorageKeys } from '../utils/storage-utils';
 import { findNodeById, FileNode, getLanguageFromFilename } from '@/lib/services/vs-code-file-system';
 import { Terminal, Brackets, Bug, Play, FileSearch, GitBranch, Database, Settings as SettingsIcon, Split, LayoutPanelLeft } from 'lucide-react';
+import { default as useVSCodeStoreImport } from '@/app/code-editor/store/vs-code-store';
+
+type ExtendedFileNode = ReturnType<typeof useVSCodeStoreImport.getState>['rootNode'] extends infer T ? 
+  T extends { children?: infer C } ? 
+    C extends (infer U)[] ? U : never
+  : never
+: never;
 
 // Theme definition for the editor to match VS Code dark theme
 const vsCodeDarkTheme: monaco.editor.IStandaloneThemeData = {
@@ -148,6 +157,20 @@ export default function VSCodeEditor() {
   const [commandsList, setCommandsList] = useState<VSCodeCommand[]>([]);
   const [cursorPosition, setLocalCursorPosition] = useState({ lineNumber: 1, column: 1 });
   const [lineCount, setLineCount] = useState(1);
+  const [fontSize, setFontSize] = useState(14); // Default font size for editor
+  
+  // Track current folder path with persistence in localStorage using our storage utils
+  const [currentFolderPath, setCurrentFolderPath] = useState(() => {
+    // Log storage state for debugging
+    console.log('VSCodeEditor: Initializing currentFolderPath');
+    logAllStorageKeys();
+    
+    // Get path from storage utils
+    const savedPath = getCurrentFolderPath();
+    console.log('VSCodeEditor: Got folder path from storage utils:', savedPath);
+    
+    return savedPath;
+  });
   
   // File browser state
   const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
@@ -181,8 +204,38 @@ export default function VSCodeEditor() {
   const togglePanel = () => setIsPanelVisible(prev => !prev);
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   
-  // Add local compatibility functions for renamed functions
-  const openFileById = openFile;
+  // Add detailed logging wrappers around file operations for better debugging
+  const openFileById = (fileId: string) => {
+    console.log(`VSCodeEditor: Opening file with ID: ${fileId}`);
+    try {
+      openFile(fileId);
+      console.log(`VSCodeEditor: Successfully opened file: ${fileId}`);
+    } catch (error) {
+      console.error(`VSCodeEditor: Error opening file ${fileId}:`, error);
+    }
+  };
+  
+  // Enhanced saveFile function with detailed logging
+  const enhancedSaveFile = (fileId: string, content: string) => {
+    console.log(`VSCodeEditor: Saving file with ID: ${fileId}, content length: ${content.length}`);
+    const fileNode = findNodeById(rootNode, fileId);
+    console.log(`VSCodeEditor: File details:`, {
+      name: fileNode?.name,
+      type: fileNode?.type,
+      // Use type assertion to avoid TypeScript errors
+      hasRealPath: Boolean((fileNode as any)?.realPath),
+      realPath: (fileNode as any)?.realPath,
+      isDirty: (fileNode as any)?.isDirty
+    });
+    
+    try {
+      // Call the actual saveFile function from the store
+      saveFile(fileId, content);
+      console.log(`VSCodeEditor: Save file request successfully sent to store for ${fileId}`);
+    } catch (error) {
+      console.error(`VSCodeEditor: Error saving file ${fileId}:`, error);
+    }
+  };
   const closeFileById = storeCloseFile;
   
   // Compatibility functions for cursor position
@@ -266,6 +319,222 @@ export default function VSCodeEditor() {
     handler();
   }, []);
   
+  // Listen for file open events from the explorer
+  useEffect(() => {
+    // Function to handle file open events from explorer
+    const handleFileOpenEvent = (event: CustomEvent) => {
+      console.log('Received open-file-in-editor event:', event.detail);
+      const { fileId, name, content, language, realPath, path } = event.detail;
+      
+      if (!fileId || content === undefined) {
+        console.error('Invalid file data received from open event - missing fileId or content is undefined');
+        return;
+      }
+      
+      // Allow empty content as it's valid for new files
+      console.log(`Processing file open request: ${name}, content length: ${content.length}, fileId: ${fileId}`);
+      
+      // Use either realPath explicitly set or fall back to path if realPath is not defined
+      const fileDiskPath = realPath || path;
+      
+      // Check if realPath is provided
+      if (fileDiskPath) {
+        console.log(`File has a real path: ${fileDiskPath}, will be able to save to disk`);
+      } else {
+        console.warn(`File does not have a real path, will only be saved in memory`);
+      }
+      
+      // Create a new file node if it doesn't exist in the rootNode
+      const existingNode = findNodeById(rootNode, fileId);
+      if (!existingNode) {
+        console.log(`Creating new file node for: ${name}`);
+        
+        // Create a new file node with realPath if available
+        // Use ExtendedFileNode type to properly include realPath
+        const newFile: ExtendedFileNode = {
+          id: fileId,
+          name: name,
+          type: 'file',
+          content: content,
+          parentId: rootNode.id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        
+        // Add realPath if provided
+        if (fileDiskPath) {
+          newFile.realPath = fileDiskPath;
+          console.log(`Added realPath ${fileDiskPath} to file node ${fileId}`);
+        }
+        
+        // Update the root node with the new file
+        const updatedRootNode = { ...rootNode };
+        updatedRootNode.children = [...(updatedRootNode.children || []), newFile];
+        
+        // Update the root node in the store
+        const storeState = useVSCodeStore.getState();
+        // @ts-ignore - We know what we're doing
+        useVSCodeStore.setState({
+          ...storeState,
+          rootNode: updatedRootNode
+        });
+      } else {
+        // If the node already exists but doesn't have realPath, add it now
+        const existingFileNode = existingNode as ExtendedFileNode;
+        if (fileDiskPath && !existingFileNode.realPath) {
+          console.log(`Adding missing realPath ${fileDiskPath} to existing file node ${fileId}`);
+          
+          // Create a deep copy of the root node to update
+          const updatedRootNode = { ...rootNode };
+          const updateNodeWithRealPath = (node: ExtendedFileNode): ExtendedFileNode => {
+            if (node.id === fileId) {
+              return { ...node, realPath: fileDiskPath };
+            }
+            if (node.children) {
+              return {
+                ...node,
+                children: node.children.map(child => updateNodeWithRealPath(child as ExtendedFileNode))
+              };
+            }
+            return node;
+          };
+          
+          // Update the node in the tree
+          const updatedRootNodeWithPath = updateNodeWithRealPath(updatedRootNode);
+          
+          // Update the store
+          const storeState = useVSCodeStore.getState();
+          useVSCodeStore.setState({
+            ...storeState,
+            rootNode: updatedRootNodeWithPath
+          });
+        }
+      }
+      
+      // Open the file in the editor
+      openFileById(fileId);
+    };
+    
+    // Add event listeners for file open events on both document and window
+    document.addEventListener('open-file-in-editor', handleFileOpenEvent as EventListener);
+    window.addEventListener('open-file-in-editor', handleFileOpenEvent as EventListener);
+    
+    console.log('VSCodeEditor: Added event listeners for open-file-in-editor events');
+    
+    return () => {
+      // Clean up both listeners
+      document.removeEventListener('open-file-in-editor', handleFileOpenEvent as EventListener);
+      window.removeEventListener('open-file-in-editor', handleFileOpenEvent as EventListener);
+      console.log('VSCodeEditor: Removed event listeners for open-file-in-editor');
+    };
+  }, []);
+  
+  // Add event listeners for file interactions
+  useEffect(() => {
+    console.log('Setting up file interaction event listeners');
+    
+    // Handler for saving file content requested by the menu bar
+    const handleSaveFileContent = (event: CustomEvent) => {
+      console.log('VSCodeEditor: Received save-file-content event:', event.detail);
+      const { fileId } = event.detail;
+      
+      if (!fileId) {
+        console.error('VSCodeEditor: Invalid file ID received from save-file-content event');
+        return;
+      }
+      
+      console.log(`VSCodeEditor: Current active file ID: ${activeFileId}`);
+      console.log(`VSCodeEditor: Editor instances available:`, Object.keys(editorInstances));
+      
+      // First try to get the editor instance for this file ID
+      const instance = editorInstances[fileId];
+      
+      if (instance) {
+        // If we have an instance, get content from it
+        const currentContent = instance.model.getValue();
+        console.log(`VSCodeEditor: Got current editor content from instance for ${fileId}, length: ${currentContent.length} characters`);
+        
+        // Save the file with the latest content
+        try {
+          enhancedSaveFile(fileId, currentContent);
+          console.log(`VSCodeEditor: Successfully saved current content for file ID ${fileId}`);
+        } catch (error) {
+          console.error(`VSCodeEditor: Error saving content for file ID ${fileId}:`, error);
+        }
+      } else {
+        // If we don't have an instance, try to get the content from the store
+        console.log(`VSCodeEditor: No editor instance found for file ID ${fileId}, trying to get content from store`);
+        const fileNode = findNodeById(rootNode, fileId) as FileNode;
+        
+        if (fileNode && fileNode.content !== undefined) {
+          console.log(`VSCodeEditor: Found file node in store with content length: ${fileNode.content.length}`);
+          try {
+            enhancedSaveFile(fileId, fileNode.content);
+            console.log(`VSCodeEditor: Successfully saved content from store for file ID ${fileId}`);
+          } catch (error) {
+            console.error(`VSCodeEditor: Error saving content from store for file ID ${fileId}:`, error);
+          }
+        } else {
+          console.error(`VSCodeEditor: Could not find file content in store for file ID ${fileId}`);
+        }
+      }
+    };
+    
+    // Add event listeners
+    document.addEventListener('save-file-content', handleSaveFileContent as EventListener);
+    
+    // Clean up event listeners
+    return () => {
+      console.log('Cleaning up save file content event listeners');
+      document.removeEventListener('save-file-content', handleSaveFileContent as EventListener);
+    };
+  }, [editorInstances, activeFileId, rootNode, enhancedSaveFile]);
+  
+  // Keep track of active file changes to ensure we have the correct editor instance
+  useEffect(() => {
+    if (activeFileId) {
+      console.log(`VSCodeEditor: Active file changed to ${activeFileId}, checking if we have an editor instance`);
+      
+      if (!editorInstances[activeFileId]) {
+        console.log(`VSCodeEditor: No editor instance found for ${activeFileId}, will be created when editor mounts`);
+      } else {
+        console.log(`VSCodeEditor: Found existing editor instance for ${activeFileId}`);
+      }
+      
+      // When the active file changes, update the Monaco editor model with the latest content from the store
+      const fileNode = findNodeById(rootNode, activeFileId) as FileNode;
+      
+      if (fileNode && fileNode.content !== undefined) {
+        console.log(`VSCodeEditor: File content for ${activeFileId} from store, length: ${fileNode.content.length}`);
+      }
+    }
+  }, [activeFileId, editorInstances, rootNode]);
+
+  // Persist currentFolderPath to localStorage whenever it changes using storage-utils
+  useEffect(() => {
+    // Only try to save if path is not empty
+    if (currentFolderPath) {
+      console.log('VSCodeEditor: Detected currentFolderPath change, saving:', currentFolderPath);
+      
+      // Use our storage utils for consistent persistence
+      const success = saveCurrentFolderPath(currentFolderPath);
+      
+      if (success) {
+        // Since we have a valid folder path, ensure it's available to the explorer
+        // by dispatching a refresh event
+        if (document.readyState === 'complete') {
+          console.log('VSCodeEditor: Document ready, dispatching initial refresh-explorer event');
+          const refreshEvent = new CustomEvent('refresh-explorer', {
+            detail: { path: currentFolderPath }
+          });
+          document.dispatchEvent(refreshEvent);
+        }
+      }
+    } else {
+      console.log('VSCodeEditor: Not saving empty path, current value:', currentFolderPath);
+    }
+  }, [currentFolderPath]);
+
   // Initialize commands with stable references
   useEffect(() => {
     if (commandsInitialized.current) return;
@@ -396,9 +665,12 @@ export default function VSCodeEditor() {
       // Save (Ctrl+S)
       else if (matchesShortcut(e, SHORTCUTS.SAVE)) {
         e.preventDefault();
-        if (activeFileId && primaryEditorRef.current) {
-          const content = primaryEditorRef.current.getValue();
-          saveFile(activeFileId, content);
+        if (activeFileId) {
+          const instance = editorInstances[activeFileId];
+          if (instance) {
+            const content = instance.model.getValue();
+            saveFile(activeFileId, content);
+          }
         }
       }
       // Toggle Sidebar (Ctrl+B)
@@ -411,7 +683,7 @@ export default function VSCodeEditor() {
         e.preventDefault();
         togglePanel();
       }
-      // Split Editor (Ctrl+\\)
+      // Split Editor (Ctrl+\)
       else if (matchesShortcut(e, SHORTCUTS.SPLIT_EDITOR)) {
         e.preventDefault();
         setEditorLayout(editorLayout === 'single' ? 'split-horizontal' : 'single');
@@ -423,606 +695,182 @@ export default function VSCodeEditor() {
           closeFile(activeFileId);
         }
       }
+      // Zoom In (Ctrl+=)
+      else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        handleZoomIn();
+      }
+      // Zoom Out (Ctrl+-)
+      else if (e.ctrlKey && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        handleZoomOut();
+      }
+      // Find (Ctrl+F)
+      else if (matchesShortcut(e, SHORTCUTS.FIND)) {
+        console.log('Find shortcut detected');
+        // No need to prevent default, as we want the editor's find to work
+      }
     };
-
-    // Add keyboard listener
+    
     window.addEventListener('keydown', handleKeyDown);
-    
-    // Clear on unmount
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [activeFileId, editorLayout]); // Reduced dependencies to minimize re-renders
-  
-  // Listen for file open events from file explorer double-click
-  useEffect(() => {
-    console.log('Setting up file open event listener');
-    
-    const handleOpenFileEvent = (event: CustomEvent) => {
-      console.log('Received open-file-in-editor event with data:', event.detail);
-      
-      const { fileId, path, name, content, language } = event.detail;
-      
-      try {
-        // For files already in the store, just open them directly
-        if (fileId && !path) {
-          console.log('Opening existing file with ID:', fileId);
-          openFile(fileId);
-          return;
-        }
-        
-        // For files from filesystem (not in store), create a new file in the store first
-        if (!name) {
-          console.error('Missing required file name in open-file-in-editor event');
-          return;
-        }
-        
-        console.log('Creating new file in store from filesystem:', name);
-        
-        // Use the last part of the path as the filename if no name is provided
-        const fileName = name || path.split('/').pop() || 'untitled';
-        
-        // Store original file ID from external system if provided
-        const externalFileId = fileId;
-        
-        // Create the file in our virtual file system at root level
-        // The createNewFile function doesn't return anything, so we need to handle it this way
-        createNewFile(
-          rootNode.id, 
-          fileName,
-          content || '', 
-          language || getLanguageFromFilename(fileName)
-        );
-        
-        console.log('File created, waiting for next render cycle to open it');
-        
-        // Since we don't have the direct ID, we need to find the file by name in the root node
-        // We'll do this after a slight delay to ensure state is updated
-        setTimeout(() => {
-          // Find the file we just created by name
-          const createdFile = rootNode.children?.find(node => 
-            node.type === 'file' && node.name === fileName
-          );
-          
-          if (createdFile) {
-            console.log('Found created file, opening:', createdFile.id);
-            openFile(createdFile.id);
-            
-            // Focus the editor
-            if (primaryEditorRef.current) {
-              primaryEditorRef.current.focus();
-            }
-          } else {
-            console.error('Unable to find newly created file by name:', fileName);
-          }
-        }, 100);
-      } catch (error) {
-        console.error('Error handling open file event:', error);
-      }
-    };
-    
-    // Add event listener for custom event
-    window.addEventListener('open-file-in-editor', handleOpenFileEvent as EventListener);
-    
-    // Remove event listener on cleanup
-    return () => {
-      window.removeEventListener('open-file-in-editor', handleOpenFileEvent as EventListener);
-    };
-  }, [rootNode, openFile, createNewFile]);
-  
-  // Save files to browser storage
-  const saveFileToBrowserStorage = useCallback((fileId: string, content: string) => {
-    console.log(`Saving file ${fileId} to browser storage`);
-    try {
-      // Get file info
-      const file = findNodeById(rootNode, fileId);
-      if (!file || file.type !== 'file') {
-        console.error(`Cannot find file with ID: ${fileId}`);
-        return false;
-      }
-      
-      // Create storage entry with metadata
-      const storageData = {
-        id: fileId,
-        name: file.name,
-        content,
-        language: file.language,
-        lastModified: new Date().toISOString(),
-        // We don't have path on FileNode type, so just use ID as identifier
-        identifier: fileId
-      };
-      
-      // Save to localStorage
-      localStorage.setItem(`vscode_file_${fileId}`, JSON.stringify(storageData));
-      console.log(`File ${fileId} saved to localStorage`);
-      
-      // If browser supports CacheStorage, also save there for larger files
-      if ('caches' in window) {
-        caches.open('vscode-files-cache').then(cache => {
-          const responseData = new Response(JSON.stringify(storageData));
-          cache.put(`/file/${fileId}`, responseData);
-          console.log(`File ${fileId} saved to CacheStorage`);
-        });
-      }
-      
-      // Remove from unsaved files
-      const unsavedFileSet = new Set(unsavedFiles);
-      unsavedFileSet.delete(fileId);
-      setUnsavedFiles(unsavedFileSet);
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving file to browser storage:', error);
-      return false;
-    }
-  }, [rootNode, unsavedFiles, setUnsavedFiles]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeFileId, editorInstances, editorLayout, fontSize, saveFile, closeFile, toggleSidebar, togglePanel]);
 
-  // Load files from browser storage
-  const loadFileFromBrowserStorage = useCallback(async (fileId: string) => {
-    console.log(`Loading file ${fileId} from browser storage`);
-    try {
-      // Try to get from CacheStorage first
-      if ('caches' in window) {
-        const cache = await caches.open('vscode-files-cache');
-        const response = await cache.match(`/file/${fileId}`);
-        
-        if (response) {
-          const data = await response.json();
-          console.log(`File ${fileId} loaded from CacheStorage`);
-          return data;
-        }
-      }
-      
-      // Fall back to localStorage
-      const storedData = localStorage.getItem(`vscode_file_${fileId}`);
-      if (storedData) {
-        const data = JSON.parse(storedData);
-        console.log(`File ${fileId} loaded from localStorage`);
-        return data;
-      }
-      
-      console.log(`File ${fileId} not found in browser storage`);
-      return null;
-    } catch (error) {
-      console.error('Error loading file from browser storage:', error);
-      return null;
-    }
-  }, []);
-
-  // Process a file selected from file picker
-  const processSelectedFile = useCallback((file: File) => {
-    console.log(`Processing selected file: ${file.name}`);
+  // Handle zoom in (increase font size)
+  const handleZoomIn = () => {
+    console.log('Zoom in - increasing font size');
+    const newSize = Math.min(fontSize + 2, 32); // Max font size 32px
+    setFontSize(newSize);
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target && typeof e.target.result === 'string') {
-        const content = e.target.result;
-        const fileExtension = file.name.split('.').pop() || '';
-        let language = 'plaintext';
-        
-        // Map common extensions to languages
-        const extensionToLanguage: Record<string, string> = {
-          'js': 'javascript',
-          'jsx': 'javascript',
-          'ts': 'typescript',
-          'tsx': 'typescript',
-          'html': 'html',
-          'css': 'css',
-          'json': 'json',
-          'md': 'markdown',
-          'py': 'python',
-          'java': 'java',
-          'c': 'c',
-          'cpp': 'cpp',
-          'cs': 'csharp',
-          'go': 'go',
-          'php': 'php',
-          'rb': 'ruby',
-          'swift': 'swift'
-        };
-        
-        if (fileExtension in extensionToLanguage) {
-          language = extensionToLanguage[fileExtension];
-        }
-        
-        // Create a new file in the virtual filesystem
-        createNewFile(rootNode.id, file.name, content, language);
-        console.log(`Created new file: ${file.name}, language: ${language}`);
-      }
-    };
-    
-    reader.readAsText(file);
-  }, [rootNode.id, createNewFile]);
-
-  // Handle file saving events
-  useEffect(() => {
-    const handleSaveCurrentFile = () => {
-      console.log('Save current file event received');
-      if (activeFileId) {
-        const instance = editorInstances[activeFileId];
-        if (instance && instance.model) {
-          const content = instance.model.getValue();
-          const success = saveFileToBrowserStorage(activeFileId, content);
-          
-          if (success) {
-            console.log(`File ${activeFileId} saved successfully`);
-            // Could show a success toast here
-          }
-        }
-      }
-    };
-    
-    const handleSaveAllFiles = () => {
-      console.log('Save all files event received');
-      let allSaved = true;
-      
-      openFiles.forEach(fileId => {
-        const instance = editorInstances[fileId];
-        if (instance && instance.model) {
-          const content = instance.model.getValue();
-          const success = saveFileToBrowserStorage(fileId, content);
-          
-          if (!success) {
-            allSaved = false;
-            console.error(`Failed to save file ${fileId}`);
-          }
-        }
-      });
-      
-      if (allSaved && openFiles.length > 0) {
-        console.log('All files saved successfully');
-        // Could show a success toast here
-      }
-    };
-    
-    // Handle file upload from File menu
-    const handleFileUpload = (event: CustomEvent) => {
-      console.log('File upload event received');
-      const { file } = event.detail;
-      if (file) {
-        processSelectedFile(file);
-      }
-    };
-    
-    // Add event listeners
-    window.addEventListener('save-current-file', handleSaveCurrentFile);
-    window.addEventListener('save-all-files', handleSaveAllFiles);
-    window.addEventListener('file-upload', handleFileUpload as EventListener);
-    
-    // Clean up
-    return () => {
-      window.removeEventListener('save-current-file', handleSaveCurrentFile);
-      window.removeEventListener('save-all-files', handleSaveAllFiles);
-      window.removeEventListener('file-upload', handleFileUpload as EventListener);
-    };
-  }, [activeFileId, editorInstances, openFiles, saveFileToBrowserStorage, processSelectedFile]);
-
-  // Create a file editor instance
-  const handleEditorMount = (
-    editor: monaco.editor.IStandaloneCodeEditor, 
-    monacoInstance: typeof monaco,
-    fileId: string
-  ) => {
-    console.log(`Editor mounted for file: ${fileId}`);
-    
-    // Save Monaco reference
-    monacoRef.current = monacoInstance;
-    
-    // Define themes if they don't exist
-    try {
-      // Define our custom themes - no need to check current theme as it's safe to redefine
-      console.log('Defining VS Code themes for Monaco Editor');
-      monacoInstance.editor.defineTheme('vscode-dark', vsCodeDarkTheme);
-      monacoInstance.editor.defineTheme('vscode-light', vsCodeLightTheme);
-      
-      // Set the theme based on current state
-      console.log(`Setting Monaco Editor theme to: ${theme === 'dark' ? 'vscode-dark' : 'vscode-light'}`);
-      monacoInstance.editor.setTheme(theme === 'dark' ? 'vscode-dark' : 'vscode-light');
-    } catch (error) {
-      console.error('Error setting Monaco editor theme:', error);
-    }
-    
-    // Save the editor reference
-    if (fileId === activeFileId) {
-      primaryEditorRef.current = editor;
-      console.log('Saved as primary editor instance');
-    } else if (fileId === secondaryFileId) {
-      secondaryEditorRef.current = editor;
-      console.log('Saved as secondary editor instance');
-    }
-    
-    // Create editor model
-    const file = findNodeById(rootNode, fileId);
-    if (!file || file.type !== 'file') {
-      console.error(`Cannot find file with ID: ${fileId}`);
-      return;
-    }
-    
-    const content = file.content || '';
-    const language = file.language || 'javascript';
-    
-    console.log(`Creating model for file: ${file.name}, language: ${language}, content length: ${content.length}`);
-    
-    // Create model
-    const uri = monacoInstance.Uri.parse(`file:///${file.name}`);
-    let model = monacoInstance.editor.getModel(uri);
-    
-    if (!model) {
-      console.log(`Creating new model for ${file.name}`);
-      model = monacoInstance.editor.createModel(content, language, uri);
-    } else {
-      console.log(`Updating existing model for ${file.name}`);
-      model.setValue(content);
-    }
-    
-    // Set the model to the editor
-    editor.setModel(model);
-    
-    // Manually set value as a fallback to ensure content is displayed
-    if (content.length > 0 && editor.getValue().length === 0) {
-      console.log('Setting editor value manually');
-      editor.setValue(content);
-    }
-    
-    // Set line count
-    setLineCount(model.getLineCount());
-    
-    // Restore cursor position if available
-    const savedPosition = getCursor(fileId);
-    if (savedPosition) {
-      editor.setPosition(savedPosition);
-      editor.revealPositionInCenter(savedPosition);
-    }
-    
-    // Add to editor instances
-    setEditorInstances(prev => ({
-      ...prev,
-      [fileId]: { editor, model }
-    }));
-    
-    // Track changes
-    model.onDidChangeContent(() => {
-      markFileAsUnsaved(fileId);
-      setLineCount(model.getLineCount());
+    // Update all editor instances with the new font size
+    Object.values(editorInstances).forEach(instance => {
+      instance.editor.updateOptions({ fontSize: newSize });
     });
+  };
+  
+  // Handle zoom out (decrease font size)
+  const handleZoomOut = () => {
+    console.log('Zoom out - decreasing font size');
+    const newSize = Math.max(fontSize - 2, 8); // Min font size 8px
+    setFontSize(newSize);
     
-    // Track cursor position
+    // Update all editor instances with the new font size
+    Object.values(editorInstances).forEach(instance => {
+      instance.editor.updateOptions({ fontSize: newSize });
+    });
+  };
+
+  // Handle editor initialization
+  const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor, monaco: any) => {
+    console.log('Editor mounted for active file:', activeFileId);
+
+    // Register the VS Code dark theme
+    monaco.editor.defineTheme('vs-code-dark', vsCodeDarkTheme);
+    monaco.editor.defineTheme('vs-code-light', vsCodeLightTheme);
+
+    // Set the theme
+    monaco.editor.setTheme(theme === 'dark' ? 'vs-code-dark' : 'vs-code-light');
+
+    // Set the font size
+    editor.updateOptions({ fontSize: fontSize });
+
+    // Listen for cursor position changes
     editor.onDidChangeCursorPosition(e => {
-      const position = e.position;
-      setLocalCursorPosition(position);
-      setCursorPosition(fileId, position.lineNumber, position.column);
+      setLocalCursorPosition(e.position);
+
+      if (activeFileId) {
+        // Save cursor position to the store
+        saveCursor(activeFileId, e.position.lineNumber, e.position.column);
+      }
     });
-    
-    // Auto save timer (disabled for now - we'll use keyboard shortcut)
-    // const autoSaveInterval = setInterval(() => {
-    //   if (unsavedFiles.has(fileId)) {
-    //     const currentContent = model.getValue();
-    //     saveFile(fileId, currentContent);
-    //   }
-    // }, 30000); // Auto save every 30 seconds
-    
-    // // Clean up
-    // return () => clearInterval(autoSaveInterval);
-  };
-  
-  // Handle file opening from menu
-  const handleOpenFile = () => {
-    console.log('Opening file picker');
-    setIsFilePickerOpen(true);
-  };
-  
-  // Handle folder opening from menu
-  const handleOpenFolder = () => {
-    console.log('Opening folder picker');
-    setIsFolderPickerOpen(true);
-  };
-  
-  // Process selected file
-  const handleFileSelected = useCallback((file: File) => {
-    console.log(`Processing selected file: ${file.name}`);
-    
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target && typeof e.target.result === 'string') {
-          const content = e.target.result;
-          const fileExtension = file.name.split('.').pop() || '';
-          let language = 'plaintext';
-          
-          // Map common extensions to languages
-          const extensionToLanguage: Record<string, string> = {
-            'js': 'javascript',
-            'jsx': 'javascript',
-            'ts': 'typescript',
-            'tsx': 'typescript',
-            'html': 'html',
-            'css': 'css',
-            'json': 'json',
-            'md': 'markdown',
-            'py': 'python',
-            'java': 'java',
-            'c': 'c',
-            'cpp': 'cpp',
-            'cs': 'csharp',
-            'go': 'go',
-            'php': 'php',
-            'rb': 'ruby',
-            'swift': 'swift'
+
+    // Listen for content changes to mark files as dirty
+    editor.onDidChangeModelContent(() => {
+      if (activeFileId) {
+        markFileAsDirty(activeFileId);
+        console.log(`Editor content changed for ${activeFileId}, marked as dirty`);
+      }
+    });
+
+    // Get the model
+    const model = editor.getModel();
+    if (model) {
+      // Update line count
+      setLineCount(model.getLineCount());
+      console.log(`Model has ${model.getLineCount()} lines`);
+    }
+
+    // Always ensure we have the active file ID when mounting the editor
+    if (activeFileId) {
+      console.log(`Storing editor instance for file ID: ${activeFileId}`);
+      if (model) {
+        // Store the editor instance with the active file ID
+        setEditorInstances(prev => {
+          const updated = {
+            ...prev,
+            [activeFileId]: { editor, model }
           };
-          
-          if (fileExtension in extensionToLanguage) {
-            language = extensionToLanguage[fileExtension];
-          }
-          
-          // Create a new file in the virtual filesystem
-          console.log(`Creating new file: ${file.name}, language: ${language}`);
-          createNewFile(rootNode.id, file.name, content, language);
-        }
-      };
-      
-      reader.readAsText(file);
-    } catch (error) {
-      console.error('Error processing selected file:', error);
-    }
-  }, [rootNode.id, createNewFile]);
-  
-  // Process selected folder
-  const handleFolderSelected = (folder: File) => {
-    console.log(`Processing selected folder: ${folder.name}`);
-    // This is a placeholder for folder processing
-    // In a real application, we would need to use a more advanced API to handle folder access
-    // For now, we'll just create a dummy folder structure
-    
-    // Create a new folder in the root
-    const folderName = folder.name || 'New Folder';
-    createNewFolder(rootNode.id, folderName);
-    console.log(`Created new folder: ${folderName}`);
-    
-    // Refresh the file explorer
-    selectNode(rootNode.id);
-  };
-  
-  // Get the active file node
-  const getActiveFile = (): FileNode | null => {
-    if (!activeFileId) return null;
-    const file = findNodeById(rootNode, activeFileId);
-    return file && file.type === 'file' ? file : null;
-  };
-  
-  // Get the secondary file node
-  const getSecondaryFile = (): FileNode | null => {
-    if (!secondaryFileId) return null;
-    const file = findNodeById(rootNode, secondaryFileId);
-    return file && file.type === 'file' ? file : null;
-  };
-  
-  // Handle file selection in quick picker
-  const handleQuickPickerSelect = useCallback((fileId: string) => {
-    console.log('Quick picker file selected:', fileId);
-    setIsQuickPickerOpen(false);
-    if (fileId) {
-      openFileById(fileId);
-    }
-  }, []);
-  
-  // Render the activity bar icons with tooltips
-  const renderActivityBarIcons = () => [
-    { icon: <FileSearch className="h-5 w-5" />, name: 'Explorer', showNotification: false, activeIcon: 'explorer' },
-    { icon: <Brackets className="h-5 w-5" />, name: 'Search', showNotification: false, activeIcon: 'search' },
-    { icon: <GitBranch className="h-5 w-5" />, name: 'Source Control', showNotification: false, activeIcon: 'git' },
-    { icon: <Bug className="h-5 w-5" />, name: 'Run and Debug', showNotification: false, activeIcon: 'debug' },
-    { icon: <Database className="h-5 w-5" />, name: 'Extensions', showNotification: false, activeIcon: 'extensions' },
-    { icon: <SettingsIcon className="h-5 w-5" />, name: 'Settings', showNotification: false, activeIcon: 'settings' },
-  ];
-  
-  // Render the panel tabs
-  const renderPanelTabs = () => [
-    { icon: <Terminal className="h-4 w-4" />, name: 'Terminal', id: 'terminal' },
-    { icon: <Bug className="h-4 w-4" />, name: 'Problems', id: 'problems' },
-    { icon: <Play className="h-4 w-4" />, name: 'Output', id: 'output' },
-  ];
-  
-  // Render the content based on the active panel
-  const renderPanelContent = () => {
-    switch (activePanel) {
-      case 'terminal':
-        return (
-          <div className="font-mono text-xs bg-[#1e1e1e] text-white p-2 overflow-auto h-full">
-            {terminalOutput.map((line, index) => (
-              <div key={index} className="whitespace-pre-wrap mb-1">
-                {line}
-              </div>
-            ))}
-          </div>
-        );
-      case 'problems':
-        return (
-          <div className="text-sm p-2 text-[#cccccc]">
-            No problems detected.
-          </div>
-        );
-      case 'output':
-        return (
-          <div className="text-sm p-2 text-[#cccccc]">
-            No output available.
-          </div>
-        );
-      default:
-        return null;
+          console.log(`Editor instances now include ${Object.keys(updated).length} files:`, Object.keys(updated));
+          return updated;
+        });
+      } else {
+        console.error(`Model is null for active file ID ${activeFileId}, cannot store editor instance`);
+      }
+    } else {
+      console.warn('No active file ID when mounting editor, cannot store editor instance');
     }
   };
+
+
+
+// Function to handle folder selection
+const handleFolderSelection = (folderPath: string) => {
+  console.log('Selected folder:', folderPath);
   
-  // Render the editor
-  const renderEditor = (fileId: string | null, isSecondary = false) => {
-    if (!fileId) return null;
+  if (folderPath && folderPath.trim() !== '') {
+    // Save directly to storage utils for immediate persistence
+    const success = saveCurrentFolderPath(folderPath);
+    console.log('VSCodeEditor: Directly saved selected folder path:', folderPath, success ? '(success)' : '(failed)');
     
-    const file = findNodeById(rootNode, fileId);
-    if (!file || file.type !== 'file') return null;
+    // Log storage state for debugging
+    logAllStorageKeys();
     
-    const content = file.content || '';
-    const language = file.language || 'javascript';
+    // Update current folder path in our component state
+    setCurrentFolderPath(folderPath);
     
-    console.log(`Rendering editor for file ${fileId} with language ${language}`);
-    console.log(`Content length: ${content.length} characters`);
-    
-    return (
-      <div className="h-full flex flex-col">
-        <MonacoEditor
-          height="100%"
-          theme={theme === 'dark' ? 'vscode-dark' : 'vscode-light'}
-          language={language}
-          value={content}
-          defaultValue={content} // Add defaultValue as a fallback
-          options={{
-            fontSize: 14,
-            minimap: { enabled: true },
-            scrollBeyondLastLine: false,
-            lineNumbers: 'on',
-            glyphMargin: true,
-            folding: true,
-            automaticLayout: true,
-            autoIndent: 'full',
-            formatOnPaste: true,
-            formatOnType: true,
-            tabSize: 2,
-            wordWrap: 'on', // Enable word wrap for better readability
-            rulers: [80, 120],
-            bracketPairColorization: { enabled: true },
-            guides: {
-              bracketPairs: true,
-              indentation: true
-            }
-          }}
-          onMount={(editor, monaco) => handleEditorMount(editor, monaco, fileId)}
-          onChange={(value) => {
-            console.log(`Content changed for file ${fileId}`);
-            if (value !== undefined) {
-              const instance = editorInstances[fileId];
-              if (instance && instance.model) {
-                // Update file content in the store - this is critical for typing to work
-                markFileAsUnsaved(fileId);
-                // We don't need to manually set the model value as Monaco handles that
-              }
-            }
-          }}
-        />
-      </div>
-    );
+    // Dispatch an immediate refresh event
+    const refreshEvent = new CustomEvent('refresh-explorer', {
+      detail: { path: folderPath }
+    });
+    document.dispatchEvent(refreshEvent);
+    console.log('VSCodeEditor: Dispatched immediate refresh-explorer event');
+  } else {
+    console.log('VSCodeEditor: Ignoring empty folder path selection');
+  }
+  
+  // Close the folder picker dialog
+  setIsFolderPickerOpen(false);
+  
+  // Create a new root node with this folder path
+  const newRootNode: FileNode = {
+    id: 'root',
+    name: folderPath.split('/').pop() || 'root',
+    type: 'directory',
+    children: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
   };
+
+  // Reset the store with this new root node
+  // Note: In a real application, we would scan the folder and create the full tree
+  // Here we're just setting up the root node
+  const storeState = useVSCodeStore.getState();
+  // @ts-ignore - We know what we're doing
+  useVSCodeStore.setState({
+    ...storeState,
+    rootNode: newRootNode,
+    expandedFolders: ['root']
+  });
   
-  // Handle command execution
-  const handleCommandExecute = (command: VSCodeCommand) => {
-    console.log('Executing command:', command.id);
-    command.execute();
-  };
-  
-  // Render the editor layout
+  // Dispatch an event to refresh the explorer with the selected folder
+  const refreshEvent = new CustomEvent('refresh-explorer', {
+    detail: { path: folderPath }
+  });
+  document.dispatchEvent(refreshEvent);
+  console.log('Dispatched refresh-explorer event with path:', folderPath);
+
+  // Refresh explorer will be handled in the explorer component
+};
+
+// ... (rest of the code remains the same)
+
+  // Render editor layout
   const renderEditorLayout = () => {
     return (
       <div className="flex flex-col h-full">
         {/* Editor tabs */}
         <VSCodeEditorTabs
-          openFiles={openFileNodes}
+          openFiles={openFiles.map(id => findNodeById(rootNode, id)).filter(Boolean) as FileNode[]}
           activeFileId={activeFileId || ''}
           onSelectFile={openFileById}
           onCloseFile={closeFileById}
@@ -1031,7 +879,7 @@ export default function VSCodeEditor() {
             const instance = editorInstances[fileId];
             if (instance) {
               const content = instance.model.getValue();
-              saveFile(fileId, content);
+              enhancedSaveFile(fileId, content);
             }
           }}
         />
@@ -1042,13 +890,36 @@ export default function VSCodeEditor() {
             /* Single editor */
             <div className="h-full">
               {activeFileId ? (
-                renderEditor(activeFileId)
+                <MonacoEditor
+                  key={`editor-${activeFileId}`} // Add key to ensure re-mount when file changes
+                  height="100%"
+                  theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+                  language={getActiveFile()?.name.split('.').pop() || 'javascript'}
+                  value={getActiveFile()?.content || ''}
+                  options={{
+                    fontSize,
+                    minimap: { enabled: true },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    folding: true,
+                    automaticLayout: true,
+                    tabSize: 2,
+                  }}
+                  onMount={handleEditorDidMount}
+                  onChange={(value) => {
+                    if (value !== undefined && activeFileId) {
+                      // Log the content being edited
+                      console.log(`Editor onChange for ${activeFileId}, content length: ${(value || '').length}`);
+                      markFileAsDirty(activeFileId);
+                    }
+                  }}
+                />
               ) : (
                 <div className="h-full flex items-center justify-center text-[#cccccc] bg-[#1e1e1e]">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-light mb-4">VS Code Editor</h2>
-                    <p className="mb-2">Open a file from the explorer or create a new file to get started.</p>
-                    <p>
+                  <div className="text-center text-xs">
+                    <h2 className="text-xs font-light mb-4">VS Code Editor</h2>
+                    <p className="mb-2 text-xs">Open a file from the explorer or create a new file to get started.</p>
+                    <p className="text-xs">
                       <kbd className="px-2 py-1 bg-[#3c3c3c] rounded text-xs">Ctrl+P</kbd> to open files, 
                       <kbd className="px-2 py-1 bg-[#3c3c3c] rounded text-xs ml-1">Ctrl+Shift+P</kbd> to open command palette
                     </p>
@@ -1060,16 +931,58 @@ export default function VSCodeEditor() {
             /* Split editor */
             <div className="flex h-full divide-x divide-[#3c3c3c]">
               <div className="w-1/2 h-full">
-                {renderEditor(activeFileId)}
+                {activeFileId && (
+                  <MonacoEditor
+                    height="100%"
+                    theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+                    language={getActiveFile()?.name.split('.').pop() || 'javascript'}
+                    value={getActiveFile()?.content || ''}
+                    options={{
+                      fontSize,
+                      minimap: { enabled: true },
+                      scrollBeyondLastLine: false,
+                      lineNumbers: 'on',
+                      folding: true,
+                      automaticLayout: true,
+                      tabSize: 2,
+                    }}
+                    onMount={handleEditorDidMount}
+                    onChange={(value) => {
+                      if (value !== undefined && activeFileId) {
+                        markFileAsDirty(activeFileId);
+                      }
+                    }}
+                  />
+                )}
               </div>
               <div className="w-1/2 h-full">
                 {secondaryFileId ? (
-                  renderEditor(secondaryFileId, true)
+                  <MonacoEditor
+                    height="100%"
+                    theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+                    language={findNodeById(rootNode, secondaryFileId)?.name.split('.').pop() || 'javascript'}
+                    value={findNodeById(rootNode, secondaryFileId)?.content || ''}
+                    options={{
+                      fontSize,
+                      minimap: { enabled: true },
+                      scrollBeyondLastLine: false,
+                      lineNumbers: 'on',
+                      folding: true,
+                      automaticLayout: true,
+                      tabSize: 2,
+                    }}
+                    onMount={handleEditorDidMount}
+                    onChange={(value) => {
+                      if (value !== undefined && secondaryFileId) {
+                        markFileAsDirty(secondaryFileId);
+                      }
+                    }}
+                  />
                 ) : (
                   <div className="h-full flex items-center justify-center text-[#cccccc] bg-[#1e1e1e]">
-                    <div className="text-center">
-                      <h3 className="text-lg font-light mb-2">Editor Panel</h3>
-                      <p>Open a file to display it here</p>
+                    <div className="text-center text-xs">
+                      <h3 className="text-xs font-light mb-2">Editor Panel</h3>
+                      <p className="text-xs">Open a file to display it here</p>
                     </div>
                   </div>
                 )}
@@ -1083,7 +996,7 @@ export default function VSCodeEditor() {
           lineCount={lineCount}
           currentLine={cursorPosition.lineNumber}
           currentColumn={cursorPosition.column}
-          language={getActiveFile()?.language || 'plaintext'}
+          language={getActiveFile()?.name.split('.').pop() || 'plaintext'}
           isDarkMode={theme === 'dark'}
           onToggleTheme={toggleTheme}
           isConnected={true}
@@ -1092,40 +1005,93 @@ export default function VSCodeEditor() {
     );
   };
   
+  // Get the active file node
+  const getActiveFile = (): FileNode | null => {
+    if (!activeFileId) return null;
+    const file = findNodeById(rootNode, activeFileId);
+    return file && file.type === 'file' ? file : null;
+  };
+
   // Render menu bar
   const renderMenuBar = () => {
     const activeFile = getActiveFile();
+    console.log('Rendering menu bar with current folder path:', currentFolderPath);
     
     return (
       <VSCodeMenuBar
         createNewFile={createNewFile}
         createNewFolder={createNewFolder}
-        saveFile={saveFile}
+        saveFile={enhancedSaveFile}
         saveAllFiles={() => {
           // Implementation for saving all files
-          unsavedFiles.forEach(fileId => {
-            const file = findNodeById(rootNode, fileId);
-            if (file && file.type === 'file' && file.content) {
-              saveFile(fileId, file.content);
-            }
-          });
+          console.log('VSCodeEditor: Saving all unsaved files, count:', unsavedFiles.size);
+          
+          if (unsavedFiles.size === 0) {
+            console.log('VSCodeEditor: No unsaved files to save');
+            return;
+          }
+          
+          try {
+            Array.from(unsavedFiles).forEach(fileId => {
+              const file = findNodeById(rootNode, fileId);
+              
+              if (!file) {
+                console.warn(`VSCodeEditor: Cannot find file with ID ${fileId} to save`);
+                return;
+              }
+              
+              if (file.type !== 'file') {
+                console.warn(`VSCodeEditor: Item with ID ${fileId} is not a file, it's a ${file.type}`);
+                return;
+              }
+              
+              if (file.content === undefined) {
+                console.warn(`VSCodeEditor: File ${file.name} (${fileId}) has undefined content`);
+                return;
+              }
+              
+              console.log(`VSCodeEditor: Saving file ${file.name} (${fileId}), content length: ${file.content.length}`);
+              enhancedSaveFile(fileId, file.content);
+            });
+            console.log('VSCodeEditor: All files save requests sent successfully');
+          } catch (error) {
+            console.error('VSCodeEditor: Error while saving all files:', error);
+          }
         }}
         openFile={openFileById}
         rootNodeId={rootNode.id}
-        onOpenFile={handleOpenFile}
-        onOpenFolder={handleOpenFolder}
+        onOpenFile={() => setIsFilePickerOpen(true)}
+        onOpenFolder={() => setIsFolderPickerOpen(true)}
         activeFileId={activeFileId}
         editorContent={activeFile?.content || ''}
         refreshExplorer={() => {
-          // Refresh explorer by reselecting the root node
-          selectNode(rootNode.id);
+          console.log('VSCodeEditor: refreshExplorer called, refreshing explorer view');
+          
+          // If we have a real folder path open, refresh by refetching from the filesystem
+          if (currentFolderPath && currentFolderPath.trim()) {
+            console.log('VSCodeEditor: Current folder path exists, refetching from filesystem:', currentFolderPath);
+            
+            // Use dispatchEvent to trigger a refresh in the ExplorerView component
+            window.dispatchEvent(new CustomEvent('refresh-explorer', {
+              detail: { path: currentFolderPath }
+            }));
+            
+            console.log('VSCodeEditor: Dispatched refresh-explorer event with path:', currentFolderPath);
+          } else {
+            // Refresh in-memory explorer by reselecting the root node
+            console.log('VSCodeEditor: No real folder path, refreshing in-memory explorer');
+            selectNode(rootNode.id);
+          }
         }}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        currentPath={currentFolderPath}
       />
     );
   };
   
   return (
-    <div className="h-screen min-h-[600px] border border-gray-300 rounded-md overflow-hidden">
+    <div style={{ height: 'calc(100vh - 80px)' }} className="h-screen min-h-[600px] border border-gray-300 rounded-md overflow-hidden">
       <VSCodeLayout
         showSidebar={isSidebarVisible}
         showPanel={isPanelVisible}
@@ -1140,7 +1106,11 @@ export default function VSCodeEditor() {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         commands={commandsList}
-        onCommandExecute={handleCommandExecute}
+        onCommandExecute={(command) => {
+          console.log(`Executing command: ${command.id}`);
+          command.execute();
+          setIsCommandPaletteOpen(false);
+        }}
       />
       
       {/* Quick file picker */}
@@ -1149,7 +1119,11 @@ export default function VSCodeEditor() {
         onClose={() => setIsQuickPickerOpen(false)}
         files={openFileNodes}
         rootNode={rootNode}
-        onSelectFile={handleQuickPickerSelect}
+        onSelectFile={(fileId) => {
+          console.log(`Quick picker selected file: ${fileId}`);
+          openFileById(fileId);
+          setIsQuickPickerOpen(false);
+        }}
         recentFiles={getRecentFilesWithLimit(5)}
       />
       
@@ -1157,18 +1131,54 @@ export default function VSCodeEditor() {
       <VSCodeFileBrowser
         isOpen={isFilePickerOpen}
         onClose={() => setIsFilePickerOpen(false)}
-        onFileSelected={handleFileSelected}
+        onFileSelected={(fileObject) => {
+          console.log(`File selected: ${fileObject.name}`);
+          setIsFilePickerOpen(false);
+          
+          // Create a file reader to read the file content
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (event.target) {
+              const content = event.target.result as string;
+              
+              // Create a new file ID
+              const newFileId = `file-${Date.now()}`;
+              
+              // Create a new file node with the file content
+              const newFile: FileNode = {
+                id: newFileId,
+                name: fileObject.name,
+                type: 'file',
+                content: content,
+                parentId: rootNode.id,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              
+              console.log(`Creating new file node: ${newFile.name} with size ${content.length} bytes`);
+              
+              // Instead of directly setting the root node, we'll add the file to the store
+              // This approach uses the existing createNewFile function
+              console.log('Adding file to the store:', newFile.name);
+              createNewFile(rootNode.id, newFile.name, content, '');
+              
+              // Open the new file
+              openFileById(newFileId);
+            }
+          };
+          
+          // Read the file as text
+          reader.readAsText(fileObject);
+        }}
         title="Open File"
         acceptTypes="*.*"
       />
       
-      {/* Folder browser dialog */}
-      <VSCodeFileBrowser
+      {/* Folder selector dialog - using the same component as Explorer */}
+      <FolderSelector
         isOpen={isFolderPickerOpen}
         onClose={() => setIsFolderPickerOpen(false)}
-        onFileSelected={handleFolderSelected}
-        title="Open Folder"
-        isFolder={true}
+        onFolderSelected={handleFolderSelection}
       />
     </div>
   );

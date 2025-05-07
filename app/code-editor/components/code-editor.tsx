@@ -115,11 +115,6 @@ export default function CodeEditor() {
 
   const saveCurrentSnippet = () => {
     if (!snippetName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a name for your snippet",
-        variant: "destructive",
-      })
       return
     }
 
@@ -138,11 +133,6 @@ export default function CodeEditor() {
     // Update snippets list
     setSnippets(getSnippets())
     setSaveDialogOpen(false)
-
-    toast({
-      title: "Success",
-      description: "Your code snippet has been saved",
-    })
   }
 
   const createNewSnippet = () => {
@@ -158,11 +148,6 @@ export default function CodeEditor() {
     // Reset history
     setHistory([defaultSnippet.code])
     setHistoryIndex(0)
-
-    toast({
-      title: "New Snippet Created",
-      description: "Started a new code snippet",
-    })
   }
 
   const loadSnippet = (snippet: CodeSnippet) => {
@@ -195,11 +180,6 @@ export default function CodeEditor() {
           createNewSnippet()
         }
       }
-
-      toast({
-        title: "Snippet Deleted",
-        description: "The code snippet has been deleted",
-      })
     }
   }
 
@@ -219,10 +199,6 @@ export default function CodeEditor() {
 
   const handleCopyOutput = () => {
     navigator.clipboard.writeText(output)
-    toast({
-      title: "Copied",
-      description: "Output copied to clipboard",
-    })
   }
 
   const handleDownload = () => {

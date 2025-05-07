@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 
+// No duplicate definitions needed - they're defined below
+
 /**
  * Interface for panel size configuration
  */
