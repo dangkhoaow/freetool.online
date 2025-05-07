@@ -4,13 +4,19 @@ import path from 'path';
 import os from 'os';
 
 // Function to read directory recursively
-const readDirectoryRecursively = (dirPath: string, depth = 0, maxDepth = 3): any[] => {
+const readDirectoryRecursively = (dirPath: string, depth = 0, maxDepth = 10): any[] => {
   console.log(`Reading directory: ${dirPath} at depth ${depth}`);
   
   try {
     if (depth > maxDepth) {
-      console.log(`Max depth reached for ${dirPath}, stopping recursion`);
-      return []; // Limit recursion depth
+      console.log(`Max depth reached for ${dirPath}, returning placeholder indicator`);
+      // Instead of empty array, return a special indicator that this folder has more content
+      return [{ 
+        name: '...', 
+        path: path.join(dirPath, '...'),
+        type: 'more-items',
+        isPlaceholder: true
+      }];
     }
     
     if (!fs.existsSync(dirPath)) {
@@ -53,25 +59,26 @@ const readDirectoryRecursively = (dirPath: string, depth = 0, maxDepth = 3): any
               children: readDirectoryRecursively(itemPath, depth + 1, maxDepth)
             };
           } else {
+            // It's a file
             return {
               name: item.name,
               path: itemPath,
-              type: 'file'
+              type: 'file',
+              extension: path.extname(item.name).slice(1) // Get extension without the dot
             };
           }
-        } catch (itemError) {
-          console.error(`Error processing item ${itemPath}:`, itemError);
+        } catch (error) {
+          console.error(`Error processing item ${itemPath}:`, error);
           return {
             name: item.name,
             path: itemPath,
             type: 'error',
-            error: (itemError as Error).message
+            error: (error as Error).message
           };
         }
-      })
-      .filter(Boolean); // Remove any undefined items
+      });
   } catch (error) {
-    console.error(`Error reading directory ${dirPath}:`, error);
+    console.error(`Error in recursive directory read for ${dirPath}:`, error);
     return [];
   }
 };
@@ -80,15 +87,26 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     let dirPath = searchParams.get('path') || '';
-    const maxDepth = parseInt(searchParams.get('maxDepth') || '3', 10);
+    const maxDepth = parseInt(searchParams.get('maxDepth') || '10', 10);
     
     console.log(`API request to read filesystem at path: ${dirPath}, maxDepth: ${maxDepth}`);
     
     // If no path specified, use current project directory as fallback
     if (!dirPath) {
-      // Use current directory as fallback
-      dirPath = process.cwd();
-      console.log(`No path specified, using current directory: ${dirPath}`);
+      // Use a default directory from user's home as fallback
+      // This creates a better initial experience when the page loads
+      const homeDir = os.homedir();
+      const defaultDirs = [
+        // Common project directories
+        path.join(homeDir, 'Documents'),
+        path.join(homeDir, 'Projects'),
+        path.join(homeDir, 'Desktop'),
+        process.cwd()
+      ];
+      
+      // Find the first directory that exists
+      dirPath = defaultDirs.find(dir => fs.existsSync(dir)) || process.cwd();
+      console.log(`No path specified, using default directory: ${dirPath}`);
     }
     
     // Validate path exists

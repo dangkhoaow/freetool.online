@@ -510,6 +510,193 @@ export default function VSCodeEditor() {
     };
   }, [rootNode, openFile, createNewFile]);
   
+  // Save files to browser storage
+  const saveFileToBrowserStorage = useCallback((fileId: string, content: string) => {
+    console.log(`Saving file ${fileId} to browser storage`);
+    try {
+      // Get file info
+      const file = findNodeById(rootNode, fileId);
+      if (!file || file.type !== 'file') {
+        console.error(`Cannot find file with ID: ${fileId}`);
+        return false;
+      }
+      
+      // Create storage entry with metadata
+      const storageData = {
+        id: fileId,
+        name: file.name,
+        content,
+        language: file.language,
+        lastModified: new Date().toISOString(),
+        // We don't have path on FileNode type, so just use ID as identifier
+        identifier: fileId
+      };
+      
+      // Save to localStorage
+      localStorage.setItem(`vscode_file_${fileId}`, JSON.stringify(storageData));
+      console.log(`File ${fileId} saved to localStorage`);
+      
+      // If browser supports CacheStorage, also save there for larger files
+      if ('caches' in window) {
+        caches.open('vscode-files-cache').then(cache => {
+          const responseData = new Response(JSON.stringify(storageData));
+          cache.put(`/file/${fileId}`, responseData);
+          console.log(`File ${fileId} saved to CacheStorage`);
+        });
+      }
+      
+      // Remove from unsaved files
+      const unsavedFileSet = new Set(unsavedFiles);
+      unsavedFileSet.delete(fileId);
+      setUnsavedFiles(unsavedFileSet);
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving file to browser storage:', error);
+      return false;
+    }
+  }, [rootNode, unsavedFiles, setUnsavedFiles]);
+
+  // Load files from browser storage
+  const loadFileFromBrowserStorage = useCallback(async (fileId: string) => {
+    console.log(`Loading file ${fileId} from browser storage`);
+    try {
+      // Try to get from CacheStorage first
+      if ('caches' in window) {
+        const cache = await caches.open('vscode-files-cache');
+        const response = await cache.match(`/file/${fileId}`);
+        
+        if (response) {
+          const data = await response.json();
+          console.log(`File ${fileId} loaded from CacheStorage`);
+          return data;
+        }
+      }
+      
+      // Fall back to localStorage
+      const storedData = localStorage.getItem(`vscode_file_${fileId}`);
+      if (storedData) {
+        const data = JSON.parse(storedData);
+        console.log(`File ${fileId} loaded from localStorage`);
+        return data;
+      }
+      
+      console.log(`File ${fileId} not found in browser storage`);
+      return null;
+    } catch (error) {
+      console.error('Error loading file from browser storage:', error);
+      return null;
+    }
+  }, []);
+
+  // Process a file selected from file picker
+  const processSelectedFile = useCallback((file: File) => {
+    console.log(`Processing selected file: ${file.name}`);
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target && typeof e.target.result === 'string') {
+        const content = e.target.result;
+        const fileExtension = file.name.split('.').pop() || '';
+        let language = 'plaintext';
+        
+        // Map common extensions to languages
+        const extensionToLanguage: Record<string, string> = {
+          'js': 'javascript',
+          'jsx': 'javascript',
+          'ts': 'typescript',
+          'tsx': 'typescript',
+          'html': 'html',
+          'css': 'css',
+          'json': 'json',
+          'md': 'markdown',
+          'py': 'python',
+          'java': 'java',
+          'c': 'c',
+          'cpp': 'cpp',
+          'cs': 'csharp',
+          'go': 'go',
+          'php': 'php',
+          'rb': 'ruby',
+          'swift': 'swift'
+        };
+        
+        if (fileExtension in extensionToLanguage) {
+          language = extensionToLanguage[fileExtension];
+        }
+        
+        // Create a new file in the virtual filesystem
+        createNewFile(rootNode.id, file.name, content, language);
+        console.log(`Created new file: ${file.name}, language: ${language}`);
+      }
+    };
+    
+    reader.readAsText(file);
+  }, [rootNode.id, createNewFile]);
+
+  // Handle file saving events
+  useEffect(() => {
+    const handleSaveCurrentFile = () => {
+      console.log('Save current file event received');
+      if (activeFileId) {
+        const instance = editorInstances[activeFileId];
+        if (instance && instance.model) {
+          const content = instance.model.getValue();
+          const success = saveFileToBrowserStorage(activeFileId, content);
+          
+          if (success) {
+            console.log(`File ${activeFileId} saved successfully`);
+            // Could show a success toast here
+          }
+        }
+      }
+    };
+    
+    const handleSaveAllFiles = () => {
+      console.log('Save all files event received');
+      let allSaved = true;
+      
+      openFiles.forEach(fileId => {
+        const instance = editorInstances[fileId];
+        if (instance && instance.model) {
+          const content = instance.model.getValue();
+          const success = saveFileToBrowserStorage(fileId, content);
+          
+          if (!success) {
+            allSaved = false;
+            console.error(`Failed to save file ${fileId}`);
+          }
+        }
+      });
+      
+      if (allSaved && openFiles.length > 0) {
+        console.log('All files saved successfully');
+        // Could show a success toast here
+      }
+    };
+    
+    // Handle file upload from File menu
+    const handleFileUpload = (event: CustomEvent) => {
+      console.log('File upload event received');
+      const { file } = event.detail;
+      if (file) {
+        processSelectedFile(file);
+      }
+    };
+    
+    // Add event listeners
+    window.addEventListener('save-current-file', handleSaveCurrentFile);
+    window.addEventListener('save-all-files', handleSaveAllFiles);
+    window.addEventListener('file-upload', handleFileUpload as EventListener);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('save-current-file', handleSaveCurrentFile);
+      window.removeEventListener('save-all-files', handleSaveAllFiles);
+      window.removeEventListener('file-upload', handleFileUpload as EventListener);
+    };
+  }, [activeFileId, editorInstances, openFiles, saveFileToBrowserStorage, processSelectedFile]);
+
   // Create a file editor instance
   const handleEditorMount = (
     editor: monaco.editor.IStandaloneCodeEditor, 

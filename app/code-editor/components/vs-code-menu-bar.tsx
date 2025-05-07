@@ -43,6 +43,42 @@ interface VSCodeMenuBarProps {
   refreshExplorer: () => void
 }
 
+// Utility function to download a folder as zip
+const downloadProjectAsZip = async (folderPath: string) => {
+  try {
+    console.log('Requesting zip download for folder:', folderPath);
+    const response = await fetch(`/api/download-folder?path=${encodeURIComponent(folderPath)}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+    
+    // Create a blob from the response
+    const blob = await response.blob();
+    
+    // Create a download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${folderPath.split('/').pop() || 'project'}.zip`;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+    
+    console.log('Download completed successfully');
+    return true;
+  } catch (error) {
+    console.error('Error downloading folder as zip:', error);
+    return false;
+  }
+};
+
 export function VSCodeMenuBar({
   createNewFile,
   createNewFolder,

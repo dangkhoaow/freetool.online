@@ -1,0 +1,133 @@
+/* VS Code-like dropdown menu styles */
+.vscode-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.vscode-dropdown-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.vscode-dropdown-menu-button {
+  background: transparent;
+  color: #cccccc;
+  border: none;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.vscode-dropdown-menu-button:hover {
+  background-color: #3c3c3c;
+}
+
+.vscode-dropdown-menu-content {
+  display: none;
+  position: absolute;
+  min-width: 200px;
+  background-color: #252526;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+  z-index: 50;
+  left: 0;
+  top: 100%;
+  border: 1px solid #3c3c3c;
+}
+
+.vscode-dropdown-menu:hover .vscode-dropdown-menu-content {
+  display: block;
+}
+
+.vscode-dropdown-menu-item {
+  color: #cccccc;
+  padding: 6px 12px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  width: 100%;
+  background: transparent;
+}
+
+.vscode-dropdown-menu-item:hover {
+  background-color: #3c3c3c;
+}
+
+.vscode-dropdown-menu-separator {
+  height: 1px;
+  background-color: #3c3c3c;
+  margin: 4px 0;
+}
+
+/* Context menu styles */
+.context-menu {
+  position: fixed;
+  z-index: 100;
+  width: 200px;
+  background-color: #252526;
+  border: 1px solid #3c3c3c;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #cccccc;
+  font-size: 13px;
+}
+
+.context-menu-item:hover {
+  background-color: #3c3c3c;
+}
+
+.context-menu-item-icon {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: #3c3c3c;
+  margin: 4px 0;
+}
+
+/* Toast message styles */
+.vscode-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  min-width: 250px;
+  padding: 12px 16px;
+  color: white;
+  border-radius: 4px;
+  z-index: 100;
+  font-size: 13px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+  animation: toast-slide-in 0.2s ease-out;
+}
+
+.vscode-toast-success {
+  background-color: #0e639c;
+}
+
+.vscode-toast-error {
+  background-color: #e51400;
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
