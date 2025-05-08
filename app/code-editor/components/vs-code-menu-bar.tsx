@@ -242,22 +242,6 @@ export function VSCodeMenuBar({
           </DropdownMenuItem>
           <DropdownMenuItem 
             className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
-            onClick={handleSaveAll}
-          >
-            <SaveAll className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Save All</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+K S</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem 
-            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
-            onClick={refreshExplorer}
-          >
-            <FolderOpen className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Refresh Explorer</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={() => {
               // Get folder path from props or from our storage utils as fallback
               let folderPath = currentPath;
@@ -293,61 +277,12 @@ export function VSCodeMenuBar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edit Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="px-2 py-1 hover:bg-[#505050] rounded">Edit</button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem className="text-xs text-gray-300 flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <Undo className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Undo</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Z</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <Redo className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Redo</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Y</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <Scissors className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Cut</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+X</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <ClipboardCopy className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Copy</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+C</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <ClipboardPaste className="h-4 w-4 text-gray-300" />
-            <span className="text-gray-300">Paste</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+V</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
       {/* View Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="px-2 py-1 hover:bg-[#505050] rounded">View</button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span className="text-gray-300">Explorer</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Shift+E</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span className="text-gray-300">Search</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+Shift+F</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span className="text-gray-300">Terminal</span>
-            <span className="ml-auto opacity-60 text-gray-300">Ctrl+`</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
           <DropdownMenuItem 
             className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer"
             onClick={() => {
@@ -369,25 +304,6 @@ export function VSCodeMenuBar({
             <ZoomOut className="h-4 w-4 text-gray-300" />
             <span className="text-gray-300">Zoom Out</span>
             <span className="ml-auto opacity-60 text-gray-300">Ctrl+-</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Help Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="px-2 py-1 hover:bg-[#505050] rounded">Help</button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span className="text-gray-300">Welcome</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span className="text-gray-300">Documentation</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          <DropdownMenuItem className="text-xs flex items-center gap-2 px-3 py-1.5 hover:bg-[#094771] focus:bg-[#094771] cursor-pointer">
-            <span className="text-gray-300">About</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
