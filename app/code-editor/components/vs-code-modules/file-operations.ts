@@ -3,6 +3,7 @@
  * Handles file opening, saving, creation, and deletion
  */
 import { FileNode, getLanguageFromFilename, findNodeById } from '@/lib/services/vs-code-file-system';
+import { readFile as readBrowserFile } from '@/lib/services/browser-file-system-service';
 import useVSCodeStore from '../../store/vs-code-store';
 import { EditorInstance } from './types';
 
@@ -109,59 +110,73 @@ export function openFileById(fileId: string, maxRetries = 5, delay = 100, editor
     if (fileNode) {
       console.log(`FileOperations: Found file node:`, fileNode);
       
-      // Check if file has realPath for loading from disk
-      const realPath = (fileNode as any).realPath;
-      if (realPath) {
-        console.log(`FileOperations: File has real path: ${realPath}, will load from disk`);
-        
-        // First, make sure parent folders are expanded
-        if (fileNode.parentId) {
-          console.log(`FileOperations: Ensuring parent folder ${fileNode.parentId} is expanded`);
-          if (!store.expandedFolders.includes(fileNode.parentId)) {
-            store.toggleFolder(fileNode.parentId);
-            console.log(`FileOperations: Expanded parent folder ${fileNode.parentId}`);
-          }
-        }
-        
-        // Try to load content from disk directly via fetch API
-        console.log(`FileOperations: Loading file content from disk: ${realPath}`);
-        fetch('/api/filesystem', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'readFile',
-            path: realPath
+      // Check if file has handle for loading via browser FS API
+      const handle = (fileNode as any).handle;
+      if (handle) {
+        console.log(`FileOperations: Loading file via browser-file-system-service`, handle);
+        readBrowserFile(handle)
+          .then((dataContent: string) => {
+            console.log(`FileOperations: File loaded via FS API, size: ${dataContent.length} chars`);
+            store.setEditorContent(fileId, dataContent);
+            store.markFileAsSaved(fileId);
           })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            console.log(`FileOperations: File loaded successfully from disk: ${realPath}, size: ${data.content.length} chars`);
-            
-            // Update file content directly in the file system state
-            const updatedFileNode = findNodeById(store.rootNode, fileId);
-            if (updatedFileNode && updatedFileNode.type === 'file') {
-              console.log(`FileOperations: Updating file content in the state for ${fileId}`);
-              // Create a new file node with the content
-              updatedFileNode.content = data.content;
-              // Update the file node in the store
-              store.setEditorContent(fileId, data.content);
-              console.log(`FileOperations: Updated content for ${fileId}`);
-              
-              // Mark file as saved
-              store.markFileAsSaved(fileId);
-            }
-          } else {
-            console.error(`FileOperations: Error loading file from disk: ${data.error || 'Unknown error'}`);
-          }
-        })
-        .catch(error => {
-          console.error('FileOperations: Error loading file from disk:', error);
-        });
+          .catch((error: unknown) => console.error('FileOperations: Error reading file via FS API:', error));
       } else {
-        console.log(`FileOperations: File does not have a real path, content will be loaded from cache if available`);
+        // Check if file has realPath for loading from disk
+        const realPath = (fileNode as any).realPath;
+        if (realPath) {
+          console.log(`FileOperations: File has real path: ${realPath}, will load from disk`);
+          
+          // First, make sure parent folders are expanded
+          if (fileNode.parentId) {
+            console.log(`FileOperations: Ensuring parent folder ${fileNode.parentId} is expanded`);
+            if (!store.expandedFolders.includes(fileNode.parentId)) {
+              store.toggleFolder(fileNode.parentId);
+              console.log(`FileOperations: Expanded parent folder ${fileNode.parentId}`);
+            }
+          }
+          
+          // Try to load content from disk directly via fetch API
+          console.log(`FileOperations: Loading file content from disk: ${realPath}`);
+          fetch('/api/filesystem', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'readFile',
+              path: realPath
+            })
+          })
+          .then(response => response.json())
+          .then((data: { success: boolean; content?: string; error?: string }) => {
+            if (data.success) {
+              const fileContent = data.content ?? '';
+              console.log(`FileOperations: File loaded successfully from disk: ${realPath}, size: ${fileContent.length} chars`);
+              
+              // Update file content directly in the file system state
+              const updatedFileNode = findNodeById(store.rootNode, fileId);
+              if (updatedFileNode && updatedFileNode.type === 'file') {
+                console.log(`FileOperations: Updating file content in the state for ${fileId}`);
+                // Create a new file node with the content
+                updatedFileNode.content = fileContent;
+                // Update the file node in the store
+                store.setEditorContent(fileId, fileContent);
+                console.log(`FileOperations: Updated content for ${fileId}`);
+                
+                // Mark file as saved
+                store.markFileAsSaved(fileId);
+              }
+            } else {
+              console.error(`FileOperations: Error loading file from disk: ${data.error || 'Unknown error'}`);
+            }
+          })
+          .catch((error: unknown) => {
+            console.error('FileOperations: Error loading file from disk:', error);
+          });
+        } else {
+          console.log(`FileOperations: File does not have a real path or handle, loading from cache if available`);
+        }
       }
       
       // Make sure parent folders are expanded

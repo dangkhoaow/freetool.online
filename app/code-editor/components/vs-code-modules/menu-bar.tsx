@@ -1,7 +1,11 @@
 "use client"
 
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { FileNode } from '@/lib/services/vs-code-file-system'
+import { FileSystemAccessAdapter } from './file-system-access-adapter'
+import * as BrowserFileSystem from '@/lib/services/browser-file-system-service'
+import useVSCodeStore from '../../store/vs-code-store'
+import { validateFolderPath, validateDirectoryHandle } from './folder-handler'
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -109,6 +113,19 @@ export function VSCodeMenuBar({
   onZoomOut = () => {},
   currentPath = ''
 }: VSCodeMenuBarProps) {
+  // Check if File System Access API is supported
+  const [fsApiSupported, setFsApiSupported] = useState<boolean>(false);
+  const [hasDirectoryAccess, setHasDirectoryAccess] = useState<boolean>(false);
+  
+  // Check for File System Access API support on component mount
+  useEffect(() => {
+    const isSupported = BrowserFileSystem.isFileSystemAccessSupported();
+    const hasAccess = BrowserFileSystem.hasDirectoryHandle();
+    console.log('MenuBar: File System Access API supported:', isSupported);
+    console.log('MenuBar: Has directory access:', hasAccess);
+    setFsApiSupported(isSupported);
+    setHasDirectoryAccess(hasAccess);
+  }, []);
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false)
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false)
   const [newFileName, setNewFileName] = useState('')
@@ -122,77 +139,210 @@ export function VSCodeMenuBar({
   // Handle file menu actions
   const handleNewFile = () => {
     console.log('MenuBar: Opening new file dialog');
-    setNewFileName('')
-    setIsNewFileDialogOpen(true)
+    // Reset the file name input field
+    setNewFileName('');
+    // Show the dialog to get the file name from the user
+    setIsNewFileDialogOpen(true);
+    
+    // Focus the input field once the dialog is open
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.focus();
+      }
+    }, 50);
   }
 
   const handleNewFolder = () => {
     console.log('MenuBar: Opening new folder dialog');
-    setNewFolderName('')
-    setIsNewFolderDialogOpen(true)
+    // Reset the folder name input field
+    setNewFolderName('');
+    // Show the dialog to get the folder name from the user
+    setIsNewFolderDialogOpen(true);
+    
+    // Focus the input field once the dialog is open
+    setTimeout(() => {
+      if (folderInputRef.current) {
+        folderInputRef.current.focus();
+      }
+    }, 50);
   }
 
-  const handleCreateNewFile = () => {
+  const handleCreateNewFile = async () => {
     console.log('MenuBar: handleCreateNewFile called with fileName:', newFileName);
     
     if (newFileName.trim()) {
-      console.log(`MenuBar: Creating new file: ${newFileName} in ${rootNodeId}`);
+      // Get parent folder ID from activeFileId if available and a directory, otherwise use rootNodeId
+      const parentFolderId = rootNodeId;
+      console.log(`MenuBar: Creating new file: ${newFileName} in parent folder: ${parentFolderId}`);
       
-      // Call createNewFile with the parameters matching the props interface
-      createNewFile(rootNodeId, newFileName);
-      setIsNewFileDialogOpen(false);
+      try {
+        // First create the file in the virtual file system
+        createNewFile(parentFolderId, newFileName);
+        console.log('MenuBar: File created in virtual file system');
+        
+        // If File System Access API is supported and we have directory access,
+        // also create the file on disk
+        if (fsApiSupported && hasDirectoryAccess) {
+          console.log('MenuBar: Attempting to create file on disk');
+          const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+          
+          if (directoryHandle) {
+            await BrowserFileSystem.createFile(directoryHandle, newFileName, '');
+            console.log('MenuBar: File also created on disk');
+          } else {
+            console.warn('MenuBar: Could not get directory handle to create file on disk');
+          }
+        }
+        
+        // Refresh the explorer to show the new file
+        console.log('MenuBar: Refreshing explorer to show new file');
+        setTimeout(() => {
+          refreshExplorer();
+        }, 200); // Delay to ensure file is created before refreshing
+        
+        setIsNewFileDialogOpen(false);
+      } catch (error) {
+        console.error('MenuBar: Failed to create new file:', error);
+        alert('Failed to create new file. Please try again.');
+      }
     } else {
       console.log('MenuBar: File name is empty, not creating file');
       setIsNewFileDialogOpen(false);
     }
   }
 
-  const handleCreateNewFolder = () => {
+  const handleCreateNewFolder = async () => {
     console.log('MenuBar: handleCreateNewFolder called with folderName:', newFolderName);
     
     if (newFolderName.trim()) {
-      console.log(`MenuBar: Creating new folder: ${newFolderName} in ${rootNodeId}`);
+      // Get parent folder ID from activeFileId if available and a directory, otherwise use rootNodeId
+      const parentFolderId = rootNodeId;
+      console.log(`MenuBar: Creating new folder: ${newFolderName} in parent folder: ${parentFolderId}`);
       
-      // Call createNewFolder with the parameters matching the props interface
-      createNewFolder(rootNodeId, newFolderName);
-      setIsNewFolderDialogOpen(false);
+      try {
+        // First create the folder in the virtual file system
+        createNewFolder(parentFolderId, newFolderName);
+        console.log('MenuBar: Folder created in virtual file system');
+        
+        // If File System Access API is supported and we have directory access,
+        // also create the folder on disk
+        if (fsApiSupported && hasDirectoryAccess) {
+          console.log('MenuBar: Attempting to create folder on disk');
+          const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+          
+          if (directoryHandle) {
+            await BrowserFileSystem.createFolder(directoryHandle, newFolderName);
+            console.log('MenuBar: Folder also created on disk');
+          } else {
+            console.warn('MenuBar: Could not get directory handle to create folder on disk');
+          }
+        }
+        
+        // Refresh the explorer to show the new folder
+        console.log('MenuBar: Refreshing explorer to show new folder');
+        setTimeout(() => {
+          refreshExplorer();
+        }, 200); // Delay to ensure folder is created before refreshing
+        
+        setIsNewFolderDialogOpen(false);
+      } catch (error) {
+        console.error('MenuBar: Failed to create new folder:', error);
+        alert('Failed to create new folder. Please try again.');
+      }
     } else {
       console.log('MenuBar: Folder name is empty, not creating folder');
       setIsNewFolderDialogOpen(false);
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (activeFileId) {
       console.log(`MenuBar: Attempting to save file with ID: ${activeFileId}`);
       
       try {
-        // Pass undefined as the second parameter to let enhancedSaveFile
-        // retrieve the content directly from the editor instance
-        // This matches how saveAllFiles works which is working correctly
-        saveFile(activeFileId, undefined as any);
-        console.log(`MenuBar: Save request sent for file: ${activeFileId}`);
+        // First save to the virtual file system
+        saveFile(activeFileId, editorContent);
+        console.log(`MenuBar: File saved in virtual filesystem with ID: ${activeFileId}`);
+        
+        // If File System Access API is supported and we have directory access,
+        // also save to disk
+        if (fsApiSupported && hasDirectoryAccess) {
+          console.log('MenuBar: Attempting to save file on disk');
+          
+          // Get the file node from the store to get the file name
+          const store = useVSCodeStore.getState();
+          const fileNode = store.rootNode.children?.find((node: any) => 
+            node.id === activeFileId || 
+            (node.children && node.children.some((child: any) => child.id === activeFileId)));
+          
+          if (fileNode && fileNode.name) {
+            const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+            if (directoryHandle) {
+              await BrowserFileSystem.createFile(directoryHandle, fileNode.name, editorContent);
+              console.log(`MenuBar: File also saved on disk: ${fileNode.name}`);
+            }
+          } else {
+            console.warn('MenuBar: Could not find file node to save on disk');
+          }
+        }
       } catch (error) {
-        console.error(`MenuBar: Error saving file ${activeFileId}:`, error);
+        console.error(`MenuBar: Error saving file: ${error}`);
+        alert('Error saving file. Please try again.');
       }
     } else {
-      console.warn('MenuBar: Cannot save - No active file');
+      console.log('MenuBar: No active file to save');
     }
   }
 
-  const handleSaveAll = () => {
-    console.log('MenuBar: Attempting to save all open files');
+  const handleSaveAll = async () => {
+    console.log('MenuBar: Save all files');
     
     try {
+      // First save all files to the virtual file system
       saveAllFiles();
-      console.log('MenuBar: Save all files request sent');
+      console.log('MenuBar: All files saved in virtual filesystem');
+      
+      // If File System Access API is supported and we have directory access,
+      // save all the files to disk using the project save function
+      if (fsApiSupported && hasDirectoryAccess) {
+        console.log('MenuBar: Attempting to save all files on disk');
+        const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+        
+        if (directoryHandle) {
+          // Get the current rootNode from the store
+          const store = useVSCodeStore.getState();
+          const rootNode = store.rootNode;
+          
+          // Save the entire project to disk
+          await BrowserFileSystem.saveProjectToDisk(directoryHandle, rootNode);
+          console.log('MenuBar: All files also saved on disk');
+        } else {
+          console.warn('MenuBar: Could not get directory handle to save all files on disk');
+        }
+      }
     } catch (error) {
-      console.error('MenuBar: Error during save all files operation:', error);
+      console.error(`MenuBar: Error saving all files: ${error}`);
+      alert('Error saving all files. Please try again.');
     }
   }
 
   return (
     <div className="flex items-center h-8 px-2 bg-[#3c3c3c] text-[#cccccc] text-xs border-b border-[#252525]">
+      {/* Display save to disk button only if we already have directory access */}
+      {fsApiSupported && hasDirectoryAccess && (
+        <div className="ml-auto mr-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleSaveAll}
+            title="Save all files to disk"
+            className="text-xs"
+          >
+            <Save className="h-3.5 w-3.5 mr-1" />
+            Save to Disk
+          </Button>
+        </div>
+      )}
       {/* File Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -226,11 +376,83 @@ export function VSCodeMenuBar({
           </DropdownMenuItem>
           
           <DropdownMenuItem 
-            onClick={onOpenFolder}
+            onClick={async () => {
+              console.log('MenuBar: Open folder or connect to directory');
+              // Check if File System Access API is supported
+              if (fsApiSupported) {
+                try {
+                  // Request access to a directory using the File System Access API
+                  const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+                  console.log('MenuBar: Directory handle received:', !!directoryHandle);
+                  
+                  if (directoryHandle) {
+                    // Validate the directory handle
+                    const validationResult = await validateDirectoryHandle(directoryHandle);
+                    console.log('MenuBar: Directory validation result:', validationResult);
+                    
+                    if (validationResult.valid) {
+                      setHasDirectoryAccess(true);
+                      console.log('MenuBar: Directory access confirmed valid');
+                      
+                      // Get directory name to display in UI
+                      const dirName = directoryHandle.name || 'Selected Directory';
+                      console.log(`MenuBar: Connected to directory: ${dirName}`);
+                      
+                      // Scan the directory structure to build a FileNode tree
+                      console.log('MenuBar: Scanning directory structure');
+                      try {
+                        // Start an async process to scan the directory
+                        (async () => {
+                          const scannedRootNode = await BrowserFileSystem.scanDirectoryToFileNode(directoryHandle);
+                          
+                          if (scannedRootNode) {
+                            console.log('MenuBar: Successfully scanned directory structure', scannedRootNode);
+                            
+                            // Update the VS Code store with the new root node
+                            console.log('MenuBar: Updating store with scanned root node');
+                            useVSCodeStore.setState(state => ({
+                              ...state,
+                              currentPath: `/browser-fs/${dirName}`,
+                              rootNode: scannedRootNode,
+                            }));
+                            
+                            // Refresh the explorer with the new root node
+                            console.log('MenuBar: Refreshing explorer with scanned root node');
+                            refreshExplorer(scannedRootNode);
+                          } else {
+                            console.error('MenuBar: Failed to scan directory structure');
+                            setHasDirectoryAccess(false);
+                            alert('Failed to scan directory structure');
+                          }
+                        })();
+                      } catch (error) {
+                        console.error('MenuBar: Error scanning directory:', error);
+                        alert(`Error scanning directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        setHasDirectoryAccess(false);
+                      }
+                    } else {
+                      console.error('MenuBar: Directory validation failed:', validationResult.error);
+                      alert(`Could not access directory: ${validationResult.error || 'Unknown error'}`);
+                      setHasDirectoryAccess(false);
+                    }
+                  } else {
+                    console.warn('MenuBar: No directory handle received');
+                    setHasDirectoryAccess(false);
+                  }
+                } catch (error) {
+                  console.error('MenuBar: Error accessing directory:', error);
+                  alert(`Error accessing directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+              } else {
+                // Fall back to the original behavior if API is not supported
+                console.log('MenuBar: File System Access API not supported, using fallback');
+                onOpenFolder();
+              }
+            }}
             className="hover:bg-[#2a2d2e] hover:text-white"
           >
             <FolderOpen className="h-4 w-4 mr-2" />
-            Open Folder...
+            {fsApiSupported ? 'Connect to Directory...' : 'Open Folder...'}
           </DropdownMenuItem>
           
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
@@ -250,99 +472,6 @@ export function VSCodeMenuBar({
           >
             <SaveAll className="h-4 w-4 mr-2" />
             Save All <span className="ml-auto opacity-60">Ctrl+Shift+S</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          
-          <DropdownMenuItem 
-            onClick={async () => {
-              if (currentPath) {
-                console.log(`MenuBar: Downloading project folder: ${currentPath}`);
-                await downloadProjectAsZip(currentPath);
-              } else {
-                console.warn('MenuBar: No current folder path to download');
-              }
-            }}
-            className={`${currentPath ? 'hover:bg-[#2a2d2e] hover:text-white' : 'opacity-50 cursor-not-allowed'}`}
-            disabled={!currentPath}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download Project
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      
-      {/* Edit Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="px-2 py-1 hover:bg-[#505050] rounded">Edit</button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
-          <DropdownMenuItem 
-            onClick={() => {
-              console.log('MenuBar: Dispatching undo event');
-              // Create a custom event
-              const event = new CustomEvent('editor-undo');
-              document.dispatchEvent(event);
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <Undo className="h-4 w-4 mr-2" />
-            Undo <span className="ml-auto opacity-60">Ctrl+Z</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => {
-              console.log('MenuBar: Dispatching redo event');
-              // Create a custom event
-              const event = new CustomEvent('editor-redo');
-              document.dispatchEvent(event);
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <Redo className="h-4 w-4 mr-2" />
-            Redo <span className="ml-auto opacity-60">Ctrl+Y</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          
-          <DropdownMenuItem 
-            onClick={() => {
-              console.log('MenuBar: Dispatching cut event');
-              // Create a custom event
-              const event = new CustomEvent('editor-cut');
-              document.dispatchEvent(event);
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <Scissors className="h-4 w-4 mr-2" />
-            Cut <span className="ml-auto opacity-60">Ctrl+X</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => {
-              console.log('MenuBar: Dispatching copy event');
-              // Create a custom event
-              const event = new CustomEvent('editor-copy');
-              document.dispatchEvent(event);
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <ClipboardCopy className="h-4 w-4 mr-2" />
-            Copy <span className="ml-auto opacity-60">Ctrl+C</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => {
-              console.log('MenuBar: Dispatching paste event');
-              // Create a custom event
-              const event = new CustomEvent('editor-paste');
-              document.dispatchEvent(event);
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <ClipboardPaste className="h-4 w-4 mr-2" />
-            Paste <span className="ml-auto opacity-60">Ctrl+V</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

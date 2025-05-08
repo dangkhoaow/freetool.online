@@ -289,14 +289,16 @@ function safeDeepClone<T>(obj: T): T {
 }
 
 // Save the file system state to localStorage with content chunking and memory management
-export function saveFileSystemState(state: FileSystemState): void {
+export function saveFileSystemState(state: FileSystemState, operationType?: 'create' | 'update' | 'delete'): void {
   if (typeof window === 'undefined') return;
   
-  // If we're in read-only mode, don't attempt to save state
-  if (isReadOnlyMode) {
-    console.log('In read-only mode, skipping file system state save');
+  // Even in read-only mode, allow file/folder creation operations
+  if (isReadOnlyMode && operationType !== 'create') {
+    console.log(`In read-only mode, skipping file system state save. Operation type: ${operationType || 'unknown'}`);
     return;
   }
+  
+  console.log(`Saving file system state. Operation type: ${operationType || 'unknown'}, Read-only mode: ${isReadOnlyMode}`);
   
   // Check if we've reached the maximum number of cleanup attempts
   if (cleanupAttempts >= MAX_CLEANUP_ATTEMPTS) {
@@ -669,7 +671,7 @@ export function createFile(
   newState.activeFileId = fileId;
   
   // Save and return
-  saveFileSystemState(newState);
+  saveFileSystemState(newState, "create");
   return newState;
 }
 
@@ -711,7 +713,7 @@ export function createFolder(
   }
   
   // Save and return
-  saveFileSystemState(newState);
+  saveFileSystemState(newState, "create");
   return newState;
 }
 

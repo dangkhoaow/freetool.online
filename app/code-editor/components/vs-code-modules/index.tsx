@@ -197,7 +197,24 @@ export default function VSCodeEditor() {
     const handleRefreshExplorer = async (event: CustomEvent) => {
       console.log('VSCodeEditor: Received refresh-explorer event with detail:', event.detail);
       
-      // Check if a path is provided in the event detail
+      // Check if a custom rootNode is provided in the event detail (from File System Access API)
+      if (event.detail && event.detail.rootNode) {
+        console.log('VSCodeEditor: Custom rootNode provided in event, using it directly');
+        const rootNode = event.detail.rootNode;
+        const forceRefresh = event.detail.forceRefresh === true;
+        
+        // Use the provided rootNode directly to update the store
+        console.log('VSCodeEditor: Updating store with provided rootNode:', rootNode);
+        useVSCodeStore.setState(prev => ({
+          ...prev,
+          rootNode: rootNode
+        }));
+        
+        console.log(`VSCodeEditor: Explorer view refreshed with custom rootNode${forceRefresh ? ' (forced)' : ''}`);
+        return; // Exit early since we've handled the custom rootNode case
+      }
+      
+      // If no custom rootNode provided, proceed with traditional path-based refresh
       if (event.detail && event.detail.path) {
         const folderPath = event.detail.path;
         const forceRefresh = event.detail.forceRefresh === true;
@@ -250,7 +267,7 @@ export default function VSCodeEditor() {
           // Show error in UI if needed
         }
       } else {
-        console.log('VSCodeEditor: No path provided in refresh-explorer event');
+        console.log('VSCodeEditor: Neither rootNode nor path provided in refresh-explorer event');
       }
     };
     
