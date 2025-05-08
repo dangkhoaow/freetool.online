@@ -68,60 +68,101 @@ export function VSCodeFileExplorer({
   const [newName, setNewName] = useState('');
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   console.log('FileExplorer: Rendering file explorer with root:', rootNode.name);
   console.log('FileExplorer: Number of expanded folders:', expandedFolders.length);
   console.log('FileExplorer: Selected node ID:', selectedNodeId);
 
-  // Create new file or folder
-  const handleCreateItem = () => {
-    (async () => {
-      console.log(`FileExplorer: Creating ${newItemType}: ${newItemName} in ${newItemParentId}`);
-      if (!newItemParentId || !newItemName.trim()) return;
-      
-      // Virtual FS create
-      if (newItemType === 'file') {
-        onCreateFile(newItemParentId, newItemName);
-        console.log(`FileExplorer: Created new file in virtual FS: ${newItemName}`);
-      } else {
-        onCreateFolder(newItemParentId, newItemName);
-        console.log(`FileExplorer: Created new folder in virtual FS: ${newItemName}`);
-      }
-      
-      // Browser FS API create
-      if (BrowserFileSystem.isFileSystemAccessSupported() && BrowserFileSystem.hasDirectoryHandle()) {
-        const dirHandle = BrowserFileSystem.getCurrentDirectoryHandle();
-        if (dirHandle) {
-          try {
-            if (newItemType === 'file') {
-              await BrowserFileSystem.createFile(dirHandle, newItemName, '');
-              console.log(`FileExplorer: Created new file on disk: ${newItemName}`);
-            } else {
-              await BrowserFileSystem.createFolder(dirHandle, newItemName);
-              console.log(`FileExplorer: Created new folder on disk: ${newItemName}`);
-            }
-          } catch (err) {
-            console.error(`FileExplorer: Error creating ${newItemType} on disk:`, err);
-          }
-        }
-      }
-      
-      // Refresh explorer to reflect disk changes
-      document.dispatchEvent(new CustomEvent('refresh-explorer'));
-    })();
-    
-    // Reset state
-    setNewItemName('');
-    setIsDialogOpen(false);
+  // Helper to find node by ID
+  const findNodeById = (node: FileNode, id: string): FileNode | null => {
+    if (node.id === id) return node;
+    for (const child of node.children || []) {
+      const found = findNodeById(child, id);
+      if (found) return found;
+    }
+    return null;
   };
 
-  // Open the create dialog
+  // Create new file or folder
+  const handleCreateItem = async () => {
+    setErrorMessage(null);
+    if (!newItemParentId || !newItemName.trim()) return;
+    console.log(`FileExplorer: Creating ${newItemType}: ${newItemName} in ${newItemParentId}`);
+    
+    // Derive disk directory handle for FS operations
+    let dirHandle: FileSystemDirectoryHandle | null = null;
+    if (BrowserFileSystem.isFileSystemAccessSupported() && BrowserFileSystem.hasDirectoryHandle()) {
+      const rootHandle = BrowserFileSystem.getCurrentDirectoryHandle();
+      console.log('FileExplorer: Deriving disk dir handle, root:', !!rootHandle);
+      if (rootHandle) {
+        dirHandle = rootHandle;
+        // Traverse to parent folder
+        const segments: string[] = [];
+        let curr: FileNode | null = findNodeById(rootNode, newItemParentId);
+        while (curr && curr.id !== rootNode.id && curr.parentId) {
+          segments.unshift(curr.name);
+          curr = findNodeById(rootNode, curr.parentId)!;
+        }
+        for (const seg of segments) {
+          try { dirHandle = await dirHandle.getDirectoryHandle(seg, { create: false }); }
+          catch { console.log(`FileExplorer: Couldn't descend into ${seg}`); dirHandle = null; break; }
+        }
+      }
+    }
+    // For folder creation, verify it does not already exist on disk
+    if (newItemType === 'folder' && dirHandle) {
+      try { await dirHandle.getDirectoryHandle(newItemName, { create: false }); setErrorMessage(`Folder "${newItemName}" exists on disk.`); return; }
+      catch { console.log('FileExplorer: Folder not on disk, proceeding to create'); }
+    }
+
+    // Create in virtual FS
+    if (newItemType === 'file') onCreateFile(newItemParentId, newItemName);
+    else onCreateFolder(newItemParentId, newItemName);
+
+    // Create on disk if handle available
+    if (dirHandle) {
+      try {
+        if (newItemType === 'file') await BrowserFileSystem.createFile(dirHandle, newItemName, '');
+        else await BrowserFileSystem.createFolder(dirHandle, newItemName);
+      } catch (err) { console.error('FileExplorer: Error creating on disk:', err); }
+    }
+
+    document.dispatchEvent(new CustomEvent('refresh-explorer'));
+    setNewItemName(''); setIsDialogOpen(false);
+  };
+
+  // Open the create dialog with unique default name
   const openCreateDialog = (parentId: string, type: 'file' | 'folder') => {
     console.log(`FileExplorer: Opening create dialog for ${type} in ${parentId}`);
     setNewItemParentId(parentId);
     setNewItemType(type);
-    setNewItemName(type === 'file' ? 'untitled.js' : 'New Folder');
+    // Derive a unique default name based on existing children
+    const parentNode = findNodeById(rootNode, parentId);
+    let defaultName = '';
+    if (type === 'file') {
+      const ext = 'js';
+      const base = 'untitled';
+      let idx = 0;
+      let name = `${base}.${ext}`;
+      while (parentNode?.children?.some(c => c.name === name)) {
+        idx++;
+        name = `${base}${idx}.${ext}`;
+      }
+      defaultName = name;
+    } else {
+      const base = 'New Folder';
+      let idx = 0;
+      let name = base;
+      while (parentNode?.children?.some(c => c.name === name)) {
+        idx++;
+        name = `${base} ${idx}`;
+      }
+      defaultName = name;
+    }
+    setNewItemName(defaultName);
     setIsDialogOpen(true);
+    setErrorMessage(null);
   };
 
   // Handle rename
@@ -179,7 +220,7 @@ export function VSCodeFileExplorer({
     return (
       <div key={node.id}>
         <div 
-          className={`flex items-center py-1 cursor-pointer hover:bg-[#2a2d2e] group ${
+          className={`text-xs flex items-center py-1 cursor-pointer hover:bg-[#2a2d2e] group ${
             isSelected ? 'bg-[#04395e] text-white' : 'text-[#cccccc]'
           }`}
           style={{ paddingLeft: indentPadding }}
@@ -191,7 +232,7 @@ export function VSCodeFileExplorer({
           {/* Folder toggle or spacing for files */}
           {isFolder ? (
             <span 
-              className="w-4 flex justify-center text-[#cccccc]"
+              className="text-xs w-4 flex justify-center text-[#cccccc]"
               onClick={(e) => {
                 e.stopPropagation();
                 console.log(`FileExplorer: Toggling folder expansion: ${node.name}`);
@@ -226,7 +267,12 @@ export function VSCodeFileExplorer({
           <div className="ml-auto mr-2 opacity-0 group-hover:opacity-100">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-5 w-5">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-5 w-5" 
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreVertical className="h-3 w-3 text-[#cccccc]" />
                 </Button>
               </DropdownMenuTrigger>
@@ -234,22 +280,24 @@ export function VSCodeFileExplorer({
                 {isFolder && (
                   <>
                     <DropdownMenuItem 
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         console.log(`FileExplorer: Create file action for folder: ${node.name}`);
                         openCreateDialog(node.id, 'file');
                       }}
-                      className="hover:bg-[#2a2d2e] hover:text-white"
+                      className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       New File
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem 
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         console.log(`FileExplorer: Create folder action for folder: ${node.name}`);
                         openCreateDialog(node.id, 'folder');
                       }}
-                      className="hover:bg-[#2a2d2e] hover:text-white"
+                      className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                     >
                       <Folder className="h-4 w-4 mr-2" />
                       New Folder
@@ -260,7 +308,7 @@ export function VSCodeFileExplorer({
                         console.log(`FileExplorer: Import file action for folder: ${node.name}`);
                         handleFileImport(node.id);
                       }}
-                      className="hover:bg-[#2a2d2e] hover:text-white"
+                      className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Import File
@@ -275,7 +323,7 @@ export function VSCodeFileExplorer({
                     console.log(`FileExplorer: Rename action for: ${node.name}`);
                     openRenameDialog(node);
                   }}
-                  className="hover:bg-[#2a2d2e] hover:text-white"
+                  className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Rename
@@ -287,7 +335,7 @@ export function VSCodeFileExplorer({
                       console.log(`FileExplorer: Export file action for: ${node.name}`);
                       onExportFile(node);
                     }}
-                    className="hover:bg-[#2a2d2e] hover:text-white"
+                    className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Export
@@ -299,7 +347,7 @@ export function VSCodeFileExplorer({
                     console.log(`FileExplorer: Delete action for: ${node.name}`);
                     onDeleteNode(node.id);
                   }}
-                  className="hover:bg-[#2a2d2e] hover:text-white text-red-400"
+                  className="text-xs hover:bg-[#2a2d2e] hover:text-white text-red-400"
                 >
                   <Trash className="h-4 w-4 mr-2" />
                   Delete
@@ -383,6 +431,7 @@ export function VSCodeFileExplorer({
               className="bg-[#3c3c3c] border-[#6b6b6b] text-[#cccccc] mt-2"
               autoFocus
             />
+            {errorMessage && <p className="text-red-400 text-sm mt-1">{errorMessage}</p>}
           </div>
           <DialogFooter>
             <Button 

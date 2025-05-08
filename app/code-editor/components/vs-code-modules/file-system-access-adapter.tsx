@@ -128,8 +128,10 @@ export function FileSystemAccessAdapter({ rootNodeId, refreshExplorer, onDirecto
         }
       }
       
-      // Get the root directory handle and validate it
-      const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+      // Reuse existing handle if available, otherwise prompt
+      const directoryHandle = BrowserFileSystem.hasDirectoryHandle()
+        ? BrowserFileSystem.getCurrentDirectoryHandle()
+        : await BrowserFileSystem.requestDirectoryAccess();
       console.log('FileSystemAccessAdapter: Got directory handle for saving:', !!directoryHandle);
       
       if (!directoryHandle) {

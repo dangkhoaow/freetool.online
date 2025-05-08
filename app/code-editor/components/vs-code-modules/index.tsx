@@ -620,7 +620,7 @@ export default function VSCodeEditor() {
         />
         
         {/* Editor content */}
-        <div className="flex-grow relative overflow-hidden">
+        <div className="flex-grow relative overflow-hidden bg-[#252526]">
           {openFiles.map(fileId => {
             const fileNode = findNodeById(rootNode, fileId) as FileNode;
             if (!fileNode) {

@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react'
 import { FileNode } from '@/lib/services/vs-code-file-system'
+import { findNodeById } from '@/lib/services/vs-code-file-system'
 import { FileSystemAccessAdapter } from './file-system-access-adapter'
 import * as BrowserFileSystem from '@/lib/services/browser-file-system-service'
 import useVSCodeStore from '../../store/vs-code-store'
@@ -42,7 +43,7 @@ import {
   Scissors,
   Folder
 } from 'lucide-react'
-import { getCurrentFolderPath, STORAGE_KEYS, logAllStorageKeys } from '../../utils/storage-utils'
+import { STORAGE_KEYS, logAllStorageKeys } from '../../utils/storage-utils'
 
 interface VSCodeMenuBarProps {
   createNewFile: (parentId: string, fileName: string, content?: string, language?: string) => void
@@ -182,8 +183,9 @@ export function VSCodeMenuBar({
         
         // If File System Access API is supported and we have directory access,
         // also create the file on disk
-        if (fsApiSupported && hasDirectoryAccess) {
+        if (fsApiSupported) {
           console.log('MenuBar: Attempting to create file on disk');
+          
           const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
           
           if (directoryHandle) {
@@ -226,7 +228,7 @@ export function VSCodeMenuBar({
         
         // If File System Access API is supported and we have directory access,
         // also create the folder on disk
-        if (fsApiSupported && hasDirectoryAccess) {
+        if (fsApiSupported) {
           console.log('MenuBar: Attempting to create folder on disk');
           const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
           
@@ -264,25 +266,33 @@ export function VSCodeMenuBar({
         saveFile(activeFileId, editorContent);
         console.log(`MenuBar: File saved in virtual filesystem with ID: ${activeFileId}`);
         
-        // If File System Access API is supported and we have directory access,
+        // If File System Access API is supported,
         // also save to disk
-        if (fsApiSupported && hasDirectoryAccess) {
+        if (fsApiSupported) {
           console.log('MenuBar: Attempting to save file on disk');
-          
-          // Get the file node from the store to get the file name
-          const store = useVSCodeStore.getState();
-          const fileNode = store.rootNode.children?.find((node: any) => 
-            node.id === activeFileId || 
-            (node.children && node.children.some((child: any) => child.id === activeFileId)));
-          
-          if (fileNode && fileNode.name) {
-            const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
-            if (directoryHandle) {
-              await BrowserFileSystem.createFile(directoryHandle, fileNode.name, editorContent);
-              console.log(`MenuBar: File also saved on disk: ${fileNode.name}`);
-            }
+          const rootHandle = BrowserFileSystem.getCurrentDirectoryHandle() || await BrowserFileSystem.requestDirectoryAccess();
+          if (!rootHandle) {
+            console.warn('MenuBar: No directory handle for saving');
           } else {
-            console.warn('MenuBar: Could not find file node to save on disk');
+            const store = useVSCodeStore.getState();
+            const fileNode = findNodeById(store.rootNode, activeFileId);
+            if (fileNode) {
+              const segments: string[] = [];
+              let curr = fileNode;
+              while (curr.parentId && curr.parentId !== rootNodeId) {
+                const parent = findNodeById(store.rootNode, curr.parentId);
+                if (!parent) break;
+                segments.push(parent.name);
+                curr = parent;
+              }
+              const fileName = fileNode.name;
+              let targetHandle = rootHandle;
+              for (const seg of segments.reverse()) {
+                targetHandle = await targetHandle.getDirectoryHandle(seg, { create: false });
+              }
+              await BrowserFileSystem.createFile(targetHandle, fileName, editorContent);
+              console.log(`MenuBar: File saved on disk: ${fileName}`);
+            }
           }
         }
       } catch (error) {
@@ -302,11 +312,12 @@ export function VSCodeMenuBar({
       saveAllFiles();
       console.log('MenuBar: All files saved in virtual filesystem');
       
-      // If File System Access API is supported and we have directory access,
+      // If File System Access API is supported,
       // save all the files to disk using the project save function
-      if (fsApiSupported && hasDirectoryAccess) {
+      if (fsApiSupported) {
         console.log('MenuBar: Attempting to save all files on disk');
-        const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+        const rootHandle = BrowserFileSystem.getCurrentDirectoryHandle() || await BrowserFileSystem.requestDirectoryAccess();
+        const directoryHandle = rootHandle;
         
         if (directoryHandle) {
           // Get the current rootNode from the store
@@ -328,21 +339,7 @@ export function VSCodeMenuBar({
 
   return (
     <div className="flex items-center h-8 px-2 bg-[#3c3c3c] text-[#cccccc] text-xs border-b border-[#252525]">
-      {/* Display save to disk button only if we already have directory access */}
-      {fsApiSupported && hasDirectoryAccess && (
-        <div className="ml-auto mr-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleSaveAll}
-            title="Save all files to disk"
-            className="text-xs"
-          >
-            <Save className="h-3.5 w-3.5 mr-1" />
-            Save to Disk
-          </Button>
-        </div>
-      )}
+
       {/* File Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -350,29 +347,11 @@ export function VSCodeMenuBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] min-w-[200px]">
           <DropdownMenuItem 
-            onClick={handleNewFile}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            New File <span className="ml-auto opacity-60">Ctrl+N</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={handleNewFolder}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <Folder className="h-4 w-4 mr-2" />
-            New Folder
-          </DropdownMenuItem>
-          
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          
-          <DropdownMenuItem 
             onClick={onOpenFile}
-            className="hover:bg-[#2a2d2e] hover:text-white"
+            className="text-xs hover:bg-[#2a2d2e] hover:text-white"
           >
             <File className="h-4 w-4 mr-2" />
-            Open File... <span className="ml-auto opacity-60">Ctrl+O</span>
+            Open File... <span className="text-xs ml-auto opacity-60">Ctrl+O</span>
           </DropdownMenuItem>
           
           <DropdownMenuItem 
@@ -449,7 +428,7 @@ export function VSCodeMenuBar({
                 onOpenFolder();
               }
             }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
+            className="text-xs hover:bg-[#2a2d2e] hover:text-white"
           >
             <FolderOpen className="h-4 w-4 mr-2" />
             {fsApiSupported ? 'Connect to Directory...' : 'Open Folder...'}
@@ -459,20 +438,21 @@ export function VSCodeMenuBar({
           
           <DropdownMenuItem 
             onClick={handleSave}
-            className={`${activeFileId ? 'hover:bg-[#2a2d2e] hover:text-white' : 'opacity-50 cursor-not-allowed'}`}
+            className={`${activeFileId ? 'text-xs hover:bg-[#2a2d2e] hover:text-white' : 'text-xs opacity-50 cursor-not-allowed'}`}
             disabled={!activeFileId}
           >
             <Save className="h-4 w-4 mr-2" />
-            Save <span className="ml-auto opacity-60">Ctrl+S</span>
+            Save <span className="text-xs ml-auto opacity-60">Ctrl+S</span>
           </DropdownMenuItem>
-          
+          {fsApiSupported && (
           <DropdownMenuItem 
             onClick={handleSaveAll}
-            className="hover:bg-[#2a2d2e] hover:text-white"
+            className="text-xs hover:bg-[#2a2d2e] hover:text-white"
           >
             <SaveAll className="h-4 w-4 mr-2" />
-            Save All <span className="ml-auto opacity-60">Ctrl+Shift+S</span>
+            Save All to Disk<span className="ml-auto opacity-60">Ctrl+Shift+S</span>
           </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       
@@ -488,10 +468,10 @@ export function VSCodeMenuBar({
               const event = new CustomEvent('toggle-word-wrap');
               document.dispatchEvent(event);
             }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
+            className="text-xs hover:bg-[#2a2d2e] hover:text-white"
           >
             <Code className="h-4 w-4 mr-2" />
-            Toggle Word Wrap <span className="ml-auto opacity-60">Alt+Z</span>
+            Toggle Word Wrap <span className="text-xs ml-auto opacity-60">Alt+Z</span>
           </DropdownMenuItem>
           
           <DropdownMenuSeparator className="bg-[#3c3c3c]" />
@@ -501,10 +481,10 @@ export function VSCodeMenuBar({
               console.log('MenuBar: Zoom in action');
               onZoomIn();
             }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
+            className="text-xs hover:bg-[#2a2d2e] hover:text-white"
           >
             <ZoomIn className="h-4 w-4 mr-2" />
-            Zoom In <span className="ml-auto opacity-60">Ctrl++</span>
+            Zoom In <span className="text-xs ml-auto opacity-60">Ctrl++</span>
           </DropdownMenuItem>
           
           <DropdownMenuItem
@@ -512,34 +492,10 @@ export function VSCodeMenuBar({
               console.log('MenuBar: Zoom out action');
               onZoomOut();
             }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
+            className="text-xs hover:bg-[#2a2d2e] hover:text-white"
           >
             <ZoomOut className="h-4 w-4 mr-2" />
-            Zoom Out <span className="ml-auto opacity-60">Ctrl+-</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuSeparator className="bg-[#3c3c3c]" />
-          
-          <DropdownMenuItem
-            onClick={() => {
-              console.log('MenuBar: Toggle sidebar action');
-              document.dispatchEvent(new CustomEvent('toggle-sidebar'));
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Toggle Sidebar <span className="ml-auto opacity-60">Ctrl+B</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem
-            onClick={() => {
-              console.log('MenuBar: Toggle panel action');
-              document.dispatchEvent(new CustomEvent('toggle-panel'));
-            }}
-            className="hover:bg-[#2a2d2e] hover:text-white"
-          >
-            <Terminal className="h-4 w-4 mr-2" />
-            Toggle Panel <span className="ml-auto opacity-60">Ctrl+J</span>
+            Zoom Out <span className="text-xs ml-auto opacity-60">Ctrl+-</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
