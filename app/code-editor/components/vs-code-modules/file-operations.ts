@@ -70,16 +70,40 @@ export function enhancedSaveFile(
  * @param maxRetries Maximum number of retries
  * @param delay Delay between retries in ms
  */
-export function openFileById(fileId: string, maxRetries = 5, delay = 100) {
+export function openFileById(fileId: string, maxRetries = 5, delay = 100, editorInstances?: Record<string, EditorInstance>) {
   console.log(`FileOperations: Opening file with ID: ${fileId}`);
   
   const openFileWithRetry = (retriesLeft: number) => {
     const store = useVSCodeStore.getState();
-    const { rootNode } = store;
+    const { rootNode, activeFileId } = store;
     console.log(`FileOperations: Current root node:`, rootNode);
     console.log(`FileOperations: Current expandedFolders:`, store.expandedFolders);
     
-    // Find the file node
+    // Before switching tabs, save the current active file's content to preserve unsaved changes
+    if (activeFileId && activeFileId !== fileId && editorInstances) {
+      console.log(`FileOperations: Preserving unsaved changes for current active file: ${activeFileId} before switching tabs`);
+      const activeEditorInstance = editorInstances[activeFileId];
+      if (activeEditorInstance && activeEditorInstance.model) {
+        const currentContent = activeEditorInstance.model.getValue();
+        console.log(`FileOperations: Getting content from active editor instance, length: ${currentContent.length} characters`);
+        
+        // Save the content to the file node
+        const activeFileNode = findNodeById(rootNode, activeFileId);
+        if (activeFileNode && activeFileNode.type === 'file') {
+          console.log(`FileOperations: Saving content for file ${activeFileId} to node state`);
+          store.setEditorContent(activeFileId, currentContent);
+          
+          // Mark the file as dirty if it has unsaved changes
+          const originalFileNode = findNodeById(rootNode, activeFileId);
+          if (originalFileNode && originalFileNode.type === 'file' && originalFileNode.content !== currentContent) {
+            console.log(`FileOperations: Marking file ${activeFileId} as dirty`); 
+            store.markFileAsDirty(activeFileId);
+          }
+        }
+      }
+    }
+    
+    // Find the file node to open
     const fileNode = findNodeById(rootNode, fileId);
     
     if (fileNode) {

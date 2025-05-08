@@ -11,6 +11,13 @@ import { handleEditorDidMount } from './editor-instance-manager';
 import { vsCodeDarkTheme, vsCodeLightTheme } from './themes';
 import { EditorErrorBoundary } from './ui-components';
 
+// Extend window interface to include our editor content cache
+declare global {
+  interface Window {
+    editorContentCache?: Record<string, string>;
+  }
+}
+
 interface MainEditorProps {
   fileId: string;
   fileNode: FileNode;
@@ -85,8 +92,26 @@ export function MainEditor({
     },
   };
   
-  // Define unique key for the editor instance
-  const editorKey = `${fileId}-${isActive ? 'active' : 'inactive'}`;
+  // The key should be stable across active/inactive state changes to preserve editor content
+  // Using just fileId ensures the same editor instance is reused, not recreated on tab switching
+  const editorKey = `${fileId}`;
+
+  // Effect to preserve content when switching away from this tab
+  useEffect(() => {
+    // Only run when this editor becomes inactive
+    if (!isActive && editorInstances[fileId]) {
+      console.log(`MainEditor: Tab ${fileId} is being deactivated, preserving content`);
+      const instance = editorInstances[fileId];
+      if (instance && instance.model) {
+        const currentContent = instance.model.getValue();
+        console.log(`MainEditor: Preserving content for ${fileId}, length: ${currentContent.length}`);
+        // This ensures the content is saved to the file node state when switching away
+        if (currentContent && currentContent !== fileNode.content) {
+          markFileAsDirty(fileId);
+        }
+      }
+    }
+  }, [isActive, fileId, editorInstances, fileNode.content, markFileAsDirty]);
   
   return (
     <EditorErrorBoundary theme={theme}>
@@ -103,7 +128,24 @@ export function MainEditor({
           value={fileNode.content || ''}
           options={editorOptions}
           beforeMount={handleEditorWillMount}
-          onMount={(editor, monaco) => 
+          onMount={(editor, monaco) => {
+            console.log(`MainEditor: Editor mounted for file: ${fileId}, content length: ${fileNode.content?.length || 0}`);
+            
+            // Store the current content in a model value that persists
+            if (!window.editorContentCache) {
+              window.editorContentCache = {};
+            }
+            
+            // If we have cached content for this file, use it instead of the node content
+            // This preserves unsaved changes when switching tabs
+            if (window.editorContentCache[fileId]) {
+              console.log(`MainEditor: Using cached content for ${fileId}, length: ${window.editorContentCache[fileId].length}`);
+              const model = editor.getModel();
+              if (model) {
+                model.setValue(window.editorContentCache[fileId]);
+              }
+            }
+            
             handleEditorDidMount(
               editor, 
               monaco,
@@ -115,11 +157,19 @@ export function MainEditor({
               setLocalCursorPosition,
               saveCursor,
               markFileAsDirty
-            )
-          }
+            );
+          }}
           onChange={(value) => {
             console.log(`MainEditor: Content changed for file: ${fileId}, value length: ${value?.length || 0}`);
             if (isActive) {
+              // Store content in our global cache
+              if (value) {
+                if (!window.editorContentCache) {
+                  window.editorContentCache = {};
+                }
+                window.editorContentCache[fileId] = value;
+                console.log(`MainEditor: Updated cache for ${fileId}, new length: ${value.length}`);
+              }
               markFileAsDirty(fileId);
             }
           }}

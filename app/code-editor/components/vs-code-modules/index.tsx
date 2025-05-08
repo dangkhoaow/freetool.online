@@ -344,7 +344,8 @@ export default function VSCodeEditor() {
     console.log(`VSCodeEditor: Opening file with ID: ${fileId}, path: ${filePath}`);
     
     // Use the enhanced open file function with retry
-    openFileById(fileId);
+    // Pass editorInstances to preserve content when switching tabs
+    openFileById(fileId, 5, 100, editorInstances);
   }, [openFiles, setActiveFile]);
   
   // Listen for file open events
@@ -696,7 +697,7 @@ export default function VSCodeEditor() {
         createNewFile={createNewFile}
         createNewFolder={createNewFolder}
         saveFile={(fileId, content) => enhancedSaveFile(fileId, content, editorInstances)}
-        openFile={openFileById}
+        openFile={(fileId) => openFileById(fileId, 5, 100, editorInstances)}
         onZoomIn={() => handleZoomIn(fontSize, setFontSize)}
         onZoomOut={() => handleZoomOut(fontSize, setFontSize)}
         currentPath={currentFolderPath}
@@ -717,7 +718,8 @@ export default function VSCodeEditor() {
           // Use the store actions instead of direct setter
           useVSCodeStore.setState({ selectedNodeId: node.id });
           if (node.type === 'file') {
-            openFileById(node.id);
+            // Pass editorInstances to preserve content when switching tabs
+            openFileById(node.id, 5, 100, editorInstances);
           }
         }}
         onToggleFolder={(folderId) => {
@@ -877,7 +879,8 @@ export default function VSCodeEditor() {
         rootNode={rootNode}
         onSelectFile={(fileId) => {
           console.log(`Quick picker selected file: ${fileId}`);
-          openFileById(fileId);
+          // Pass editorInstances to preserve content when switching tabs
+          openFileById(fileId, 5, 100, editorInstances);
           setIsQuickPickerOpen(false);
         }}
         recentFiles={getRecentFilesWithLimit(5)}
@@ -897,7 +900,8 @@ export default function VSCodeEditor() {
           if (fileId) {
             // Open the file after creation
             setTimeout(() => {
-              openFileById(fileId);
+              // Pass editorInstances to preserve content when switching tabs
+              openFileById(fileId, 5, 100, editorInstances);
             }, 100);
           }
         }}
