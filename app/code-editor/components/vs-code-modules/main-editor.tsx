@@ -112,7 +112,22 @@ export function MainEditor({
       }
     }
   }, [isActive, fileId, editorInstances, fileNode.content, markFileAsDirty]);
-  
+
+  // Sync Monaco model value when fileNode.content updates (e.g., after async load)
+  useEffect(() => {
+    if (isActive && editorInstances[fileId]) {
+      const instance = editorInstances[fileId];
+      const model = instance.model;
+      if (model && model.getValue() !== fileNode.content) {
+        console.log(`MainEditor: Updating editor content for ${fileId} after content change, length: ${fileNode.content?.length}`);
+        model.setValue(fileNode.content || '');
+        // Update cache
+        if (!window.editorContentCache) window.editorContentCache = {};
+        window.editorContentCache[fileId] = fileNode.content || '';
+      }
+    }
+  }, [fileNode.content, isActive]);
+
   return (
     <EditorErrorBoundary theme={theme}>
       <div 

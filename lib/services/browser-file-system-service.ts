@@ -305,20 +305,30 @@ export async function scanDirectoryToFileNode(
     // Generate a unique ID with a browser-fs prefix to identify that it comes from the File System Access API
     const id = `browser-fs-${uuidv4()}`;
     
-    // Create basic node structure following the FileNode interface
     const node: FileNode = {
       id,
-      name, 
+      name,
       type: isDirectory ? 'directory' : 'file',
-      content: '', // Empty content initially
+      content: '',
       createdAt: timestamp,
       updatedAt: timestamp,
       children: [],
-      parentId // Track parent relationship
+      parentId
     };
     
-    // If this is a file, we're done
+    // Attach the handle for later content operations
+    (node as any).handle = handle;
+    
+    // If this is a file, read its content immediately
     if (!isDirectory) {
+      try {
+        const fileHandle = handle as FileSystemFileHandle;
+        const fileData = await fileHandle.getFile();
+        node.content = await fileData.text();
+        console.log(`BrowserFileSystem: Loaded content for ${name}, length: ${(node.content ?? '').length}`);
+      } catch (err) {
+        console.error(`BrowserFileSystem: Error loading file content for ${name}:`, err);
+      }
       return node;
     }
     

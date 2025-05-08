@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, MoreVertical, Plus, RefreshCw, Trash, Edit, Download, Upload } from 'lucide-react';
+import * as BrowserFileSystem from '@/lib/services/browser-file-system-service';
 import { FileNode } from '@/lib/services/vs-code-file-system';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -74,16 +75,40 @@ export function VSCodeFileExplorer({
 
   // Create new file or folder
   const handleCreateItem = () => {
-    console.log(`FileExplorer: Creating ${newItemType}: ${newItemName} in ${newItemParentId}`);
-    if (!newItemParentId || !newItemName.trim()) return;
-    
-    if (newItemType === 'file') {
-      onCreateFile(newItemParentId, newItemName);
-      console.log(`FileExplorer: Created new file: ${newItemName}`);
-    } else {
-      onCreateFolder(newItemParentId, newItemName);
-      console.log(`FileExplorer: Created new folder: ${newItemName}`);
-    }
+    (async () => {
+      console.log(`FileExplorer: Creating ${newItemType}: ${newItemName} in ${newItemParentId}`);
+      if (!newItemParentId || !newItemName.trim()) return;
+      
+      // Virtual FS create
+      if (newItemType === 'file') {
+        onCreateFile(newItemParentId, newItemName);
+        console.log(`FileExplorer: Created new file in virtual FS: ${newItemName}`);
+      } else {
+        onCreateFolder(newItemParentId, newItemName);
+        console.log(`FileExplorer: Created new folder in virtual FS: ${newItemName}`);
+      }
+      
+      // Browser FS API create
+      if (BrowserFileSystem.isFileSystemAccessSupported() && BrowserFileSystem.hasDirectoryHandle()) {
+        const dirHandle = BrowserFileSystem.getCurrentDirectoryHandle();
+        if (dirHandle) {
+          try {
+            if (newItemType === 'file') {
+              await BrowserFileSystem.createFile(dirHandle, newItemName, '');
+              console.log(`FileExplorer: Created new file on disk: ${newItemName}`);
+            } else {
+              await BrowserFileSystem.createFolder(dirHandle, newItemName);
+              console.log(`FileExplorer: Created new folder on disk: ${newItemName}`);
+            }
+          } catch (err) {
+            console.error(`FileExplorer: Error creating ${newItemType} on disk:`, err);
+          }
+        }
+      }
+      
+      // Refresh explorer to reflect disk changes
+      document.dispatchEvent(new CustomEvent('refresh-explorer'));
+    })();
     
     // Reset state
     setNewItemName('');

@@ -418,7 +418,7 @@ export function VSCodeMenuBar({
                             
                             // Refresh the explorer with the new root node
                             console.log('MenuBar: Refreshing explorer with scanned root node');
-                            refreshExplorer(scannedRootNode);
+                            document.dispatchEvent(new CustomEvent('refresh-explorer', { detail: { rootNode: scannedRootNode, path: `/browser-fs/${dirName}`, forceRefresh: true } }));
                           } else {
                             console.error('MenuBar: Failed to scan directory structure');
                             setHasDirectoryAccess(false);

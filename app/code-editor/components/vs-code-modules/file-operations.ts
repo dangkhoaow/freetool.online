@@ -110,7 +110,13 @@ export function openFileById(fileId: string, maxRetries = 5, delay = 100, editor
     if (fileNode) {
       console.log(`FileOperations: Found file node:`, fileNode);
       
-      // Check if file has handle for loading via browser FS API
+      // Expand parent folders
+      if (fileNode.parentId && !store.expandedFolders.includes(fileNode.parentId)) {
+        console.log(`FileOperations: Expanding parent folder ${fileNode.parentId}`);
+        store.toggleFolder(fileNode.parentId);
+      }
+      
+      // Handle FS API handle
       const handle = (fileNode as any).handle;
       if (handle) {
         console.log(`FileOperations: Loading file via browser-file-system-service`, handle);
@@ -119,80 +125,45 @@ export function openFileById(fileId: string, maxRetries = 5, delay = 100, editor
             console.log(`FileOperations: File loaded via FS API, size: ${dataContent.length} chars`);
             store.setEditorContent(fileId, dataContent);
             store.markFileAsSaved(fileId);
+            store.openFile(fileId);
+            store.setActiveFile(fileId);
+            console.log(`FileOperations: File ${fileId} opened after FS API load`);
           })
           .catch((error: unknown) => console.error('FileOperations: Error reading file via FS API:', error));
-      } else {
-        // Check if file has realPath for loading from disk
-        const realPath = (fileNode as any).realPath;
-        if (realPath) {
-          console.log(`FileOperations: File has real path: ${realPath}, will load from disk`);
-          
-          // First, make sure parent folders are expanded
-          if (fileNode.parentId) {
-            console.log(`FileOperations: Ensuring parent folder ${fileNode.parentId} is expanded`);
-            if (!store.expandedFolders.includes(fileNode.parentId)) {
-              store.toggleFolder(fileNode.parentId);
-              console.log(`FileOperations: Expanded parent folder ${fileNode.parentId}`);
-            }
+        return true;
+      }
+      
+      // Handle real path reads
+      const realPath = (fileNode as any).realPath;
+      if (realPath) {
+        console.log(`FileOperations: Loading file content from disk: ${realPath}`);
+        fetch('/api/filesystem', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({action:'readFile', path: realPath})
+        })
+        .then(res => res.json())
+        .then((data: any) => {
+          if (data.success) {
+            const content = data.content || '';
+            console.log(`FileOperations: File loaded from disk, size: ${content.length} chars`);
+            store.setEditorContent(fileId, content);
+            store.markFileAsSaved(fileId);
+            store.openFile(fileId);
+            store.setActiveFile(fileId);
+            console.log(`FileOperations: File ${fileId} opened after disk load`);
+          } else {
+            console.error(`FileOperations: Error loading file from disk: ${data.error}`);
           }
-          
-          // Try to load content from disk directly via fetch API
-          console.log(`FileOperations: Loading file content from disk: ${realPath}`);
-          fetch('/api/filesystem', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'readFile',
-              path: realPath
-            })
-          })
-          .then(response => response.json())
-          .then((data: { success: boolean; content?: string; error?: string }) => {
-            if (data.success) {
-              const fileContent = data.content ?? '';
-              console.log(`FileOperations: File loaded successfully from disk: ${realPath}, size: ${fileContent.length} chars`);
-              
-              // Update file content directly in the file system state
-              const updatedFileNode = findNodeById(store.rootNode, fileId);
-              if (updatedFileNode && updatedFileNode.type === 'file') {
-                console.log(`FileOperations: Updating file content in the state for ${fileId}`);
-                // Create a new file node with the content
-                updatedFileNode.content = fileContent;
-                // Update the file node in the store
-                store.setEditorContent(fileId, fileContent);
-                console.log(`FileOperations: Updated content for ${fileId}`);
-                
-                // Mark file as saved
-                store.markFileAsSaved(fileId);
-              }
-            } else {
-              console.error(`FileOperations: Error loading file from disk: ${data.error || 'Unknown error'}`);
-            }
-          })
-          .catch((error: unknown) => {
-            console.error('FileOperations: Error loading file from disk:', error);
-          });
-        } else {
-          console.log(`FileOperations: File does not have a real path or handle, loading from cache if available`);
-        }
+        })
+        .catch((error: unknown) => console.error('FileOperations: Error loading file from disk:', error));
+        return true;
       }
       
-      // Make sure parent folders are expanded
-      if (fileNode.parentId) {
-        console.log(`FileOperations: Ensuring parent folder ${fileNode.parentId} is expanded`);
-        if (!store.expandedFolders.includes(fileNode.parentId)) {
-          store.toggleFolder(fileNode.parentId);
-          console.log(`FileOperations: Expanded parent folder ${fileNode.parentId}`);
-        }
-      }
-      
-      // Open the file in the store
+      // Fallback: just open immediately (cache or empty)
+      console.log(`FileOperations: No handle or realPath; opening file immediately`);
       store.openFile(fileId);
-      // Set it as active
       store.setActiveFile(fileId);
-      console.log(`FileOperations: File ${fileId} opened successfully and set as active`);
+      console.log(`FileOperations: File ${fileId} opened with fallback content`);
       return true;
     } else if (retriesLeft > 0) {
       console.log(`FileOperations: File node not found, retrying in ${delay}ms. Retries left: ${retriesLeft}`);
