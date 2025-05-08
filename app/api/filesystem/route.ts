@@ -166,6 +166,47 @@ export async function POST(request: NextRequest) {
     
     // Handle different actions
     switch (action) {
+      case 'readFile':
+        // Read file content from disk
+        try {
+          // Check if file exists
+          if (!fs.existsSync(filePath)) {
+            console.error(`File does not exist: ${filePath}`);
+            return NextResponse.json({
+              success: false,
+              error: `File does not exist: ${filePath}`
+            }, { status: 404 });
+          }
+          
+          // Check if path is a file
+          const stats = fs.statSync(filePath);
+          if (!stats.isFile()) {
+            console.error(`Path is not a file: ${filePath}`);
+            return NextResponse.json({
+              success: false,
+              error: `Path is not a file: ${filePath}`
+            }, { status: 400 });
+          }
+          
+          // Read the file content
+          console.log(`Reading file content: ${filePath}`);
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          console.log(`File read successfully: ${filePath}, size: ${fileContent.length} chars`);
+          
+          return NextResponse.json({
+            success: true,
+            content: fileContent,
+            path: filePath,
+            size: fileContent.length
+          });
+        } catch (err) {
+          console.error(`Error reading file ${filePath}:`, err);
+          return NextResponse.json({
+            success: false,
+            error: `Failed to read file: ${(err as Error).message}`
+          }, { status: 500 });
+        }
+        
       case 'saveFile':
         // Validate that content is provided
         if (content === undefined) {

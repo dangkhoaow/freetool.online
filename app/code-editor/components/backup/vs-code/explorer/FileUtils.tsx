@@ -53,9 +53,35 @@ export async function fetchFileSystem(
     console.log('Filesystem data parsed, success:', data.success);
     
     if (data.success) {
-      console.log(`Setting folder structure with ${data.structure.length} root items`);
+      // Validate that data.structure is an array
+      let structure = data.structure;
+      
+      if (!structure) {
+        console.error('API returned success but no structure data');
+        structure = [];
+      }
+      
+      if (!Array.isArray(structure)) {
+        console.error('API returned non-array structure:', typeof structure);
+        // Try to convert to array if it's an object
+        if (structure && typeof structure === 'object') {
+          console.log('Attempting to convert object to array:', structure);
+          structure = [structure];
+        } else {
+          // If not convertible, use empty array
+          structure = [];
+        }
+      }
+      
+      console.log(`Setting folder structure with ${structure.length} root items`);
       console.log('Current path set to:', data.path);
-      setFolderStructure(data.structure);
+      
+      // Log the first few items for debugging
+      if (structure.length > 0) {
+        console.log('First item in structure:', JSON.stringify(structure[0]).substring(0, 100) + '...');
+      }
+      
+      setFolderStructure(structure);
       setCurrentPath(data.path);
       setError(null);
       // Mark that a folder has been successfully opened

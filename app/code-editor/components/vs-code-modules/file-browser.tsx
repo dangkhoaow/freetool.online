@@ -24,31 +24,40 @@ export function VSCodeFileBrowser({
 }: VSCodeFileBrowserProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  
+  console.log('FileBrowser: Rendering file browser dialog, isOpen:', isOpen);
+  console.log('FileBrowser: Title:', title);
+  console.log('FileBrowser: Accept types:', acceptTypes);
+  console.log('FileBrowser: Is folder browser:', isFolder);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      console.log(`File selected: ${e.target.files[0].name}`)
-      setSelectedFile(e.target.files[0])
+      console.log(`FileBrowser: File selected: ${e.target.files[0].name}`);
+      setSelectedFile(e.target.files[0]);
     }
   }
 
   const handleOpenClick = () => {
+    console.log('FileBrowser: Open button clicked, triggering file input click');
     if (fileInputRef.current) {
-      fileInputRef.current.click()
+      fileInputRef.current.click();
     }
   }
 
   const handleConfirm = () => {
+    console.log('FileBrowser: Confirm button clicked');
     if (selectedFile) {
-      onFileSelected(selectedFile)
-      setSelectedFile(null)
-      onClose()
+      console.log(`FileBrowser: Confirmed selection of file: ${selectedFile.name}`);
+      onFileSelected(selectedFile);
+      setSelectedFile(null);
+      onClose();
     }
   }
 
   const handleClose = () => {
-    setSelectedFile(null)
-    onClose()
+    console.log('FileBrowser: Dialog closed');
+    setSelectedFile(null);
+    onClose();
   }
 
   return (

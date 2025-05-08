@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 // File icon mapping based on file extension
 const getFileIcon = (fileName: string): React.ReactNode => {
@@ -28,6 +28,7 @@ const getFileIcon = (fileName: string): React.ReactNode => {
   };
   
   const color = extensionColorMap[extension] || '#95a5a6'; // Default gray
+  console.log(`FileExplorer: File icon for ${fileName} using color ${color}`);
   return <FileText className="h-4 w-4 mr-1.5" style={{ stroke: color }} />;
 };
 
@@ -67,17 +68,21 @@ export function VSCodeFileExplorer({
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  console.log('Rendering file explorer with root:', rootNode.name);
+  console.log('FileExplorer: Rendering file explorer with root:', rootNode.name);
+  console.log('FileExplorer: Number of expanded folders:', expandedFolders.length);
+  console.log('FileExplorer: Selected node ID:', selectedNodeId);
 
   // Create new file or folder
   const handleCreateItem = () => {
-    console.log(`Creating ${newItemType}: ${newItemName} in ${newItemParentId}`);
+    console.log(`FileExplorer: Creating ${newItemType}: ${newItemName} in ${newItemParentId}`);
     if (!newItemParentId || !newItemName.trim()) return;
     
     if (newItemType === 'file') {
       onCreateFile(newItemParentId, newItemName);
+      console.log(`FileExplorer: Created new file: ${newItemName}`);
     } else {
       onCreateFolder(newItemParentId, newItemName);
+      console.log(`FileExplorer: Created new folder: ${newItemName}`);
     }
     
     // Reset state
@@ -87,7 +92,7 @@ export function VSCodeFileExplorer({
 
   // Open the create dialog
   const openCreateDialog = (parentId: string, type: 'file' | 'folder') => {
-    console.log(`Opening create dialog for ${type} in ${parentId}`);
+    console.log(`FileExplorer: Opening create dialog for ${type} in ${parentId}`);
     setNewItemParentId(parentId);
     setNewItemType(type);
     setNewItemName(type === 'file' ? 'untitled.js' : 'New Folder');
@@ -96,10 +101,11 @@ export function VSCodeFileExplorer({
 
   // Handle rename
   const handleRename = () => {
-    console.log(`Renaming node ${nodeToRename?.id} to ${newName}`);
+    console.log(`FileExplorer: Renaming node ${nodeToRename?.id} to ${newName}`);
     if (!nodeToRename || !newName.trim()) return;
     
     onRenameNode(nodeToRename.id, newName);
+    console.log(`FileExplorer: Node renamed from ${nodeToRename.name} to ${newName}`);
     
     // Reset state
     setNodeToRename(null);
@@ -109,7 +115,7 @@ export function VSCodeFileExplorer({
 
   // Open rename dialog
   const openRenameDialog = (node: FileNode) => {
-    console.log(`Opening rename dialog for ${node.name}`);
+    console.log(`FileExplorer: Opening rename dialog for ${node.name}`);
     setNodeToRename(node);
     setNewName(node.name);
     setIsRenameDialogOpen(true);
@@ -117,7 +123,8 @@ export function VSCodeFileExplorer({
 
   // Handle file import (upload)
   const handleFileImport = (parentId: string) => {
-    console.log(`Triggering file import for ${parentId}`);
+    console.log(`FileExplorer: Triggering file import for ${parentId}`);
+    setNewItemParentId(parentId);
     fileInputRef.current?.click();
   };
 
@@ -126,7 +133,7 @@ export function VSCodeFileExplorer({
     const files = e.target.files;
     if (!files || files.length === 0 || !newItemParentId) return;
     
-    console.log(`Importing file: ${files[0].name}`);
+    console.log(`FileExplorer: Importing file: ${files[0].name}`);
     onImportFile(newItemParentId, files[0]);
     
     // Reset the input
@@ -142,6 +149,8 @@ export function VSCodeFileExplorer({
     const isSelected = selectedNodeId === node.id;
     const indentPadding = `${depth * 16}px`;
     
+    console.log(`FileExplorer: Rendering node ${node.name}, type: ${node.type}, depth: ${depth}`);
+    
     return (
       <div key={node.id}>
         <div 
@@ -149,7 +158,10 @@ export function VSCodeFileExplorer({
             isSelected ? 'bg-[#04395e] text-white' : 'text-[#cccccc]'
           }`}
           style={{ paddingLeft: indentPadding }}
-          onClick={() => onSelectNode(node)}
+          onClick={() => {
+            console.log(`FileExplorer: Node selected: ${node.name}`);
+            onSelectNode(node);
+          }}
         >
           {/* Folder toggle or spacing for files */}
           {isFolder ? (
@@ -157,6 +169,7 @@ export function VSCodeFileExplorer({
               className="w-4 flex justify-center text-[#cccccc]"
               onClick={(e) => {
                 e.stopPropagation();
+                console.log(`FileExplorer: Toggling folder expansion: ${node.name}`);
                 onToggleFolder(node.id);
               }}
             >
@@ -196,47 +209,72 @@ export function VSCodeFileExplorer({
                 {isFolder && (
                   <>
                     <DropdownMenuItem 
-                      onClick={() => openCreateDialog(node.id, 'file')}
+                      onClick={() => {
+                        console.log(`FileExplorer: Create file action for folder: ${node.name}`);
+                        openCreateDialog(node.id, 'file');
+                      }}
                       className="hover:bg-[#2a2d2e] hover:text-white"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
+                      <FileText className="h-4 w-4 mr-2" />
                       New File
                     </DropdownMenuItem>
+                    
                     <DropdownMenuItem 
-                      onClick={() => openCreateDialog(node.id, 'folder')}
+                      onClick={() => {
+                        console.log(`FileExplorer: Create folder action for folder: ${node.name}`);
+                        openCreateDialog(node.id, 'folder');
+                      }}
                       className="hover:bg-[#2a2d2e] hover:text-white"
                     >
                       <Folder className="h-4 w-4 mr-2" />
                       New Folder
                     </DropdownMenuItem>
+                    
                     <DropdownMenuItem 
-                      onClick={() => handleFileImport(node.id)}
+                      onClick={() => {
+                        console.log(`FileExplorer: Import file action for folder: ${node.name}`);
+                        handleFileImport(node.id);
+                      }}
                       className="hover:bg-[#2a2d2e] hover:text-white"
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      Upload File
+                      Import File
                     </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator className="bg-[#3c3c3c]" />
                   </>
                 )}
-                {!isFolder && (
-                  <DropdownMenuItem 
-                    onClick={() => onExportFile(node)}
-                    className="hover:bg-[#2a2d2e] hover:text-white"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </DropdownMenuItem>
-                )}
+                
                 <DropdownMenuItem 
-                  onClick={() => openRenameDialog(node)}
+                  onClick={() => {
+                    console.log(`FileExplorer: Rename action for: ${node.name}`);
+                    openRenameDialog(node);
+                  }}
                   className="hover:bg-[#2a2d2e] hover:text-white"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Rename
                 </DropdownMenuItem>
+                
+                {!isFolder && (
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      console.log(`FileExplorer: Export file action for: ${node.name}`);
+                      onExportFile(node);
+                    }}
+                    className="hover:bg-[#2a2d2e] hover:text-white"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </DropdownMenuItem>
+                )}
+                
                 <DropdownMenuItem 
-                  onClick={() => onDeleteNode(node.id)}
-                  className="hover:bg-[#2a2d2e] hover:text-white text-red-400 hover:text-red-300"
+                  onClick={() => {
+                    console.log(`FileExplorer: Delete action for: ${node.name}`);
+                    onDeleteNode(node.id);
+                  }}
+                  className="hover:bg-[#2a2d2e] hover:text-white text-red-400"
                 >
                   <Trash className="h-4 w-4 mr-2" />
                   Delete
@@ -246,7 +284,7 @@ export function VSCodeFileExplorer({
           </div>
         </div>
         
-        {/* Children (if folder and expanded) */}
+        {/* Render children if folder is expanded */}
         {isFolder && isExpanded && node.children && (
           <div>
             {node.children.map(child => renderNode(child, depth + 1))}
@@ -257,95 +295,82 @@ export function VSCodeFileExplorer({
   };
 
   return (
-    <div className="h-full overflow-auto bg-[#1e1e1e] text-sm">
-      {/* Explorer header with actions */}
-      <div className="flex items-center justify-between p-2 text-[#cccccc] border-b border-[#3c3c3c]">
-        <span className="font-medium text-xs uppercase">Explorer</span>
-        <TooltipProvider>
-          <div className="flex space-x-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-[#2a2d2e]"
-                  onClick={() => openCreateDialog(rootNode.id, 'file')}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                New File
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-[#2a2d2e]"
-                  onClick={() => openCreateDialog(rootNode.id, 'folder')}
-                >
-                  <Folder className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                New Folder
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-[#2a2d2e]"
-                  onClick={() => window.location.reload()}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Refresh Explorer
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
+    <div className="h-full bg-[#1e1e1e] text-[#cccccc] text-sm overflow-auto">
+      {/* Explorer header */}
+      <div className="flex justify-between items-center p-2 uppercase text-xs font-semibold text-[#6c6c6c]">
+        <span>Explorer</span>
+        <div className="flex space-x-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-5 w-5 hover:bg-[#2a2d2e]"
+            onClick={() => {
+              console.log('FileExplorer: Creating new file in root');
+              openCreateDialog(rootNode.id, 'file');
+            }}
+            title="New File"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-5 w-5 hover:bg-[#2a2d2e]"
+            onClick={() => {
+              console.log('FileExplorer: Refreshing explorer');
+              // Dispatch a custom event that the parent can listen for
+              document.dispatchEvent(new CustomEvent('refresh-explorer'));
+            }}
+            title="Refresh"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
       
       {/* File tree */}
-      <div className="py-1">
+      <div className="p-1">
         {renderNode(rootNode)}
       </div>
       
-      {/* New item dialog */}
+      {/* Hidden file input for imports */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileSelected}
+      />
+      
+      {/* Create item dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-[#252526] text-[#cccccc] border-[#3c3c3c]">
+        <DialogContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] max-w-sm">
           <DialogHeader>
             <DialogTitle>{newItemType === 'file' ? 'New File' : 'New Folder'}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="name" className="text-[#cccccc]">
-              Name
+            <Label htmlFor="itemName" className="text-[#cccccc]">
+              {newItemType === 'file' ? 'File Name' : 'Folder Name'}
             </Label>
             <Input
-              id="name"
+              id="itemName"
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
+              className="bg-[#3c3c3c] border-[#6b6b6b] text-[#cccccc] mt-2"
               autoFocus
-              className="mt-2 bg-[#3c3c3c] border-[#6c6c6c] text-white"
             />
           </div>
           <DialogFooter>
             <Button 
               variant="outline" 
               onClick={() => setIsDialogOpen(false)}
-              className="bg-transparent border-[#3c3c3c] text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white"
+              className="bg-transparent border-[#3c3c3c] text-[#cccccc] hover:bg-[#2a2d2e]"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleCreateItem}
-              className="bg-[#0e639c] hover:bg-[#1177bb] text-white"
+              className="bg-[#007acc] text-white hover:bg-[#0062a3]"
+              disabled={!newItemName.trim()}
             >
               Create
             </Button>
@@ -355,7 +380,7 @@ export function VSCodeFileExplorer({
       
       {/* Rename dialog */}
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent className="bg-[#252526] text-[#cccccc] border-[#3c3c3c]">
+        <DialogContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc] max-w-sm">
           <DialogHeader>
             <DialogTitle>Rename {nodeToRename?.type === 'directory' ? 'Folder' : 'File'}</DialogTitle>
           </DialogHeader>
@@ -367,35 +392,28 @@ export function VSCodeFileExplorer({
               id="newName"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              className="bg-[#3c3c3c] border-[#6b6b6b] text-[#cccccc] mt-2"
               autoFocus
-              className="mt-2 bg-[#3c3c3c] border-[#6c6c6c] text-white"
             />
           </div>
           <DialogFooter>
             <Button 
               variant="outline" 
               onClick={() => setIsRenameDialogOpen(false)}
-              className="bg-transparent border-[#3c3c3c] text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white"
+              className="bg-transparent border-[#3c3c3c] text-[#cccccc] hover:bg-[#2a2d2e]"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleRename}
-              className="bg-[#0e639c] hover:bg-[#1177bb] text-white"
+              className="bg-[#007acc] text-white hover:bg-[#0062a3]"
+              disabled={!newName.trim()}
             >
               Rename
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Hidden file input for import */}
-      <input 
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={handleFileSelected}
-      />
     </div>
   );
 }

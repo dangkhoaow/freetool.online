@@ -213,6 +213,66 @@ const useVSCodeStore = create<VSCodeStore>()(
       // Open a file
       openFile: (fileId) => {
         console.log(`Opening file: ${fileId}`);
+        const file = findNodeById(get().rootNode, fileId) as ExtendedFileNode | null;
+        
+        if (!file) {
+          console.error(`File not found with ID: ${fileId}`);
+          return;
+        }
+        
+        // If the file has a real path, attempt to load the content from disk
+        if (file.realPath && file.type === 'file') {
+          console.log(`File has real path: ${file.realPath}, loading from disk`);
+          
+          // Fetch content from disk using API
+          fetch('/api/filesystem', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'readFile',
+              path: file.realPath
+            }),
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              console.log(`File loaded successfully from disk: ${file.realPath}, size: ${data.content.length} chars`);
+              
+              // Update file content in the state
+              const rootNodeCopy = { ...get().rootNode };
+              const updateFileWithContent = (node: ExtendedFileNode): ExtendedFileNode => {
+                if (node.id === fileId) {
+                  return { ...node, content: data.content, isDirty: false, updatedAt: Date.now() };
+                }
+                if (node.children) {
+                  return {
+                    ...node,
+                    children: node.children.map(child => updateFileWithContent(child as ExtendedFileNode))
+                  };
+                }
+                return node;
+              };
+              
+              const updatedRootNode = updateFileWithContent(rootNodeCopy);
+              set({ rootNode: updatedRootNode });
+            } else {
+              console.error(`Error loading file from disk: ${data.error || 'Unknown error'}`);
+              // Fallback to local storage version
+              console.log('Falling back to localStorage version');
+            }
+          })
+          .catch(error => {
+            console.error('Error loading file from disk:', error);
+            // Fallback to local storage version
+            console.log('Falling back to localStorage version due to error');
+          });
+        } else {
+          console.log(`File does not have a real path or is not a file, using cached version`);
+        }
+        
+        // Continue with opening the file in the editor regardless of disk load
         const newState = openFileInSystem(get(), fileId);
         set({ 
           openFiles: newState.openFiles,

@@ -67,10 +67,51 @@ export const saveCurrentFolderPath = (path: string): boolean => {
 };
 
 /**
- * Get the current folder path
+ * Validates if a folder path exists by making an API call
+ * Returns a promise that resolves to a boolean indicating if the path exists
  */
-export const getCurrentFolderPath = (): string => {
-  return getFromStorage(STORAGE_KEYS.CURRENT_FOLDER_PATH, '');
+export const validateFolderPath = async (path: string): Promise<boolean> => {
+  if (!path || path.trim() === '') {
+    console.log('StorageUtils: Empty path provided for validation');
+    return false;
+  }
+  
+  try {
+    console.log(`StorageUtils: Validating folder path: ${path}`);
+    const response = await fetch(`/api/filesystem/validate?path=${encodeURIComponent(path)}`);
+    const data = await response.json();
+    
+    console.log(`StorageUtils: Path validation result for ${path}:`, data.exists);
+    return data.exists === true;
+  } catch (error) {
+    console.error(`StorageUtils: Error validating folder path:`, error);
+    return false;
+  }
+};
+
+/**
+ * Get the current folder path
+ * If clearInvalid is true, it will check if the path exists and clear it if it doesn't
+ */
+export const getCurrentFolderPath = (clearInvalid = false): string => {
+  const path = getFromStorage(STORAGE_KEYS.CURRENT_FOLDER_PATH, '');
+  
+  // If we need to validate and clear invalid paths, trigger an async check
+  if (clearInvalid && path) {
+    console.log(`StorageUtils: Checking if path exists: ${path}`);
+    // This is async but we don't want to make getCurrentFolderPath async
+    // So we'll trigger the check and clear invalid paths asynchronously
+    validateFolderPath(path).then(exists => {
+      if (!exists) {
+        console.log(`StorageUtils: Path doesn't exist, clearing from storage: ${path}`);
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_FOLDER_PATH);
+      }
+    }).catch(error => {
+      console.error('StorageUtils: Error validating path:', error);
+    });
+  }
+  
+  return path;
 };
 
 /**

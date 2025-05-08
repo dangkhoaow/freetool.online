@@ -40,9 +40,10 @@ export function VSCodeCommandPalette({
 
   // Filter commands based on search query
   useEffect(() => {
-    console.log('Filtering commands with query:', searchQuery);
+    console.log('CommandPalette: Filtering commands with query:', searchQuery);
     if (!searchQuery) {
       setFilteredCommands(commands);
+      console.log('CommandPalette: No query, showing all commands:', commands.length);
     } else {
       const query = searchQuery.toLowerCase();
       const filtered = commands
@@ -68,6 +69,7 @@ export function VSCodeCommandPalette({
         });
       
       setFilteredCommands(filtered);
+      console.log('CommandPalette: Filtered commands count:', filtered.length);
     }
     
     // Reset selection when filter changes
@@ -76,25 +78,29 @@ export function VSCodeCommandPalette({
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    console.log('Key pressed in command palette:', e.key);
+    console.log('CommandPalette: Key pressed in command palette:', e.key);
     switch (e.key) {
       case 'Escape':
         onClose();
+        console.log('CommandPalette: Closed via Escape key');
         break;
       case 'ArrowDown':
         e.preventDefault();
         setSelectedIndex(prev => 
           prev < filteredCommands.length - 1 ? prev + 1 : prev
         );
+        console.log('CommandPalette: Selection moved down to index:', selectedIndex + 1);
         break;
       case 'ArrowUp':
         e.preventDefault();
         setSelectedIndex(prev => prev > 0 ? prev - 1 : 0);
+        console.log('CommandPalette: Selection moved up to index:', selectedIndex - 1);
         break;
       case 'Enter':
         if (filteredCommands.length > 0) {
           const command = filteredCommands[selectedIndex];
           executeCommand(command);
+          console.log('CommandPalette: Command executed via Enter key:', command.id);
         }
         break;
     }
@@ -102,7 +108,7 @@ export function VSCodeCommandPalette({
 
   // Execute a command
   const executeCommand = (command: VSCodeCommand) => {
-    console.log('Executing command:', command.id);
+    console.log('CommandPalette: Executing command:', command.id);
     onCommandExecute(command);
     onClose();
   };
@@ -119,8 +125,10 @@ export function VSCodeCommandPalette({
 
       if (itemTop < containerTop) {
         container.scrollTop = itemTop;
+        console.log('CommandPalette: Scrolled item into view (top)');
       } else if (itemBottom > containerBottom) {
         container.scrollTop = itemBottom - container.offsetHeight;
+        console.log('CommandPalette: Scrolled item into view (bottom)');
       }
     }
   }, [selectedIndex]);
@@ -198,57 +206,72 @@ export const getStandardCommands = (
 ): VSCodeCommand[] => {
   const actions = {
     // Default core actions
-    openSettings: () => console.log('Open settings'),
-    toggleSidebar: () => console.log('Toggle sidebar'),
-    togglePanel: () => console.log('Toggle panel'),
-    openFile: () => console.log('Open file'),
-    saveFile: () => console.log('Save file'),
-    saveFileAs: () => console.log('Save file as'),
+    openSettings: () => {
+      console.log('CommandPalette: openSettings action triggered');
+      console.log('Open settings');
+    },
+    openKeybindings: () => {
+      console.log('CommandPalette: openKeybindings action triggered');
+      console.log('Open keybindings');
+    },
+    openUserSnippets: () => {
+      console.log('CommandPalette: openUserSnippets action triggered');
+      console.log('Open user snippets');
+    },
+    toggleSidebar: () => {
+      console.log('CommandPalette: toggleSidebar action triggered');
+      console.log('Toggle sidebar');
+    },
+    togglePanel: () => {
+      console.log('CommandPalette: togglePanel action triggered');
+      console.log('Toggle panel');
+    },
+    saveFile: () => {
+      console.log('CommandPalette: saveFile action triggered');
+      console.log('Save file');
+    },
+    createNewFile: () => {
+      console.log('CommandPalette: createNewFile action triggered');
+      console.log('Create new file');
+    },
+    openFile: () => {
+      console.log('CommandPalette: openFile action triggered');
+      console.log('Open file');
+    },
+    openFolder: () => {
+      console.log('CommandPalette: openFolder action triggered');
+      console.log('Open folder');
+    },
+    selectFile: () => {
+      console.log('CommandPalette: selectFile action triggered');
+      console.log('Select file');
+    },
+    toggleTheme: () => {
+      console.log('CommandPalette: toggleTheme action triggered');
+      console.log('Toggle theme');
+    },
+    
+    // Merge with additional actions
     ...additionalActions
   };
-
+  
+  // Standard command definitions
   return [
-    {
-      id: 'workbench.action.openSettings',
-      title: 'Open Settings',
-      category: 'Preferences',
-      keybinding: 'Ctrl+,',
-      execute: actions.openSettings
-    },
-    {
-      id: 'workbench.action.toggleSidebarVisibility',
-      title: 'Toggle Side Bar Visibility',
-      category: 'View',
-      keybinding: 'Ctrl+B',
-      execute: actions.toggleSidebar
-    },
-    {
-      id: 'workbench.action.togglePanel',
-      title: 'Toggle Panel',
-      category: 'View',
-      keybinding: 'Ctrl+J',
-      execute: actions.togglePanel
-    },
-    {
-      id: 'workbench.action.quickOpen',
-      title: 'Go to File...',
-      category: 'File',
-      keybinding: 'Ctrl+P',
-      execute: actions.openFile
-    },
-    {
-      id: 'workbench.action.files.save',
-      title: 'Save',
-      category: 'File',
-      keybinding: 'Ctrl+S',
-      execute: actions.saveFile
-    },
-    {
-      id: 'workbench.action.files.saveAs',
-      title: 'Save As...',
-      category: 'File',
-      keybinding: 'Ctrl+Shift+S',
-      execute: actions.saveFileAs
-    }
+    // File commands
+    { id: 'file.new', title: 'New File', category: 'File', keybinding: 'Ctrl+N', execute: actions.createNewFile },
+    { id: 'file.open', title: 'Open File...', category: 'File', keybinding: 'Ctrl+O', execute: actions.openFile },
+    { id: 'file.openFolder', title: 'Open Folder...', category: 'File', execute: actions.openFolder },
+    { id: 'file.save', title: 'Save', category: 'File', keybinding: 'Ctrl+S', execute: actions.saveFile },
+    { id: 'file.selectFile', title: 'Go to File...', category: 'File', keybinding: 'Ctrl+P', execute: actions.selectFile },
+    
+    // View commands
+    { id: 'view.toggleSidebar', title: 'Toggle Sidebar', category: 'View', keybinding: 'Ctrl+B', execute: actions.toggleSidebar },
+    { id: 'view.togglePanel', title: 'Toggle Panel', category: 'View', keybinding: 'Ctrl+J', execute: actions.togglePanel },
+    { id: 'view.toggleTheme', title: 'Toggle Theme', category: 'View', execute: actions.toggleTheme },
+    
+    // Preferences commands
+    { id: 'preferences.openSettings', title: 'Open Settings', category: 'Preferences', keybinding: 'Ctrl+,', execute: actions.openSettings },
+    { id: 'preferences.openKeybindings', title: 'Open Keyboard Shortcuts', category: 'Preferences', execute: actions.openKeybindings },
+    { id: 'preferences.openUserSnippets', title: 'Open User Snippets', category: 'Preferences', execute: actions.openUserSnippets },
   ];
 };

@@ -22,6 +22,7 @@ const getFileIcon = (fileName: string): React.ReactNode => {
   };
   
   const color = extensionColorMap[extension] || '#95a5a6'; // Default gray
+  console.log(`QuickPicker: File icon for ${fileName} using color ${color}`);
   return <FileText className="h-4 w-4 mr-1.5" style={{ stroke: color }} />;
 };
 
@@ -58,6 +59,7 @@ const getFilePathParts = (node: FileNode, rootNode: FileNode): { name: string; p
     pathParts.pop();
   }
   
+  console.log(`QuickPicker: Path parts for ${node.name}: ${pathParts.join('/')}`);
   return {
     name: node.name,
     path: pathParts.length > 0 ? pathParts.join('/') : ''
@@ -90,17 +92,20 @@ export function VSCodeQuickPicker({
   const listRef = useRef<HTMLDivElement>(null);
   const processingRef = useRef(false);
   
-  console.log('Rendering quick picker with search query:', searchQuery);
+  console.log('QuickPicker: Rendering quick picker with search query:', searchQuery);
+  console.log('QuickPicker: isOpen:', isOpen);
+  console.log('QuickPicker: Total files count:', files?.length || 0);
+  console.log('QuickPicker: Recent files count:', recentFiles?.length || 0);
   
   // Memoize files array to prevent unnecessary re-renders
   const safeFiles = useMemo(() => {
-    console.log('Memoizing files array with length:', files?.length || 0);
+    console.log('QuickPicker: Memoizing files array with length:', files?.length || 0);
     return Array.isArray(files) ? [...files] : [];
   }, [files]);
   
   // Memoize recent files array to prevent unnecessary re-renders
   const safeRecentFiles = useMemo(() => {
-    console.log('Memoizing recent files array with length:', recentFiles?.length || 0);
+    console.log('QuickPicker: Memoizing recent files array with length:', recentFiles?.length || 0);
     return Array.isArray(recentFiles) ? [...recentFiles] : [];
   }, [recentFiles]);
   
@@ -108,12 +113,13 @@ export function VSCodeQuickPicker({
   const focusInput = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.focus();
+      console.log('QuickPicker: Input focused');
     }
   }, []);
   
   useEffect(() => {
     if (isOpen && !processingRef.current) {
-      console.log('Quick picker opened, focusing input');
+      console.log('QuickPicker: Picker opened, focusing input');
       processingRef.current = true;
       
       // Reset state when opening
@@ -135,9 +141,9 @@ export function VSCodeQuickPicker({
     processingRef.current = true;
     
     try {
-      console.log('Filtering files with query:', searchQuery);
+      console.log('QuickPicker: Filtering files with query:', searchQuery);
       if (!searchQuery) {
-        console.log('Empty query, showing recent files:', safeRecentFiles.length);
+        console.log('QuickPicker: Empty query, showing recent files:', safeRecentFiles.length);
         setFilteredFiles(safeRecentFiles);
         setShowingRecent(true);
         processingRef.current = false;
@@ -170,13 +176,13 @@ export function VSCodeQuickPicker({
           return aName.localeCompare(bName);
         });
       
-      console.log('Filter completed, found matches:', filtered.length);
+      console.log('QuickPicker: Filter completed, found matches:', filtered.length);
       setFilteredFiles(filtered);
       
       // Reset selection only when the filtered list changes
       setSelectedIndex(0);
     } catch (error) {
-      console.error('Error while filtering files:', error);
+      console.error('QuickPicker: Error while filtering files:', error);
       setFilteredFiles([]);
     }
     
@@ -196,60 +202,67 @@ export function VSCodeQuickPicker({
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    console.log('Key pressed in quick picker:', e.key);
+    console.log('QuickPicker: Key pressed in quick picker:', e.key);
     switch (e.key) {
       case 'Escape':
         onClose();
+        console.log('QuickPicker: Closed via Escape key');
         break;
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => 
-          prev < filteredFiles.length - 1 ? prev + 1 : prev
-        );
+        setSelectedIndex(prev => {
+          const newIndex = prev < filteredFiles.length - 1 ? prev + 1 : prev;
+          console.log(`QuickPicker: Selection moved down to index: ${newIndex}`);
+          return newIndex;
+        });
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : 0);
+        setSelectedIndex(prev => {
+          const newIndex = prev > 0 ? prev - 1 : 0;
+          console.log(`QuickPicker: Selection moved up to index: ${newIndex}`);
+          return newIndex;
+        });
         break;
       case 'Enter':
         if (filteredFiles.length > 0) {
-          const file = filteredFiles[selectedIndex];
-          selectFile(file);
+          const selectedFile = filteredFiles[selectedIndex];
+          console.log(`QuickPicker: File selected via Enter key: ${selectedFile.name}`);
+          onSelectFile(selectedFile.id);
+          onClose();
         }
         break;
     }
   };
-  
-  // Select a file
-  const selectFile = (file: FileNode) => {
-    console.log('Selecting file:', file.id);
-    onSelectFile(file.id);
-    onClose();
-  };
-  
+
   // Scroll selected item into view
   useEffect(() => {
     const selectedItem = document.getElementById(`file-${selectedIndex}`);
-    if (selectedItem && containerRef.current) {
-      const container = containerRef.current;
+    if (selectedItem && listRef.current) {
+      const container = listRef.current;
       const itemTop = selectedItem.offsetTop;
       const itemBottom = itemTop + selectedItem.offsetHeight;
       const containerTop = container.scrollTop;
       const containerBottom = containerTop + container.offsetHeight;
-      
+
       if (itemTop < containerTop) {
         container.scrollTop = itemTop;
+        console.log('QuickPicker: Scrolled item into view (top)');
       } else if (itemBottom > containerBottom) {
         container.scrollTop = itemBottom - container.offsetHeight;
+        console.log('QuickPicker: Scrolled item into view (bottom)');
       }
     }
   }, [selectedIndex]);
-  
+
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/50">
-      <div className="w-full max-w-[600px] bg-[#252526] shadow-lg rounded overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50">
+      <div 
+        ref={containerRef}
+        className="w-full max-w-[600px] bg-[#252526] shadow-lg rounded overflow-hidden"
+      >
         {/* Search input */}
         <div className="flex items-center p-2 border-b border-[#3c3c3c]">
           <Search className="w-5 h-5 text-[#cccccc] mr-2" />
@@ -257,7 +270,7 @@ export function VSCodeQuickPicker({
             ref={inputRef}
             type="text"
             className="flex-1 bg-transparent text-white placeholder-[#6c6c6c] outline-none"
-            placeholder="Type to search for files..."
+            placeholder="Type to search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -266,65 +279,54 @@ export function VSCodeQuickPicker({
         
         {/* Files list */}
         <div 
-          ref={containerRef}
-          className="max-h-[300px] overflow-y-auto"
+          ref={listRef}
+          className="max-h-[400px] overflow-y-auto"
         >
           {filteredFiles.length === 0 ? (
             <div className="py-4 px-3 text-[#cccccc] text-center">
-              {showingRecent 
-                ? "No recent files" 
-                : "No matching files found"}
+              {showingRecent ? 'No recent files' : 'No files found'}
             </div>
           ) : (
-            <>
+            <div>
               {showingRecent && (
-                <div className="px-3 py-1 text-xs text-[#6c6c6c] bg-[#2a2d2e]">
+                <div className="px-3 py-1 text-xs text-[#6c6c6c] uppercase">
                   Recent Files
                 </div>
               )}
               <ul>
                 {filteredFiles.map((file, index) => {
-                  // Skip rendering if file is missing critical properties
-                  if (!file || !file.id || !file.name) {
-                    console.warn('Skipping invalid file in quick picker:', file);
-                    return null;
-                  }
-                  
-                  // Get path parts safely with error handling
-                  let name = file.name;
-                  let path = '';
-                  try {
-                    const pathParts = getFilePathParts(file, rootNode);
-                    name = pathParts.name;
-                    path = pathParts.path;
-                  } catch (error) {
-                    console.error('Error getting file path parts:', error);
-                  }
+                  const { name, path } = getFilePathParts(file, rootNode);
                   
                   return (
                     <li 
                       id={`file-${index}`}
                       key={file.id}
-                      className={`px-3 py-2 cursor-pointer flex items-center ${
-                        index === selectedIndex 
-                          ? 'bg-[#04395e] text-white' 
-                          : 'text-[#cccccc] hover:bg-[#2a2d2e]'
+                      className={`px-3 py-2 cursor-pointer ${
+                        index === selectedIndex ? 'bg-[#04395e] text-white' : 'text-[#cccccc] hover:bg-[#2a2d2e]'
                       }`}
-                      onClick={() => selectFile(file)}
+                      onClick={() => {
+                        console.log(`QuickPicker: File selected via click: ${file.name}`);
+                        onSelectFile(file.id);
+                        onClose();
+                      }}
                       onMouseEnter={() => setSelectedIndex(index)}
                     >
-                      {getFileIcon(file.name)}
-                      <span className="font-medium">{name}</span>
-                      {path && (
-                        <span className="ml-2 opacity-60 text-xs">
-                          {path}
-                        </span>
-                      )}
+                      <div className="flex items-center">
+                        {getFileIcon(name)}
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate font-medium">{name}</span>
+                          {path && (
+                            <span className="truncate text-xs opacity-60">
+                              {path}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </li>
                   );
                 })}
               </ul>
-            </>
+            </div>
           )}
         </div>
       </div>

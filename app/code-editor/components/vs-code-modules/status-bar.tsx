@@ -17,10 +17,14 @@ function StatusBarItem({
   onClick, 
   className = '' 
 }: StatusBarItemProps) {
+  console.log(`StatusBar: Rendering status bar item: ${text}`);
   const content = (
     <div 
       className={`flex items-center px-2 h-6 text-xs cursor-pointer hover:bg-[#2a2d2e] ${className}`}
-      onClick={onClick}
+      onClick={() => {
+        console.log(`StatusBar: Item clicked: ${text}`);
+        onClick?.();
+      }}
     >
       <span className="mr-1.5">{icon}</span>
       <span>{text}</span>
@@ -64,7 +68,9 @@ export function VSCodeStatusBar({
   isDarkMode = true,
   onToggleTheme
 }: StatusBarProps) {
-  console.log('Rendering status bar with current line:', currentLine, 'column:', currentColumn);
+  console.log('StatusBar: Rendering status bar with current line:', currentLine, 'column:', currentColumn);
+  console.log('StatusBar: Language:', language, 'isDarkMode:', isDarkMode);
+  console.log('StatusBar: Line count:', lineCount, 'selection count:', selectionCount);
   
   return (
     <div className="flex items-center justify-between h-6 bg-[#007acc] text-white text-xs">
@@ -137,7 +143,10 @@ export function VSCodeStatusBar({
             icon={isDarkMode ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
             text={isDarkMode ? "Dark" : "Light"}
             tooltip="Toggle Theme"
-            onClick={onToggleTheme}
+            onClick={() => {
+              console.log('StatusBar: Toggle theme clicked');
+              onToggleTheme?.();
+            }}
             className="border-l border-white/20"
           />
         </div>

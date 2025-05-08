@@ -67,24 +67,53 @@ export function ExplorerView({ refreshExplorerView }: ExplorerViewProps) {
   });
   
   // Helper function to ensure all items in the file structure have proper paths
-  const processStructureWithPaths = (items: FileSystemItem[], basePath: string): FileSystemItem[] => {
-    return items.map(item => {
+  const processStructureWithPaths = (items: any, basePath: string): FileSystemItem[] => {
+    // Validate that items is an array
+    if (!items) {
+      console.error('ExplorerView: processStructureWithPaths received null or undefined items');
+      return [];
+    }
+    
+    if (!Array.isArray(items)) {
+      console.error('ExplorerView: processStructureWithPaths expected an array but received:', typeof items);
+      console.log('Value received:', items);
+      
+      // If it's an object with properties that look like a file structure item, try to convert it
+      if (items && typeof items === 'object' && ('name' in items || 'type' in items)) {
+        console.log('ExplorerView: Attempting to convert single item to array');
+        items = [items];
+      } else {
+        // Otherwise return an empty array
+        return [];
+      }
+    }
+    
+    // Now we can safely map over the array
+    return items.map((item: any) => {
+      if (!item || typeof item !== 'object') {
+        console.error('ExplorerView: Invalid item in file structure:', item);
+        return null;
+      }
+      
       // Ensure every item has a path property
-      const fullPath = item.path ? item.path : `${basePath}/${item.name}`;
-      console.log(`ExplorerView: Processing item ${item.name}, setting path to ${fullPath}`);
+      const fullPath = item.path ? item.path : `${basePath}/${item.name || 'unnamed'}`;
+      console.log(`ExplorerView: Processing item ${item.name || 'unnamed'}, setting path to ${fullPath}`);
       
       const processedItem: FileSystemItem = {
         ...item,
-        path: fullPath
+        path: fullPath,
+        // Ensure required properties exist
+        name: item.name || 'unnamed',
+        type: item.type || 'file'
       };
       
       // Process children recursively if this is a folder
-      if (item.type === 'folder' && item.children && Array.isArray(item.children)) {
+      if (item.type === 'folder' && item.children) {
         processedItem.children = processStructureWithPaths(item.children, fullPath);
       }
       
       return processedItem;
-    });
+    }).filter(Boolean); // Filter out any null items
   };
   
   // Initial setup on component mount - no longer auto-loading folders

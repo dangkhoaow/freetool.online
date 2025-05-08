@@ -23,6 +23,8 @@ const getFileIcon = (fileName: string): React.ReactNode => {
   };
   
   const color = extensionColorMap[extension] || '#95a5a6'; // Default gray
+  console.log(`EditorTabs: File icon for ${fileName} using color ${color}`);
+  
   return (
     <svg 
       width="16" 
@@ -63,7 +65,9 @@ export function VSCodeEditorTabs({
   unsavedFiles,
   onSaveFile
 }: EditorTabsProps) {
-  console.log('Rendering editor tabs with active file:', activeFileId);
+  console.log('EditorTabs: Rendering editor tabs with active file:', activeFileId);
+  console.log('EditorTabs: Open files count:', openFiles.length);
+  console.log('EditorTabs: Unsaved files count:', unsavedFiles.size);
   
   return (
     <div className="flex bg-[#252526] border-b border-[#3c3c3c] overflow-x-auto">
@@ -71,6 +75,7 @@ export function VSCodeEditorTabs({
         {openFiles.map((file) => {
           const isActive = file.id === activeFileId;
           const isUnsaved = unsavedFiles.has(file.id);
+          console.log(`EditorTabs: Tab for file ${file.name}, active: ${isActive}, unsaved: ${isUnsaved}`);
           
           return (
             <div 
@@ -83,7 +88,10 @@ export function VSCodeEditorTabs({
                 border-r border-r-[#3c3c3c]
                 cursor-pointer group
               `}
-              onClick={() => onSelectFile(file.id)}
+              onClick={() => {
+                console.log(`EditorTabs: Selected file ${file.id}`);
+                onSelectFile(file.id);
+              }}
             >
               {/* File icon */}
               {getFileIcon(file.name)}
@@ -112,6 +120,7 @@ export function VSCodeEditorTabs({
                         className="opacity-0 group-hover:opacity-100 hover:bg-[#383838] p-0.5 rounded"
                         onClick={(e) => {
                           e.stopPropagation();
+                          console.log(`EditorTabs: Saving file ${file.id}`);
                           onSaveFile(file.id);
                         }}
                       >
@@ -130,6 +139,7 @@ export function VSCodeEditorTabs({
                       className="opacity-0 group-hover:opacity-100 hover:bg-[#383838] p-0.5 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
+                        console.log(`EditorTabs: Closing file ${file.id}`);
                         onCloseFile(file.id);
                       }}
                     >

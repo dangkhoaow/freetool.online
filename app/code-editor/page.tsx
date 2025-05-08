@@ -1,4 +1,4 @@
-import VSCodeEditor from "./components/vs-code-editor"
+import VSCodeEditor from "./components/vs-code-modules"
 import FeatureSection from "./components/feature-section"
 import ToolGuide from "./components/tool-guide"
 import FaqSection from "./components/faq-section"
