@@ -76,7 +76,7 @@ export default function VSCodeEditor() {
   const [commandsList, setCommandsList] = useState<VSCodeCommand[]>([]);
   const [cursorPosition, setLocalCursorPosition] = useState<monaco.Position>({ lineNumber: 1, column: 1 } as monaco.Position);
   const [lineCount, setLineCount] = useState(1);
-  const [fontSize, setFontSize] = useState(14); // Default font size for editor
+  const [fontSize, setFontSize] = useState(12); // Default font size for editor (reduced from 14)
   const [wordWrap, setWordWrap] = useState<'on' | 'off'>('on');
   const [theme, setTheme] = useState<'vs-dark' | 'vs'>('vs-dark');
   
@@ -630,7 +630,7 @@ export default function VSCodeEditor() {
         />
         
         {/* Editor content */}
-        <div className="flex-grow relative overflow-hidden bg-[#252526]">
+        <div className="flex-grow relative overflow-hidden">
           {openFiles.map(fileId => {
             const fileNode = findNodeById(rootNode, fileId) as FileNode;
             if (!fileNode) {
