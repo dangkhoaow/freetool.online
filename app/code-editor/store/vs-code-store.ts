@@ -65,6 +65,7 @@ interface VSCodeStore extends Omit<FileSystemState, 'rootNode'> {
 }
 
 // Create the store
+// Persist only minimal UI state, excluding large rootNode tree
 const useVSCodeStore = create<VSCodeStore>()(
   persist(
     (set, get) => ({
@@ -406,7 +407,14 @@ const useVSCodeStore = create<VSCodeStore>()(
       }
     }),
     {
-      name: 'vs-code-store'
+      name: 'vs-code',
+      partialize: (state) => ({
+        selectedNodeId: state.selectedNodeId,
+        openFiles: state.openFiles,
+        activeFileId: state.activeFileId,
+        expandedFolders: state.expandedFolders,
+        cursorPositions: state.cursorPositions,
+      }),
     }
   )
 );

@@ -1,7 +1,7 @@
 "use client";
 
 import '@/app/code-editor/styles/dropdown-menu.css';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useRef, useEffect } from 'react';
 import { 
   FileText, 
   Terminal, 
@@ -78,9 +78,44 @@ function ModularVSCodeLayout(props: VSCodeLayoutProps) {
     isSplitView,
   } = props;
   
+  // Set up state for resizable sidebar
+  const [sidebarWidth, setSidebarWidth] = useState(defaultSizes?.sidebar || 240);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<HTMLDivElement>(null);
+  
   console.log("Layout: Rendering with sidebarContent:", !!sidebarContent);
   console.log("Layout: Rendering with activeBarItem:", activeBarItem);
   console.log("Layout: showPanel:", showPanel, "showSidebar:", showSidebar);
+  console.log("Layout: Current sidebar width:", sidebarWidth);
+  
+  // Handle sidebar resizing
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      // Calculate new width (min: 150px, max: 50% of window width)
+      const newWidth = Math.max(150, Math.min(window.innerWidth * 0.5, e.clientX - (defaultSizes?.activityBar || 48)));
+      console.log("Layout: Resizing sidebar to width:", newWidth);
+      setSidebarWidth(newWidth);
+    };
+    
+    const handleMouseUp = () => {
+      console.log("Layout: Stopped sidebar resizing");
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+    };
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, defaultSizes?.activityBar]);
   
   return (
     <div className={`vs-code-layout ${className || ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -92,7 +127,7 @@ function ModularVSCodeLayout(props: VSCodeLayoutProps) {
       
       <div className="vs-code-main" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {showSidebar && (
-          <div className="vs-code-sidebar" style={{ display: 'flex', flexShrink: 0, width: `${defaultSizes?.sidebar || 240}px` }}>
+          <div className="vs-code-sidebar" style={{ display: 'flex', flexShrink: 0, width: `${sidebarWidth}px`, position: 'relative' }}>
             <div className="bg-[#3c3c3c]" style={{ width: `${defaultSizes?.activityBar || 48}px`, flexShrink: 0 }}>
               {activityBarItems.map((item, index) => (
                 <div 
@@ -137,6 +172,27 @@ function ModularVSCodeLayout(props: VSCodeLayoutProps) {
             <div className="vs-code-sidebar-content" style={{ flex: 1, overflow: 'auto', display: showSidebar ? 'block' : 'none' }}>
               {sidebarContent}
             </div>
+            
+            {/* Resizer handle */}
+            <div 
+              ref={resizeRef}
+              className="vs-code-sidebar-resizer"
+              style={{
+                width: '5px',
+                cursor: 'ew-resize',
+                height: '100%',
+                background: 'transparent',
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                zIndex: 10
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                console.log("Layout: Started sidebar resizing");
+                setIsResizing(true);
+              }}
+            />
           </div>
         )}
         

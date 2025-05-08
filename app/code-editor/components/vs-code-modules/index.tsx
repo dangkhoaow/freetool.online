@@ -150,7 +150,17 @@ export default function VSCodeEditor() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [activeFileId, editorInstances, isSidebarVisible, isPanelVisible]);
-  
+
+  // Listen for menu-triggered word wrap toggle events
+  useEffect(() => {
+    const onToggle = () => {
+      console.log(`VSCodeEditor: Received toggle-word-wrap event, current wordWrap: ${wordWrap}`);
+      toggleWordWrap(wordWrap, setWordWrap);
+    };
+    document.addEventListener('toggle-word-wrap', onToggle);
+    return () => document.removeEventListener('toggle-word-wrap', onToggle);
+  }, [wordWrap]);
+
   // Initialize commands
   useEffect(() => {
     console.log('VSCodeEditor: Initializing commands');

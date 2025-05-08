@@ -53,19 +53,36 @@ export function MainEditor({
 }: MainEditorProps) {
   console.log(`MainEditor: Rendering editor for file: ${fileNode.name}, ID: ${fileId}, active: ${isActive}`);
   
-  // Register themes once when the client loads
+  // Register themes once when the client loads and ensure dark theme is applied initially
   useEffect(() => {
     // Only register themes on the client side
     if (typeof window !== 'undefined' && typeof (window as any).monaco !== 'undefined') {
-      console.log('Registering Monaco editor themes');
+      console.log('MainEditor: Registering Monaco editor themes');
       (window as any).monaco.editor.defineTheme('vs-code-dark', vsCodeDarkTheme);
       (window as any).monaco.editor.defineTheme('vs-code-light', vsCodeLightTheme);
+      
+      // Force dark theme application if current theme is vs-dark
+      if (theme === 'vs-dark') {
+        console.log('MainEditor: Forcing dark theme application on initial load');
+        (window as any).monaco.editor.setTheme('vs-code-dark');
+      }
     }
   }, []);
   
   // Handle file content changes
   const handleEditorWillMount = (monaco: typeof window.monaco) => {
     console.log(`MainEditor: Editor will mount for file: ${fileNode.name}`);
+    
+    // Register themes immediately during Monaco initialization
+    console.log(`MainEditor: Registering themes during willMount with current theme: ${theme}`);
+    monaco.editor.defineTheme('vs-code-dark', vsCodeDarkTheme);
+    monaco.editor.defineTheme('vs-code-light', vsCodeLightTheme);
+    
+    // Ensure the correct theme is set before editor rendering
+    const editorTheme = theme === 'vs-dark' ? 'vs-code-dark' : 'vs-code-light';
+    console.log(`MainEditor: Setting initial editor theme to: ${editorTheme}`);
+    monaco.editor.setTheme(editorTheme);
+    
     return monaco;
   };
   

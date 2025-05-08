@@ -383,26 +383,31 @@ export function VSCodeMenuBar({
                         // Start an async process to scan the directory
                         (async () => {
                           const scannedRootNode = await BrowserFileSystem.scanDirectoryToFileNode(directoryHandle);
-                          
-                          if (scannedRootNode) {
-                            console.log('MenuBar: Successfully scanned directory structure', scannedRootNode);
-                            
-                            // Update the VS Code store with the new root node
-                            console.log('MenuBar: Updating store with scanned root node');
-                            useVSCodeStore.setState(state => ({
-                              ...state,
-                              currentPath: `/browser-fs/${dirName}`,
-                              rootNode: scannedRootNode,
-                            }));
-                            
-                            // Refresh the explorer with the new root node
-                            console.log('MenuBar: Refreshing explorer with scanned root node');
-                            document.dispatchEvent(new CustomEvent('refresh-explorer', { detail: { rootNode: scannedRootNode, path: `/browser-fs/${dirName}`, forceRefresh: true } }));
-                          } else {
+                          if (!scannedRootNode) {
                             console.error('MenuBar: Failed to scan directory structure');
                             setHasDirectoryAccess(false);
                             alert('Failed to scan directory structure');
+                            return;
                           }
+                          // Filter out hidden items
+                          const filterHidden = (node: FileNode): FileNode => ({
+                            ...node,
+                            children: node.children
+                              ?.filter(c => !c.name.startsWith('.'))
+                              .map(filterHidden),
+                          });
+                          const filteredRootNode = filterHidden(scannedRootNode);
+                          console.log('MenuBar: Filtered hidden items from scan', filteredRootNode);
+
+                          // Update store and refresh explorer
+                          console.log('MenuBar: Updating store with scanned root node');
+                          useVSCodeStore.setState(state => ({
+                            ...state,
+                            currentPath: `/browser-fs/${dirName}`,
+                            rootNode: filteredRootNode,
+                          }));
+                          console.log('MenuBar: Refreshing explorer with scanned root node');
+                          document.dispatchEvent(new CustomEvent('refresh-explorer', { detail: { rootNode: filteredRootNode, path: `/browser-fs/${dirName}`, forceRefresh: true } }));
                         })();
                       } catch (error) {
                         console.error('MenuBar: Error scanning directory:', error);

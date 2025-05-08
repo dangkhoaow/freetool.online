@@ -30,7 +30,12 @@ const getFileIcon = (fileName: string): React.ReactNode => {
   
   const color = extensionColorMap[extension] || '#95a5a6'; // Default gray
   console.log(`FileExplorer: File icon for ${fileName} using color ${color}`);
-  return <FileText className="h-4 w-4 mr-1.5" style={{ stroke: color }} />;
+  // Using fixed width/height to ensure consistency with all icons
+  return (
+    <div className="flex items-center justify-center w-5 h-5 mr-1">
+      <FileText size={16} style={{ stroke: color }} />
+    </div>
+  );
 };
 
 interface FileExplorerProps {
@@ -229,36 +234,37 @@ export function VSCodeFileExplorer({
             onSelectNode(node);
           }}
         >
-          {/* Folder toggle or spacing for files */}
-          {isFolder ? (
-            <span 
-              className="text-xs w-4 flex justify-center text-[#cccccc]"
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log(`FileExplorer: Toggling folder expansion: ${node.name}`);
-                onToggleFolder(node.id);
-              }}
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
+          {/* Node tree structure with proper alignment */}
+          <div className="flex items-center">
+            {/* Chevron for folders or placeholder for files to maintain alignment */}
+            <div className="flex items-center justify-center w-5 h-5">
+              {isFolder ? (
+                <div
+                  className="flex items-center justify-center w-full h-full text-[#cccccc] cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log(`FileExplorer: Toggling folder expansion: ${node.name}`);
+                    onToggleFolder(node.id);
+                  }}
+                >
+                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </div>
+              ) : null /* Files have empty chevron space for alignment */}
+            </div>
+            
+            {/* Icon container with fixed dimensions for consistency */}
+            <div className="flex items-center justify-center w-5 h-5 mr-1">
+              {isFolder ? (
+                isExpanded ? (
+                  <FolderOpen size={16} className="text-[#dcb67a]" />
+                ) : (
+                  <Folder size={16} className="text-[#dcb67a]" />
+                )
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                getFileIcon(node.name)
               )}
-            </span>
-          ) : (
-            <span className="w-4" />
-          )}
-          
-          {/* Icon */}
-          {isFolder ? (
-            isExpanded ? (
-              <FolderOpen className="h-4 w-4 mr-1.5 text-[#dcb67a]" />
-            ) : (
-              <Folder className="h-4 w-4 mr-1.5 text-[#dcb67a]" />
-            )
-          ) : (
-            getFileIcon(node.name)
-          )}
+            </div>
+          </div>
           
           {/* Name */}
           <span className="truncate">{node.name}</span>
@@ -273,7 +279,7 @@ export function VSCodeFileExplorer({
                   className="h-5 w-5" 
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <MoreVertical className="h-3 w-3 text-[#cccccc]" />
+                  <MoreVertical size={14} className="text-[#cccccc]" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc]">
@@ -287,7 +293,7 @@ export function VSCodeFileExplorer({
                       }}
                       className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                     >
-                      <FileText className="h-4 w-4 mr-2" />
+                      <div className="flex items-center justify-center w-5 h-5 mr-2"><FileText size={16} /></div>
                       New File
                     </DropdownMenuItem>
                     
@@ -299,7 +305,7 @@ export function VSCodeFileExplorer({
                       }}
                       className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                     >
-                      <Folder className="h-4 w-4 mr-2" />
+                      <div className="flex items-center justify-center w-5 h-5 mr-2"><Folder size={16} /></div>
                       New Folder
                     </DropdownMenuItem>
                     
@@ -310,7 +316,7 @@ export function VSCodeFileExplorer({
                       }}
                       className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                     >
-                      <Upload className="h-4 w-4 mr-2" />
+                      <div className="flex items-center justify-center w-5 h-5 mr-2"><Upload size={16} /></div>
                       Import File
                     </DropdownMenuItem>
                     
@@ -325,7 +331,7 @@ export function VSCodeFileExplorer({
                   }}
                   className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                 >
-                  <Edit className="h-4 w-4 mr-2" />
+                  <div className="flex items-center justify-center w-5 h-5 mr-2"><Edit size={16} /></div>
                   Rename
                 </DropdownMenuItem>
                 
@@ -337,7 +343,7 @@ export function VSCodeFileExplorer({
                     }}
                     className="text-xs hover:bg-[#2a2d2e] hover:text-white"
                   >
-                    <Download className="h-4 w-4 mr-2" />
+                    <div className="flex items-center justify-center w-5 h-5 mr-2"><Download size={16} /></div>
                     Export
                   </DropdownMenuItem>
                 )}
@@ -349,7 +355,7 @@ export function VSCodeFileExplorer({
                   }}
                   className="text-xs hover:bg-[#2a2d2e] hover:text-white text-red-400"
                 >
-                  <Trash className="h-4 w-4 mr-2" />
+                  <div className="flex items-center justify-center w-5 h-5 mr-2"><Trash size={16} /></div>
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -383,7 +389,7 @@ export function VSCodeFileExplorer({
             }}
             title="New File"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus size={14} />
           </Button>
           <Button 
             variant="ghost" 
@@ -396,7 +402,7 @@ export function VSCodeFileExplorer({
             }}
             title="Refresh"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw size={14} />
           </Button>
         </div>
       </div>
