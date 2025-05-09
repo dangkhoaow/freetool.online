@@ -584,17 +584,14 @@ export default function VSCodeEditor() {
   
   // Render the editor layout
   const renderEditor = () => {
-    // If no folder is selected, show a prompt to select one
-    if (!currentFolderPath) {
-      return (
-        <InvalidFolderState 
-          onOpenFolder={() => setIsFolderPickerOpen(true)}
-          theme={theme}
-          errorMessage="No folder is currently open. Please open a folder to continue."
-        />
-      );
+    const validOpenFiles = openFiles.filter(fileId => findNodeById(rootNode, fileId));
+    console.log('VSCodeEditor: Rendering editor with rootNode:', rootNode, 'validOpenFiles:', validOpenFiles);
+    
+    // If no valid files are open, show empty state
+    if (validOpenFiles.length === 0) {
+      return <EmptyEditorState theme={theme} />;
     }
-
+    
     // Count files with unsaved changes
     const unsavedFiles = new Set<string>();
     if (rootNode.children) {
@@ -611,11 +608,6 @@ export default function VSCodeEditor() {
     
     console.log('VSCodeEditor: Rendering editor with rootNode:', rootNode);
 
-    // If no files are open, show empty state
-    if (openFiles.length === 0) {
-      return <EmptyEditorState theme={theme} />;
-    }
-    
     // Render editors for each open file
     return (
       <div className="flex flex-col h-full">
@@ -631,7 +623,7 @@ export default function VSCodeEditor() {
         
         {/* Editor content */}
         <div className="flex-grow relative overflow-hidden">
-          {openFiles.map(fileId => {
+          {validOpenFiles.map(fileId => {
             const fileNode = findNodeById(rootNode, fileId) as FileNode;
             if (!fileNode) {
               console.error(`VSCodeEditor: File node not found for ID: ${fileId}`);

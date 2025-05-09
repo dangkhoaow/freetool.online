@@ -5,6 +5,9 @@
 import React from 'react';
 import { FileNode } from '@/lib/services/vs-code-file-system';
 import { Undo2, Redo2, Plus, Save, X, FolderOpen, Settings, FileCode, Command } from 'lucide-react';
+import * as BrowserFileSystem from '@/lib/services/browser-file-system-service';
+import { validateDirectoryHandle } from './folder-handler';
+import useVSCodeStore from '../../store/vs-code-store';
 
 /**
  * Status bar component to show line and column information
@@ -118,30 +121,49 @@ export function EmptyEditorState({ theme }: { theme: 'vs-dark' | 'vs' }) {
   
   return (
     <div className={`flex flex-col items-center justify-center h-full ${
-      theme === 'vs-dark' ? 'bg-[#1e1e1e] text-gray-300' : 'bg-white text-gray-700'
+      theme === 'vs-dark' ? 'bg-gray-900 text-gray-300' : 'bg-white text-gray-700'
     }`}>
-      <div className="text-center p-8 max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Welcome to VS Code Editor</h2>
-        <div className="mb-6 text-sm">
-          <p className="mb-2">
-            Get started by opening a file from the Explorer on the left.
-          </p>
-          <p className="mb-2">
-            You can also use the following keyboard shortcuts:
-          </p>
-          <ul className="list-disc list-inside text-left ml-4 mt-2 space-y-1">
-            <li><kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl+P</kbd> Quick file search</li>
-            <li><kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl+Shift+P</kbd> Command palette</li>
-            <li><kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl+S</kbd> Save current file</li>
-            <li><kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Ctrl+B</kbd> Toggle sidebar</li>
-          </ul>
+      <div className="text-center max-w-lg p-8">
+        <FileCode size={48} className="mb-6 mx-auto text-blue-500 opacity-80" />
+        <h2 className="text-2xl font-semibold mb-3">No File Opened</h2>
+        <p className="text-sm mb-6">
+          Select a file from the Explorer panel to start editing. You can also create a new file 
+          or use keyboard shortcuts to navigate your workspace.
+        </p>
+        <div className="flex flex-col space-y-4">
+          <button 
+            className={`px-4 py-2 rounded flex items-center mx-auto ${
+              theme === 'vs-dark' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-400'
+            } text-white`}
+          >
+            <FileCode size={16} className="mr-2" />
+            New File
+          </button>
+          
+          <div className="text-sm mt-4">
+            <p className="mb-2 font-medium">Keyboard shortcuts:</p>
+            <ul className="space-y-1 text-left mx-auto w-fit">
+              <li className="flex items-center">
+                <kbd className={`px-1.5 py-0.5 rounded text-xs mr-2 ${
+                  theme === 'vs-dark' ? 'bg-gray-700' : 'bg-gray-200'
+                }`}>Ctrl+P</kbd> 
+                <span>Quick file search</span>
+              </li>
+              <li className="flex items-center">
+                <kbd className={`px-1.5 py-0.5 rounded text-xs mr-2 ${
+                  theme === 'vs-dark' ? 'bg-gray-700' : 'bg-gray-200'
+                }`}>Ctrl+Shift+P</kbd> 
+                <span>Command palette</span>
+              </li>
+              <li className="flex items-center">
+                <kbd className={`px-1.5 py-0.5 rounded text-xs mr-2 ${
+                  theme === 'vs-dark' ? 'bg-gray-700' : 'bg-gray-200'
+                }`}>Ctrl+S</kbd> 
+                <span>Save current file</span>
+              </li>
+            </ul>
+          </div>
         </div>
-        <button className={`px-3 py-1.5 rounded flex items-center ${
-          theme === 'vs-dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-200'
-        }`}>
-          <Plus size={16} className="mr-2" />
-          New File
-        </button>
       </div>
     </div>
   );
@@ -163,7 +185,7 @@ export function InvalidFolderState({
   
   return (
     <div className={`flex flex-col items-center justify-center h-full ${
-      theme === 'vs-dark' ? 'bg-[#1e1e1e] text-gray-300' : 'bg-white text-gray-700'
+      theme === 'vs-dark' ? 'bg-gray-900 text-gray-300' : 'bg-white text-gray-700'
     }`}>
       <div className="text-center max-w-lg p-8">
         <FolderOpen size={48} className="mb-6 mx-auto text-blue-500 opacity-80" />
@@ -173,14 +195,64 @@ export function InvalidFolderState({
           Open a folder to start working with files. The VS Code editor requires a workspace
           folder to properly display and edit your files.
         </p>
-        <button 
-          onClick={onOpenFolder}
-          className={`px-4 py-2 rounded flex items-center mx-auto ${
-            theme === 'vs-dark' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-400'
-          } text-white`}
-        >
+        <button
+          onClick={async () => {
+            console.log('InvalidFolderState: Open folder or connect to directory');
+            const fsApiSupported = BrowserFileSystem.isFileSystemAccessSupported();
+            if (fsApiSupported) {
+              try {
+                const directoryHandle = await BrowserFileSystem.requestDirectoryAccess();
+                console.log('InvalidFolderState: Directory handle received:', !!directoryHandle);
+                if (directoryHandle) {
+                  const validationResult = await validateDirectoryHandle(directoryHandle);
+                  console.log('InvalidFolderState: Directory validation result:', validationResult);
+                  if (validationResult.valid) {
+                    const dirName = directoryHandle.name || 'Selected Directory';
+                    console.log(`InvalidFolderState: Connected to directory: ${dirName}`);
+                    console.log('InvalidFolderState: Scanning directory structure');
+                    const scannedRootNode = await BrowserFileSystem.scanDirectoryToFileNode(directoryHandle);
+                    if (!scannedRootNode) {
+                      console.error('InvalidFolderState: Failed to scan directory structure');
+                      alert('Failed to scan directory structure');
+                      return;
+                    }
+                    const filterHidden = (node: FileNode): FileNode => ({
+                      ...node,
+                      children: node.children
+                        ?.filter(c => !c.name.startsWith('.'))
+                        .map(filterHidden),
+                    });
+                    const filteredRootNode = filterHidden(scannedRootNode);
+                    console.log('InvalidFolderState: Filtered hidden items from scan', filteredRootNode);
+                    console.log('InvalidFolderState: Updating store with scanned root node');
+                    useVSCodeStore.setState(state => ({
+                      ...state,
+                      currentPath: `/browser-fs/${dirName}`,
+                      rootNode: filteredRootNode,
+                    }));
+                    console.log('InvalidFolderState: Refreshing explorer with scanned root node');
+                    document.dispatchEvent(new CustomEvent('refresh-explorer', { detail: { rootNode: filteredRootNode, path: `/browser-fs/${dirName}`, forceRefresh: true } }));
+                  } else {
+                    console.error('InvalidFolderState: Directory validation failed:', validationResult.error);
+                    alert(`Could not access directory: ${validationResult.error || 'Unknown error'}`);
+                  }
+                } else {
+                  console.warn('InvalidFolderState: No directory handle received');
+                }
+              } catch (error) {
+                console.error('InvalidFolderState: Error accessing directory:', error);
+                alert(`Error accessing directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+            } else {
+              onOpenFolder();
+            }
+          }}
+           className={`px-4 py-2 rounded flex items-center mx-auto ${
+             theme === 'vs-dark' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-400'
+           } text-white`}
+         >
           <FolderOpen size={16} className="mr-2" />
-          Open Folder
+          {BrowserFileSystem.isFileSystemAccessSupported() ? 'Connect to Directory' : 'Open Folder'}
         </button>
       </div>
     </div>
