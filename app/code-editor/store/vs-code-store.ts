@@ -284,11 +284,18 @@ const useVSCodeStore = create<VSCodeStore>()(
       // Close a file
       closeFile: (fileId) => {
         console.log(`Closing file: ${fileId}`);
-        const newState = closeFileInSystem(get(), fileId);
-        set({ 
-          openFiles: newState.openFiles,
-          activeFileId: newState.activeFileId
-        });
+        const prevOpen = get().openFiles;
+        const prevActive = get().activeFileId;
+        const idx = prevOpen.indexOf(fileId);
+        // Remove the closed file
+        const newOpenFiles = prevOpen.filter(id => id !== fileId);
+        // Determine new active file
+        let newActive: string | null = prevActive === fileId ? null : prevActive;
+        if (prevActive === fileId && newOpenFiles.length > 0) {
+          const neighborIdx = idx < newOpenFiles.length ? idx : newOpenFiles.length - 1;
+          newActive = newOpenFiles[neighborIdx];
+        }
+        set({ openFiles: newOpenFiles, activeFileId: newActive });
       },
       
       // Set active file

@@ -206,11 +206,22 @@ export function closeFileById(
       });
     }
     
-    // Close the file in the store
+    // Close the file in the store and switch to neighbor tab if needed
     const store = useVSCodeStore.getState();
+    const prevOpen = [...store.openFiles];
+    const prevActive = store.activeFileId;
+    const closedIndex = prevOpen.indexOf(fileId);
     store.closeFile(fileId);
     console.log(`FileOperations: File ${fileId} closed in store`);
-    
+    // If the closed tab was active and others remain, activate neighbor
+    if (prevActive === fileId && prevOpen.length > 1) {
+      const neighbourIdx = closedIndex < prevOpen.length - 1 ? closedIndex : closedIndex - 1;
+      const nextId = prevOpen[neighbourIdx];
+      store.setActiveFile(nextId);
+      console.log(`FileOperations: Activated neighbor tab ${nextId}`);
+      // Trigger open to render
+      openFileById(nextId, 5, 100, editorInstances);
+    }
     return true;
   } catch (error) {
     console.error(`FileOperations: Error closing file ${fileId}:`, error);
