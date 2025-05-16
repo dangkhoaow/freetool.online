@@ -1,0 +1,220 @@
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "./jwt-auth-adapter";
+import { toast } from "@/components/ui/use-toast";
+import apiClient from "@/lib/api-client";
+
+// Define types here instead of importing from backend services
+type CreateResourceParams = {
+  name: string;
+  description?: string;
+  url?: string;
+  type?: string;
+  projectId?: string;
+  userId: string;
+};
+
+type UpdateResourceParams = {
+  name?: string;
+  description?: string;
+  url?: string;
+  type?: string;
+  projectId?: string;
+};
+
+// Log initialization of hook for debugging
+console.log('[HOOK] use-resources hook initialized');
+
+export function useResources() {
+  const { data: session } = useSession();
+  
+  return useQuery({
+    queryKey: ["resources"],
+    queryFn: async () => {
+      console.log("[HOOK:RESOURCES] Fetching resources");
+      
+      if (!session?.user?.id) {
+        console.log("[HOOK:RESOURCES] No user session found in useResources");
+        return { data: [], count: 0, error: null };
+      }
+      
+      // Call API endpoint instead of service directly
+      const response = await apiClient.get('resources');
+      console.log("[HOOK:RESOURCES] API response received:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:RESOURCES] Error fetching resources:", response.error);
+        toast({
+          title: "Error fetching resources",
+          description: response.error.message,
+          variant: "destructive"
+        });
+        return { data: [], count: 0, error: response.error };
+      }
+      
+      // Log the complete response for debugging
+      console.log("[HOOK:RESOURCES] Complete response:", response);
+      
+      // Handle different response formats
+      if (response.data) {
+        // If response has a data property that contains an array of resources
+        if (Array.isArray(response.data)) {
+          console.log("[HOOK:RESOURCES] Response data is an array with", response.data.length, "items");
+          return { data: response.data, count: response.data.length, error: null };
+        } else if (typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+          // If response.data has a nested data property that's an array (common API pattern)
+          console.log("[HOOK:RESOURCES] Response has nested data array with", response.data.data.length, "items");
+          return response.data; // Return the complete response object with { data, count, error }
+        } else if (typeof response.data === 'object') {
+          // If response.data is an object but doesn't have a nested data array
+          console.log("[HOOK:RESOURCES] Response data is an object:", response.data);
+          return { data: [response.data], count: 1, error: null };
+        }
+      }
+      
+      console.log("[HOOK:RESOURCES] No valid resource data found in response");
+      return { data: [], count: 0, error: null };
+    },
+    enabled: !!session?.user?.id
+  });
+}
+
+export function useCreateResource() {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  
+  return useMutation({
+    mutationFn: async (newResource: Omit<CreateResourceParams, 'userId'>) => {
+      console.log("[HOOK:RESOURCES] Creating resource:", newResource);
+      
+      if (!session?.user?.id) {
+        console.error("[HOOK:RESOURCES] No user session found in useCreateResource");
+        throw new Error("You must be logged in to create a resource");
+      }
+      
+      // Add user ID to resource and call API endpoint instead of service directly
+      const resourceWithUserId = { ...newResource, userId: session.user.id };
+      const response = await apiClient.post('resources', resourceWithUserId);
+      console.log("[HOOK:RESOURCES] API response received for resource creation:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:RESOURCES] Error creating resource:", response.error);
+        throw response.error;
+      }
+      
+      return response;
+    },
+    onSuccess: (result) => {
+      console.log("[HOOK:RESOURCES] Resource created successfully, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast({
+        title: "Resource created",
+        description: "The resource has been created successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error("[HOOK:RESOURCES] Error in create resource mutation:", error);
+      toast({
+        title: "Error creating resource",
+        description: error.message || "An error occurred while creating the resource.",
+        variant: "destructive"
+      });
+    }
+  });
+}
+
+export function useUpdateResource(resourceId?: string) {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  
+  return useMutation({
+    mutationFn: async (updatedResource: UpdateResourceParams) => {
+      console.log("[HOOK:RESOURCES] Updating resource with ID:", resourceId, "Updates:", updatedResource);
+      
+      if (!resourceId) {
+        console.error("[HOOK:RESOURCES] No resource ID provided to useUpdateResource");
+        throw new Error("Resource ID is required");
+      }
+      
+      if (!session?.user?.id) {
+        console.error("[HOOK:RESOURCES] No user session found in useUpdateResource");
+        throw new Error("You must be logged in to update a resource");
+      }
+      
+      // Call API endpoint instead of service directly
+      const response = await apiClient.put(`resources/${resourceId}`, updatedResource);
+      console.log("[HOOK:RESOURCES] API response received for resource update:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:RESOURCES] Error updating resource:", response.error);
+        throw response.error;
+      }
+      
+      return response;
+    },
+    onSuccess: () => {
+      console.log("[HOOK:RESOURCES] Resource updated successfully, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast({
+        title: "Resource updated",
+        description: "The resource has been updated successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error("[HOOK:RESOURCES] Error in update resource mutation:", error);
+      toast({
+        title: "Error updating resource",
+        description: error.message || "An error occurred while updating the resource.",
+        variant: "destructive"
+      });
+    }
+  });
+}
+
+export function useDeleteResource(resourceId?: string) {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  
+  return useMutation({
+    mutationFn: async () => {
+      console.log("[HOOK:RESOURCES] Deleting resource with ID:", resourceId);
+      
+      if (!resourceId) {
+        console.error("[HOOK:RESOURCES] No resource ID provided to useDeleteResource");
+        throw new Error("Resource ID is required");
+      }
+      
+      if (!session?.user?.id) {
+        console.error("[HOOK:RESOURCES] No user session found in useDeleteResource");
+        throw new Error("You must be logged in to delete a resource");
+      }
+      
+      // Call API endpoint instead of service directly
+      const response = await apiClient.delete(`resources/${resourceId}`);
+      console.log("[HOOK:RESOURCES] API response received for resource deletion:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:RESOURCES] Error deleting resource:", response.error);
+        throw response.error;
+      }
+      
+      return response;
+    },
+    onSuccess: () => {
+      console.log("[HOOK:RESOURCES] Resource deleted successfully, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast({
+        title: "Resource deleted",
+        description: "The resource has been deleted successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error("[HOOK:RESOURCES] Error in delete resource mutation:", error);
+      toast({
+        title: "Error deleting resource",
+        description: error.message || "An error occurred while deleting the resource.",
+        variant: "destructive"
+      });
+    }
+  });
+}

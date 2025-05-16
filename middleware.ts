@@ -94,6 +94,7 @@ export async function middleware(request: NextRequest) {
     'qr-code-generator',
     'steganography-tool',
     'todo-list',
+    'projly',
     'unit-converter',
     'zip-compressor',
     'site-management',
@@ -154,14 +155,25 @@ export async function middleware(request: NextRequest) {
     }
     
     // Only certain parent segments can have child routes
-    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin') {
+    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin' || parentSegment === 'todo-list' || parentSegment === 'projly') {
       // Special known nested routes
       if (parentSegment === 'private-ai-chat' && childSegment === 'debug') {
         return response;
       }
       
+      if (parentSegment === 'todo-list' && childSegment === 'projly') {
+        console.log(`Todo-list projly route allowed: ${path}`);
+        return response;
+      }
+      
       if (parentSegment === 'admin') {
         // Allow all admin nested routes
+        return response;
+      }
+      
+      if (parentSegment === 'projly') {
+        // Allow all projly nested routes (login, dashboard, etc.)
+        console.log(`Projly nested route allowed: ${path}`);
         return response;
       }
       
@@ -198,8 +210,23 @@ export async function middleware(request: NextRequest) {
     });
   }
   
-  // Any deeper nesting is likely invalid
+  // Handle deeper nesting for specific routes
   if (segments.length > 2) {
+    const [parentSegment, secondSegment, ...restSegments] = segments;
+    
+    // Allow todo-list/projly routes to have deeper nesting
+    if (parentSegment === 'todo-list' && secondSegment === 'projly') {
+      console.log(`Allowing deeper nesting for todo-list/projly route: ${path}`);
+      return response;
+    }
+    
+    // Allow projly routes to have deeper nesting
+    if (parentSegment === 'projly') {
+      console.log(`Allowing deeper nesting for projly route: ${path}`);
+      return response;
+    }
+    
+    // For all other paths, deep nesting is not supported
     console.log(`Deeply nested route not supported: ${path}`);
     return new NextResponse(CUSTOM_404_HTML, {
       status: 404,
