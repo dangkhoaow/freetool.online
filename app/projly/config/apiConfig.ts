@@ -57,7 +57,11 @@ export const API_ENDPOINTS = {
   },
   // Tasks endpoints
   TASKS: {
-    BASE: `${API_BASE_URL}/tasks`,
+    ALL: `${API_BASE_URL}/tasks`,
+    BY_ID: `${API_BASE_URL}/tasks/:id`,
+    CREATE: `${API_BASE_URL}/tasks`,
+    UPDATE: `${API_BASE_URL}/tasks/:id`,
+    DELETE: `${API_BASE_URL}/tasks/:id`,
     DETAIL: (id: string) => `${API_BASE_URL}/tasks/${id}`,
   },
 };

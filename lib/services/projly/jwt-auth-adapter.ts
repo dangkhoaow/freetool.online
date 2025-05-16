@@ -200,6 +200,9 @@ export async function signOut(options?: { callbackUrl?: string; redirect?: boole
   try {
     // Client-side implementation
     if (typeof window !== 'undefined') {
+      // First, clear all client-side authentication data
+      console.log('[JWT_AUTH_ADAPTER] Clearing client-side authentication data');
+      
       // Clear the authentication token from cookies
       document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
       
@@ -215,43 +218,53 @@ export async function signOut(options?: { callbackUrl?: string; redirect?: boole
       sessionStorage.removeItem('authState');
       sessionStorage.removeItem('token');
       
+      // Invalidate any query cache if React Query is available
+      try {
+        console.log('[JWT_AUTH_ADAPTER] Invalidating query cache');
+        const queryClientModule = (window as any)['__REACT_QUERY_GLOBAL__'];
+        if (queryClientModule?.queryClient?.invalidateQueries) {
+          await queryClientModule.queryClient.invalidateQueries({ queryKey: ['me'] });
+          await queryClientModule.queryClient.clear();
+          console.log('[JWT_AUTH_ADAPTER] Query cache invalidated and cleared');
+        }
+      } catch (cacheError) {
+        console.error('[JWT_AUTH_ADAPTER] Error invalidating query cache:', cacheError);
+      }
+
       // Call the API to invalidate the session on the server
       try {
-        // Use the correct API endpoint from API_ENDPOINTS
         const logoutEndpoint = API_ENDPOINTS.AUTH.LOGOUT;
+        console.log('[JWT_AUTH_ADAPTER] Calling logout endpoint:', logoutEndpoint);
         
-        console.log('[JWT_AUTH_ADAPTER] Using logout endpoint:', logoutEndpoint);
         const response = await fetch(logoutEndpoint, {
           method: 'POST',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           }
         });
         
-        console.log('[JWT_AUTH_ADAPTER] Server logout response:', response.ok ? 'Success' : 'Failed');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('[JWT_AUTH_ADAPTER] Server logout failed:', response.status, errorData);
+          throw new Error(errorData.message || 'Failed to log out');
+        }
+        
+        console.log('[JWT_AUTH_ADAPTER] Server logout successful');
       } catch (apiError) {
         console.error('[JWT_AUTH_ADAPTER] API logout error:', apiError);
         // Continue with client-side logout even if API call fails
       }
       
-      // Invalidate any query cache if React Query is available
-      try {
-        // This is a safe way to access the query client without importing it directly
-        const queryClientModule = (window as any)['__REACT_QUERY_GLOBAL__'];
-        if (queryClientModule && queryClientModule.queryClient && typeof queryClientModule.queryClient.invalidateQueries === 'function') {
-          queryClientModule.queryClient.invalidateQueries({ queryKey: ['me'] });
-          console.log('[JWT_AUTH_ADAPTER] Invalidated query cache');
-        }
-      } catch (cacheError) {
-        console.error('[JWT_AUTH_ADAPTER] Error invalidating query cache:', cacheError);
-      }
+      // Prepare redirect URL
+      const loginUrl = options?.callbackUrl || '/projly/login';
       
-      // Handle redirect
-      const loginUrl = options?.callbackUrl || '/login';
+      // If redirect is not explicitly set to false, perform the redirect
       if (options?.redirect !== false) {
         console.log(`[JWT_AUTH_ADAPTER] Redirecting to ${loginUrl}`);
-        window.location.href = loginUrl;
+        // Use window.location.replace to prevent the back button from returning to the logged-in state
+        window.location.replace(loginUrl);
       }
       
       return { ok: true, error: null };
@@ -262,6 +275,14 @@ export async function signOut(options?: { callbackUrl?: string; redirect?: boole
     }
   } catch (error) {
     console.error('[JWT_AUTH_ADAPTER] Sign out error:', error);
+    
+    // Even if there was an error, we should still try to redirect to login
+    if (typeof window !== 'undefined' && options?.redirect !== false) {
+      const loginUrl = options?.callbackUrl || '/projly/login';
+      console.log(`[JWT_AUTH_ADAPTER] Error occurred, redirecting to ${loginUrl}`);
+      window.location.replace(loginUrl);
+    }
+    
     return { 
       ok: false, 
       error: error instanceof Error ? error.message : 'Unknown error during sign out'

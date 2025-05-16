@@ -119,29 +119,8 @@ export default function Dashboard() {
           setProjects(projectsData);
         } catch (projectError) {
           console.error('[PROJLY:DASHBOARD] Error fetching projects:', projectError);
-          setErrors(prev => ({ ...prev, projects: 'Could not load projects. Using mock data.' }));
-          
-          // Use mock data as fallback
-          const mockProjects = [
-            {
-              id: '1',
-              name: 'Website Redesign',
-              description: 'Redesign the company website with modern UI/UX',
-              status: 'In Progress',
-              startDate: new Date().toISOString(),
-              endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: '2',
-              name: 'Mobile App Development',
-              description: 'Build a native mobile app for iOS and Android',
-              status: 'Planning',
-              startDate: new Date().toISOString(),
-              endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
-            }
-          ];
-          log('Using mock project data:', mockProjects.length);
-          setProjects(mockProjects);
+          setErrors(prev => ({ ...prev, projects: 'Could not load projects. Please try again later.' }));
+          setProjects([]);
         }
         
         // Fetch user tasks

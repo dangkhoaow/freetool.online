@@ -30,11 +30,17 @@ lib/services/projly/
 
 ## Key Services
 
-### Authentication (jwt-auth-adapter.ts)
+### Authentication (jwt-auth-adapter.ts) (Updated 2025-05-16)
 - Manages JWT authentication state
-- Provides login/logout functionality
+- Provides enhanced registration with validation:
+  - Email format validation using regex
+  - Password strength validation (minimum 8 characters)
+  - Comprehensive error handling with specific messages
+- Secure login with proper error handling
+- Password reset and change functionality
 - Exposes current user session information
 - Refreshes tokens automatically
+- Detailed error feedback for better user experience
 
 ### Project Management (use-projects.ts)
 - Fetch all accessible projects

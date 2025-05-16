@@ -6,6 +6,21 @@ import { useSession } from "./jwt-auth-adapter";
 // Using relative import for api-client to avoid module resolution issues
 import apiClient from "../../api-client";
 
+// Define API response types
+interface ApiResponse<T> {
+  data: T | null;
+  error: string | { message: string } | null;
+  success: boolean;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Log import paths for debugging
 console.log('[use-projects] Importing useSession from "./jwt-auth-adapter"');
 
@@ -26,15 +41,21 @@ export function useProjects() {
       const userId = session.user.id;
       console.log("[HOOK:PROJECTS] Fetching projects for user:", userId);
       
-      // Call API endpoint instead of service directly
-      const response = await apiClient.get('projects');
-      console.log("[HOOK:PROJECTS] API response received:", response.error ? 'Error' : 'Success');
+      // Call API endpoint using the configured endpoint
+      const response = await apiClient.get<Project[]>('api/projly/projects');
+      console.log("[HOOK:PROJECTS] API response received:", response.success ? 'Success' : 'Error');
       
-      if (response.error) {
+      if (!response.success) {
         console.error("[HOOK:PROJECTS] Error fetching projects:", response.error);
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? response.error.message || String(response.error) 
+            : 'Failed to fetch projects';
+        
         toast({
           title: "Error fetching projects",
-          description: response.error.message,
+          description: errorMessage,
           variant: "destructive"
         });
         return [];

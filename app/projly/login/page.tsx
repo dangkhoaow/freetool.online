@@ -193,7 +193,7 @@ export default function LoginPage() {
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">
-            <p className="text-sm text-center">
+            <p className="text-sm text-center mb-4">
               Don't have an account?{" "}
               <Link href="/projly/register" className="text-primary font-medium hover:underline">
                 Sign up

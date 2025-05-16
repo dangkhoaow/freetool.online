@@ -33,30 +33,28 @@ const getAuthToken = (): string | null => {
 
 // Build the API base URL
 const getBaseUrl = () => {
-  // Use the same logic as in apiConfig.ts to determine base URL
-  // This ensures we're using the exact same URL calculation method
-  const isBrowser = typeof window !== 'undefined';
+  // For local development, use the hardcoded port
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  }
   
-  if (isBrowser) {
-    // In browser environment, use the current window location
+  // In production, use the same host as the frontend
+  if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    
-    // For local development, use the hardcoded port
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    }
-    
-    // For production, use the same host as the frontend
     return `${protocol}//${hostname}`;
   }
   
-  // Fallback for SSR or non-browser environments
+  // Fallback for SSR
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 };
 
+// Get the base URL for API requests
+const API_BASE_URL = `${getBaseUrl()}`;
+
 // Log the API base URL for debugging
-console.log('[API_CLIENT] Base URL:', getBaseUrl());
+console.log('[API_CLIENT] Environment:', process.env.NODE_ENV);
+console.log('[API_CLIENT] API Base URL:', API_BASE_URL);
 
 /**
  * Generic function to handle API responses and errors
@@ -64,37 +62,43 @@ console.log('[API_CLIENT] Base URL:', getBaseUrl());
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
   console.log(`[API_CLIENT] Received response with status: ${response.status}`);
   
-  if (!response.ok) {
-    console.error(`[API_CLIENT] Error response: ${response.status}`);
-    try {
-      const errorData = await response.json();
-      console.error('[API_CLIENT] Error data:', errorData);
+  try {
+    const responseText = await response.text();
+    let jsonData: any;
+    
+    // Try to parse the response as JSON if it's not empty
+    if (responseText) {
+      try {
+        jsonData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('[API_CLIENT] Error parsing JSON response:', e);
+        return {
+          data: {} as T,
+          error: 'Invalid response from server',
+          success: false
+        };
+      }
+    }
+    
+    if (!response.ok) {
+      console.error(`[API_CLIENT] Error response ${response.status}:`, jsonData || responseText);
       return {
         data: {} as T,
-        error: errorData.message || 'Unknown error occurred',
-        success: false
-      };
-    } catch (e) {
-      return {
-        data: {} as T,
-        error: `HTTP error ${response.status}`,
+        error: jsonData?.message || jsonData?.error || `HTTP error ${response.status}`,
         success: false
       };
     }
-  }
-  
-  try {
-    const jsonData = await response.json();
-    console.log('[API_CLIENT] Successfully parsed JSON response');
+    
+    console.log('[API_CLIENT] Successfully processed response');
     return {
-      data: jsonData.data || jsonData,
+      data: jsonData?.data !== undefined ? jsonData.data : jsonData,
       success: true
     };
   } catch (e) {
-    console.error('[API_CLIENT] Error parsing JSON:', e);
+    console.error('[API_CLIENT] Error handling response:', e);
     return {
       data: {} as T,
-      error: 'Failed to parse response',
+      error: e instanceof Error ? e.message : 'An unknown error occurred',
       success: false
     };
   }
@@ -127,10 +131,24 @@ const apiClient = {
    */
   get: async <T = any>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> => {
     try {
-      const url = new URL(`${getBaseUrl()}/${endpoint.replace(/^\//, '')}`);
+      console.log(`[API_CLIENT] GET request to: ${endpoint}`, params);
+      
+      // Clean up the endpoint by removing any leading/trailing slashes
+      const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, '');
+      
+      // Check if the endpoint is already a full URL
+      let url: URL;
+      try {
+        // If it's a valid URL, use it as is
+        url = new URL(cleanEndpoint);
+      } catch (e) {
+        // If not a valid URL, treat it as a relative path
+        url = new URL(`${API_BASE_URL}/${cleanEndpoint}`);
+      }
       
       // Add query parameters if provided
       if (params) {
+        console.log('[API_CLIENT] Adding query params:', params);
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
             url.searchParams.append(key, String(value));
@@ -138,20 +156,22 @@ const apiClient = {
         });
       }
       
-      console.log(`[API_CLIENT] GET request to: ${url.toString()}`);
+      console.log(`[API_CLIENT] Final URL: ${url.toString()}`);
       
-      const response = await fetch(url.toString(), {
+      const headers = await createHeaders();
+      const init: RequestInit = {
         method: 'GET',
-        headers: createHeaders(),
-        credentials: 'include'
-      });
-      
-      return await handleResponse<T>(response);
+        headers,
+        credentials: 'include',
+      };
+
+      const response = await fetch(url.toString(), init);
+      return handleResponse<T>(response);
     } catch (error) {
-      console.error('[API_CLIENT] GET request failed:', error);
+      console.error('[API_CLIENT] Error in GET request:', error);
       return {
         data: {} as T,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Network error',
         success: false
       };
     }
@@ -164,22 +184,42 @@ const apiClient = {
    */
   post: async <T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
     try {
-      const url = `${getBaseUrl()}/${endpoint.replace(/^\//, '')}`;
-      console.log(`[API_CLIENT] POST request to: ${url}`);
+      console.log(`[API_CLIENT] POST request to: ${endpoint}`, data);
       
-      const response = await fetch(url, {
+      // Clean up the endpoint by removing any leading/trailing slashes
+      const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, '');
+      
+      // Check if the endpoint is already a full URL
+      let url: URL;
+      try {
+        // If it's a valid URL, use it as is
+        url = new URL(cleanEndpoint);
+      } catch (e) {
+        // If not a valid URL, treat it as a relative path
+        url = new URL(`${API_BASE_URL}/${cleanEndpoint}`);
+      }
+      
+      console.log(`[API_CLIENT] Final URL: ${url.toString()}`);
+      
+      const headers = await createHeaders();
+      const init: RequestInit = {
         method: 'POST',
-        headers: createHeaders(),
-        body: data ? JSON.stringify(data) : undefined,
-        credentials: 'include'
-      });
-      
-      return await handleResponse<T>(response);
+        headers,
+        credentials: 'include',
+      };
+
+      // Only add body if data is provided
+      if (data !== undefined) {
+        init.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(url.toString(), init);
+      return handleResponse<T>(response);
     } catch (error) {
-      console.error('[API_CLIENT] POST request failed:', error);
+      console.error('[API_CLIENT] Error in POST request:', error);
       return {
         data: {} as T,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Network error',
         success: false
       };
     }
@@ -192,22 +232,42 @@ const apiClient = {
    */
   put: async <T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
     try {
-      const url = `${getBaseUrl()}/${endpoint.replace(/^\//, '')}`;
-      console.log(`[API_CLIENT] PUT request to: ${url}`);
+      console.log(`[API_CLIENT] PUT request to: ${endpoint}`, data);
       
-      const response = await fetch(url, {
+      // Clean up the endpoint by removing any leading/trailing slashes
+      const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, '');
+      
+      // Check if the endpoint is already a full URL
+      let url: URL;
+      try {
+        // If it's a valid URL, use it as is
+        url = new URL(cleanEndpoint);
+      } catch (e) {
+        // If not a valid URL, treat it as a relative path
+        url = new URL(`${API_BASE_URL}/${cleanEndpoint}`);
+      }
+      
+      console.log(`[API_CLIENT] Final URL: ${url.toString()}`);
+      
+      const headers = await createHeaders();
+      const init: RequestInit = {
         method: 'PUT',
-        headers: createHeaders(),
-        body: data ? JSON.stringify(data) : undefined,
-        credentials: 'include'
-      });
-      
-      return await handleResponse<T>(response);
+        headers,
+        credentials: 'include',
+      };
+
+      // Only add body if data is provided
+      if (data !== undefined) {
+        init.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(url.toString(), init);
+      return handleResponse<T>(response);
     } catch (error) {
-      console.error('[API_CLIENT] PUT request failed:', error);
+      console.error('[API_CLIENT] Error in PUT request:', error);
       return {
         data: {} as T,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Network error',
         success: false
       };
     }
@@ -217,23 +277,44 @@ const apiClient = {
    * Perform a DELETE request to the API
    * @param endpoint - API endpoint to call (without base URL)
    */
-  delete: async <T = any>(endpoint: string): Promise<ApiResponse<T>> => {
+  delete: async <T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
     try {
-      const url = `${getBaseUrl()}/${endpoint.replace(/^\//, '')}`;
-      console.log(`[API_CLIENT] DELETE request to: ${url}`);
+      console.log(`[API_CLIENT] DELETE request to: ${endpoint}`, data);
       
-      const response = await fetch(url, {
+      // Clean up the endpoint by removing any leading/trailing slashes
+      const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, '');
+      
+      // Check if the endpoint is already a full URL
+      let url: URL;
+      try {
+        // If it's a valid URL, use it as is
+        url = new URL(cleanEndpoint);
+      } catch (e) {
+        // If not a valid URL, treat it as a relative path
+        url = new URL(`${API_BASE_URL}/${cleanEndpoint}`);
+      }
+      
+      console.log(`[API_CLIENT] Final URL: ${url.toString()}`);
+      
+      const headers = await createHeaders();
+      const init: RequestInit = {
         method: 'DELETE',
-        headers: createHeaders(),
-        credentials: 'include'
-      });
-      
-      return await handleResponse<T>(response);
+        headers,
+        credentials: 'include',
+      };
+
+      // Only add body if data is provided
+      if (data !== undefined) {
+        init.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(url.toString(), init);
+      return handleResponse<T>(response);
     } catch (error) {
-      console.error('[API_CLIENT] DELETE request failed:', error);
+      console.error('[API_CLIENT] Error in DELETE request:', error);
       return {
         data: {} as T,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Network error',
         success: false
       };
     }
@@ -246,22 +327,42 @@ const apiClient = {
    */
   patch: async <T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
     try {
-      const url = `${getBaseUrl()}/${endpoint.replace(/^\//, '')}`;
-      console.log(`[API_CLIENT] PATCH request to: ${url}`);
+      console.log(`[API_CLIENT] PATCH request to: ${endpoint}`, data);
       
-      const response = await fetch(url, {
+      // Clean up the endpoint by removing any leading/trailing slashes
+      const cleanEndpoint = endpoint.replace(/^\/+|\/+$/g, '');
+      
+      // Check if the endpoint is already a full URL
+      let url: URL;
+      try {
+        // If it's a valid URL, use it as is
+        url = new URL(cleanEndpoint);
+      } catch (e) {
+        // If not a valid URL, treat it as a relative path
+        url = new URL(`${API_BASE_URL}/${cleanEndpoint}`);
+      }
+      
+      console.log(`[API_CLIENT] Final URL: ${url.toString()}`);
+      
+      const headers = await createHeaders();
+      const init: RequestInit = {
         method: 'PATCH',
-        headers: createHeaders(),
-        body: data ? JSON.stringify(data) : undefined,
-        credentials: 'include'
-      });
-      
-      return await handleResponse<T>(response);
+        headers,
+        credentials: 'include',
+      };
+
+      // Only add body if data is provided
+      if (data !== undefined) {
+        init.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(url.toString(), init);
+      return handleResponse<T>(response);
     } catch (error) {
-      console.error('[API_CLIENT] PATCH request failed:', error);
+      console.error('[API_CLIENT] Error in PATCH request:', error);
       return {
         data: {} as T,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Network error',
         success: false
       };
     }

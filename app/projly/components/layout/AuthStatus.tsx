@@ -82,16 +82,22 @@ export const AuthStatus = () => {
   const handleLogout = async () => {
     log('Initiating logout');
     try {
+      // Call the signOut method with explicit callbackUrl
       const result = await projlyAuthService.signOut();
       
       if (result.success) {
         log('Logout successful, redirecting to login');
-        router.push('/projly/login');
+        // Let the signOut function handle the redirect
+        // The redirect is handled in jwt-auth-adapter.ts
       } else {
         log('Logout failed:', result.error);
+        // Fallback redirect if the signOut method fails
+        router.push('/projly/login');
       }
     } catch (error) {
       console.error('[PROJLY:AUTH_STATUS] Logout failed:', error);
+      // Fallback redirect if an exception occurs
+      router.push('/projly/login');
     }
   };
 
