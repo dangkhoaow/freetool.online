@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { useProfiles } from "@/lib/services/projly/use-profile";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
-import { projlyAuthService, projlyProjectsService } from '@/lib/services/projly';
+import { projlyProjectsService } from '@/lib/services/projly';
 
 type ProjectFormValues = {
   name: string;
@@ -31,9 +32,31 @@ type ProjectFormValues = {
   canManageMembers: boolean;
 };
 
-// Interface to represent user profiles for the owner selection
-type User = {
+// Interface for user data from the API
+interface ApiUser {
   id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+// Interface for profile data from the API
+interface Profile {
+  id: string;
+  userId: string;
+  user: ApiUser;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Interface for user data in the dropdown
+interface User {
+  id: string;
+  userId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -41,133 +64,73 @@ type User = {
 
 export default function CreateProjectPage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Function to handle logging
-  const log = (message: string, data?: any) => {
-    if (data) {
-      console.log(`[PROJLY:CREATE-PROJECT] ${message}`, data);
-    } else {
-      console.log(`[PROJLY:CREATE-PROJECT] ${message}`);
-    }
-  };
+  // Fetch all user profiles for owner selection
+  const { data: profiles = [], isLoading: loadingUsers } = useProfiles();
   
-  log('Rendering CreateProject page');
+  // Transform the profile data for the dropdown
+  const users = profiles.map((profile: Profile) => ({
+    id: profile.id,
+    userId: profile.userId,
+    firstName: profile.user.firstName || 'Unknown',
+    lastName: profile.user.lastName || 'User',
+    email: profile.user.email || 'No email'
+  }));
   
-  // Check authentication and fetch users on page load
-  useEffect(() => {
-    const checkAuthAndLoadUsers = async () => {
-      try {
-        log('Checking authentication');
-        const isAuthenticated = await projlyAuthService.isAuthenticated();
-        
-        if (!isAuthenticated) {
-          log('User not authenticated, redirecting to login');
-          router.push('/projly/login');
-          return;
-        }
-        
-        log('Getting current user');
-        const user = projlyAuthService.getCurrentUser();
-        setCurrentUser(user);
-        log('Current user:', user);
-        
-        // In a real implementation, we would fetch profiles here
-        // For now, we'll just use the current user as the only available user
-        if (user) {
-          setUsers([{
-            id: user.id,
-            firstName: user.firstName || '',
-            lastName: user.lastName || '',
-            email: user.email || ''
-          }]);
-        }
-        
-        log('Users loaded');
-      } catch (error) {
-        console.error('[PROJLY:CREATE-PROJECT] Error initializing page:', error);
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
-    
-    checkAuthAndLoadUsers();
-  }, [router]);
-
-  // Initialize form with react-hook-form
+  // Initialize form with default values
   const form = useForm<ProjectFormValues>({
     defaultValues: {
-      name: "",
-      description: "",
-      startDate: "",
-      endDate: "",
-      status: "Planning",
-      ownerId: currentUser?.id || "",
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      status: 'draft',
+      ownerId: users[0]?.id || '',
       canManageMembers: true
     }
   });
   
-  // Update owner ID when current user is loaded
-  useEffect(() => {
-    if (currentUser?.id) {
-      form.setValue('ownerId', currentUser.id);
-      log('Updated form owner ID with current user ID');
-    }
-  }, [currentUser, form]);
-  
-  log('Form initialized with defaults', form.getValues());
+  // Log form values when they change
+  const formValues = form.watch();
+  console.log('Form values:', formValues);
 
-  const onSubmit = async (values: ProjectFormValues) => {
+  const onSubmit = async (data: ProjectFormValues) => {
+    console.log('Form submitted with data:', data);
+    setIsSubmitting(true);
+    
     try {
-      setIsSubmitting(true);
-      log('Submitting project form with values:', values);
-      
-      // Format dates as needed for ISO-8601 compatibility
-      const formattedValues = {
-        ...values,
-        startDate: values.startDate ? new Date(values.startDate).toISOString() : undefined,
-        endDate: values.endDate ? new Date(values.endDate).toISOString() : undefined
-      };
-      
-      log('Formatted dates to ISO-8601:', {
-        originalStartDate: values.startDate,
-        formattedStartDate: formattedValues.startDate,
-        originalEndDate: values.endDate,
-        formattedEndDate: formattedValues.endDate
+      console.log('Creating project with data:', data);
+      const response = await projlyProjectsService.createProject({
+        ...data,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        endDate: data.endDate ? new Date(data.endDate) : null
       });
       
-      log('Calling createProject with formatted values:', formattedValues);
-      const createdProject = await projlyProjectsService.createProject(formattedValues);
+      console.log('Project created successfully:', response);
       
-      if (createdProject) {
-        log('Project created successfully:', createdProject);
-        toast({
-          title: "Success",
-          description: "Project created successfully"
-        });
-        router.push("/projly/projects");
-      } else {
-        log('Project creation failed - no data returned');
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to create project"
-        });
-      }
-    } catch (error) {
-      console.error("[PROJLY:CREATE-PROJECT] Unexpected error:", error);
+      // Show success message
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "An error occurred while creating the project"
+        title: 'Success!',
+        description: 'Project created successfully.',
+        variant: 'default',
+      });
+      
+      // Redirect to projects list
+      router.push('/projly/projects');
+    } catch (error) {
+      console.error('Error creating project:', error);
+      
+      // Show error message
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
-      log('Form submission completed');
+      console.log('Form submission completed');
     }
   };
 
@@ -261,7 +224,7 @@ export default function CreateProjectPage() {
                         {loadingUsers ? (
                           <option>Loading users...</option>
                         ) : (
-                          users.map((user) => (
+                          users.map((user: User) => (
                             <option key={user.id} value={user.id}>
                               {`${user.firstName} ${user.lastName} (${user.email})`}
                             </option>
