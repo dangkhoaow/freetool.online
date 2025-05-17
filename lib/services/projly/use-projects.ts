@@ -78,8 +78,8 @@ export function useProject(id: string | undefined) {
       }
       
       console.log("[HOOK:PROJECTS] Fetching project with ID:", id);
-      // Call API endpoint instead of service directly
-      const response = await apiClient.get(`projects/${id}`);
+      // Call API endpoint with the correct path (no leading slash as the base URL is already included)
+      const response = await apiClient.get(`api/projly/projects/${id}`);
       console.log("[HOOK:PROJECTS] API response received for project details:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

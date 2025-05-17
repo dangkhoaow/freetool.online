@@ -5,14 +5,71 @@
  * to avoid circular dependencies and provide type consistency.
  */
 
+import { UseQueryResult, UseMutationResult } from "@tanstack/react-query";
+
 // Log initialization for debugging
 console.log('[TYPES] Loading Projly service types');
 
 // User role types
-export type UserRole = 'admin' | 'manager' | 'editor' | 'user' | 'guest' | 'site_owner' | 'regular_user';
-export type AppRole = 'admin' | 'manager' | 'editor' | 'user' | 'guest' | 'site_owner' | 'regular_user';
+export type AppRole = 'admin' | 'user' | 'guest' | 'editor' | 'viewer' | 'manager' | 'site_owner' | 'regular_user';
+export type UserRole = AppRole;
 
-// Define interfaces for request parameters
+// API Response Types
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+}
+
+export interface ApiResponse<T = any> {
+  data: T | null;
+  error: ApiError | string | null;
+  message?: string;
+  status?: number;
+  statusCode?: number;
+  success?: boolean;
+}
+
+export interface ApiClientResponse<T = any> {
+  data: T | null;
+  error: ApiError | null;
+  message?: string;
+  status?: number;
+}
+
+export interface ApiClient {
+  get<T = any>(url: string): Promise<ApiClientResponse<T>>;
+  post<T = any>(url: string, data?: any): Promise<ApiClientResponse<T>>;
+  put<T = any>(url: string, data?: any): Promise<ApiClientResponse<T>>;
+  delete<T = any>(url: string): Promise<ApiClientResponse<T>>;
+}
+
+// User and Role Types
+
+export interface UserWithSettings {
+  id: string;
+  userId: string;
+  email: string;
+  role: UserRole;
+  activationStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    [key: string]: any;
+  };
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  image?: string;
+  emailVerified?: Date | null;
+  settings?: Record<string, any>;
+}
+
 export interface UserRoleUpdateParams {
   userId: string;
   role: UserRole;
@@ -20,37 +77,35 @@ export interface UserRoleUpdateParams {
 
 export interface ActivationStatusUpdateParams {
   userId: string;
-  status: string;
+  isActive: boolean;
+  status?: string; // For backward compatibility
 }
 
 export interface PasswordResetParams {
   userId: string;
-  password: string;
+  newPassword: string;
+  password?: string; // For backward compatibility
 }
 
-// Define interface for user settings
-export interface UserWithSettings {
-  id: string;
-  userId: string;
-  role: UserRole;
-  activationStatus: string;
-  createdAt: string;
-  updatedAt: string;
-  user?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  };
+// Hook Return Types
+
+export interface UseUserRolesReturn {
+  users: UseQueryResult<UserWithSettings[], Error>;
+  currentUserRole: UseQueryResult<UserRole, Error>;
+  updateUserRole: UseMutationResult<ApiResponse<{ message?: string }>, Error, UserRoleUpdateParams>;
+  updateActivationStatus: UseMutationResult<ApiResponse<{ message?: string }>, Error, ActivationStatusUpdateParams>;
+  resetPassword: UseMutationResult<ApiResponse<any>, Error, PasswordResetParams>;
+  hasRole: (role: UserRole) => Promise<boolean>;
 }
 
-// Error interface with message property
+// Error Handling
+
 export interface ErrorWithMessage {
   message: string;
   status?: number | string;
   code?: string | number;
 }
 
-// Type guard for checking if an error object has a message property
 export function isErrorWithMessage(error: any): error is ErrorWithMessage {
   return (
     typeof error === 'object' && 
@@ -60,37 +115,8 @@ export function isErrorWithMessage(error: any): error is ErrorWithMessage {
   );
 }
 
-// Helper to get error message safely
-export function getErrorMessage(error: unknown): string {
-  if (isErrorWithMessage(error)) {
-    return error.message;
-  }
-  
-  if (error instanceof Error) {
-    return error.message;
-  }
-  
-  if (typeof error === 'string') {
-    return error;
-  }
-  
-  return 'Unknown error occurred';
-}
+// Project and Task Types (kept for backward compatibility)
 
-// Helper to get error status safely
-export function getErrorStatus(error: unknown): string | number | undefined {
-  if (isErrorWithMessage(error) && error.status) {
-    return error.status;
-  }
-  
-  if (typeof error === 'object' && error !== null && 'status' in error) {
-    return String(error.status);
-  }
-  
-  return undefined;
-}
-
-// Project and task types
 export interface Project {
   id: string;
   name: string;

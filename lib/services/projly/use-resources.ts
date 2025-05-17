@@ -38,18 +38,26 @@ export function useResources() {
         return { data: [], count: 0, error: null };
       }
       
-      // Call API endpoint instead of service directly
-      const response = await apiClient.get('resources');
+      // Call API endpoint with the correct path (no leading slash as the base URL is already included)
+      const response = await apiClient.get('api/projly/resources');
       console.log("[HOOK:RESOURCES] API response received:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:RESOURCES] Error fetching resources:", response.error);
+        let errorMessage = 'Failed to fetch resources';
+        
+        if (typeof response.error === 'string') {
+          errorMessage = response.error;
+        } else if (response.error && typeof response.error === 'object' && 'message' in response.error) {
+          errorMessage = String(response.error.message);
+        }
+        
         toast({
           title: "Error fetching resources",
-          description: response.error.message,
+          description: errorMessage,
           variant: "destructive"
         });
-        return { data: [], count: 0, error: response.error };
+        return { data: [], count: 0, error: errorMessage };
       }
       
       // Log the complete response for debugging
@@ -92,9 +100,9 @@ export function useCreateResource() {
         throw new Error("You must be logged in to create a resource");
       }
       
-      // Add user ID to resource and call API endpoint instead of service directly
+      // Add user ID to resource and call API endpoint with the correct path
       const resourceWithUserId = { ...newResource, userId: session.user.id };
-      const response = await apiClient.post('resources', resourceWithUserId);
+      const response = await apiClient.post('api/projly/resources', resourceWithUserId);
       console.log("[HOOK:RESOURCES] API response received for resource creation:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -142,7 +150,7 @@ export function useUpdateResource(resourceId?: string) {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.put(`resources/${resourceId}`, updatedResource);
+      const response = await apiClient.put(`api/projly/resources/${resourceId}`, updatedResource);
       console.log("[HOOK:RESOURCES] API response received for resource update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -190,7 +198,7 @@ export function useDeleteResource(resourceId?: string) {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.delete(`resources/${resourceId}`);
+      const response = await apiClient.delete(`api/projly/resources/${resourceId}`);
       console.log("[HOOK:RESOURCES] API response received for resource deletion:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+"use client";
+
+import { useState } from "react";
 import { Project, Task, Resource } from "@/types";
-import { useParams, useNavigate } from "react-router-dom";
-import { useProject } from "@/hooks/use-projects";
-import { useTasks } from "@/hooks/use-tasks";
-import { useResources } from "@/hooks/use-resources";
+import { useRouter } from "next/navigation";
+import { useProject } from "@/lib/services/projly/use-projects";
+import { useTasks } from "@/lib/services/projly/use-tasks";
+import { useResources } from "@/lib/services/projly/use-resources";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +17,12 @@ import { TaskDialog } from "@/components/projects/TaskDialog";
 import { ResourceDialog } from "@/components/projects/ResourceDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export default function ProjectDetail() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const navigate = useNavigate();
+interface ProjectDetailProps {
+  projectId: string;
+}
+
+export default function ProjectDetail({ projectId }: ProjectDetailProps) {
+  const router = useRouter();
   
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const { data: projectTasks, isLoading: tasksLoading } = useTasks({ projectId });
@@ -51,7 +56,7 @@ export default function ProjectDetail() {
   console.log("[ProjectDetail] Resources after filtering:", filteredResources);
   
   const handleBackClick = () => {
-    navigate("/projects");
+    router.push("/projly/projects");
   };
 
   const handleTaskClick = (taskId: string) => {
@@ -73,8 +78,8 @@ export default function ProjectDetail() {
   if (!project) {
     console.log("[ProjectDetail] Project not found for ID:", projectId);
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center py-8">
+      <div className="container mx-auto pt-16">
+        <div className="text-center pt-16">
           <h2 className="text-2xl font-bold">Project not found</h2>
           <Button className="mt-4" onClick={handleBackClick}>
             Back to Projects
@@ -103,7 +108,7 @@ export default function ProjectDetail() {
           <h1 className="text-3xl font-bold tracking-tight">{(project as Project).name}</h1>
           <p className="text-muted-foreground mt-1">{(project as Project).description}</p>
         </div>
-        <Button onClick={() => navigate(`/projects/${projectId}/edit`)} variant="outline">
+        <Button onClick={() => router.push(`/projly/projects/${projectId}/edit`)} variant="outline">
           Edit Project
         </Button>
       </div>

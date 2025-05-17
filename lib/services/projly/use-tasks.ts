@@ -51,19 +51,17 @@ export function useTasks(filters?: { projectId?: string; assignedTo?: string; st
       console.log("[HOOK:TASKS] Making API request with params:", queryParams);
       
       try {
-        const response = await apiClient.get<ApiResponse<Task[]>>(API_ENDPOINTS.TASKS.ALL, queryParams);
+        // Use the endpoint path without the base URL since it's already included in the API client
+        const response = await apiClient.get<Task[]>('api/projly/tasks', queryParams);
         console.log("[HOOK:TASKS] API response received:", response.error ? 'Error' : 'Success');
         
         if (response.error) {
           throw new Error(response.error);
         }
         
-        if (!response.data) {
-          return [];
-        }
-        
-        console.log("[HOOK:TASKS] Tasks data received, count:", response.data.length);
-        return response.data;
+        const tasks = response.data || [];
+        console.log("[HOOK:TASKS] Tasks data received, count:", tasks.length);
+        return tasks;
       } catch (error) {
         console.error("[HOOK:TASKS] Error fetching tasks:", error);
         toast({
@@ -92,9 +90,7 @@ export function useTask(id: string | undefined) {
       }
       
       try {
-        const response = await apiClient.get<ApiResponse<Task>>(
-          API_ENDPOINTS.TASKS.BY_ID.replace(':id', id)
-        );
+        const response = await apiClient.get<Task>(`api/projly/tasks/${id}`);
         
         console.log("[HOOK:TASKS] API response received for task details:", response.error ? 'Error' : 'Success');
         
@@ -102,12 +98,7 @@ export function useTask(id: string | undefined) {
           throw new Error(response.error);
         }
         
-        if (!response.data) {
-          return null;
-        }
-        
-        console.log("Task data response:", response.data);
-        return response.data;
+        return response.data || null;
       } catch (error) {
         console.error("[HOOK:TASKS] Error fetching task:", error);
         toast({
@@ -131,40 +122,42 @@ export function useCreateTask() {
       console.log("[HOOK:TASKS] Creating task:", task);
       
       if (!session?.user?.id) {
-        throw new Error("Authentication required");
+        throw new Error('User not authenticated');
       }
-
-      try {
-        const response = await apiClient.post<ApiResponse<Task>>(
-          API_ENDPOINTS.TASKS.CREATE, 
-          task
-        );
-        
-        console.log("[HOOK:TASKS] API response received:", response.error ? 'Error' : 'Success');
-
-        if (response.error) {
-          throw new Error(response.error);
-        }
-
-        if (!response.data) {
-          throw new Error('No data returned from server');
-        }
-
-        console.log("[HOOK:TASKS] Task created successfully:", response.data);
-        return response.data;
-      } catch (error) {
-        console.error("[HOOK:TASKS] Error creating task:", error);
+      
+      const response = await apiClient.post<Task>('api/projly/tasks', task);
+      console.log("[HOOK:TASKS] Task creation response:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
         toast({
           title: "Error creating task",
-          description: error instanceof Error ? error.message : 'Failed to create task',
+          description: response.error,
           variant: "destructive"
         });
-        throw error;
+        throw new Error(response.error);
       }
+      
+      if (!response.data) {
+        throw new Error('No data returned from server');
+      }
+      
+      return response.data;
     },
     onSuccess: () => {
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      toast({
+        title: "Task created successfully",
+        variant: "default"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error creating task",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   });
 }

@@ -103,12 +103,12 @@ export function usePages() {
   return useQuery<Page[]>({
     queryKey: ['pages'],
     queryFn: async () => {
-      console.log('[usePages] Fetching all pages');
-      const response = await apiClient.get<ApiResponse<Page[]>>('/api/pages');
-      console.log('[usePages] Fetched pages:', response.data?.data?.length || 0);
-      return response.data?.data || [];
+      if (!session?.user?.id) return [];
+      const response = await apiClient.get<Page[]>("api/projly/pages");
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
     },
-    enabled: !!session?.user
+    enabled: !!session?.user?.id
   });
 }
 
@@ -118,15 +118,16 @@ export function usePages() {
 export function usePageBySlug(slug: string) {
   const { data: session } = useSession();
   
-  return useQuery<Page | null>({
+  return useQuery<Page>({
     queryKey: ['page', slug],
     queryFn: async () => {
-      console.log('[usePageBySlug] Fetching page by slug:', slug);
-      const response = await apiClient.get<ApiResponse<Page>>(`/api/pages/slug/${slug}`);
-      console.log('[usePageBySlug] Fetched page:', response.data?.data?.id);
-      return response.data?.data || null;
+      if (!session?.user?.id) throw new Error("Not authenticated");
+      const response = await apiClient.get<Page>(`api/projly/pages/slug/${slug}`);
+      if (response.error) throw new Error(response.error);
+      if (!response.data) throw new Error("Page not found");
+      return response.data;
     },
-    enabled: !!slug && !!session?.user
+    enabled: !!session?.user?.id && !!slug
   });
 }
 
@@ -139,12 +140,12 @@ export function usePageById(id: string) {
   return useQuery<Page | null>({
     queryKey: ['page', id],
     queryFn: async () => {
-      console.log('[usePageById] Fetching page by id:', id);
-      const response = await apiClient.get<ApiResponse<Page>>(`/api/pages/${id}`);
-      console.log('[usePageById] Fetched page:', response.data?.data?.title);
-      return response.data?.data || null;
+      if (!session?.user?.id) return null;
+      const response = await apiClient.get<Page>(`api/projly/pages/${id}`);
+      if (response.error) throw new Error(response.error);
+      return response.data || null;
     },
-    enabled: !!id && !!session?.user
+    enabled: !!session?.user?.id && !!id
   });
 }
 
@@ -157,12 +158,12 @@ export function usePageSections(pageId: string) {
   return useQuery<PageSection[]>({
     queryKey: ['page-sections', pageId],
     queryFn: async () => {
-      console.log('[usePageSections] Fetching page sections for page:', pageId);
-      const response = await apiClient.get<ApiResponse<PageSection[]>>(`/api/pages/${pageId}/sections`);
-      console.log('[usePageSections] Fetched sections:', response.data?.data?.length || 0);
-      return response.data?.data || [];
+      if (!session?.user?.id) return [];
+      const response = await apiClient.get<PageSection[]>(`api/projly/pages/${pageId}/sections`);
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
     },
-    enabled: !!pageId && !!session?.user
+    enabled: !!session?.user?.id && !!pageId
   });
 }
 
@@ -175,12 +176,12 @@ export function usePageTemplates() {
   return useQuery<PageTemplate[]>({
     queryKey: ['page-templates'],
     queryFn: async () => {
-      console.log('[usePageTemplates] Fetching page templates');
-      const response = await apiClient.get<ApiResponse<PageTemplate[]>>('/api/pages/templates/all');
-      console.log('[usePageTemplates] Fetched templates:', response.data?.data?.length || 0);
-      return response.data?.data || [];
+      if (!session?.user?.id) return [];
+      const response = await apiClient.get<PageTemplate[]>("api/projly/pages/templates");
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
     },
-    enabled: !!session?.user
+    enabled: !!session?.user?.id
   });
 }
 
@@ -193,12 +194,12 @@ export function usePageRevisions(pageId: string) {
   return useQuery<PageRevision[]>({
     queryKey: ['page-revisions', pageId],
     queryFn: async () => {
-      console.log('[usePageRevisions] Fetching page revisions for page:', pageId);
-      const response = await apiClient.get<ApiResponse<PageRevision[]>>(`/api/pages/${pageId}/revisions`);
-      console.log('[usePageRevisions] Fetched revisions:', response.data?.data?.length || 0);
-      return response.data?.data || [];
+      if (!session?.user?.id) return [];
+      const response = await apiClient.get<PageRevision[]>(`api/projly/pages/${pageId}/revisions`);
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
     },
-    enabled: !!pageId && !!session?.user
+    enabled: !!session?.user?.id && !!pageId
   });
 }
 
@@ -209,22 +210,16 @@ export function useCreatePage() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   
-  return useMutation<ApiResponse<Page>, Error, CreatePageParams>({
-    mutationFn: async (params: CreatePageParams) => {
-      console.log('[useCreatePage] Creating page with title:', params.title);
-      const response = await apiClient.post<ApiResponse<Page>>('/api/pages', params);
-      console.log('[useCreatePage] Create page response:', response.data);
+  return useMutation<Page, Error, CreatePageParams>({
+    mutationFn: async (pageData) => {
+      if (!session?.user?.id) throw new Error('Not authenticated');
+      const response = await apiClient.post<Page>('api/projly/pages', pageData);
+      if (response.error) throw new Error(response.error);
+      if (!response.data) throw new Error('Failed to create page');
       return response.data;
     },
-    onSuccess: (result) => {
-      console.log('[useCreatePage] Successfully created page, invalidating queries');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
-      if (result?.data) {
-        toast({
-          title: "Page created",
-          description: `"${result.data.title}" has been created successfully.`,
-        });
-      }
     },
     onError: (error: Error) => {
       console.error('[useCreatePage] Error creating page:', error);
@@ -280,20 +275,18 @@ export function useDeletePage() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   
-  return useMutation<ApiResponse<{ id: string }>, Error, string>({
-    mutationFn: async (id: string) => {
-      console.log('[useDeletePage] Deleting page with ID:', id);
-      const response = await apiClient.delete<ApiResponse<{ id: string }>>(`/api/pages/${id}`);
-      console.log('[useDeletePage] Delete page response:', response.data);
-      return response.data;
+  return useMutation<boolean, Error, string>({
+    mutationFn: async (pageId) => {
+      if (!session?.user?.id) throw new Error('Not authenticated');
+      const response = await apiClient.delete<boolean>(`api/projly/pages/${pageId}`);
+      if (response.error) throw new Error(response.error);
+      return response.data !== undefined ? response.data : false;
     },
-    onSuccess: (result, variables) => {
-      console.log('[useDeletePage] Successfully deleted page, invalidating queries');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
-      queryClient.invalidateQueries({ queryKey: ['page', variables] });
       toast({
-        title: "Page deleted",
-        description: "The page has been deleted successfully.",
+        title: 'Page deleted successfully',
+        variant: 'default',
       });
     },
     onError: (error: Error) => {
@@ -314,11 +307,15 @@ export function useCreatePageSection(pageId: string) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   
-  return useMutation<ApiResponse<PageSection>, Error, PageSectionParams>({
-    mutationFn: async (params: PageSectionParams) => {
-      console.log('[useCreatePageSection] Creating section for page ID:', pageId);
-      const response = await apiClient.post<ApiResponse<PageSection>>(`/api/pages/${pageId}/sections`, params);
-      console.log('[useCreatePageSection] Create section response:', response.data);
+  return useMutation<PageSection, Error, { pageId: string; sectionData: PageSectionParams }>({
+    mutationFn: async ({ pageId, sectionData }) => {
+      if (!session?.user?.id) throw new Error('Not authenticated');
+      const response = await apiClient.post<PageSection>(
+        `api/projly/pages/${pageId}/sections`,
+        sectionData
+      );
+      if (response.error) throw new Error(response.error);
+      if (!response.data) throw new Error('Failed to create section');
       return response.data;
     },
     onSuccess: () => {
@@ -347,20 +344,24 @@ export function useCreatePageTemplate() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   
-  return useMutation<ApiResponse<PageTemplate>, Error, PageTemplateParams>({
-    mutationFn: async (params: PageTemplateParams) => {
-      console.log('[useCreatePageTemplate] Creating page template with name:', params.name);
-      const response = await apiClient.post<ApiResponse<PageTemplate>>('/api/pages/templates', params);
-      console.log('[useCreatePageTemplate] Create template response:', response.data);
+  return useMutation<PageTemplate, Error, PageTemplateParams>({
+    mutationFn: async (templateData) => {
+      if (!session?.user?.id) throw new Error('Not authenticated');
+      const response = await apiClient.post<PageTemplate>(
+        'api/projly/pages/templates',
+        templateData
+      );
+      if (response.error) throw new Error(response.error);
+      if (!response.data) throw new Error('Failed to create template');
       return response.data;
     },
     onSuccess: (result) => {
       console.log('[useCreatePageTemplate] Successfully created template, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['page-templates'] });
-      if (result?.data) {
+      if (result) {
         toast({
           title: "Template created",
-          description: `"${result.data.name}" template has been created.`,
+          description: `"${result.name}" template has been created.`,
         });
       }
     },
@@ -382,14 +383,18 @@ export function useCreatePageRevision(pageId: string) {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   
-  return useMutation<ApiResponse<PageRevision>, Error, PageRevisionParams>({
-    mutationFn: async (params: PageRevisionParams) => {
-      console.log('[useCreatePageRevision] Creating revision for page ID:', pageId);
-      const response = await apiClient.post<ApiResponse<PageRevision>>(`/api/pages/${pageId}/revisions`, params);
-      console.log('[useCreatePageRevision] Create revision response:', response.data);
+  return useMutation<PageRevision, Error, { pageId: string; revisionData: PageRevisionParams }>({
+    mutationFn: async ({ pageId, revisionData }) => {
+      if (!session?.user?.id) throw new Error('Not authenticated');
+      const response = await apiClient.post<PageRevision>(
+        `api/projly/pages/${pageId}/revisions`,
+        revisionData
+      );
+      if (response.error) throw new Error(response.error);
+      if (!response.data) throw new Error('Failed to create revision');
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (_, { pageId }) => {
       console.log('[useCreatePageRevision] Successfully created revision, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['page-revisions', pageId] });
       toast({

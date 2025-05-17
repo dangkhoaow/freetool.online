@@ -37,6 +37,8 @@ app/projly/
 
 ### Project Management
 - Project creation, viewing, editing, and deletion
+  - Profile-based project ownership
+  - User lookup from profiles during project creation
 - Task assignment and tracking
 - Team collaboration
 - Resource management
@@ -95,6 +97,8 @@ app/projly/
 - `ProjectsList`: Displays all accessible projects
 - `ProjectDetails`: Shows detailed project information
 - `ProjectForm`: Form for creating/editing projects
+  - Handles profile-based owner selection
+  - Displays user information from profiles
 
 ### Tasks
 - `TasksList`: Lists tasks with filtering options

@@ -33,24 +33,17 @@ const getAuthToken = (): string | null => {
 
 // Build the API base URL
 const getBaseUrl = () => {
-  // For local development, use the hardcoded port
-  if (process.env.NODE_ENV === 'development') {
+  // In the browser, use the public API URL from environment variables
+  if (typeof window !== 'undefined') {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   }
   
-  // In production, use the same host as the frontend
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    return `${protocol}//${hostname}`;
-  }
-  
-  // Fallback for SSR
+  // For server-side rendering, use the environment variable or default
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 };
 
 // Get the base URL for API requests
-const API_BASE_URL = `${getBaseUrl()}`;
+const API_BASE_URL = getBaseUrl();
 
 // Log the API base URL for debugging
 console.log('[API_CLIENT] Environment:', process.env.NODE_ENV);
