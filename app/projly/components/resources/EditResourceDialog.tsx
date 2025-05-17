@@ -2,10 +2,10 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useProjects } from "../../hooks/use-projects";
-import { useUpdateResource } from "../../hooks/use-resources";
-import { useToast } from "../../hooks/use-toast";
-import { Resource } from "../../types/resources";
+import { useProjects } from "@/lib/services/projly/use-projects";
+import { useUpdateResource } from "@/lib/services/projly/use-resources";
+import { useToast } from "@/components/ui/use-toast";
+import { Resource } from "@/lib/services/projly/types";
 import {
   Dialog,
   DialogContent,
@@ -34,10 +34,22 @@ import { Spinner } from "../../components/ui/spinner";
 
 const resourceSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  type: z.string().min(1, "Type is required"),
-  quantity: z.number().int().positive().min(1, "Quantity must be at least 1"),
+  fileType: z.string().min(1, "File Type is required"),
+  url: z.string().nullable().optional(),
+  filePath: z.string().nullable().optional(),
+  fileSize: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
+    z.number().nullable().optional()
+  ),
+  quantity: z.preprocess(
+    // Convert string to number if possible, otherwise return the original value
+    (val) => (val === '' || val === null || val === undefined) ? undefined : Number(val),
+    z.number().min(0, "Quantity must be non-negative").optional()
+  ),
   projectId: z.string().optional(),
 });
+
+console.log(`[EDIT_RESOURCE_DIALOG] Updated resource schema to include file fields and preprocess quantity`);
 
 type ResourceFormValues = z.infer<typeof resourceSchema>;
 
@@ -56,26 +68,48 @@ export function EditResourceDialog({ resource, onClose, onSuccess }: EditResourc
     resolver: zodResolver(resourceSchema),
     defaultValues: {
       name: resource.name,
-      type: resource.type,
-      quantity: resource.quantity,
+      fileType: resource.fileType || "Equipment",
+      url: resource.url,
+      filePath: resource.filePath,
+      fileSize: resource.fileSize,
+      quantity: resource.quantity ?? 0, // Initialize with 0 to prevent uncontrolled/controlled switch
       projectId: resource.projectId,
     },
   });
+  
+  console.log(`[EDIT_RESOURCE_DIALOG] Initialized form with defaultValues:`, {
+    name: resource.name,
+    fileType: resource.fileType || "Equipment",
+    url: resource.url,
+    filePath: resource.filePath,
+    fileSize: resource.fileSize,
+    quantity: resource.quantity ?? 0,
+    projectId: resource.projectId
+  });
 
   useEffect(() => {
-    form.reset({
+    const resetValues = {
       name: resource.name,
-      type: resource.type,
-      quantity: resource.quantity,
+      fileType: resource.fileType || "Equipment",
+      url: resource.url,
+      filePath: resource.filePath,
+      fileSize: resource.fileSize,
+      quantity: resource.quantity ?? 0, // Initialize with 0 to prevent uncontrolled/controlled switch
       projectId: resource.projectId,
-    });
+    };
+    form.reset(resetValues);
+    console.log(`[EDIT_RESOURCE_DIALOG] Reset form with values:`, resetValues);
   }, [resource, form]);
 
   const onSubmit = (values: ResourceFormValues) => {
+    console.log(`[EDIT_RESOURCE_DIALOG] Form values before submission:`, values);
     updateResource(
       {
         name: values.name,
-        type: values.type,
+        fileType: values.fileType,
+        url: values.fileType === 'File' ? values.url : null,
+        filePath: values.fileType === 'File' ? values.filePath : null,
+        fileSize: values.fileType === 'File' ? values.fileSize : null,
         quantity: values.quantity,
         projectId: values.projectId,
       },
@@ -123,7 +157,7 @@ export function EditResourceDialog({ resource, onClose, onSuccess }: EditResourc
 
             <FormField
               control={form.control}
-              name="type"
+              name="fileType"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
@@ -137,6 +171,7 @@ export function EditResourceDialog({ resource, onClose, onSuccess }: EditResourc
                         <SelectItem value="Equipment">Equipment</SelectItem>
                         <SelectItem value="Software">Software</SelectItem>
                         <SelectItem value="License">License</SelectItem>
+                        <SelectItem value="File">File</SelectItem>
                         <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
@@ -146,6 +181,72 @@ export function EditResourceDialog({ resource, onClose, onSuccess }: EditResourc
               )}
             />
 
+            {form.watch('fileType') === 'File' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ''}
+                          placeholder="Resource URL or link" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="filePath"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>File Path (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value || ''}
+                            placeholder="Local or network path" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="fileSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>File Size (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              console.log(`[EDIT_RESOURCE_DIALOG] FileSize input changed to: ${value}`);
+                              field.onChange(value === '' ? null : Number(value));
+                            }}
+                            placeholder="Size in bytes" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+            
             <FormField
               control={form.control}
               name="quantity"
@@ -155,9 +256,13 @@ export function EditResourceDialog({ resource, onClose, onSuccess }: EditResourc
                   <FormControl>
                     <Input 
                       type="number" 
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
-                      min={1} 
+                      {...field} 
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        console.log(`[EDIT_RESOURCE_DIALOG] Quantity input changed to: ${value}, type: ${typeof value}`);
+                        field.onChange(value === '' ? undefined : Number(value));
+                      }}
+                      placeholder="Enter quantity" 
                     />
                   </FormControl>
                   <FormMessage />

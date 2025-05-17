@@ -1,7 +1,7 @@
 
-import { useDeleteResource } from "../../hooks/use-resources";
-import { useToast } from "../../hooks/use-toast";
-import { Resource } from "../../types/resources";
+import { useDeleteResource } from "@/lib/services/projly/use-resources";
+import { useToast } from "@/components/ui/use-toast";
+import { Resource } from "@/lib/services/projly/types";
 import {
   AlertDialog,
   AlertDialogAction,

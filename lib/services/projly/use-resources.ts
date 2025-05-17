@@ -1,26 +1,34 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "./jwt-auth-adapter";
 import { toast } from "@/components/ui/use-toast";
 import apiClient from "@/lib/api-client";
 
 // Define types here instead of importing from backend services
-type CreateResourceParams = {
+export type CreateResourceParams = {
   name: string;
-  description?: string;
-  url?: string;
-  type?: string;
+  url?: string | null;
+  filePath?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
   projectId?: string;
-  userId: string;
+  quantity?: number | null;
 };
 
-type UpdateResourceParams = {
+export type UpdateResourceParams = {
   name?: string;
-  description?: string;
-  url?: string;
-  type?: string;
+  url?: string | null;
+  filePath?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
   projectId?: string;
+  quantity?: number | null;
 };
+
+console.log('[USE-RESOURCES] Exported CreateResourceParams and UpdateResourceParams for better reusability and to resolve import errors');
+
+console.log('[USE-RESOURCES] Updated CreateResourceParams and UpdateResourceParams to include fileSize, fileType, filePath and allow "quantity" as number | null for backend consistency and type safety');
+
+console.log(`[HOOK:RESOURCES] Updated CreateResourceParams type to include quantity and remove userId`);
 
 // Log initialization of hook for debugging
 console.log('[HOOK] use-resources hook initialized');
@@ -48,8 +56,9 @@ export function useResources() {
         
         if (typeof response.error === 'string') {
           errorMessage = response.error;
-        } else if (response.error && typeof response.error === 'object' && 'message' in response.error) {
-          errorMessage = String(response.error.message);
+        } else if (response.error && typeof response.error === 'object') {
+          const errorObj = response.error as Record<string, any>;
+          errorMessage = errorObj.message ? String(errorObj.message) : 'An unknown error occurred';
         }
         
         toast({
@@ -92,40 +101,45 @@ export function useCreateResource() {
   const { data: session } = useSession();
   
   return useMutation({
-    mutationFn: async (newResource: Omit<CreateResourceParams, 'userId'>) => {
-      console.log("[HOOK:RESOURCES] Creating resource:", newResource);
+    mutationFn: async (newResource: Partial<CreateResourceParams>) => {
+      console.log('[HOOK:RESOURCES] Creating resource with input:', newResource);
       
       if (!session?.user?.id) {
-        console.error("[HOOK:RESOURCES] No user session found in useCreateResource");
-        throw new Error("You must be logged in to create a resource");
+        console.error('[HOOK:RESOURCES] No user session found in useCreateResource');
+        throw new Error('You must be logged in to create a resource');
       }
       
-      // Add user ID to resource and call API endpoint with the correct path
-      const resourceWithUserId = { ...newResource, userId: session.user.id };
-      const response = await apiClient.post('api/projly/resources', resourceWithUserId);
-      console.log("[HOOK:RESOURCES] API response received for resource creation:", response.error ? 'Error' : 'Success');
+      // Validate and filter input to only include expected fields
+      const expectedKeys = ['name', 'url', 'filePath', 'fileType', 'projectId', 'quantity'];
+      const filteredResource = Object.fromEntries(
+        Object.entries(newResource).filter(([key]) => expectedKeys.includes(key))
+      );
+      console.log(`[HOOK:RESOURCES] Filtered resource data:`, filteredResource);
+      
+      const response = await apiClient.post('api/projly/resources', filteredResource);
+      console.log('[HOOK:RESOURCES] API response received for resource creation:', response.error ? 'Error' : 'Success');
       
       if (response.error) {
-        console.error("[HOOK:RESOURCES] Error creating resource:", response.error);
+        console.error('[HOOK:RESOURCES] Error creating resource:', response.error);
         throw response.error;
       }
       
       return response;
     },
     onSuccess: (result) => {
-      console.log("[HOOK:RESOURCES] Resource created successfully, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      console.log('[HOOK:RESOURCES] Resource created successfully, invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
       toast({
-        title: "Resource created",
-        description: "The resource has been created successfully."
+        title: 'Resource created',
+        description: 'The resource has been created successfully.'
       });
     },
     onError: (error: any) => {
-      console.error("[HOOK:RESOURCES] Error in create resource mutation:", error);
+      console.error('[HOOK:RESOURCES] Error in create resource mutation:', error);
       toast({
-        title: "Error creating resource",
-        description: error.message || "An error occurred while creating the resource.",
-        variant: "destructive"
+        title: 'Error creating resource',
+        description: error.message || 'An error occurred while creating the resource.',
+        variant: 'destructive'
       });
     }
   });
@@ -149,8 +163,14 @@ export function useUpdateResource(resourceId?: string) {
         throw new Error("You must be logged in to update a resource");
       }
       
-      // Call API endpoint instead of service directly
-      const response = await apiClient.put(`api/projly/resources/${resourceId}`, updatedResource);
+      // Log and update field names if necessary, but types are changed to 'fileType'
+      const expectedKeys = ['name', 'url', 'filePath', 'fileType', 'projectId', 'quantity'];
+      const filteredUpdate = Object.fromEntries(
+        Object.entries(updatedResource).filter(([key]) => expectedKeys.includes(key))
+      );
+      console.log(`[HOOK:RESOURCES] Filtered update data:`, filteredUpdate);
+      
+      const response = await apiClient.put(`api/projly/resources/${resourceId}`, filteredUpdate);
       console.log("[HOOK:RESOURCES] API response received for resource update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -197,7 +217,6 @@ export function useDeleteResource(resourceId?: string) {
         throw new Error("You must be logged in to delete a resource");
       }
       
-      // Call API endpoint instead of service directly
       const response = await apiClient.delete(`api/projly/resources/${resourceId}`);
       console.log("[HOOK:RESOURCES] API response received for resource deletion:", response.error ? 'Error' : 'Success');
       

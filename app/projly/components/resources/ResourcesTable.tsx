@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useResources } from "../../hooks/use-resources";
-import { Resource } from "../../types/resources";
-import { formatDateForDisplay } from "../../utils/dateUtils";
-import { extractApiData } from "../../utils/apiUtils";
+import { useResources } from "@/lib/services/projly/use-resources";
+import { Resource } from "@/lib/services/projly/types";
+import { formatDateForDisplay } from "@/lib/utils/dateUtils";
+import { extractApiData } from "@/lib/utils/apiUtils";
 import {
   Table,
   TableBody,
@@ -18,13 +18,13 @@ import { Spinner } from "../../components/ui/spinner";
 import { ArrowDown, ArrowUp, Edit, Trash2 } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
 
-type SortField = "name" | "type" | "quantity" | "createdAt";
+type SortField = "name" | "fileType" | "quantity" | "createdAt";
 type SortOrder = "asc" | "desc";
 
 interface ResourcesTableProps {
   filters: {
     name: string;
-    type: string;
+    fileType: string;
     projectId: string;
   };
 }
@@ -69,15 +69,15 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
     filteredResources = filteredResources.filter(resource => 
       resource.name.toLowerCase().includes(filters.name.toLowerCase())
     );
-    console.log("[ResourcesTable] After name filter:", filteredResources.length);
+    console.log(`[ResourcesTable] After name filter, resources count: ${filteredResources.length}`);
   }
   
-  // Filter by type
-  if (filters.type) {
+  // Filter by fileType
+  if (filters.fileType) {
     filteredResources = filteredResources.filter(resource => 
-      resource.type.toLowerCase().includes(filters.type.toLowerCase())
+      resource.fileType?.toLowerCase().includes(filters.fileType.toLowerCase()) || false
     );
-    console.log("[ResourcesTable] After type filter:", filteredResources.length);
+    console.log(`[ResourcesTable] After fileType filter, resources count: ${filteredResources.length}`);
   }
   
   // Filter by project
@@ -85,30 +85,32 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
     filteredResources = filteredResources.filter(resource => 
       resource.projectId === filters.projectId
     );
-    console.log("[ResourcesTable] After project filter:", filteredResources.length);
+    console.log(`[ResourcesTable] After project filter, resources count: ${filteredResources.length}`);
   }
 
-  // Apply sorting
+  // Apply sorting with logging
   const sortedResources = [...filteredResources].sort((a, b) => {
     let aValue = a[sortField];
     let bValue = b[sortField];
-
-    // Handle string comparison
+    console.log(`[ResourcesTable] Sorting by field: ${sortField}, order: ${sortOrder}, comparing a.${sortField}: ${aValue}, b.${sortField}: ${bValue}`);
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       if (sortOrder === 'asc') {
         return aValue.localeCompare(bValue);
       } else {
         return bValue.localeCompare(aValue);
       }
-    }
-    
-    // Handle number comparison
-    if (sortOrder === 'asc') {
-      return (aValue as number) - (bValue as number);
+    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+      if (sortOrder === 'asc') {
+        return aValue - bValue;
+      } else {
+        return bValue - aValue;
+      }
     } else {
-      return (bValue as number) - (aValue as number);
+      console.log(`[ResourcesTable] Sort error: Incompatible types for field ${sortField}`);
+      return 0; // Default to no change if types don't match
     }
   });
+  console.log(`[ResourcesTable] After sorting, first resource:`, sortedResources[0]);
 
   // Handle pagination
   const totalPages = Math.ceil(sortedResources.length / itemsPerPage);
@@ -144,10 +146,10 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
             </TableHead>
             <TableHead 
               className="cursor-pointer"
-              onClick={() => handleSort("type")}
+              onClick={() => handleSort("fileType")}
             >
               <div className="flex items-center">
-                Type {getSortIcon("type")}
+                File Type {getSortIcon("fileType")}
               </div>
             </TableHead>
             <TableHead 
@@ -180,7 +182,7 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
             paginatedResources.map((resource) => (
               <TableRow key={resource.id}>
                 <TableCell className="font-medium">{resource.name}</TableCell>
-                <TableCell>{resource.type}</TableCell>
+                <TableCell>{resource.fileType}</TableCell>
                 <TableCell>{resource.quantity}</TableCell>
                 <TableCell>{formatDateForDisplay(resource.createdAt)}</TableCell>
                 <TableCell className="text-right">

@@ -115,6 +115,40 @@ export function isErrorWithMessage(error: any): error is ErrorWithMessage {
   );
 }
 
+// Resource Types
+export interface Resource {
+  id: string;
+  name: string;
+  description?: string | null;
+  url?: string | null;
+  filePath?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
+  quantity?: number | null;  // Made optional to match backend schema
+  projectId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  project?: {
+    id: string;
+    name: string;
+    description: string | null;
+    status: string;
+    startDate: string | null;
+    endDate: string | null;
+    createdAt: string;
+    updatedAt: string;
+    ownerId: string;
+    teamId: string | null;
+  };
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+}
+console.log('[TYPES] Updated Resource interface to make "quantity" optional (number | null) for backend consistency');
+
 // Project and Task Types (kept for backward compatibility)
 
 export interface Project {

@@ -16,6 +16,7 @@ import { ArrowLeft, CalendarIcon, UserCircle } from "lucide-react";
 import { TaskDialog } from "@/components/projects/TaskDialog";
 import { ResourceDialog } from "@/components/projects/ResourceDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardLayout } from "../components/layout/DashboardLayout";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -69,28 +70,33 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-[80vh]">
-        <Spinner className="h-10 w-10" />
-      </div>
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-[80vh]">
+          <Spinner className="h-10 w-10" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (!project) {
     console.log("[ProjectDetail] Project not found for ID:", projectId);
     return (
-      <div className="container mx-auto pt-16">
-        <div className="text-center pt-16">
-          <h2 className="text-2xl font-bold">Project not found</h2>
-          <Button className="mt-4" onClick={handleBackClick}>
-            Back to Projects
-          </Button>
+      <DashboardLayout>
+        <div className="container mx-auto pt-16">
+          <div className="text-center pt-16">
+            <h2 className="text-2xl font-bold">Project not found</h2>
+            <Button className="mt-4" onClick={handleBackClick}>
+              Back to Projects
+            </Button>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <DashboardLayout>
+      <div className="container mx-auto py-6 space-y-6">
       {/* Project Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -308,6 +314,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
           onOpenChange={() => setSelectedResource(null)}
         />
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
