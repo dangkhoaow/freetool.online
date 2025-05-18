@@ -73,9 +73,23 @@ export function TeamsList() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Teams</h2>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog 
+          open={isOpen} 
+          onOpenChange={(open) => {
+            setIsOpen(open);
+            // Reset selectedTeam when dialog is closed
+            if (!open) {
+              setSelectedTeam(null);
+              console.log('[PROJLY:TEAMS] Dialog closed, resetting selectedTeam');
+            }
+          }}
+        >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => {
+              // Ensure selectedTeam is null when creating a new team
+              setSelectedTeam(null);
+              console.log('[PROJLY:TEAMS] Create Team button clicked, setting selectedTeam to null');
+            }}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Team
             </Button>
