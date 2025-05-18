@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, PlusCircle, FolderOpen } from 'lucide-react';
+import { Plus, Loader2, PlusCircle, FolderOpen, MoreHorizontal, Archive, Edit, Eye, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,6 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { projlyAuthService, projlyProjectsService } from '@/lib/services/projly';
+import { useArchiveProject } from '@/lib/services/projly/use-projects';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from '@/components/ui/use-toast';
 
 export default function Projects() {
   const router = useRouter();
@@ -22,6 +30,10 @@ export default function Projects() {
     field: 'createdAt', 
     direction: 'desc' 
   });
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  
+  // Initialize the archive project mutation
+  const archiveProjectMutation = useArchiveProject();
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -96,6 +108,40 @@ export default function Projects() {
       field,
       direction: prevSort.field === field && prevSort.direction === 'asc' ? 'desc' : 'asc',
     }));
+  };
+  
+  // Handle archiving a project
+  const handleArchiveProject = async (projectId: string, e?: React.MouseEvent) => {
+    // Prevent event propagation if called from dropdown
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    log('Archiving project:', projectId);
+    setArchivingId(projectId);
+    
+    try {
+      await archiveProjectMutation.mutateAsync(projectId);
+      log('Project archived successfully');
+      
+      // Refresh the projects list
+      const projectsData = await projlyProjectsService.getProjects();
+      setProjects(projectsData);
+      
+      toast({
+        title: 'Project archived',
+        description: 'The project has been archived successfully.'
+      });
+    } catch (error) {
+      console.error('[PROJLY:PROJECTS] Error archiving project:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to archive project',
+        variant: 'destructive'
+      });
+    } finally {
+      setArchivingId(null);
+    }
   };
   
   // Navigate to project detail
@@ -203,28 +249,45 @@ export default function Projects() {
                       }
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/projly/projects/${project.id}`);
-                          }}
-                        >
-                          View
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/projly/projects/${project.id}/edit`);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                      </div>
+                      {archivingId === project.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin ml-auto" />
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/projly/projects/${project.id}`);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Project
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/projly/projects/${project.id}/edit`);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Project
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                              onClick={(e) => handleArchiveProject(project.id, e)}
+                            >
+                              <Archive className="mr-2 h-4 w-4" />
+                              Archive Project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 )) : (

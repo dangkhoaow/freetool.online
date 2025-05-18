@@ -241,6 +241,55 @@ export function useUpdateProject() {
   });
 }
 
+export function useArchiveProject() {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!session?.user?.id) {
+        console.error("[HOOK:PROJECTS] No user session found in useArchiveProject");
+        throw new Error("You must be logged in to archive a project");
+      }
+      
+      console.log("[HOOK:PROJECTS] Archiving project with ID:", id);
+      // Call API endpoint with correct prefix
+      console.log("[HOOK:PROJECTS] Archiving project with URL:", `api/projly/projects/${id}/archive`);
+      const response = await apiClient.put(`api/projly/projects/${id}/archive`, {});
+      console.log("[HOOK:PROJECTS] API response received for project archiving:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:PROJECTS] Error archiving project:", response.error);
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? (response.error as {message?: string}).message || String(response.error) 
+            : 'Failed to archive project';
+        
+        throw new Error(errorMessage);
+      }
+      
+      return response;
+    },
+    onSuccess: () => {
+      console.log("[HOOK:PROJECTS] Project archived successfully, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast({
+        title: "Project archived",
+        description: "The project has been archived successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error("[HOOK:PROJECTS] Error in archive project mutation:", error);
+      toast({
+        title: "Error archiving project",
+        description: error.message || "An error occurred while archiving the project.",
+        variant: "destructive"
+      });
+    }
+  });
+}
+
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();

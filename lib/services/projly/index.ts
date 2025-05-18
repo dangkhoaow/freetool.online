@@ -440,6 +440,44 @@ export const projlyProjectsService = {
   },
 
   /**
+   * Archive a project (set status to 'Archived')
+   * @param id Project ID to archive
+   * @returns Promise resolving to archive result
+   */
+  async archiveProject(id: string): Promise<any> {
+    console.log(`[PROJLY:PROJECTS] Archiving project with ID: ${id}`);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        console.log('[PROJLY:PROJECTS] No token found when archiving project');
+        throw new Error('Authentication required to archive a project');
+      }
+
+      // Using API client for consistent error handling
+      const apiUrl = `/api/projly/projects/${id}/archive`;
+      console.log(`[PROJLY:PROJECTS] Archiving project via API: ${apiUrl}`);
+      
+      // Import apiClient dynamically to avoid circular dependencies
+      const apiClient = (await import('../../api-client')).default;
+      const response = await apiClient.put(apiUrl, {});
+      
+      if (!response.success) {
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : `Failed to archive project ${id}`;
+        console.error('[PROJLY:PROJECTS] Failed to archive project:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      console.log(`[PROJLY:PROJECTS] Successfully archived project: ${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`[PROJLY:PROJECTS] Error archiving project ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
    * Delete a project
    * @param id Project ID to delete
    * @returns Promise resolving to deletion result
