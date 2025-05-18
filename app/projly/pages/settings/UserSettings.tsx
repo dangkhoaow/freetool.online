@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useUserRoles } from "@/hooks/use-user-roles";
-import { useAuth } from "@/contexts/AuthContext";
-import { UserRole, UserWithSettings } from "@/types";
+import { useUserRoles } from "@/lib/services/projly/use-user-roles";
+import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
+import { UserRole, UserWithSettings } from "@/lib/services/projly/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,
@@ -113,16 +113,23 @@ export default function UserSettings() {
     return usersList.filter(user => {
       // Search by name or email
       const searchMatch = !searchQuery || 
-        (user.user?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-         user.user?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         user.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
          false);
       
+      // Get user role from the direct role field added by the backend
+      const userRole = user.role || 'regular_user';
+      console.log(`[PROJLY:USER_SETTINGS] User ${user.firstName} ${user.lastName} has role: ${userRole}`);
+      
       // Filter by role
-      const roleMatch = roleFilter === 'all' || user.role === roleFilter;
+      const roleMatch = roleFilter === 'all' || userRole === roleFilter;
+      
+      // Determine activation status based on profile existence
+      const activationStatus = user.profile ? 'active' : 'unverified';
       
       // Filter by status
-      const statusMatch = statusFilter === 'all' || user.activationStatus === statusFilter;
+      const statusMatch = statusFilter === 'all' || activationStatus === statusFilter;
       
       return searchMatch && roleMatch && statusMatch;
     });
@@ -262,7 +269,15 @@ export default function UserSettings() {
       const response = await apiClient.post('users', data);
       
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to create user');
+        // Handle both Error objects and string errors
+        const errorMessage = typeof response.error === 'object' && response.error !== null && 'message' in response.error
+          ? (response.error as { message: string }).message
+          : typeof response.error === 'string'
+            ? response.error
+            : 'Failed to create user';
+        console.log('[PROJLY:USER_SETTINGS] Error type:', typeof response.error);
+        console.log('[PROJLY:USER_SETTINGS] Error creating user:', errorMessage);
+        throw new Error(errorMessage);
       }
       
       // Close the dialog and show success message
@@ -430,7 +445,7 @@ export default function UserSettings() {
                 <h3 className="font-medium">Site Owner</h3>
               </div>
               <p className="text-sm text-gray-600">
-                Highest permission level. Can manage all projects, users, and roles.
+                Highest permission level. Can fully manage users, and roles.
               </p>
             </div>
             <div className="p-4 rounded-md bg-blue-50 border border-blue-100">
@@ -439,7 +454,7 @@ export default function UserSettings() {
                 <h3 className="font-medium">Admin</h3>
               </div>
               <p className="text-sm text-gray-600">
-                Can see/edit/delete all projects, tasks, resources, and pages.
+                Can see/edit users such as password reset, activation status.
               </p>
             </div>
             <div className="p-4 rounded-md bg-gray-50 border border-gray-100">
@@ -466,16 +481,20 @@ export default function UserSettings() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.length > 0 ? (
-                  filteredUsers.map((userRole: UserWithSettings) => {
-                    // Better handling of user name fields with defaults
-                    const firstName = userRole.user?.firstName || '';
-                    const lastName = userRole.user?.lastName || '';
+                  filteredUsers.map((userRole: any) => {
+                    console.log("[PROJLY:USER_SETTINGS] User data structure:", userRole);
+                    // Handle the new API response structure
+                    const firstName = userRole.firstName || '';
+                    const lastName = userRole.lastName || '';
                     const userName = (firstName || lastName) 
                       ? `${firstName} ${lastName}`.trim() 
                       : "Unknown User";
-                    const userEmail = userRole.user?.email || "No Email";
-                    const isCurrentUser = user?.id === userRole.userId;
-                    const isFixedUser = userEmail === 'info@freetoolonline.com';
+                    const userEmail = userRole.email || '';
+                    const isCurrentUser = user?.id === userRole.id;
+                    const isFixedUser = userEmail.includes('freetoolonline.com') || userEmail === user?.email;
+                    
+                    // Log detailed user info for debugging
+                    console.log(`[PROJLY:USER_SETTINGS] Processing user: ${userName}, email: ${userEmail}, id: ${userRole.id}`);
                     
                     return (
                       <TableRow key={userRole.id}>
@@ -487,13 +506,13 @@ export default function UserSettings() {
                         </TableCell>
                         <TableCell>{userEmail}</TableCell>
                         <TableCell>
-                          {getRoleBadge(userRole.role)}
+                          {getRoleBadge(userRole.role || 'regular_user')}
                         </TableCell>
                         <TableCell>
-                          {getActivationBadge(userRole.activationStatus || 'unverified')}
+                          {getActivationBadge(userRole.profile ? 'active' : 'unverified')}
                         </TableCell>
                         <TableCell className="text-right">
-                          {isUpdating === userRole.userId ? (
+                          {isUpdating === userRole.id ? (
                             <Spinner size="sm" />
                           ) : (
                             <DropdownMenu>
@@ -506,36 +525,36 @@ export default function UserSettings() {
                                 {
                                   /* Regular User can be promoted to Admin */
                                   userRole.role === 'regular_user' && (
-                                    <DropdownMenuItem 
-                                      onClick={() => handleRoleChange(userRole.userId, 'admin')} 
-                                      disabled={isFixedUser}
-                                    >
-                                      <ShieldCheck className="mr-2 h-4 w-4" />
-                                      Promote to Admin
-                                    </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleRoleChange(userRole.id, 'admin')} 
+                                        disabled={isFixedUser}
+                                      >
+                                        <ShieldCheck className="mr-2 h-4 w-4" />
+                                        Promote to Admin
+                                      </DropdownMenuItem>
                                   )
                                 }
                                 
                                 {
                                   /* Admin can be promoted to Site Owner or demoted to Regular User */
                                   userRole.role === 'admin' && (
-                                    <>
-                                      <DropdownMenuItem 
-                                        onClick={() => handleRoleChange(userRole.userId, 'site_owner')} 
-                                        disabled={isFixedUser}
-                                      >
-                                        <ShieldIcon className="mr-2 h-4 w-4" />
-                                        Promote to Site Owner
-                                      </DropdownMenuItem>
-                                      
-                                      <DropdownMenuItem 
-                                        onClick={() => handleRoleChange(userRole.userId, 'regular_user')} 
-                                        disabled={isFixedUser}
-                                      >
-                                        <Shield className="mr-2 h-4 w-4" />
-                                        Demote to Regular User
-                                      </DropdownMenuItem>
-                                    </>
+                                      <>
+                                        <DropdownMenuItem 
+                                          onClick={() => handleRoleChange(userRole.id, 'site_owner')} 
+                                          disabled={isFixedUser}
+                                        >
+                                          <ShieldIcon className="mr-2 h-4 w-4" />
+                                          Promote to Site Owner
+                                        </DropdownMenuItem>
+                                        
+                                        <DropdownMenuItem 
+                                          onClick={() => handleRoleChange(userRole.id, 'regular_user')} 
+                                          disabled={isFixedUser}
+                                        >
+                                          <Shield className="mr-2 h-4 w-4" />
+                                          Demote to Regular User
+                                        </DropdownMenuItem>
+                                      </>
                                   )
                                 }
                                 
@@ -543,7 +562,7 @@ export default function UserSettings() {
                                   /* Site Owner can be demoted to Admin */
                                   userRole.role === 'site_owner' && (
                                     <DropdownMenuItem 
-                                      onClick={() => handleRoleChange(userRole.userId, 'admin')} 
+                                      onClick={() => handleRoleChange(userRole.id, 'admin')} 
                                       disabled={isFixedUser}
                                     >
                                       <ShieldCheck className="mr-2 h-4 w-4" />
@@ -554,7 +573,7 @@ export default function UserSettings() {
                                 
                                 <DropdownMenuItem 
                                   onClick={() => handleActivationStatusChange(
-                                    userRole.userId, 
+                                    userRole.id, 
                                     userRole.activationStatus === 'active' ? 'inactive' : 'active'
                                   )}
                                   disabled={isFixedUser}
@@ -563,7 +582,7 @@ export default function UserSettings() {
                                   {userRole.activationStatus === 'active' ? 'Deactivate User' : 'Activate User'}
                                 </DropdownMenuItem>
                                 
-                                <DropdownMenuItem onClick={() => openPasswordDialog(userRole.userId)} disabled={isFixedUser}>
+                                <DropdownMenuItem onClick={() => openPasswordDialog(userRole.id)} disabled={isFixedUser}>
                                   <Lock className="mr-2 h-4 w-4" />
                                   Reset Password
                                 </DropdownMenuItem>

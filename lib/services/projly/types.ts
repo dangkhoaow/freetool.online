@@ -49,25 +49,45 @@ export interface ApiClient {
 
 export interface UserWithSettings {
   id: string;
-  userId: string;
   email: string;
-  role: UserRole;
-  activationStatus: string;
-  createdAt: string;
-  updatedAt: string;
-  user?: {
-    id?: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    [key: string]: any;
-  };
+  passwordHash: string;
   firstName?: string;
   lastName?: string;
-  name?: string;
-  image?: string;
-  emailVerified?: Date | null;
-  settings?: Record<string, any>;
+  resetToken?: string | null;
+  resetTokenExpiry?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  teamMembers?: Array<{
+    id: string;
+    teamId: string;
+    userId: string;
+    role: string;
+    department?: string | null;
+    joinedAt: string;
+  }>;
+  profile?: {
+    id: string;
+    userId: string;
+    bio?: string | null;
+    avatarUrl?: string | null;
+    jobTitle?: string | null;
+    department?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  userRole?: {
+    id: string;
+    userId: string;
+    role: UserRole;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  role?: UserRole; // Direct role field added by the backend
+  activationStatus?: string; // Added for compatibility with existing code
+  name?: string; // Added for compatibility with existing code
+  image?: string; // Added for compatibility with existing code
+  emailVerified?: Date | null; // Added for compatibility with existing code
+  settings?: Record<string, any>; // Added for compatibility with existing code
 }
 
 export interface UserRoleUpdateParams {

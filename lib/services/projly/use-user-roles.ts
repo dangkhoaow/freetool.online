@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
-import { UserRole, UserWithSettings, UserRoleUpdateParams, ActivationStatusUpdateParams, PasswordResetParams } from "@/types";
+import { UserRole, UserWithSettings, UserRoleUpdateParams, ActivationStatusUpdateParams, PasswordResetParams } from "./types";
 import { useCallback, useState, useEffect } from "react";
 import { useSession } from "./jwt-auth-adapter";
 import apiClient from "@/lib/api-client";
@@ -10,7 +10,19 @@ import { API_ENDPOINTS } from "@/app/projly/config/apiConfig";
 console.log('[HOOK:USER-ROLES] API_ENDPOINTS.TEAMS.BASE:', API_ENDPOINTS.TEAMS.BASE);
 import { isInEditMode } from "@/app/projly/utils/editModeDetection";
 
-import { ApiResponse } from "@/services/prisma/api";
+// Define ApiResponse interface locally to avoid import errors
+interface ApiResponse<T = any> {
+  data: T | null;
+  error: ApiError | null;
+  message?: string;
+  status?: number;
+}
+
+interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+}
 
 // Define the AppRole type instead of importing from Prisma
 type AppRole = 'admin' | 'manager' | 'editor' | 'user' | 'guest' | 'site_owner' | 'regular_user';
@@ -19,60 +31,72 @@ type AppRole = 'admin' | 'manager' | 'editor' | 'user' | 'guest' | 'site_owner' 
 // Adding a mock type that matches our expected format for edit mode
 type MockUserWithSettings = {
   id: string;
-  userId: string;
   email: string;
-  role: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
   activationStatus: string;
   createdAt: string;
   updatedAt: string;
-  user?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  };
+  profile?: {
+    id: string;
+    userId: string;
+    bio?: string | null;
+    avatarUrl?: string | null;
+  } | null;
 };
 
 // Log initialization of hook for debugging
 console.log('[HOOK] use-user-roles hook initialized');
 
-// Mock data for edit mode
+// Mock data for edit mode - updated to match the new API response structure
 const MOCK_USER_WITH_SETTINGS: UserWithSettings[] = [{
+  passwordHash: "mock-password-hash",
   id: "edit-mode-user-1",
-  userId: "edit-mode-user-1",
+  email: "admin@example.com",
+  firstName: "Edit",
+  lastName: "Mode",
   role: "admin" as UserRole,
   activationStatus: "active",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  user: {
-    firstName: "Edit",
-    lastName: "Mode",
-    email: "admin@example.com"
+  profile: {
+    id: "profile-1",
+    userId: "edit-mode-user-1",
+    bio: "Admin user for edit mode",
+    avatarUrl: null
   }
 },
 {
   id: "edit-mode-user-2",
-  userId: "edit-mode-user-2",
+  email: "user@example.com",
+  firstName: "Regular",
+  lastName: "User",
   role: "regular_user" as UserRole,
   activationStatus: "active",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  user: {
-    firstName: "Regular",
-    lastName: "User",
-    email: "user@example.com"
+  profile: {
+    id: "profile-2",
+    userId: "edit-mode-user-2",
+    bio: "Regular user for edit mode",
+    avatarUrl: null
   }
 },
 {
   id: "edit-mode-user-3",
-  userId: "edit-mode-user-3",
+  email: "owner@example.com",
+  firstName: "Site",
+  lastName: "Owner",
   role: "site_owner" as UserRole,
   activationStatus: "unverified",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  user: {
-    firstName: "Site",
-    lastName: "Owner",
-    email: "owner@example.com"
+  profile: {
+    id: "profile-3",
+    userId: "edit-mode-user-3",
+    bio: "Site owner for edit mode",
+    avatarUrl: null
   }
 }];
 
@@ -227,14 +251,15 @@ export function useUserRoles() {
       
       if (response.error) {
         // If this is an auth error, try to refresh the session
-        const isAuthError = response.error.message && 
+        const isAuthError = typeof response.error === 'object' && response.error !== null && 'message' in response.error && 
                            (response.error.message.includes("JWT") || 
                             response.error.message.includes("auth") ||
                             response.error.message.includes("token") ||
                             response.error.message.includes("session"));
         
         console.log("useUserRoles: Got error while checking role, is it auth error?", isAuthError, {
-          errorMessage: response.error.message,
+          errorMessage: typeof response.error === 'object' && response.error !== null && 'message' in response.error ? 
+            response.error.message : String(response.error),
           timestamp: new Date().toISOString()
         });
         
@@ -298,14 +323,17 @@ export function useUserRoles() {
           const response = await apiClient.get('/api/projly/user-roles/all-with-settings');
           console.log("useUserRoles: API response for all users:", {
             success: !response.error,
-            errorStatus: response.error?.status,
-            errorMessage: response.error?.message,
+            errorStatus: typeof response.error === 'object' && response.error !== null ? response.error.status : undefined,
+            errorMessage: typeof response.error === 'object' && response.error !== null ? response.error.message : String(response.error),
             dataCount: Array.isArray(response.data) ? response.data.length : 0
           });
           
           if (response.error) {
             // If this is an auth error, try to refresh the session
-            if (response.error.status === 401 || response.error.message.includes("JWT")) {
+            const isAuthError = typeof response.error === 'object' && response.error !== null && 
+                              ((response.error.status === 401) || 
+                               ('message' in response.error && typeof response.error.message === 'string' && response.error.message.includes("JWT")));
+            if (isAuthError) {
               console.log("useUserRoles: Got auth error while fetching users, refreshing session");
               const refreshed = await handleAuthError();
               
@@ -338,7 +366,8 @@ export function useUserRoles() {
             
             toast({
               title: "Error fetching users",
-              description: response.error.message,
+              description: typeof response.error === 'object' && response.error !== null && 'message' in response.error ? 
+                response.error.message : String(response.error),
               variant: "destructive"
             });
             
@@ -348,7 +377,25 @@ export function useUserRoles() {
           console.log("useUserRoles: Users with settings fetched successfully:", { 
             count: Array.isArray(response.data) ? response.data.length : 0
           });
-          return (response.data || []) as UserWithSettings[];
+          
+          // Process the API response to ensure each user has the required fields
+          const processedData = Array.isArray(response.data) ? response.data.map(user => {
+            // Add activationStatus based on profile existence or other criteria
+            const activationStatus = user.profile ? 'active' : 'unverified';
+            
+            console.log(`[PROJLY:USER_ROLES] Processing user ${user.id} with role: ${user.role || 'none'}, activation status: ${activationStatus}`);
+            
+            return {
+              ...user,
+              // Ensure role is set from the direct role field added by the backend
+              // or from userRole.role if available, defaulting to regular_user
+              role: user.role || (user.userRole?.role as UserRole) || 'regular_user',
+              // Add activationStatus for compatibility with existing code
+              activationStatus: activationStatus
+            };
+          }) : [];
+          
+          return processedData as UserWithSettings[];
         } catch (error) {
           console.error("useUserRoles: Exception in user roles fetch:", error);
           
@@ -395,7 +442,10 @@ export function useUserRoles() {
           
           if (response.error) {
             // If this is an auth error, try to refresh the session
-            if (response.error.status === 401 || response.error.message.includes("JWT")) {
+            const isAuthError = typeof response.error === 'object' && response.error !== null && 
+                              ((response.error.status === 401) || 
+                               ('message' in response.error && typeof response.error.message === 'string' && response.error.message.includes("JWT")));
+            if (isAuthError) {
               console.log("useUserRoles: Got auth error while fetching current role, refreshing session");
               const refreshed = await handleAuthError();
               
@@ -428,7 +478,7 @@ export function useUserRoles() {
               return "admin" as UserRole;
             }
             
-            return null;
+            return 'regular_user' as UserRole;
           }
           
           console.log("useUserRoles: Current user role fetched:", response.data);
