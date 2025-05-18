@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useCreateMember } from "@/hooks/use-members";
-import { TeamWithProject } from "@/services/prisma/teams";
+import { useCreateMember } from "@/lib/services/projly/use-members";
+import { TeamWithProject } from "@/lib/services/projly/use-team";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";

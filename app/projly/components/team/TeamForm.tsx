@@ -3,9 +3,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useCreateTeam, useUpdateTeam } from "@/hooks/use-team";
-import { useProjects } from "@/hooks/use-projects";
-import { Team } from "@/services/teams";
+import { useCreateTeam, useUpdateTeam, Team } from "@/lib/services/projly/use-team";
+import { useProjects } from "@/lib/services/projly/use-projects";
 
 import {
   Form,

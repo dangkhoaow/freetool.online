@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useTeams, useTeamMembersCount, useDeleteTeam } from "@/hooks/use-team";
-import { Team } from "@/services/teams";
+import { useTeams, useTeamMembersCount, useDeleteTeam, Team } from "@/lib/services/projly/use-team";
 import { PlusCircle, Pencil, Trash, Users, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,7 @@ import {
 import { TeamForm } from "./TeamForm";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
-import { useSession } from "@/hooks/jwt-auth-adapter";
+import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 
 export function TeamsList() {
   const { data: teams, isLoading, refetch } = useTeams();

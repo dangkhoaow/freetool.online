@@ -161,3 +161,50 @@ export function useCreateTask() {
     }
   });
 }
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  
+  return useMutation<Task, Error, { id: string; updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>> }>({
+    mutationFn: async ({ id, updates }) => {
+      console.log("[HOOK:TASKS] Updating task with ID:", id, "updates:", updates);
+      
+      if (!session?.user?.id) {
+        throw new Error('User not authenticated');
+      }
+      
+      const response = await apiClient.put<Task>(`api/projly/tasks/${id}`, updates);
+      console.log("[HOOK:TASKS] Task update response:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        toast({
+          title: "Error updating task",
+          description: response.error,
+          variant: "destructive"
+        });
+        throw new Error(response.error);
+      }
+      
+      if (!response.data) {
+        throw new Error('No data returned from server');
+      }
+      
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({
+        title: "Task updated successfully",
+        variant: "default"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating task",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+}

@@ -4,6 +4,10 @@ import { UserRole, UserWithSettings, UserRoleUpdateParams, ActivationStatusUpdat
 import { useCallback, useState, useEffect } from "react";
 import { useSession } from "./jwt-auth-adapter";
 import apiClient from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/app/projly/config/apiConfig";
+
+// Log API endpoints for debugging
+console.log('[HOOK:USER-ROLES] API_ENDPOINTS.TEAMS.BASE:', API_ENDPOINTS.TEAMS.BASE);
 import { isInEditMode } from "@/app/projly/utils/editModeDetection";
 
 import { ApiResponse } from "@/services/prisma/api";
@@ -213,7 +217,8 @@ export function useUserRoles() {
         timestamp: new Date().toISOString()
       });
       // Call API endpoint instead of service directly
-      const response = await apiClient.get(`user-roles/check/${role}`);
+      console.log(`[HOOK:USER-ROLES] Using API endpoint: /api/projly/user-roles/check/${role}`);
+      const response = await apiClient.get(`/api/projly/user-roles/check/${role}`);
       console.log(`useUserRoles: Role check API response:`, {
         data: response.data,
         error: response.error ? true : false,
@@ -242,7 +247,8 @@ export function useUserRoles() {
               timestamp: new Date().toISOString()
             });
             // Call API endpoint instead of service directly
-            const retryResponse = await apiClient.get(`user-roles/check/${role}`);
+            console.log(`[HOOK:USER-ROLES] Using API endpoint (retry): /api/projly/user-roles/check/${role}`);
+            const retryResponse = await apiClient.get(`/api/projly/user-roles/check/${role}`);
             console.log("useUserRoles: Role check retry response:", {
               data: retryResponse.data,
               error: retryResponse.error ? true : false,
@@ -288,7 +294,8 @@ export function useUserRoles() {
         try {
           console.log("useUserRoles: Making API call to fetch all users with settings");
           // Call API endpoint instead of service directly
-          const response = await apiClient.get('user-roles/all-with-settings');
+          console.log('[HOOK:USER-ROLES] Using API endpoint: /api/projly/user-roles/all-with-settings');
+          const response = await apiClient.get('/api/projly/user-roles/all-with-settings');
           console.log("useUserRoles: API response for all users:", {
             success: !response.error,
             errorStatus: response.error?.status,
@@ -306,7 +313,8 @@ export function useUserRoles() {
                 // Try again after refresh
                 console.log("useUserRoles: Retrying users fetch after session refresh");
                 // Call API endpoint instead of service directly
-                const retryResponse = await apiClient.get('user-roles/all-with-settings');
+                console.log('[HOOK:USER-ROLES] Using API endpoint (retry): /api/projly/user-roles/all-with-settings');
+                const retryResponse = await apiClient.get('/api/projly/user-roles/all-with-settings');
                 if (retryResponse.error) {
                   console.error("useUserRoles: Error on retry fetch:", retryResponse.error);
                   // In edit mode, return mock data even on error
@@ -376,7 +384,8 @@ export function useUserRoles() {
         try {
           console.log("useUserRoles: Making API call to fetch current user role");
           // Call API endpoint instead of service directly
-          const response = await apiClient.get('user-roles/current');
+          console.log('[HOOK:USER-ROLES] Using API endpoint: /api/projly/user-roles/current');
+          const response = await apiClient.get('/api/projly/user-roles/current');
           console.log("useUserRoles: API response for current role:", {
             success: !response.error,
             role: response.data,
@@ -394,7 +403,8 @@ export function useUserRoles() {
                 // Try again after refresh
                 console.log("useUserRoles: Retrying current role fetch after session refresh");
                 // Call API endpoint instead of service directly
-                const retryResponse = await apiClient.get('user-roles/current');
+                console.log('[HOOK:USER-ROLES] Using API endpoint (retry): /api/projly/user-roles/current');
+                const retryResponse = await apiClient.get('/api/projly/user-roles/current');
                 if (retryResponse.error) {
                   console.error("useUserRoles: Error on retry current role fetch:", retryResponse.error);
                   

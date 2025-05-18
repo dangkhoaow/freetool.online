@@ -33,7 +33,7 @@ import { TaskAssigneeField } from "./form-fields/TaskAssigneeField";
 import { TaskDateField } from "./form-fields/TaskDateField";
 import { TaskStatusField } from "./form-fields/TaskStatusField";
 import { TaskFormActions } from "./form-fields/TaskFormActions";
-import { useUpdateTask } from "@/app/projly/hooks/use-tasks";
+import { useUpdateTask } from "@/lib/services/projly/use-tasks";
 import { parseDateSafe, toISOStringSafe, formatDateForInput, createUTCDateAtNoon } from "@/app/projly/utils/dateUtils";
 import { useRouter } from "next/navigation";
 
@@ -88,16 +88,16 @@ export function EditTaskForm({ task, onSuccess }: EditTaskFormProps) {
     // Create a properly typed update payload that matches TaskUpdateInput
     const updatePayload = {
       id: task.id,
-      title: submitData.title,
-      description: submitData.description,
-      status: submitData.status,
-      // Convert null to undefined for assigneeId to match TaskUpdateInput type
-      assigneeId: submitData.assignedTo === null ? undefined : submitData.assignedTo,
-      // Convert null to undefined for dueDate to match TaskUpdateInput type
-      dueDate: submitData.dueDate === null ? undefined : submitData.dueDate
+      updates: {
+        title: submitData.title,
+        description: submitData.description,
+        status: submitData.status,
+        assignedTo: submitData.assignedTo == null ? undefined : submitData.assignedTo,
+        dueDate: submitData.dueDate == null ? undefined : submitData.dueDate,
+      },
     };
     
-    console.log("[EditTaskForm] Calling updateTask with:", updatePayload);
+    console.log('[EditTaskForm] Update payload prepared:', updatePayload);
     updateTask(updatePayload);
     
     if (onSuccess) onSuccess();

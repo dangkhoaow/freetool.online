@@ -484,6 +484,44 @@ export const projlyProjectsService = {
  */
 export const projlyTasksService = {
   /**
+   * Get all tasks for the current user (used by components)
+   * @returns Promise resolving to an array of tasks
+   */
+  async getMyTasks(): Promise<any[]> {
+    console.log('[PROJLY:TASKS] Getting my tasks');
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        console.log('[PROJLY:TASKS] No auth token found');
+        return [];
+      }
+
+      console.log('[PROJLY:TASKS] Calling API endpoint:', API_ENDPOINTS.TASKS.ALL);
+      const response = await fetch(API_ENDPOINTS.TASKS.ALL, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[PROJLY:TASKS] Error fetching tasks:', errorData);
+        return [];
+      }
+
+      const data = await response.json();
+      console.log('[PROJLY:TASKS] Tasks fetched successfully, count:', data.data?.length || 0);
+      return data.data || [];
+    } catch (error) {
+      console.error('[PROJLY:TASKS] Error in getMyTasks:', error);
+      return [];
+    }
+  },
+
+  /**
    * Get all tasks for the current user
    * @returns Promise resolving to an array of tasks
    */

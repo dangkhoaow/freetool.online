@@ -4,9 +4,11 @@ import { useSession } from "./jwt-auth-adapter";
 
 // Using relative import for api-client to avoid module resolution issues
 import apiClient from "../../api-client";
+import { API_ENDPOINTS } from "@/app/projly/config/apiConfig";
 
 // Log import paths for debugging
 console.log('[use-members] Importing useSession and apiClient');
+console.log('[HOOK:MEMBERS] API_ENDPOINTS.TEAMS.BASE:', API_ENDPOINTS.TEAMS.BASE);
 
 // Types moved from services to avoid direct imports
 export type TeamMemberWithUser = {
@@ -43,15 +45,16 @@ export const useMembers = (teamId?: string) => {
       
       // Call API endpoint with optional teamId filter
       const params = teamId ? { teamId } : undefined;
-      const response = await apiClient.get('members', params);
+      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members');
+      const response = await apiClient.get('/api/projly/members', params);
       console.log("[HOOK:MEMBERS] API response received:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error fetching members:", response.error);
         const errorMessage = typeof response.error === 'string' 
           ? response.error 
-          : (response.error && typeof response.error === 'object' && 'message' in response.error) 
-            ? response.error.message 
+          : (response.error && typeof response.error === 'object' && response.error !== null && 'message' in response.error) 
+            ? (response.error as { message: string }).message 
             : 'Unknown error';
             
         toast({
@@ -81,15 +84,16 @@ export const useMember = (id: string) => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.get(`members/${id}`);
+      console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
+      const response = await apiClient.get(`/api/projly/members/${id}`);
       console.log("[HOOK:MEMBERS] API response received for member details:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error fetching member:", response.error);
         const errorMessage = typeof response.error === 'string' 
           ? response.error 
-          : (response.error && typeof response.error === 'object' && 'message' in response.error) 
-            ? response.error.message 
+          : (response.error && typeof response.error === 'object' && response.error !== null && 'message' in response.error) 
+            ? (response.error as { message: string }).message 
             : 'Unknown error';
             
         toast({
@@ -119,7 +123,8 @@ export const useCreateMember = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.post('members', member);
+      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members');
+      const response = await apiClient.post('/api/projly/members', member);
       console.log("[HOOK:MEMBERS] API response received for member creation:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -163,7 +168,8 @@ export const useUpdateMember = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.put(`members/${id}`, data);
+      console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
+      const response = await apiClient.put(`/api/projly/members/${id}`, data);
       console.log("[HOOK:MEMBERS] API response received for member update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -207,7 +213,8 @@ export const useDeleteMember = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.delete(`members/${id}`);
+      console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
+      const response = await apiClient.delete(`/api/projly/members/${id}`);
       console.log("[HOOK:MEMBERS] API response received for member deletion:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

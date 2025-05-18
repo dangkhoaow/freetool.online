@@ -64,6 +64,12 @@ export const API_ENDPOINTS = {
     DELETE: `${API_BASE_URL}/tasks/:id`,
     DETAIL: (id: string) => `${API_BASE_URL}/tasks/${id}`,
   },
+  // Teams endpoints
+  TEAMS: {
+    BASE: `${API_BASE_URL}/teams`,
+    DETAIL: (id: string) => `${API_BASE_URL}/teams/${id}`,
+    MEMBERS: (id: string) => `${API_BASE_URL}/teams/${id}/members`,
+  },
 };
 
 // Debug log all endpoints for verification

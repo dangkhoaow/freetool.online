@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useMembers, useDeleteMember } from "@/hooks/use-members";
-import { useTeams } from "@/hooks/use-team";
-import { useUserRoles } from "@/hooks/use-user-roles";
+import { useMembers, useDeleteMember } from "@/lib/services/projly/use-members";
+import { useTeams } from "@/lib/services/projly/use-team";
+import { useUserRoles } from "@/lib/services/projly/use-user-roles";
 // import { TeamMember } from "@/services/members"; // Not needed, type comes from hook
 
 // Local type for team member with user (matches backend and hook)
@@ -186,7 +186,6 @@ export function MembersTable() {
                 Add a new team member to your organization.
               </DialogDescription>
             </DialogHeader>
-            {/* @ts-expect-error: AddMemberForm type may not be recognized as JSX, but runtime is valid. */}
             <AddMemberForm teams={teams} onSuccess={() => setIsAddDialogOpen(false)} />
           </DialogContent>
         </Dialog>
@@ -230,7 +229,7 @@ export function MembersTable() {
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
               {roles.map((role) => (
-                <SelectItem key={role} value={role}>
+                <SelectItem key={role} value={role || ""}>
                   {role}
                 </SelectItem>
               ))}
@@ -272,7 +271,7 @@ export function MembersTable() {
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
                       {(() => {console.log('Rendering member:', member); return null;})()}
-                      {(member.user?.firstName || member.user?.name || "")} {(member.user?.lastName || "")}
+                      {(member.user?.firstName || "")} {(member.user?.lastName || "")}
                     </TableCell>
                     <TableCell>{member.user?.email}</TableCell>
                     <TableCell>{member.department || "—"}</TableCell>
@@ -327,8 +326,7 @@ export function MembersTable() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
                               <AlertDialogDescription>
-                                {(() => {console.log('Prompting delete for member:', member); return null;})()}
-                                Are you sure you want to remove {(member.user?.firstName || member.user?.name || "")} {(member.user?.lastName || "")} from the team? This action cannot be undone.
+                                Are you sure you want to remove {(member.user?.firstName || "")} {(member.user?.lastName || "")} from the team? This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

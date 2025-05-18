@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskFormValues } from "../schemas/taskSchema";
-import { Profile } from "@/app/projly/types/profile";
-import { useProjectMembers } from "../../../hooks/use-projects";
+import { Profile } from "@/app/projly/projects/new/page";
+import { useProjectMembers } from "@/lib/services/projly/use-projects";
 import { Spinner } from "@/components/ui/spinner";
 
 interface TaskAssigneeFieldProps {
@@ -37,7 +37,9 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
   });
 
   // Fetch project members when a project is selected with proper typing
-  const { data: projectMembers = [], isLoading: isMembersLoading } = useProjectMembers(projectId);
+  const safeProjectId = projectId == null ? undefined : projectId;
+  console.log('[TaskAssigneeField] Safe project ID set to:', safeProjectId);
+  const { data: projectMembers = [], isLoading: isMembersLoading } = useProjectMembers(safeProjectId);
   
   // Convert project members data to match Profile interface
   const members = Array.isArray(projectMembers) ? projectMembers.map((member: any) => ({
@@ -99,9 +101,10 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
               {/* Show filtered profiles */}
               {!isLoading && !isMembersLoading && filteredProfiles.map((profile) => (
                 <SelectItem key={profile.id} value={profile.id}>
-                  {profile.firstName && profile.lastName
-                    ? `${profile.firstName} ${profile.lastName}`
-                    : profile.email || 'Unknown User'}
+                  console.log('[TaskAssigneeField] Rendering profile item:', profile);
+                  {profile.user.firstName && profile.user.lastName
+                    ? `${profile.user.firstName} ${profile.user.lastName}`
+                    : profile.user.email || 'Unknown User'}
                 </SelectItem>
               ))}
               

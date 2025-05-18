@@ -41,7 +41,7 @@ interface ApiUser {
 }
 
 // Interface for profile data from the API
-interface Profile {
+export interface Profile {
   id: string;
   userId: string;
   user: ApiUser;

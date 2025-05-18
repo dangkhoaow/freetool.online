@@ -2,8 +2,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { taskSchema, TaskFormValues } from "../schemas/taskSchema";
 import { useAuth } from "../../../contexts/AuthContext";
-import { useProfiles } from "../../../hooks/use-profile";
-import { Profile } from "../../../types/profile"; // Use the correct Profile type
+import { useProfiles } from "@/lib/services/projly/use-profile";
+// Log initialization for debugging
+console.log('[useTaskForm] useProfiles hook imported and initialized');
+import { Profile } from "@/app/projly/projects/new/page";
+// Log import for debugging
+console.log('[useTaskForm] Profile type imported from app/projly/projects/new/page');
 import { useState } from "react";
 import { parseDateSafe, toISOStringSafe, formatDateForInput, createUTCDateAtNoon } from "../../../utils/dateUtils";
 

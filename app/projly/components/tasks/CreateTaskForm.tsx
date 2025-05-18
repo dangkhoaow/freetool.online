@@ -7,10 +7,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { toISOStringSafe } from "@/app/projly/utils/dateUtils";
 import { CalendarIcon, Plus } from "lucide-react";
-import { useCreateTask } from "@/app/projly/hooks/use-tasks";
-import { useProjects } from "@/app/projly/hooks/use-projects";
-import { useSession } from "@/app/projly/hooks/jwt-auth-adapter";
-import { useProfiles } from "@/app/projly/hooks/use-profile";
+import { useCreateTask } from "@/lib/services/projly/use-tasks";
+import { useProjects } from "@/lib/services/projly/use-projects";
+import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
+import { useProfiles } from "@/lib/services/projly/use-profile";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { TaskCreateInput } from "@/lib/services/projly/tasks-service";
+import { Task } from "@/lib/services/projly/use-tasks";
 import { TaskProjectField } from "./form-fields/TaskProjectField";
 import { TaskAssigneeField } from "./form-fields/TaskAssigneeField";
 
@@ -123,16 +123,18 @@ export function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
     }
     
     // Create a new object with the data formatted for the API that matches TaskCreateInput
-    const taskData: TaskCreateInput = {
+    const isoStartDate = data.startDate != null ? toISOStringSafe(data.startDate) : undefined;
+    console.log('[CreateTaskForm] Converted startDate to ISO string or undefined, value was:', data.startDate);
+    const isoDueDate = data.dueDate != null ? toISOStringSafe(data.dueDate) : undefined;
+    console.log('[CreateTaskForm] Converted dueDate to ISO string or undefined, value was:', data.dueDate);
+    const taskData: { title: string; description?: string; status?: string; assignedTo?: string; projectId?: string; startDate?: string; dueDate?: string } = {
       title: data.title,
       description: data.description,
       status: data.status || "Not Started",
-      projectId: data.projectId || "",  // Required field
-      // Convert to proper format and ensure type compatibility
-      dueDate: data.dueDate ? 
-        (typeof data.dueDate === 'string' ? new Date(data.dueDate) : data.dueDate) : 
-        undefined,
-      assigneeId: data.assignedTo || undefined  // Already transformed in schema
+      assignedTo: data.assignedTo,
+      projectId: data.projectId || "",
+      startDate: isoStartDate,
+      dueDate: isoDueDate,
     };
     
     console.log("Submitting task data:", taskData);

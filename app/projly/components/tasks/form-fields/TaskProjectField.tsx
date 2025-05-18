@@ -1,7 +1,6 @@
-
 import React from "react";
 import { useFormContext } from "react-hook-form";
-import { useProjects } from "../../../hooks/use-projects";
+import { useProjects } from "@/lib/services/projly/use-projects";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { 
   Select,

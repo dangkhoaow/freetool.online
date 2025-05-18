@@ -4,6 +4,10 @@ import { useSession } from "./jwt-auth-adapter";
 
 // Using relative import for api-client to avoid module resolution issues
 import apiClient from "../../api-client";
+import { API_ENDPOINTS } from "@/app/projly/config/apiConfig";
+
+// Log API endpoints for debugging
+console.log('[HOOK:TEAMS] API_ENDPOINTS.TEAMS.BASE:', API_ENDPOINTS.TEAMS.BASE);
 
 // Log import paths for debugging
 console.log('[use-team] Importing useSession from "./jwt-auth-adapter"');
@@ -27,7 +31,7 @@ type TeamMemberWithUser = {
   };
 };
 
-type TeamWithProject = {
+export type TeamWithProject = {
   id: string;
   name: string;
   description?: string;
@@ -54,6 +58,12 @@ export type Team = {
   projectId?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  project?: {
+    id: string;
+    name: string;
+    description?: string;
+    ownerId?: string;
+  };
 };
 
 export const useTeams = () => {
@@ -70,14 +80,16 @@ export const useTeams = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.get('teams');
+      // Use the proper API path from API_ENDPOINTS
+      console.log('[HOOK:TEAMS] Using API endpoint:', '/api/projly/teams');
+      const response = await apiClient.get('/api/projly/teams');
       console.log("[HOOK:TEAMS] API response received:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:TEAMS] Error fetching teams:", response.error);
         toast({
           title: "Error fetching teams",
-          description: response.error.message,
+          description: typeof response.error === 'string' ? response.error : (response.error as Error).message || "Unknown error",
           variant: "destructive"
         });
         throw response.error;
@@ -103,14 +115,15 @@ export const useTeam = (id: string) => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.get(`teams/${id}`);
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`);
+      const response = await apiClient.get(`/api/projly/teams/${id}`);
       console.log("[HOOK:TEAMS] API response received for team details:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:TEAMS] Error fetching team:", response.error);
         toast({
           title: "Error fetching team",
-          description: response.error.message,
+          description: typeof response.error === 'string' ? response.error : (response.error as Error).message || "Unknown error",
           variant: "destructive"
         });
         throw response.error;
@@ -136,14 +149,15 @@ export const useTeamMembers = (teamId: string) => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.get(`teams/${teamId}/members`);
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${teamId}/members`);
+      const response = await apiClient.get(`/api/projly/teams/${teamId}/members`);
       console.log("[HOOK:TEAMS] API response received for team members:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:TEAMS] Error fetching team members:", response.error);
         toast({
           title: "Error fetching team members",
-          description: response.error.message,
+          description: typeof response.error === 'string' ? response.error : (response.error as Error).message || "Unknown error",
           variant: "destructive"
         });
         throw response.error;
@@ -177,12 +191,13 @@ export const useTeamMembersCount = (teamId: string, projectId?: string) => {
       }
       
       // Get team members via API client
-      const membersResponse = await apiClient.get(`teams/${teamId}/members`);
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${teamId}/members`);
+      const membersResponse = await apiClient.get(`/api/projly/teams/${teamId}/members`);
       if (membersResponse.error) {
         console.error("[HOOK:TEAMS] Error fetching team members:", membersResponse.error);
         toast({
           title: "Error fetching team members",
-          description: membersResponse.error.message,
+          description: typeof membersResponse.error === 'string' ? membersResponse.error : (membersResponse.error as Error).message || "Unknown error",
           variant: "destructive"
         });
         throw membersResponse.error;
@@ -247,7 +262,8 @@ export const useCreateTeam = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.post('teams', team);
+      console.log('[HOOK:TEAMS] Using API endpoint: /api/projly/teams');
+      const response = await apiClient.post('/api/projly/teams', team);
       console.log("[HOOK:TEAMS] API response received for team creation:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -265,11 +281,11 @@ export const useCreateTeam = () => {
         description: "Team has been created successfully.",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       console.error("[HOOK:TEAMS] Error in create team mutation:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create team.",
+        description: typeof error === 'string' ? error : (error as Error).message || "Failed to create team",
         variant: "destructive",
       });
     },
@@ -290,7 +306,8 @@ export const useUpdateTeam = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.put(`teams/${id}`, team);
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`);
+      const response = await apiClient.put(`/api/projly/teams/${id}`, team);
       console.log("[HOOK:TEAMS] API response received for team update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -334,7 +351,8 @@ export const useDeleteTeam = () => {
       }
       
       // Call API endpoint instead of service directly
-      const response = await apiClient.delete(`teams/${id}`);
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`);
+      const response = await apiClient.delete(`/api/projly/teams/${id}`);
       console.log("[HOOK:TEAMS] API response received for team deletion:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

@@ -3,9 +3,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
-import { useUpdateMember } from "@/hooks/use-members";
-import type { Team } from "@/hooks/use-team";
-import type { TeamMemberWithUser } from "@/hooks/use-members";
+import { useUpdateMember, TeamMemberWithUser } from "@/lib/services/projly/use-members";
+import type { Team } from "@/lib/services/projly/use-team";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
