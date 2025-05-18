@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useProfiles } from "@/lib/services/projly/use-profile";
@@ -21,6 +21,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { projlyProjectsService } from '@/lib/services/projly';
+import { useSession } from '@/lib/services/projly/jwt-auth-adapter';
 
 type ProjectFormValues = {
   name: string;
@@ -66,18 +67,29 @@ export default function CreateProjectPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   
   // Fetch all user profiles for owner selection
   const { data: profiles = [], isLoading: loadingUsers } = useProfiles();
   
   // Transform the profile data for the dropdown
+  // Use userId as the id field for proper project owner assignment
   const users = profiles.map((profile: Profile) => ({
-    id: profile.id,
+    id: profile.userId, // Use userId instead of profile.id
+    profileId: profile.id, // Keep profile ID for reference
     userId: profile.userId,
     firstName: profile.user.firstName || 'Unknown',
     lastName: profile.user.lastName || 'User',
     email: profile.user.email || 'No email'
   }));
+  
+  console.log('[PROJLY:NEW_PROJECT] Available users for owner selection:', users);
+  console.log('[PROJLY:NEW_PROJECT] Current user ID:', currentUserId);
+  
+  // Find the current user in the users list
+  const currentUserInList = users.find((user: { id: string }) => user.id === currentUserId);
+  console.log('[PROJLY:NEW_PROJECT] Current user in list:', currentUserInList);
   
   // Initialize form with default values
   const form = useForm<ProjectFormValues>({
@@ -87,21 +99,44 @@ export default function CreateProjectPage() {
       startDate: '',
       endDate: '',
       status: 'draft',
-      ownerId: users[0]?.id || '',
+      ownerId: currentUserId || users[0]?.id || '',
       canManageMembers: true
     }
   });
+  
+  // Update the ownerId when the current user ID becomes available
+  useEffect(() => {
+    if (currentUserId && !form.getValues('ownerId')) {
+      console.log('[PROJLY:NEW_PROJECT] Setting owner ID to current user:', currentUserId);
+      form.setValue('ownerId', currentUserId);
+    }
+  }, [currentUserId, form]);
   
   // Log form values when they change
   const formValues = form.watch();
   console.log('Form values:', formValues);
 
   const onSubmit = async (data: ProjectFormValues) => {
-    console.log('Form submitted with data:', data);
+    console.log('[PROJLY:NEW_PROJECT] Form submitted with data:', data);
     setIsSubmitting(true);
     
     try {
-      console.log('Creating project with data:', data);
+      // Ensure ownerId is not empty
+      if (!data.ownerId) {
+        console.log('[PROJLY:NEW_PROJECT] No owner ID selected, using first available user or current user');
+        // If no owner is selected, use the first available user
+        if (users.length > 0) {
+          data.ownerId = users[0].id;
+          console.log('[PROJLY:NEW_PROJECT] Using first available user as owner:', users[0]);
+        }
+      }
+      
+      console.log('[PROJLY:NEW_PROJECT] Creating project with data:', {
+        ...data,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        endDate: data.endDate ? new Date(data.endDate) : null
+      });
+      
       const response = await projlyProjectsService.createProject({
         ...data,
         startDate: data.startDate ? new Date(data.startDate) : null,
@@ -213,38 +248,50 @@ export default function CreateProjectPage() {
               <FormField
                 control={form.control}
                 name="ownerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Owner*</FormLabel>
-                    <FormControl>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                        {...field}
-                      >
-                        {loadingUsers ? (
-                          <option>Loading users...</option>
-                        ) : (
-                          users.map((user: User) => (
-                            <option key={user.id} value={user.id}>
-                              {`${user.firstName} ${user.lastName} (${user.email})`}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </FormControl>
-                    <FormDescription>
-                      The project owner will have full control over this project
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Log the current field value for debugging
+                  console.log('[PROJLY:NEW_PROJECT] Current owner field value:', field.value);
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Project Owner*</FormLabel>
+                      <FormControl>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          {...field}
+                          onChange={(e) => {
+                            // Log the selected value
+                            console.log('[PROJLY:NEW_PROJECT] Owner selected:', e.target.value);
+                            field.onChange(e);
+                          }}
+                        >
+                          <option value="">Select a project owner</option>
+                          {loadingUsers ? (
+                            <option value="">Loading users...</option>
+                          ) : (
+                            users.map((user: User) => (
+                              <option key={user.id} value={user.id}>
+                                {`${user.firstName} ${user.lastName} (${user.email})`}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </FormControl>
+                      <FormDescription>
+                        The project owner will have full control over this project. 
+                        {field.value ? `Selected owner ID: ${field.value.substring(0, 8)}...` : 'No owner selected'}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
-
+              {/* TODO: Show this field only when we define rule */}
               <FormField
                 control={form.control}
                 name="canManageMembers"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="hidden flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <input
                         type="checkbox"

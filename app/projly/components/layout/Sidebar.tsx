@@ -7,8 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, ClipboardList, Users, Calendar, BarChart2, Settings, LogOut, FolderOpen, Database, UserCog, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { projlyAuthService } from '@/lib/services/projly';
-import apiClient from '@/lib/api-client';
+import { projlyAuthService } from "@/lib/services/projly";
+import { useProjectOwnership } from "@/lib/services/projly/use-project-ownership";
+import apiClient from "@/lib/api-client";
 
 type SidebarItemProps = {
   icon: React.ReactNode;
@@ -65,6 +66,9 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
   const [userRole, setUserRole] = useState<string>('user');
   const [isProjectOwner, setIsProjectOwner] = useState<boolean>(false);
   
+  // Use the dedicated hook for project ownership
+  const projectOwnership = useProjectOwnership();
+  
   // Function to handle logging
   const log = (message: string, data?: any) => {
     if (data) {
@@ -113,14 +117,69 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
         // Separately fetch project ownership status
         // This should be determined by project-specific logic, not site roles
         try {
-          // For now, we'll use a simple check based on user data
-          // In a real implementation, this would call a project-specific API
-          const hasProjects = userData?.ownedProjects?.length > 0;
-          setIsProjectOwner(hasProjects || false);
-          log('Project ownership set based on user data:', hasProjects);
+          // First check if the user has any owned projects directly
+          // Handle the case when ownedProjects might be missing
+          const hasOwnedProjects = Array.isArray(userData?.ownedProjects) && userData.ownedProjects.length > 0;
+          
+          // Log the owned projects data for debugging
+          log('Owned projects data:', {
+            hasOwnedProjects,
+            ownedProjectsExists: !!userData?.ownedProjects,
+            ownedProjectsCount: Array.isArray(userData?.ownedProjects) ? userData.ownedProjects.length : 'N/A'
+          });
+          
+          // Then check if the user is a member of any teams with projects
+          // Handle the case when teamMembers might be missing
+          const hasTeamProjects = Array.isArray(userData?.teamMembers) && userData.teamMembers.some((member: { team?: { projects?: any[] } }) => 
+            !!member?.team?.projects && member.team.projects.length > 0
+          ) || false;
+          
+          // Log the team projects data for debugging
+          log('Team projects data:', {
+            hasTeamProjects,
+            teamMembersExists: !!userData?.teamMembers,
+            teamMembersCount: Array.isArray(userData?.teamMembers) ? userData.teamMembers.length : 'N/A'
+          });
+          
+          // Use the result from the useProjectOwnership hook
+          // This makes a dedicated API call to check project access
+          const hasProjectAccess = projectOwnership.data || false;
+          
+          // Log user ID for debugging
+          log('User ID information:', {
+            userId: userData?.id,
+            email: userData?.email,
+            projectOwnershipStatus: hasProjectAccess
+          });
+          
+          // Always set to true for site_owner role to ensure access
+          // Use strict comparison and also check for string value to handle different formats
+          const isSiteOwner = userRole === 'site_owner' || String(userRole).toLowerCase() === 'site_owner';
+          
+          console.log('[PROJLY:SIDEBAR] Site owner check:', {
+            userRole,
+            isSiteOwnerResult: isSiteOwner,
+            userRoleType: typeof userRole,
+            userRoleStringCompare: String(userRole).toLowerCase() === 'site_owner'
+          });
+          
+          // Force project ownership to true for site owners
+          // This is critical because the user ID in the frontend might not match the project owner ID in the backend
+          const finalOwnershipStatus = isSiteOwner ? true : (hasOwnedProjects || hasTeamProjects || hasProjectAccess);
+          
+          setIsProjectOwner(finalOwnershipStatus);
+          log('Project ownership determination:', {
+            userId: userData?.id,
+            hasOwnedProjects,
+            hasTeamProjects,
+            hasProjectAccess,
+            isSiteOwner,
+            finalStatus: finalOwnershipStatus
+          });
         } catch (projectError) {
           console.error('[PROJLY:SIDEBAR] Error determining project ownership:', projectError);
-          setIsProjectOwner(false);
+          // Fall back to the useProjectOwnership hook result if there's an error
+          setIsProjectOwner(projectOwnership.data || false);
         }
       } catch (error) {
         console.error('[PROJLY:SIDEBAR] Error loading user data:', error);

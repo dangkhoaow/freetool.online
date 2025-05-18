@@ -214,12 +214,12 @@ export default function CreateProject() {
                   </FormItem>
                 )}
               />
-
+              {/* TODO: Show this field only when we define rule */}
               <FormField
                 control={form.control}
                 name="canManageMembers"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="hidden flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <input
                         type="checkbox"
@@ -228,7 +228,7 @@ export default function CreateProject() {
                         onChange={(e) => field.onChange(e.target.checked)}
                       />
                     </FormControl>
-                    <div className="space-y-1 leading-none">
+                    <div className="space-y-1 leading-none hidden">
                       <FormLabel>Allow owner to manage project members</FormLabel>
                       <FormDescription>
                         When enabled, the project owner can add or remove team members from this project
