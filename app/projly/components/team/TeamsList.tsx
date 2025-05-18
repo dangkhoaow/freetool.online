@@ -103,27 +103,34 @@ export function TeamsList() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {teams?.map((team) => (
-          <TeamMemberCard 
-            key={team.id} 
-            team={team} 
-            onEdit={handleEdit} 
-            onDelete={handleDelete} 
-          />
-        ))}
-
-        {(!teams || teams.length === 0) && (
-          <div className="col-span-full flex justify-center p-8 border rounded-lg bg-muted/20">
-            <div className="text-center">
-              <h3 className="text-lg font-medium">No teams found</h3>
-              <p className="text-muted-foreground mt-1">
-                Create a new team to get started
-              </p>
-            </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <Spinner className="h-8 w-8" />
+        </div>
+      ) : teams && teams.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Sort teams alphabetically by name */}
+          {[...teams]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((team) => (
+              <TeamMemberCard
+                key={team.id}
+                team={team}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+        </div>
+      ) : (
+        <div className="col-span-full flex justify-center p-8 border rounded-lg bg-muted/20">
+          <div className="text-center">
+            <h3 className="text-lg font-medium">No teams found</h3>
+            <p className="text-muted-foreground mt-1">
+              Create a new team to get started
+            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <AlertDialog
         open={isDeleteDialogOpen}
@@ -167,7 +174,10 @@ function TeamMemberCard({
     team.project?.id
   );
   const { data: session } = useSession();
-  const isOwner = session?.user?.id === team.project?.ownerId;
+  // Check if the logged-in user is the team owner (not the project owner)
+  const isOwner = session?.user?.id === team.ownerId;
+  
+  console.log("TeamMemberCard - Team:", team.name, "User ID:", session?.user?.id, "Team Owner ID:", team.ownerId, "Is Owner:", isOwner);
 
   return (
     <Card key={team.id}>
@@ -175,19 +185,19 @@ function TeamMemberCard({
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl">{team.name}</CardTitle>
           <div className="flex space-x-1">
+            {isOwner && <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(team)}
+            >
+              <Trash className="h-4 w-4" />
+            </Button>}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onEdit(team)}
             >
               <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(team)}
-            >
-              {isOwner && <Trash className="h-4 w-4" />}
             </Button>
           </div>
         </div>

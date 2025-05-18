@@ -32,8 +32,8 @@ export function useUserProfile() {
       }
       
       console.log("[HOOK:PROFILE] Fetching profile for user ID:", user.id);
-      // Call API endpoint with the correct path
-      const response: ApiResponse = await apiClient.get('api/projly/profiles/me');
+      // Call API endpoint with the correct path including leading slash
+      const response: ApiResponse = await apiClient.get('/api/projly/profiles/me');
       console.log("[HOOK:PROFILE] API response received for user profile:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
@@ -76,8 +76,8 @@ export function useProfiles() {
       }
       
       console.log("[HOOK:PROFILE] Fetching all profiles");
-      // Call API endpoint with the correct path
-      const response = await apiClient.get('api/projly/profiles');
+      // Call API endpoint with the correct path including leading slash
+      const response = await apiClient.get('/api/projly/profiles');
       console.log("[HOOK:PROFILE] API response received for profiles list:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

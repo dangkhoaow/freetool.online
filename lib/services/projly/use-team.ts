@@ -55,7 +55,7 @@ export type Team = {
   id: string;
   name: string;
   description?: string;
-  projectId?: string;
+  ownerId?: string;
   createdAt?: Date;
   updatedAt?: Date;
   project?: {
@@ -64,6 +64,25 @@ export type Team = {
     description?: string;
     ownerId?: string;
   };
+  projects?: {
+    id: string;
+    teamId: string;
+    projectId: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+    project: {
+      id: string;
+      name: string;
+      description?: string;
+      status?: string;
+      startDate?: Date;
+      endDate?: Date;
+      createdAt?: Date;
+      updatedAt?: Date;
+      ownerId?: string;
+    };
+  }[];
+  members?: TeamMemberWithUser[];
 };
 
 export const useTeams = () => {
@@ -297,17 +316,24 @@ export const useUpdateTeam = () => {
   const { data: session } = useSession();
 
   return useMutation({
-    mutationFn: async ({ id, team }: { id: string; team: { name?: string; description?: string; projectId?: string } }) => {
-      console.log("[HOOK:TEAMS] Updating team with ID:", id, "Updates:", team);
+    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; projectId?: string } }) => {
+      console.log("[HOOK:TEAMS] Updating team with ID:", id, "Updates:", data);
       
       if (!session?.user?.id) {
         console.error("[HOOK:TEAMS] No user session found in useUpdateTeam");
         throw new Error("You must be logged in to update a team");
       }
       
+      // Format the data correctly for the API
+      const teamData = {
+        name: data.name,
+        description: data.description,
+        projectId: data.projectId
+      };
+      
       // Call API endpoint instead of service directly
-      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`);
-      const response = await apiClient.put(`/api/projly/teams/${id}`, team);
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`, teamData);
+      const response = await apiClient.put(`/api/projly/teams/${id}`, teamData);
       console.log("[HOOK:TEAMS] API response received for team update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

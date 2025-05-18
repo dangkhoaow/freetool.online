@@ -65,6 +65,33 @@ export const useMembers = (teamId?: string) => {
         throw response.error;
       }
       
+      // Extract members from teams response
+      if (Array.isArray(response.data)) {
+        console.log("[HOOK:MEMBERS] Processing teams response to extract members");
+        
+        // Check if the response is an array of teams with nested members
+        if (response.data.length > 0 && 'members' in response.data[0]) {
+          // Extract and flatten all members from all teams
+          const allMembers = response.data.flatMap(team => {
+            // Ensure team.members is an array before mapping
+            if (Array.isArray(team.members)) {
+              return team.members;
+            }
+            return [];
+          });
+          
+          console.log(`[HOOK:MEMBERS] Extracted ${allMembers.length} members from ${response.data.length} teams`);
+          
+          // Filter by teamId if specified
+          const filteredMembers = teamId 
+            ? allMembers.filter(member => member.teamId === teamId)
+            : allMembers;
+            
+          return filteredMembers as TeamMemberWithUser[];
+        }
+      }
+      
+      // If the response is already in the expected format, return it directly
       return response.data as TeamMemberWithUser[];
     },
     enabled: !!session?.user?.id

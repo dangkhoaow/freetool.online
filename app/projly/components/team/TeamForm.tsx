@@ -51,13 +51,21 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
   console.log("TeamForm - Current team:", team);
   console.log("TeamForm - Available projects:", projects);
 
+  // Get the connected project ID if it exists
+  const connectedProjectId = team?.projects && team.projects.length > 0 
+    ? team.projects[0].projectId 
+    : undefined;
+
+  console.log("TeamForm - Team projects:", team?.projects);
+  console.log("TeamForm - Connected project ID:", connectedProjectId);
+
   // Initialize the form with react-hook-form and zod validation
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: team?.name || "",
       description: team?.description || "",
-      projectId: team?.projectId || undefined,
+      projectId: connectedProjectId,
     },
   });
 

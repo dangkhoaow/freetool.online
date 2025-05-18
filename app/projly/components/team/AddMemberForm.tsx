@@ -43,12 +43,22 @@ type AddMemberFormProps = {
   onSuccess: () => void;
 };
 
-// Define a type for users fetched from profiles
+// Define a type for users fetched from profiles to match the actual API response structure
 type ProfileUser = {
   id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
+  userId: string;
+  bio?: string;
+  avatarUrl?: string | null;
+  jobTitle?: string;
+  department?: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
 };
 
 export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
@@ -64,18 +74,20 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
       setIsLoadingUsers(true);
       try {
         console.log('[AddMemberForm] Fetching profiles from API');
-        // Use API client to fetch profiles instead of direct service call
-        const response = await apiClient.get('profiles');
+        // Use API client to fetch profiles with correct /api/projly prefix
+        const response = await apiClient.get('/api/projly/profiles');
         
         if (response.error) {
           throw response.error;
         }
 
         if (response.data) {
-          setUsers(response.data as ProfileUser[]);
-          console.log('[AddMemberForm] Fetched users:', response.data);
+          // Store the profiles data as is
+          const profiles = response.data as ProfileUser[];
+          console.log('[AddMemberForm] Fetched profiles:', profiles);
+          setUsers(profiles);
         } else {
-          console.log('[AddMemberForm] No users returned from API');
+          console.log('[AddMemberForm] No profiles returned from API');
           setUsers([]);
         }
       } catch (error: any) {
@@ -149,11 +161,11 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.firstName && user.lastName 
-                        ? `${user.firstName} ${user.lastName}` 
-                        : user.email}
+                  {users.map((profile) => (
+                    <SelectItem key={profile.userId} value={profile.userId}>
+                      {profile.user.firstName && profile.user.lastName 
+                        ? `${profile.user.firstName} ${profile.user.lastName}` 
+                        : profile.user.email}
                     </SelectItem>
                   ))}
                 </SelectContent>

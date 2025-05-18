@@ -58,12 +58,14 @@ export function EditMemberForm({ member, teams, onSuccess }: EditMemberFormProps
   // Handle form submission
   function onSubmit(data: MemberFormValues) {
     console.log('Submitting EditMemberForm with data:', data);
+    
+    // Include both role and department fields as they are now supported in the ProjlyTeamMember schema
     updateMember(
       { 
         id: member.id, 
         data: {
           role: data.role,
-          department: data.department
+          department: data.department // Now supported after database migration
         }
       },
       {
