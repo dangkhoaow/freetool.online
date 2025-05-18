@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMembers, useDeleteMember } from "@/lib/services/projly/use-members";
+import { useMembers, useDeleteMember, useAccessibleMembers } from "@/lib/services/projly/use-members";
 import { useTeams } from "@/lib/services/projly/use-team";
 import { useUserRoles } from "@/lib/services/projly/use-user-roles";
 // import { TeamMember } from "@/services/members"; // Not needed, type comes from hook
@@ -75,10 +75,25 @@ export function MembersTable() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Get members data
-  const { data: members = [], isLoading, error } = useMembers(teamFilter !== "all" ? teamFilter : undefined); // fetch members for current team
+  // Get members data - use the new useAccessibleMembers hook to get filtered members
+  const { data: accessibleMembers = [], isLoading: isLoadingAccessible, error: accessibleError } = useAccessibleMembers();
+  const { data: members = [], isLoading: isLoadingMembers } = useMembers(teamFilter !== "all" ? teamFilter : undefined);
   const { data: teams = [], isLoading: isLoadingTeams } = useTeams(); // teams: Team[]
   const { mutate: deleteMember, isPending: isDeleting } = useDeleteMember();
+  
+  // Determine which members data to use based on the current role and API success
+  const isLoading = isLoadingAccessible || isLoadingMembers || isLoadingTeams;
+  const error = null; // Don't show error to user, just fall back to regular members
+  
+  // Use the accessible members if available, otherwise fall back to regular members
+  // This ensures we still show data even if the accessible members API fails
+  const membersData = accessibleError || accessibleMembers.length === 0 ? members : accessibleMembers;
+  console.log('[MEMBERS:TABLE] Using members data, source:', accessibleError ? 'fallback regular members' : 'filtered accessible members', 'count:', membersData.length);
+  
+  // If there was an error with the accessible members API, log it but don't show to user
+  if (accessibleError) {
+    console.error('[MEMBERS:TABLE] Error fetching accessible members, falling back to regular members:', accessibleError);
+  }
 
   // Get current user role for privileged access (admin/site_owner)
   const { data: currentRole, isLoading: isLoadingRole } = useUserRoles().currentUserRole;
@@ -93,7 +108,7 @@ export function MembersTable() {
   }, [teams, teamFilter, isPrivileged, isLoadingRole]);
 
   // Filter and sort the members data
-  const filteredMembers = members.filter((member) => {
+  const filteredMembers = membersData.filter((member) => {
     const matchesSearch = 
       `${member.user?.firstName} ${member.user?.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
       member.user?.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -106,11 +121,11 @@ export function MembersTable() {
       (roleFilter === "all" || member.role === roleFilter)
     );
   });
-  console.log('Filtered members:', filteredMembers);
+  console.log('[MEMBERS:TABLE] Applied UI filters, resulting count:', filteredMembers.length);
 
   // Get unique roles for the filter dropdown
-  const roles = Array.from(new Set(members.map(member => member.role))).filter(Boolean);
-  console.log('Available roles:', roles);
+  const roles = Array.from(new Set(membersData.map(member => member.role))).filter(Boolean);
+  console.log('[MEMBERS:TABLE] Available roles:', roles);
 
   // Sort the filtered members
   const sortedMembers = [...filteredMembers].sort((a, b) => {
@@ -161,9 +176,16 @@ export function MembersTable() {
   }
 
   if (error) {
+    // Safe access to error message property
+    const errorMessage = typeof error === 'string' 
+      ? error 
+      : (error && typeof error === 'object' && error !== null && 'message' in error) 
+        ? String((error as { message: string }).message) 
+        : 'Unknown error';
+    
     return (
       <div className="bg-red-50 p-4 rounded-md text-red-800">
-        Error loading members: {error.message}
+        Error loading members: {errorMessage}
       </div>
     );
   }

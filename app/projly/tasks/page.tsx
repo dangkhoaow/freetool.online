@@ -79,10 +79,6 @@ export default function TasksPage() {
         </div>
         
         <Card>
-          <CardHeader>
-            <CardTitle>My Tasks</CardTitle>
-            <CardDescription>All tasks assigned to you</CardDescription>
-          </CardHeader>
           <CardContent>
             {tasks.length > 0 ? (
               <TasksTable tasks={tasks} />

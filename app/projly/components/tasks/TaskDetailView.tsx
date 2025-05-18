@@ -1,8 +1,9 @@
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Edit, Calendar, Clock, User, Briefcase, FileText, CheckCircle } from "lucide-react";
-import { Task } from "@/app/projly/types/task";
+import { Task } from "./TasksTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +17,19 @@ interface TaskDetailViewProps {
 }
 
 export function TaskDetailView({ task, onEdit, onClose }: TaskDetailViewProps) {
+  // Initialize router for navigation
+  const router = useRouter();
+  
+  // Handle edit button click - navigate to edit page
+  const handleEditClick = () => {
+    console.log("[TaskDetailView] Navigating to edit task page:", task.id);
+    // Close the dialog if onClose is provided
+    if (onClose) {
+      onClose();
+    }
+    // Navigate to the edit page
+    router.push(`/projly/tasks/${task.id}/edit`);
+  };
   // Helper function to render status badge with appropriate color
   const renderStatusBadge = (status: string) => {
     let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
@@ -147,8 +161,8 @@ export function TaskDetailView({ task, onEdit, onClose }: TaskDetailViewProps) {
             Close
           </Button>
         </DialogClose>
-        <Button onClick={onEdit}>
-          <Edit className="mr-2 h-4 w-4" /> Edit Task
+        <Button onClick={handleEditClick}>
+          <Edit className="mr-2 h-4 w-4" /> Edit
         </Button>
       </div>
     </div>

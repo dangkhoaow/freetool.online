@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
-import { Loader2, ArrowLeft, Save, Trash, Clock, Calendar } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Trash, Clock, Calendar, Edit } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,17 +24,18 @@ import {
   AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
+import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
 import { Task } from "@/app/projly/components/tasks/TasksTable";
 
 interface TaskDetailsPageProps {
-  params: {
-    id: string;
-  }
+  // Props are no longer needed here since we'll use useParams
 }
 
-export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
-  const taskId = params.id;
+export default function TaskDetailsPage({}: TaskDetailsPageProps) {
+  // Use useParams to get the route parameters
+  const params = useParams();
+  const taskId = params?.id as string;
   const router = useRouter();
   const { toast } = useToast();
   
@@ -51,13 +53,23 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
     description: '',
     projectId: '',
     status: 'Not Started',
-    assignedTo: '',
+    priority: 'Medium',
+    assignedTo: 'none', // Using 'none' instead of empty string for the Select component
     startDate: null as Date | null,
     dueDate: null as Date | null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
     // For displaying only
     project: null as any,
     assignee: null as any
   });
+  
+  // Use the useProjectMembers hook to get members for the selected project
+  const { data: projectMembers = [], isLoading: isLoadingMembers } = 
+    useProjectMembers(taskForm.projectId || undefined) as { 
+      data: any[], 
+      isLoading: boolean 
+    };
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -101,22 +113,27 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
         // Adding detailed logging to help debug the task data structure
         console.log('[PROJLY:TASK_DETAILS] Raw task data:', taskData);
         
-        // Note: The Task interface doesn't have a startDate field, but we're including it in our form state
-        // for better UX. We need to manage this discrepancy when communicating with the API.
         const formattedTask = {
           id: taskData.id,
           title: taskData.title || '',
           description: taskData.description || '',
           projectId: taskData.projectId || '',
           status: taskData.status || 'Not Started',
-          assignedTo: taskData.assigneeId || '',
-          // We don't have startDate in the API, defaulting to null
-          startDate: null,
+          priority: taskData.priority || 'Medium',
+          assignedTo: taskData.assigneeId || 'none',
+          startDate: taskData.startDate ? new Date(taskData.startDate) : null,
           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+          createdAt: taskData.createdAt ? new Date(taskData.createdAt) : new Date(),
+          updatedAt: taskData.updatedAt ? new Date(taskData.updatedAt) : new Date(),
           // For displaying purposes
-          project: null,
-          assignee: null
+          project: taskData.project || null,
+          assignee: taskData.assignee || null
         };
+        
+        console.log('[PROJLY:TASK_DETAILS] Task timestamps:', {
+          createdAt: formattedTask.createdAt,
+          updatedAt: formattedTask.updatedAt
+        });
         
         console.log('[PROJLY:TASK_DETAILS] Formatted task for form:', formattedTask);
         setTaskForm(formattedTask);
@@ -209,10 +226,14 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
       // startDate is intentionally omitted as it's not part of the API interface
       // taskBasicData already contains the id, so we don't need to include it again
       // We need to check if dueDate is a Date object or a string
-      await projlyTasksService.updateTask({
+      // Convert 'none' to null for the API
+      const assigneeIdForApi = assignedTo === 'none' ? null : assignedTo;
+      console.log('[PROJLY:TASK_DETAILS] Assignee ID for API:', assigneeIdForApi);
+      
+      await projlyTasksService.updateTask(taskId, {
         ...taskBasicData,
-        assigneeId: assignedTo,
-        dueDate: dueDate && typeof dueDate === 'object' && 'toISOString' in dueDate ? dueDate.toISOString() : dueDate
+        assigneeId: assigneeIdForApi,
+        dueDate: dueDate && typeof dueDate === 'object' && dueDate !== null ? (dueDate as Date).toISOString() : dueDate
       });
       log('Task updated successfully');
       
@@ -232,13 +253,15 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
           description: updatedTask.description || '',
           projectId: updatedTask.projectId || '',
           status: updatedTask.status || 'Not Started',
-          assignedTo: updatedTask.assigneeId || '',
-          // API doesn't have startDate field, keep as null or use dueDate as a fallback
-          startDate: null,
+          priority: updatedTask.priority || 'Medium',
+          assignedTo: updatedTask.assigneeId || 'none',
+          startDate: updatedTask.startDate ? new Date(updatedTask.startDate) : null,
           dueDate: updatedTask.dueDate ? new Date(updatedTask.dueDate) : null,
+          createdAt: updatedTask.createdAt ? new Date(updatedTask.createdAt) : new Date(),
+          updatedAt: updatedTask.updatedAt ? new Date(updatedTask.updatedAt) : new Date(),
           // For displaying purposes
-          project: null,
-          assignee: null
+          project: updatedTask.project || null,
+          assignee: updatedTask.assignee || null
         });
         
         console.log('[PROJLY:TASK_DETAILS] Task refreshed successfully');
@@ -317,6 +340,16 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
             </p>
           </div>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/projly/tasks/${taskId}/edit`)}
+            className="ml-2"
+            disabled={isSubmitting}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <Button
             variant="destructive"
             size="sm"
             onClick={() => setIsDeleteDialogOpen(true)}
@@ -335,118 +368,92 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
           </TabsList>
           
           <TabsContent value="details">
-            <form onSubmit={handleSubmit}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Task Details</CardTitle>
-                  <CardDescription>View and edit task information</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Title */}
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={taskForm.title}
-                      onChange={(e) => handleChange('title', e.target.value)}
-                      placeholder="Task title"
-                      required
-                    />
+            <Card>
+              <CardHeader>
+                <CardTitle>Task Details</CardTitle>
+                <CardDescription>View task information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Title */}
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Title</h3>
+                  <p className="text-base">{taskForm.title}</p>
+                </div>
+                
+                {/* Description */}
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
+                  <div className="rounded-md bg-muted/30 p-3">
+                    <p className="whitespace-pre-wrap">{taskForm.description || 'No description provided'}</p>
                   </div>
-                  
-                  {/* Description */}
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={taskForm.description || ''}
-                      onChange={(e) => handleChange('description', e.target.value)}
-                      placeholder="Task description"
-                      className="min-h-[100px]"
-                    />
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {taskForm.dueDate ? `Due ${taskForm.dueDate.toLocaleDateString()}` : 'No due date'}
+                    </span>
                   </div>
-                  
-                  {/* Project Selection */}
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label htmlFor="project">Project</Label>
-                    <Select
-                      value={taskForm.projectId}
-                      onValueChange={(value) => handleChange('projectId', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Status */}
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={taskForm.status}
-                      onValueChange={(value) => handleChange('status', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Not Started">Not Started</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Start Date */}
-                    <div className="grid w-full items-center gap-1.5">
-                      <Label>Start Date</Label>
-                      <DatePicker
-                        date={taskForm.startDate}
-                        setDate={(date) => handleChange('startDate', date)}
-                      />
+                  {taskForm.startDate && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Starts {taskForm.startDate.toLocaleDateString()}
+                      </span>
                     </div>
-                    
-                    {/* Due Date */}
-                    <div className="grid w-full items-center gap-1.5">
-                      <Label>Due Date</Label>
-                      <DatePicker
-                        date={taskForm.dueDate}
-                        setDate={(date) => handleChange('dueDate', date)}
-                      />
-                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {taskForm.status}
+                    </span>
                   </div>
-                </CardContent>
-                <CardFooter className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push('/projly/tasks')}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </form>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Priority:</span>
+                    <Badge variant={taskForm.priority === 'High' ? 'destructive' : 'default'}>
+                      {taskForm.priority}
+                    </Badge>
+                  </div>
+                </div>
+                
+                {/* Project */}
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Project</h3>
+                  <p className="text-base">
+                    {projects.find(p => p.id === taskForm.projectId)?.name || 'Unknown project'}
+                  </p>
+                </div>
+                
+                {/* Assignee */}
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Assignee</h3>
+                  <p className="text-base">
+                    {(() => {
+                      if (taskForm.assignedTo === 'none') return 'None';
+                      
+                      if (isLoadingMembers) {
+                        return (
+                          <span className="flex items-center">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Loading...
+                          </span>
+                        );
+                      }
+                      
+                      const assignee = projectMembers.find(m => m.userId === taskForm.assignedTo);
+                      if (assignee?.user) {
+                        return assignee.user.firstName && assignee.user.lastName
+                          ? `${assignee.user.firstName} ${assignee.user.lastName}`
+                          : assignee.user.email || 'Unknown user';
+                      }
+                      
+                      return 'Unknown user';
+                    })()}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="activity">
@@ -458,20 +465,40 @@ export default function TaskDetailsPage({ params }: TaskDetailsPageProps) {
               <CardContent>
                 <div className="space-y-4">
                   {/* This would be populated from an activity log API */}
-                  <div className="flex items-start gap-2 border-b pb-4">
-                    <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="font-medium">Status updated to: {taskForm.status}</p>
-                      <p className="text-sm text-muted-foreground">Today at 10:30 AM</p>
+                  {taskForm.updatedAt && (
+                    <div className="flex items-start gap-2 border-b pb-4">
+                      <Clock className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Status updated to: {taskForm.status}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(taskForm.updatedAt).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-2 border-b pb-4">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="font-medium">Task created</p>
-                      <p className="text-sm text-muted-foreground">Yesterday at 2:15 PM</p>
+                  )}
+                  {taskForm.createdAt && (
+                    <div className="flex items-start gap-2 border-b pb-4">
+                      <Calendar className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Task created</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(taskForm.createdAt).toLocaleString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

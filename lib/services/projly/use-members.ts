@@ -31,6 +31,46 @@ export type TeamMemberWithUser = {
 // Log initialization of hook for debugging
 console.log('[HOOK] use-members hook initialized');
 
+export const useAccessibleMembers = () => {
+  const { data: session } = useSession();
+  
+  return useQuery({
+    queryKey: ["accessible-members"],
+    queryFn: async () => {
+      console.log("[HOOK:MEMBERS] Fetching accessible members (from teams user is part of)");
+      if (!session?.user?.id) {
+        console.log("[HOOK:MEMBERS] No user session found in useAccessibleMembers");
+        return [];
+      }
+      
+      // Call the new API endpoint that filters members by user's team associations
+      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members/accessible');
+      const response = await apiClient.get('/api/projly/members/accessible');
+      console.log("[HOOK:MEMBERS] API response received for accessible members:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:MEMBERS] Error fetching accessible members:", response.error);
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : (response.error && typeof response.error === 'object' && response.error !== null && 'message' in response.error) 
+            ? (response.error as { message: string }).message 
+            : 'Unknown error';
+            
+        toast({
+          title: "Error fetching accessible members",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        throw response.error;
+      }
+      
+      console.log(`[HOOK:MEMBERS] Successfully fetched ${response.data?.length || 0} accessible members`);
+      return response.data as TeamMemberWithUser[];
+    },
+    enabled: !!session?.user?.id
+  });
+};
+
 export const useMembers = (teamId?: string) => {
   const { data: session } = useSession();
   

@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Helper function for date formatting
 const formatDateForDisplay = (dateStr: string | undefined): string => {
@@ -97,6 +98,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 export function TasksTable({ tasks }: TasksTableProps) {
+  // Initialize router for navigation
+  const router = useRouter();
+  
   // State for filters and sorting
   const [filters, setFilters] = useState<{
     projectId?: string;
@@ -245,31 +249,16 @@ export function TasksTable({ tasks }: TasksTableProps) {
     }
   };
 
-  // Handle edit task
+  // Handle edit task - navigate directly to edit page
   const handleEditTask = (task: Task) => {
-    console.log("[TasksTable] Edit task:", task);
-    // Ensure task has the correct shape
-    const taskToEdit: Task = {
-      ...task,
-      assignee: task.assignee ? {
-        ...task.assignee,
-        // Ensure optional properties are properly handled
-        name: task.assignee.name || undefined,
-        firstName: task.assignee.firstName || undefined,
-        lastName: task.assignee.lastName || undefined,
-        email: task.assignee.email || undefined,
-        avatar: task.assignee.avatar || undefined
-      } : undefined
-    };
-    setEditTask(taskToEdit);
-    setIsEditDialogOpen(true);
+    console.log("[TasksTable] Navigating to edit task page:", task.id);
+    router.push(`/projly/tasks/${task.id}/edit`);
   };
 
-  // Handle view task details
+  // Handle view task details - navigate to task detail page
   const handleViewTaskDetails = (task: Task) => {
-    console.log("Opening task detail:", task);
-    setDetailTask(task);
-    setIsDetailDialogOpen(true);
+    console.log("Navigating to task detail page:", task.id);
+    router.push(`/projly/tasks/${task.id}`);
   };
 
   // Handle dialog close
@@ -344,23 +333,6 @@ export function TasksTable({ tasks }: TasksTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold">Tasks</h1>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
-            </DialogHeader>
-            <CreateTaskForm onSuccess={handleCreateDialogClose} />
-          </DialogContent>
-        </Dialog>
-      </div>
-      
       <div className="bg-card rounded-md p-4 space-y-4">
         {/* Filters and search */}
         <div className="flex flex-col md:flex-row gap-4">

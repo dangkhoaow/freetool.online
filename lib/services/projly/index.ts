@@ -608,7 +608,7 @@ export const projlyTasksService = {
       }
 
       // Using API client for consistent error handling
-      const apiUrl = `projects/${projectId}/tasks`;
+      const apiUrl = `/api/projly/projects/${projectId}/tasks`;
       console.log(`[PROJLY:TASKS] Fetching project tasks from API: ${apiUrl}`);
       
       // Import apiClient dynamically to avoid circular dependencies
@@ -643,7 +643,7 @@ export const projlyTasksService = {
       }
 
       // Using API client for consistent error handling
-      const apiUrl = `tasks/${id}`;
+      const apiUrl = `/api/projly/tasks/${id}`;
       console.log(`[PROJLY:TASKS] Fetching task from API: ${apiUrl}`);
       
       // Import apiClient dynamically to avoid circular dependencies
@@ -678,7 +678,7 @@ export const projlyTasksService = {
       }
 
       // Using API client for consistent error handling
-      const apiUrl = 'tasks';
+      const apiUrl = '/api/projly/tasks';
       console.log(`[PROJLY:TASKS] Creating task via API: ${apiUrl}`);
       
       // Import apiClient dynamically to avoid circular dependencies
@@ -714,7 +714,7 @@ export const projlyTasksService = {
       }
 
       // Using API client for consistent error handling
-      const apiUrl = `tasks/${id}`;
+      const apiUrl = `/api/projly/tasks/${id}`;
       console.log(`[PROJLY:TASKS] Updating task via API: ${apiUrl}`);
       
       // Import apiClient dynamically to avoid circular dependencies
@@ -749,7 +749,7 @@ export const projlyTasksService = {
       }
 
       // Using API client for consistent error handling
-      const apiUrl = `tasks/${id}`;
+      const apiUrl = `/api/projly/tasks/${id}`;
       console.log(`[PROJLY:TASKS] Deleting task via API: ${apiUrl}`);
       
       // Import apiClient dynamically to avoid circular dependencies
