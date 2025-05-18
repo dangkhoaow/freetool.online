@@ -184,60 +184,6 @@ export default function CreateProject() {
                 )}
               />
 
-              {/* Project Owner Field */}
-              <FormField
-                control={form.control}
-                name="ownerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Owner*</FormLabel>
-                    <FormControl>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                        {...field}
-                      >
-                        {loadingUsers ? (
-                          <option>Loading users...</option>
-                        ) : (
-                          users.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {`${user.firstName} ${user.lastName} (${user.email})`}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </FormControl>
-                    <FormDescription>
-                      The project owner will have full control over this project
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* TODO: Show this field only when we define rule */}
-              <FormField
-                control={form.control}
-                name="canManageMembers"
-                render={({ field }) => (
-                  <FormItem className="hidden flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 mt-1"
-                        checked={field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none hidden">
-                      <FormLabel>Allow owner to manage project members</FormLabel>
-                      <FormDescription>
-                        When enabled, the project owner can add or remove team members from this project
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <FormField
                   control={form.control}

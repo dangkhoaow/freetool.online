@@ -50,7 +50,7 @@ export function useProjects() {
         const errorMessage = typeof response.error === 'string' 
           ? response.error 
           : typeof response.error === 'object' && response.error !== null 
-            ? response.error.message || String(response.error) 
+            ? (response.error as {message?: string}).message || String(response.error) 
             : 'Failed to fetch projects';
         
         toast({
@@ -79,14 +79,21 @@ export function useProject(id: string | undefined) {
       
       console.log("[HOOK:PROJECTS] Fetching project with ID:", id);
       // Call API endpoint with the correct path (no leading slash as the base URL is already included)
+      console.log("[HOOK:PROJECTS] Fetching project with URL:", `api/projly/projects/${id}`);
       const response = await apiClient.get(`api/projly/projects/${id}`);
       console.log("[HOOK:PROJECTS] API response received for project details:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:PROJECTS] Error fetching project:", response.error);
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? (response.error as {message?: string}).message || String(response.error) 
+            : 'Failed to fetch project';
+        
         toast({
           title: "Error fetching project",
-          description: response.error.message,
+          description: errorMessage,
           variant: "destructive"
         });
         return null;
@@ -109,15 +116,22 @@ export function useProjectMembers(projectId: string | undefined) {
       }
       
       console.log("[HOOK:PROJECTS] Fetching members for project with ID:", projectId);
-      // Call API endpoint instead of service directly
-      const response = await apiClient.get(`teams/${projectId}/members`);
+      // Call API endpoint with correct prefix
+      console.log("[HOOK:PROJECTS] Fetching project members with URL:", `api/projly/teams/${projectId}/members`);
+      const response = await apiClient.get(`api/projly/teams/${projectId}/members`);
       console.log("[HOOK:PROJECTS] API response received for project members:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:PROJECTS] Error fetching project members:", response.error);
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? (response.error as {message?: string}).message || String(response.error) 
+            : 'Failed to fetch project members';
+        
         toast({
           title: "Error fetching project members",
-          description: response.error.message,
+          description: errorMessage,
           variant: "destructive"
         });
         return [];
@@ -140,13 +154,20 @@ export function useCreateProject() {
       }
       
       console.log("[HOOK:PROJECTS] Creating new project:", project.name);
-      // Call API endpoint instead of service directly
-      const response = await apiClient.post('projects', project);
+      // Call API endpoint with correct prefix
+      console.log("[HOOK:PROJECTS] Creating project with URL:", `api/projly/projects`);
+      const response = await apiClient.post('api/projly/projects', project);
       console.log("[HOOK:PROJECTS] API response received for project creation:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:PROJECTS] Error creating project:", response.error);
-        throw new Error(response.error.message || "Failed to create project");
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? (response.error as {message?: string}).message || String(response.error) 
+            : 'Failed to create project';
+        
+        throw new Error(errorMessage);
       }
       
       return response;
@@ -182,13 +203,20 @@ export function useUpdateProject() {
       }
       
       console.log("[HOOK:PROJECTS] Updating project with ID:", id);
-      // Call API endpoint instead of service directly
-      const response = await apiClient.put(`projects/${id}`, updates);
+      // Call API endpoint with correct prefix
+      const response = await apiClient.put(`api/projly/projects/${id}`, updates);
+      console.log("[HOOK:PROJECTS] API URL used:", `api/projly/projects/${id}`);
       console.log("[HOOK:PROJECTS] API response received for project update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:PROJECTS] Error updating project:", response.error);
-        throw new Error(response.error.message || "Failed to update project");
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? (response.error as {message?: string}).message || String(response.error) 
+            : 'Failed to update project';
+        
+        throw new Error(errorMessage);
       }
       
       return response;
@@ -225,13 +253,20 @@ export function useDeleteProject() {
       }
       
       console.log("[HOOK:PROJECTS] Deleting project with ID:", id);
-      // Call API endpoint instead of service directly
-      const response = await apiClient.delete(`projects/${id}`);
+      // Call API endpoint with correct prefix
+      console.log("[HOOK:PROJECTS] Deleting project with URL:", `api/projly/projects/${id}`);
+      const response = await apiClient.delete(`api/projly/projects/${id}`);
       console.log("[HOOK:PROJECTS] API response received for project deletion:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:PROJECTS] Error deleting project:", response.error);
-        throw new Error(response.error.message || "Failed to delete project");
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : typeof response.error === 'object' && response.error !== null 
+            ? (response.error as {message?: string}).message || String(response.error) 
+            : 'Failed to delete project';
+        
+        throw new Error(errorMessage);
       }
       
       return response;

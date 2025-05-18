@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useProfiles } from "@/lib/services/projly/use-profile";
+import { useProject, useUpdateProject } from "@/lib/services/projly/use-projects";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,8 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
-import { projlyProjectsService } from '@/lib/services/projly';
 import { useSession } from '@/lib/services/projly/jwt-auth-adapter';
+import { use } from 'react';
 
 type ProjectFormValues = {
   name: string;
@@ -63,15 +64,25 @@ interface User {
   email: string;
 }
 
-export default function CreateProjectPage() {
+export default function EditProjectPage({ params }: { params: { id: string } | Promise<{ id: string }> }) {
+  // Unwrap params using React.use() to handle it as a Promise
+  const unwrappedParams = use(params as Promise<{ id: string }>);
+  const projectId = unwrappedParams.id;
+  
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   
+  // Fetch the project data
+  const { data: project, isLoading: loadingProject } = useProject(projectId);
+  
   // Fetch all user profiles for owner selection
   const { data: profiles = [], isLoading: loadingUsers } = useProfiles();
+  
+  // Get the update project mutation
+  const updateProjectMutation = useUpdateProject();
   
   // Transform the profile data for the dropdown
   // Use userId as the id field for proper project owner assignment
@@ -84,12 +95,9 @@ export default function CreateProjectPage() {
     email: profile.user.email || 'No email'
   }));
   
-  console.log('[PROJLY:NEW_PROJECT] Available users for owner selection:', users);
-  console.log('[PROJLY:NEW_PROJECT] Current user ID:', currentUserId);
-  
-  // Find the current user in the users list
-  const currentUserInList = users.find((user: { id: string }) => user.id === currentUserId);
-  console.log('[PROJLY:NEW_PROJECT] Current user in list:', currentUserInList);
+  console.log('[PROJLY:EDIT_PROJECT] Available users for owner selection:', users);
+  console.log('[PROJLY:EDIT_PROJECT] Current user ID:', currentUserId);
+  console.log('[PROJLY:EDIT_PROJECT] Project data:', project);
   
   // Initialize form with default values
   const form = useForm<ProjectFormValues>({
@@ -99,83 +107,121 @@ export default function CreateProjectPage() {
       startDate: '',
       endDate: '',
       status: 'Planning',
-      ownerId: currentUserId || users[0]?.id || '',
+      ownerId: '',
       canManageMembers: true
     }
   });
   
-  // Update the ownerId when the current user ID becomes available
+  // Update form values when project data is loaded
   useEffect(() => {
-    if (currentUserId && !form.getValues('ownerId')) {
-      console.log('[PROJLY:NEW_PROJECT] Setting owner ID to current user:', currentUserId);
-      form.setValue('ownerId', currentUserId);
+    if (project) {
+      console.log('[PROJLY:EDIT_PROJECT] Setting form values from project data:', project);
+      
+      // Format dates for the input fields
+      const startDate = project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '';
+      const endDate = project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '';
+      
+      form.reset({
+        name: project.name || '',
+        description: project.description || '',
+        startDate: startDate,
+        endDate: endDate,
+        status: project.status || 'Planning',
+        ownerId: project.ownerId || currentUserId || '',
+        canManageMembers: project.canManageMembers !== undefined ? project.canManageMembers : true
+      });
+      
+      console.log('[PROJLY:EDIT_PROJECT] Form values set:', form.getValues());
     }
-  }, [currentUserId, form]);
+  }, [project, form, currentUserId]);
   
   // Log form values when they change
   const formValues = form.watch();
-  console.log('Form values:', formValues);
+  console.log('[PROJLY:EDIT_PROJECT] Form values:', formValues);
 
   const onSubmit = async (data: ProjectFormValues) => {
-    console.log('[PROJLY:NEW_PROJECT] Form submitted with data:', data);
+    console.log('[PROJLY:EDIT_PROJECT] Form submitted with data:', data);
     setIsSubmitting(true);
     
     try {
       // Ensure ownerId is not empty
       if (!data.ownerId) {
-        console.log('[PROJLY:NEW_PROJECT] No owner ID selected, using first available user or current user');
+        console.log('[PROJLY:EDIT_PROJECT] No owner ID selected, using first available user or current user');
         // If no owner is selected, use the first available user
         if (users.length > 0) {
           data.ownerId = users[0].id;
-          console.log('[PROJLY:NEW_PROJECT] Using first available user as owner:', users[0]);
+          console.log('[PROJLY:EDIT_PROJECT] Using first available user as owner:', users[0]);
         }
       }
       
-      console.log('[PROJLY:NEW_PROJECT] Creating project with data:', {
+      console.log('[PROJLY:EDIT_PROJECT] Updating project with data:', {
+        id: projectId,
         ...data,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null
       });
       
-      const response = await projlyProjectsService.createProject({
+      // Call the update project mutation
+      await updateProjectMutation.mutateAsync({
+        id: projectId,
         ...data,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null
       });
       
-      console.log('Project created successfully:', response);
+      console.log('[PROJLY:EDIT_PROJECT] Project updated successfully');
       
       // Show success message
       toast({
         title: 'Success!',
-        description: 'Project created successfully.',
+        description: 'Project updated successfully.',
         variant: 'default',
       });
       
-      // Redirect to projects list
-      router.push('/projly/projects');
+      // Redirect to project detail page
+      router.push(`/projly/projects/${projectId}`);
     } catch (error) {
-      console.error('Error creating project:', error);
+      console.error('[PROJLY:EDIT_PROJECT] Error updating project:', error);
       
       // Show error message
       toast({
         title: 'Error',
-        description: 'Failed to create project. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to update project. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
-      console.log('Form submission completed');
+      console.log('[PROJLY:EDIT_PROJECT] Form submission completed');
     }
   };
 
   // Show loading state when checking auth and fetching data
-  if (loadingUsers) {
+  if (loadingProject || loadingUsers) {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center h-[80vh]">
           <Loader2 className="h-10 w-10 animate-spin" />
           <span className="ml-2">Loading...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  // Show error if project not found
+  if (!project) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto py-6 text-center">
+          <h1 className="text-3xl font-bold">Project Not Found</h1>
+          <p className="text-muted-foreground mt-2">
+            The project you are trying to edit does not exist or you don't have permission to access it.
+          </p>
+          <Button 
+            className="mt-4"
+            onClick={() => router.push('/projly/projects')}
+          >
+            Back to Projects
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -188,13 +234,13 @@ export default function CreateProjectPage() {
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => router.push('/projly/projects')}
+            onClick={() => router.push(`/projly/projects/${projectId}`)}
           >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Project
           </Button>
-          <h1 className="text-3xl font-bold mt-4">Create New Project</h1>
+          <h1 className="text-3xl font-bold mt-4">Edit Project</h1>
           <p className="text-muted-foreground mt-2">
-            Fill in the details below to create a new project
+            Update the details of your project
           </p>
         </div>
 
@@ -307,7 +353,7 @@ export default function CreateProjectPage() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => router.push('/projly/projects')}
+                  onClick={() => router.push(`/projly/projects/${projectId}`)}
                 >
                   Cancel
                 </Button>
@@ -318,10 +364,10 @@ export default function CreateProjectPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      Updating...
                     </>
                   ) : (
-                    "Create Project"
+                    "Update Project"
                   )}
                 </Button>
               </div>
