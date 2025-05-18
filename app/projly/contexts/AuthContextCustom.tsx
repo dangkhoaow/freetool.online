@@ -98,8 +98,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         console.log('[AUTH_CONTEXT] Logout successful, session cleared');
         
-        // Redirect to login page
-        window.location.href = '/login';
+        // Redirect to login page with correct path
+        window.location.replace('/projly/login');
       } catch (error) {
         console.error('[AUTH_CONTEXT] Logout error:', error);
         throw error;
@@ -130,8 +130,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Reset React Query cache
       queryClient.clear();
       
-      // Redirect to login page
-      window.location.href = '/login';
+      // Redirect to login page with correct path
+      window.location.replace('/projly/login');
     } catch (error) {
       console.error('[AUTH_CONTEXT] Logout error:', error);
     }

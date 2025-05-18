@@ -144,6 +144,7 @@ app/projly/
 - [Error Handling Documentation](/freetool.online/lib/services/projly/error-handling/README.md) - Error management implementation
 - [State Management Documentation](/freetool.online/lib/services/projly/state/README.md) - State management patterns
 - [UI Components Documentation](/freetool.online/components/projly/README.md) - Reusable UI components
+- [Layout Components Documentation](/app/projly/components/layout/README.md) - Layout structure and user role issues (Updated 2025-05-18)
 - [Hooks Documentation](/freetool.online/hooks/projly/README.md) - Custom React hooks implementation
 - [Utils Documentation](/freetool.online/lib/utils/projly/README.md) - Utility functions and helpers
 

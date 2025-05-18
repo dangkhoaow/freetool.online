@@ -8,6 +8,7 @@ import { LayoutDashboard, ClipboardList, Users, Calendar, BarChart2, Settings, L
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { projlyAuthService } from '@/lib/services/projly';
+import apiClient from '@/lib/api-client';
 
 type SidebarItemProps = {
   icon: React.ReactNode;
@@ -88,18 +89,39 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
         log('User data loaded:', userData);
         setUser(userData);
         
-        // Mock role assignment based on user data
-        // In a real app, this would come from an API call
-        const mockRole = userData?.email?.includes('admin') ? 'admin' : 
-                         userData?.email?.includes('owner') ? 'site_owner' : 'user';
-        setUserRole(mockRole);
-        log('User role set:', mockRole);
+        // Fetch user role from the API
+        log('Fetching user role from API...');
+        try {
+          const roleResponse = await apiClient.get('/api/projly/user-roles/current');
+          const userRoleFromApi = roleResponse.error ? 'user' : roleResponse.data;
+          
+          log('API response for user role:', {
+            status: roleResponse.error ? 'error' : 'success',
+            data: roleResponse.data,
+            error: roleResponse.error,
+            userRole: userRoleFromApi
+          });
+          
+          setUserRole(userRoleFromApi);
+          log('User role set from API:', userRoleFromApi);
+        } catch (roleError) {
+          console.error('[PROJLY:SIDEBAR] Error fetching user role:', roleError);
+          // Fallback to basic role if API fails
+          setUserRole('user');
+        }
         
-        // Mock project ownership check
-        // In a real app, this would come from an API call
-        const mockProjectOwner = mockRole === 'site_owner' || mockRole === 'admin' || Math.random() > 0.5;
-        setIsProjectOwner(mockProjectOwner);
-        log('Project ownership set:', mockProjectOwner);
+        // Separately fetch project ownership status
+        // This should be determined by project-specific logic, not site roles
+        try {
+          // For now, we'll use a simple check based on user data
+          // In a real implementation, this would call a project-specific API
+          const hasProjects = userData?.ownedProjects?.length > 0;
+          setIsProjectOwner(hasProjects || false);
+          log('Project ownership set based on user data:', hasProjects);
+        } catch (projectError) {
+          console.error('[PROJLY:SIDEBAR] Error determining project ownership:', projectError);
+          setIsProjectOwner(false);
+        }
       } catch (error) {
         console.error('[PROJLY:SIDEBAR] Error loading user data:', error);
       }
@@ -124,6 +146,7 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
   const handleLogout = async () => {
     log('Initiating logout');
     try {
+      // Call the service's signOut method
       const response = await projlyAuthService.signOut();
       
       if (response.success) {
@@ -132,7 +155,11 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
           title: 'Logged out',
           description: 'You have been successfully logged out.',
         });
-        router.push('/projly/login');
+        
+        // Manually redirect to login page using window.location.replace
+        // This is more reliable than router.push for auth redirects
+        log('Redirecting to login page');
+        window.location.replace('/projly/login');
       } else {
         log('Logout failed:', response.message);
         toast({
@@ -148,6 +175,10 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
         description: 'An unexpected error occurred.',
         variant: 'destructive',
       });
+      
+      // Force redirect to login page even if there's an error
+      log('Error occurred, forcing redirect to login page');
+      window.location.replace('/projly/login');
     }
   };
 
@@ -182,9 +213,9 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
           </div>
           {showTeamSection && (
             <div className="px-3 py-2">
-              <h2 className="mb-2 text-lg font-semibold tracking-tight">Team</h2>
+              <h2 className="mb-2 text-lg font-semibold tracking-tight">Teams</h2>
               <div className="space-y-1">
-                <SidebarItem icon={<Users className="h-4 w-4" />} label="Members" href="/projly/team" active={pathname === "/projly/team"} />
+                <SidebarItem icon={<Users className="h-4 w-4" />} label="Members" href="/projly/teams" active={pathname === "/projly/teams"} />
               </div>
             </div>
           )}

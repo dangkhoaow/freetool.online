@@ -62,10 +62,30 @@ lib/services/projly/
 - Assign team roles
 - Associate teams with projects
 
-### User Management (use-profile.ts, use-user-roles.ts)
+### User Management (use-profile.ts, use-user-roles.ts) (Updated 2025-05-18)
 - Fetch and update user profiles
 - Manage user roles and permissions
 - Check user authorization for specific actions
+
+#### User Roles Service (use-user-roles.ts)
+- Provides hooks and utilities for role-based access control
+- Exposes API endpoints for checking and managing user roles
+- Key endpoints:
+  - `/api/projly/user-roles/current` - Gets the current user's role
+  - `/api/projly/user-roles/check/[role]` - Checks if user has a specific role
+  - `/api/projly/user-roles/all-with-settings` - Gets all users with their roles
+  
+**Current Implementation Issues:**
+- Some components (like Sidebar.tsx) use string matching on email addresses to determine roles
+- This causes incorrect role assignment for users like "info@freetoolonline.com" (site_owner)
+- Administrative UI elements that should be visible to site owners don't appear correctly
+
+**Recommended Implementation:**
+```typescript
+// Fetch the current user's role from the API instead of string matching
+const { data: userRole, error } = await apiClient.get('/api/projly/user-roles/current');  
+setUserRole(error ? 'user' : userRole); // Default to 'user' if error occurs
+```
 
 ## Implementation Pattern
 
