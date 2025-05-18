@@ -12,8 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "../../../components/ui/date-picker";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
-import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
+import { useAccessibleProjectMembers } from '@/lib/services/projly/use-members';
 
 // Define type for project members
 type ProjectMember = {
@@ -60,12 +60,23 @@ export default function TaskEditPage({}: TaskEditPageProps) {
     assignee: null as any
   });
   
-  // Use the useProjectMembers hook to get members for the selected project
-  const { data: projectMembers = [], isLoading: isLoadingMembers } = 
-    useProjectMembers(taskForm.projectId || undefined) as { 
+  // Use the useAccessibleProjectMembers hook to get accessible members for the selected project
+  const { data: projectMembers = [], isLoading: isLoadingMembers, error: membersError, refetch: refetchMembers } = 
+    useAccessibleProjectMembers(taskForm.projectId || undefined) as { 
       data: ProjectMember[], 
-      isLoading: boolean 
+      isLoading: boolean,
+      error: any,
+      refetch: () => Promise<any> 
     };
+    
+  // Log project members for debugging
+  useEffect(() => {
+    if (taskForm.projectId && projectMembers.length > 0) {
+      console.log(`[PROJLY:EDIT_TASK] Loaded ${projectMembers.length} accessible members for project ${taskForm.projectId}`);
+    } else if (taskForm.projectId && !isLoadingMembers && projectMembers.length === 0) {
+      console.log(`[PROJLY:EDIT_TASK] No accessible members found for project ${taskForm.projectId}`);
+    }
+  }, [taskForm.projectId, projectMembers, isLoadingMembers]);
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -169,9 +180,25 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       [field]: value
     }));
     
-    // If project ID changes, log it for debugging
+    // If project ID changes, trigger a refetch of project members
     if (field === 'projectId') {
       log(`Project ID changed to: ${value}, will fetch members for this project`);
+      
+      // Reset assignee when project changes
+      setTaskForm(prev => ({
+        ...prev,
+        assignedTo: 'none' // Reset to none when project changes
+      }));
+      
+      // Force refetch of members for the new project
+      setTimeout(() => {
+        log('Triggering refetch of project members');
+        refetchMembers().then(result => {
+          log(`Refetched ${result?.data?.length || 0} members for project ${value}`);
+        }).catch(err => {
+          console.error(`[PROJLY:TASK_EDIT:${taskId}] Error refetching members:`, err);
+        });
+      }, 100); // Small timeout to ensure state is updated
     }
   };
   
@@ -355,10 +382,10 @@ export default function TaskEditPage({}: TaskEditPageProps) {
                       // Show project members if available
                       projectMembers.map((member: ProjectMember) => (
                         <SelectItem key={member.userId} value={member.userId}>
-                          {member.user?.firstName && member.user?.lastName 
-                            ? `${member.user.firstName} ${member.user.lastName}` 
-                            : member.user?.email || 'Unknown user'}
-                        </SelectItem>
+                            {member.user?.name 
+                              ? `${member.user.name} - ${member.user.email}` 
+                              : member.user?.email || 'Unknown user'}
+                          </SelectItem>
                       ))
                     ) : (
                       // Show message if no members found

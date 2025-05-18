@@ -5,6 +5,7 @@ import { useSession } from "./jwt-auth-adapter";
 // Using relative import for api-client to avoid module resolution issues
 import apiClient from "../../api-client";
 import { API_ENDPOINTS } from "@/app/projly/config/apiConfig";
+import { useProjectMembers } from "./use-projects"; // Import useProjectMembers for the new hook
 
 // Log import paths for debugging
 console.log('[use-members] Importing useSession and apiClient');
@@ -68,6 +69,67 @@ export const useAccessibleMembers = () => {
       return response.data as TeamMemberWithUser[];
     },
     enabled: !!session?.user?.id
+  });
+};
+
+/**
+ * Hook to fetch accessible project members - combines accessible members with project filtering
+ * @param projectId - The ID of the project to filter members by
+ * @returns Query result with accessible members filtered by project
+ */
+export const useAccessibleProjectMembers = (projectId: string | undefined) => {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  
+  return useQuery({
+    queryKey: ["accessible-project-members", projectId],
+    queryFn: async () => {
+      console.log(`[HOOK:MEMBERS] Fetching accessible project members for project: ${projectId}`);
+      
+      if (!projectId) {
+        console.log("[HOOK:MEMBERS] No project ID provided for useAccessibleProjectMembers");
+        return [];
+      }
+      
+      if (!session?.user?.id) {
+        console.log("[HOOK:MEMBERS] No user session found in useAccessibleProjectMembers");
+        return [];
+      }
+      
+      try {
+        // Fetch project members directly
+        console.log(`[HOOK:MEMBERS] Fetching members for project: ${projectId}`);
+        const response = await apiClient.get(`/api/projly/projects/${projectId}/members`);
+        if (response.error) {
+          console.error('[HOOK:MEMBERS] Error fetching project members:', response.error);
+          toast({
+            title: 'Error fetching project members',
+            description: typeof response.error === 'string' ? response.error : (response.error as any).message || 'Unknown error',
+            variant: 'destructive'
+          });
+          return [];
+        }
+        return response.data || [];
+      } catch (error) {
+        console.error('[HOOK:MEMBERS] Error in useAccessibleProjectMembers:', error);
+        // Fall back to project members if there's an error
+        try {
+          console.log(`[HOOK:MEMBERS] Falling back to direct project members fetch for project: ${projectId}`);
+          const fallbackResponse = await apiClient.get(`api/projly/projects/${projectId}/members`);
+          return fallbackResponse.data || [];
+        } catch (fallbackError) {
+          console.error('[HOOK:MEMBERS] Fallback also failed:', fallbackError);
+          return [];
+        }
+      }
+    },
+    enabled: !!projectId && !!session?.user?.id,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000, // 5 minutes - using gcTime instead of deprecated cacheTime
+    // This ensures the query refreshes when the project ID changes
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: false
   });
 };
 
