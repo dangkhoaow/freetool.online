@@ -194,10 +194,9 @@ export default function CalendarPage() {
       
       // Update or create task
       if (event.taskId) {
-        log('Updating existing task:', taskData);
-        // Combine ID and task data for update
-        const updateData = { ...taskData, id: event.taskId };
-        await projlyTasksService.updateTask(updateData);
+        log('Updating existing task:', { id: event.taskId, data: taskData });
+        // Extract ID and pass taskData separately as required by the API
+        await projlyTasksService.updateTask(event.taskId, taskData);
       } else {
         log('Creating new task:', taskData);
         try {
@@ -340,21 +339,19 @@ export default function CalendarPage() {
         </div>
         
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <Tabs defaultValue={view} value={view} onValueChange={setView}>
-            <TabsList>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="day">Day</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
           <div className="flex items-center gap-2">
-            <Select value={filterProject} onValueChange={setFilterProject}>
+            <Select 
+              value={filterProject} 
+              onValueChange={(value) => {
+                log('Project filter changed:', value);
+                setFilterProject(value === 'all' ? '' : value);
+              }}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Projects</SelectItem>
+                <SelectItem value="all">All Projects</SelectItem>
                 {projects.map(project => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
@@ -363,12 +360,18 @@ export default function CalendarPage() {
               </SelectContent>
             </Select>
             
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select 
+              value={filterStatus || 'all'} 
+              onValueChange={(value) => {
+                log('Status filter changed:', value);
+                setFilterStatus(value === 'all' ? '' : value);
+              }}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="Not Started">Not Started</SelectItem>
                 <SelectItem value="In Progress">In Progress</SelectItem>
                 <SelectItem value="Completed">Completed</SelectItem>
@@ -391,49 +394,57 @@ export default function CalendarPage() {
           </div>
         </div>
         
-        <TabsContent value="month" className="mt-0">
-          <CalendarGrid 
-            events={filteredEvents}
-            onEventClick={handleEventClick}
-            onDateClick={handleDateClick}
-            currentDate={currentDate}
-            onCurrentDateChange={setCurrentDate}
-          />
-        </TabsContent>
-        
-        <TabsContent value="week" className="mt-0">
-          <div className="bg-muted/30 border p-12 rounded-md flex justify-center items-center">
-            <div className="text-center">
-              <h3 className="text-lg font-medium mb-2">Week View</h3>
-              <p className="text-muted-foreground mb-4">
-                Week view coming soon. This feature is under development.
-              </p>
-              <Button 
-                variant="outline"
-                onClick={() => setView("month")}
-              >
-                Return to Month View
-              </Button>
+        <Tabs defaultValue={view} value={view} onValueChange={setView} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="month">Month</TabsTrigger>
+            <TabsTrigger value="week">Week</TabsTrigger>
+            <TabsTrigger value="day">Day</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="month" className="mt-0">
+            <CalendarGrid 
+              events={filteredEvents}
+              onEventClick={handleEventClick}
+              onDateClick={handleDateClick}
+              currentDate={currentDate}
+              onCurrentDateChange={setCurrentDate}
+            />
+          </TabsContent>
+          
+          <TabsContent value="week" className="mt-0">
+            <div className="bg-muted/30 border p-12 rounded-md flex justify-center items-center">
+              <div className="text-center">
+                <h3 className="text-lg font-medium mb-2">Week View</h3>
+                <p className="text-muted-foreground mb-4">
+                  Week view coming soon. This feature is under development.
+                </p>
+                <Button 
+                  variant="outline"
+                  onClick={() => setView("month")}
+                >
+                  Return to Month View
+                </Button>
+              </div>
             </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="day" className="mt-0">
-          <div className="bg-muted/30 border p-12 rounded-md flex justify-center items-center">
-            <div className="text-center">
-              <h3 className="text-lg font-medium mb-2">Day View</h3>
-              <p className="text-muted-foreground mb-4">
-                Day view coming soon. This feature is under development.
-              </p>
-              <Button 
-                variant="outline"
-                onClick={() => setView("month")}
-              >
-                Return to Month View
-              </Button>
+          </TabsContent>
+          
+          <TabsContent value="day" className="mt-0">
+            <div className="bg-muted/30 border p-12 rounded-md flex justify-center items-center">
+              <div className="text-center">
+                <h3 className="text-lg font-medium mb-2">Day View</h3>
+                <p className="text-muted-foreground mb-4">
+                  Day view coming soon. This feature is under development.
+                </p>
+                <Button 
+                  variant="outline"
+                  onClick={() => setView("month")}
+                >
+                  Return to Month View
+                </Button>
+              </div>
             </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        </Tabs>
         
         {/* Event Details Dialog */}
         <EventDetailsDialog

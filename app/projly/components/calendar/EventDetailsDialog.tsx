@@ -84,6 +84,17 @@ export function EventDetailsDialog({
     if (!editedEvent) return;
     
     log(`Updating event field: ${String(field)}`, value);
+    
+    // Handle special case for projectId when 'none' is selected
+    if (field === 'projectId' && value === 'none') {
+      log('Setting projectId to undefined because "none" was selected');
+      setEditedEvent({
+        ...editedEvent,
+        projectId: undefined
+      });
+      return;
+    }
+    
     setEditedEvent({
       ...editedEvent,
       [field]: value
@@ -131,7 +142,7 @@ export function EventDetailsDialog({
   };
   
   // Render view mode 
-  const renderViewMode = () => {
+  const renderViewMode = (): React.ReactNode => {
     if (!event) return null;
     
     return (
@@ -216,7 +227,7 @@ export function EventDetailsDialog({
   };
   
   // Render edit mode
-  const renderEditMode = () => {
+  const renderEditMode = (): React.ReactNode => {
     if (!editedEvent) return null;
     
     return (
@@ -235,8 +246,11 @@ export function EventDetailsDialog({
           <div className="grid w-full gap-1.5">
             <Label htmlFor="status">Status</Label>
             <Select
-              value={editedEvent.status || ''}
-              onValueChange={(value) => handleChange('status', value)}
+              value={editedEvent.status || 'Not Started'}
+              onValueChange={(value) => {
+                log('Status changed:', value);
+                handleChange('status', value);
+              }}
             >
               <SelectTrigger id="status">
                 <SelectValue placeholder="Select status" />
@@ -272,14 +286,14 @@ export function EventDetailsDialog({
             <div className="grid w-full gap-1.5">
               <Label htmlFor="project">Project</Label>
               <Select
-                value={editedEvent.projectId || ''}
+                value={editedEvent.projectId || 'none'}
                 onValueChange={(value) => handleChange('projectId', value)}
               >
                 <SelectTrigger id="project">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
