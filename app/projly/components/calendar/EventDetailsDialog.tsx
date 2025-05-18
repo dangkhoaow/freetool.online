@@ -37,6 +37,8 @@ export interface CalendarEvent {
   status?: string;
   projectId?: string;
   taskId?: string;
+  assignee?: string;
+  project?: any;
 }
 
 interface EventDetailsDialogProps {

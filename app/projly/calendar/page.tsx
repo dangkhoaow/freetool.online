@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addDays, format, startOfMonth } from "date-fns";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { CalendarGrid } from "@/app/projly/components/calendar/CalendarGrid";
+import ResourceTimelineView from "../components/calendar/ResourceTimelineView";
 import { EventDetailsDialog, CalendarEvent } from "@/app/projly/components/calendar/EventDetailsDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -24,11 +25,14 @@ import { Loader2, Plus, Filter } from "lucide-react";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
 
+// Import the resource timeline styles
+import "@/app/projly/components/calendar/styles/resource-timeline.css";
+
 export default function CalendarPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [view, setView] = useState("month");
+  const [view, setView] = useState("timeline");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterProject, setFilterProject] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
@@ -95,22 +99,39 @@ export default function CalendarPage() {
           const taskProject = projectsData.find(p => p.id === task.projectId);
           
           // Make sure we have proper date objects
+          // API response has startDate and dueDate fields
           const startDate = task.startDate ? new Date(task.startDate) : new Date();
-          const endDate = task.dueDate ? new Date(task.dueDate) : undefined;
+          const endDate = task.dueDate ? new Date(task.dueDate) : new Date(startDate);
           
-          log('Processing task to calendar event:', { id: task.id, title: task.title, start: startDate, end: endDate });
+          // Add one day to end date to make sure the event is visible on the timeline
+          // This is because FullCalendar uses exclusive end dates
+          const adjustedEndDate = new Date(endDate);
+          adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+          
+          // Log the dates for debugging
+          console.log(`[PROJLY:CALENDAR] Task dates for ${task.id}:`, { 
+            startDate: task.startDate, 
+            parsedStart: startDate, 
+            dueDate: task.dueDate, 
+            parsedEnd: adjustedEndDate,
+            project: task.project?.name || 'No Project'
+          });
+          
+          log('Processing task to calendar event:', { id: task.id, title: task.title, start: startDate, end: adjustedEndDate });
           
           return {
             id: task.id,
             title: task.title,
             description: task.description,
             start: startDate,
-            end: endDate,
+            end: adjustedEndDate,
             status: task.status || 'Not Started',
             type: 'Task',
             projectId: task.projectId,
             taskId: task.id,
-            project: taskProject
+            project: taskProject,
+            // Add assignee information if available
+            assignee: task.assignee?.firstName ? `${task.assignee.firstName} ${task.assignee.lastName || ''}` : ''
           };
         });
         
@@ -396,11 +417,44 @@ export default function CalendarPage() {
         
         <Tabs defaultValue={view} value={view} onValueChange={setView} className="w-full">
           <TabsList className="mb-4">
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="month">Month</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="day">Day</TabsTrigger>
           </TabsList>
           
+          
+          
+          <TabsContent value="timeline" className="mt-0">
+            <ResourceTimelineView
+              events={events.map(event => {
+                console.log('Mapping event for timeline:', event);
+                return {
+                  id: event.id,
+                  title: event.title,
+                  start: event.start,
+                  end: event.end,
+                  status: event.status || 'Not Started',
+                  projectId: event.projectId || '',
+                  description: event.description || '',
+                  taskId: event.id,
+                  resourceId: event.projectId || '',
+                  assignee: event.assignee || '',
+                  extendedProps: {
+                    status: event.status || 'Not Started',
+                    description: event.description || '',
+                    assignee: event.assignee || ''
+                  }
+                };
+              })}
+              
+              projects={projects}
+              onEventClick={handleEventClick}
+              onDateClick={handleDateClick}
+              onAddEvent={() => {
+                setNewEventDate(new Date());
+                setIsNewEventDialogOpen(true);
+              }}
+            />
+          </TabsContent>
           <TabsContent value="month" className="mt-0">
             <CalendarGrid 
               events={filteredEvents}
@@ -409,40 +463,6 @@ export default function CalendarPage() {
               currentDate={currentDate}
               onCurrentDateChange={setCurrentDate}
             />
-          </TabsContent>
-          
-          <TabsContent value="week" className="mt-0">
-            <div className="bg-muted/30 border p-12 rounded-md flex justify-center items-center">
-              <div className="text-center">
-                <h3 className="text-lg font-medium mb-2">Week View</h3>
-                <p className="text-muted-foreground mb-4">
-                  Week view coming soon. This feature is under development.
-                </p>
-                <Button 
-                  variant="outline"
-                  onClick={() => setView("month")}
-                >
-                  Return to Month View
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="day" className="mt-0">
-            <div className="bg-muted/30 border p-12 rounded-md flex justify-center items-center">
-              <div className="text-center">
-                <h3 className="text-lg font-medium mb-2">Day View</h3>
-                <p className="text-muted-foreground mb-4">
-                  Day view coming soon. This feature is under development.
-                </p>
-                <Button 
-                  variant="outline"
-                  onClick={() => setView("month")}
-                >
-                  Return to Month View
-                </Button>
-              </div>
-            </div>
           </TabsContent>
         </Tabs>
         
