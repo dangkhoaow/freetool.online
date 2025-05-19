@@ -454,7 +454,7 @@ export default function UserSettings() {
                 <h3 className="font-medium">Admin</h3>
               </div>
               <p className="text-sm text-gray-600">
-                Can see/edit users such as password reset, activation status.
+                Can see/edit users such as password reset, change user status.
               </p>
             </div>
             <div className="p-4 rounded-md bg-gray-50 border border-gray-100">
