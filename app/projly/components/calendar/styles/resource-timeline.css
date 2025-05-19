@@ -1,3 +1,124 @@
 .fc td, .fc th {
   padding: 0 !important;
 }
+
+
+/* Calendar Container */
+.calendar-container {
+  min-height: 600px;
+  position: relative;
+}
+
+/* Resource area styling */
+.fc .fc-resource-area td,
+.fc .fc-resource-area th {
+  padding: 8px 4px;
+}
+
+.fc .fc-resource-area .fc-datagrid-cell-main {
+  font-weight: 500;
+}
+
+/* Event styling */
+.fc-event {
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.fc-event-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-event-desc {
+  opacity: 0.8;
+}
+
+/* Timeline header */
+.fc .fc-timeline-header {
+  background-color: #f9fafb;
+}
+
+.fc .fc-timeline-slot-minor {
+  border-color: #f3f4f6;
+}
+
+/* Resource timeline body */
+.fc .fc-timeline-body {
+  background-color: #ffffff;
+}
+
+.fc .fc-timeline-lane-frame {
+  border-color: #e5e7eb;
+}
+
+/* Improve date header display */
+.fc .fc-timeline-slot-label {
+  font-size: 0.85rem;
+}
+
+.fc .fc-timeline-slot-label-frame {
+  padding: 4px 2px;
+}
+
+/* Make date numbers more prominent */
+.fc .fc-timeline-slot-label-cushion {
+  font-weight: 500;
+}
+
+/* Add different styling for weekends */
+.fc .fc-day-sat,
+.fc .fc-day-sun {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+/* Today highlight - make it more prominent */
+.fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-today .fc-timeline-slot-label-frame {
+  background-color: #9b87f5; /* Primary purple for today highlight */
+  color: white;
+  font-weight: bold;
+}
+
+.fc .fc-timeline-slots .fc-timeline-slot-lane.fc-day-today {
+  background-color: rgba(155, 135, 245, 0.15); /* Lighter version of the primary purple */
+}
+
+/* Week grouping indicators */
+.fc .fc-timeline-header-container {
+  position: relative;
+}
+
+/* Add week separator lines */
+.fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-mon,
+.fc .fc-timeline-slot-lane.fc-day-mon {
+  border-left: 2px solid #1A1F2C; /* Dark purple for week borders */
+  position: relative;
+}
+
+/* Zebra striping for alternating weeks */
+.fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-sun::before,
+.fc .fc-timeline-slot-lane.fc-day-sun::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(7 * 100% / 30); /* Approximate width for 7 days */
+  height: 100%;
+  background-color: #F1F1F1; /* Light gray background for week grouping */
+  opacity: 0.3;
+  z-index: -1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .calendar-container {
+    min-height: 400px;
+  }
+  
+  .fc .fc-resource-area {
+    width: 120px !important;
+  }
+}
