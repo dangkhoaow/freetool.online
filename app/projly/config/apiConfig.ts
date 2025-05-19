@@ -50,6 +50,8 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
     CHANGE_PASSWORD: `${API_BASE_URL}/auth/change-password`,
   },
+  // Profiles endpoints
+  PROFILES: `${API_BASE_URL}/profiles`,
   // Projects endpoints
   PROJECTS: {
     BASE: `${API_BASE_URL}/projects`,

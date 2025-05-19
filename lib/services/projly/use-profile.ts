@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { useSession } from "./jwt-auth-adapter";
@@ -33,16 +32,14 @@ export function useUserProfile() {
       
       console.log("[HOOK:PROFILE] Fetching profile for user ID:", user.id);
       // Call API endpoint with the correct path including leading slash
-      const response: ApiResponse = await apiClient.get('/api/projly/profiles/me');
+      const response: ApiResponse = await apiClient.get('http://localhost:3001/api/projly/auth/me');
       console.log("[HOOK:PROFILE] API response received for user profile:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
-        console.error("[HOOK:PROFILE] Error fetching profile:", response.error);
-        const errorMessage = typeof response.error === 'object' && response.error !== null && 'message' in response.error 
-          ? (response.error as ApiError).message 
-          : typeof response.error === 'string' 
-            ? response.error 
-            : 'Failed to fetch profile';
+        const errorMessage = typeof response.error === 'string' 
+          ? response.error 
+          : (response.error as ApiError)?.message || 'Failed to fetch profile';
+        console.error("[HOOK:PROFILE] Error fetching user profile:", errorMessage);
         toast({
           title: "Error fetching profile",
           description: errorMessage,
@@ -52,7 +49,14 @@ export function useUserProfile() {
       }
       
       console.log("[HOOK:PROFILE] Successfully fetched user profile");
-      return response.data;
+      // Map the nested user data into a flat structure
+      return {
+        ...response.data,
+        email: response.data.user?.email || response.data.email,
+        firstName: response.data.user?.firstName || response.data.firstName,
+        lastName: response.data.user?.lastName || response.data.lastName,
+        id: response.data.userId || response.data.id
+      };
     },
     enabled: !!user
   });
@@ -136,10 +140,95 @@ export function useUpdateProfile() {
       
       return response;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (data, variables) => {
       console.log("[HOOK:PROFILE] Profile updated successfully, invalidating queries");
-      queryClient.invalidateQueries({ queryKey: ["profile", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["profile", session?.user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      console.log("[HOOK:PROFILE] Invalidated 'me' query key to refresh AuthContext user data");
+      
+      // Update AuthContext with new user data
+      // Define expected structure for type safety
+      interface UserData {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        [key: string]: any;
+      }
+      
+      interface ApiResponseWithUser {
+        user?: UserData;
+        [key: string]: any;
+      }
+      
+      // Check for nested user structure in response
+      let updatedUserData: UserData | undefined;
+      if (data && 'user' in data && (data as ApiResponseWithUser).user) {
+        updatedUserData = (data as ApiResponseWithUser).user;
+        console.log("[HOOK:PROFILE] Extracted nested user data from response:", updatedUserData);
+      } else if (data) {
+        // If no nested user object, use the top-level data
+        updatedUserData = data as UserData;
+        console.log("[HOOK:PROFILE] Using top-level data as user data:", updatedUserData);
+      }
+      
+      if (updatedUserData) {
+        const authContext = queryClient.getQueryData(['me']);
+        console.log("[HOOK:PROFILE] Current AuthContext data:", authContext);
+        
+        if (authContext && typeof authContext === 'object') {
+          // Check if authContext has a nested 'user' property
+          let currentUserData: UserData;
+          if ('user' in authContext && authContext.user) {
+            currentUserData = authContext.user as UserData;
+          } else {
+            currentUserData = authContext as UserData;
+          }
+          
+          const updatedUser = {
+            ...authContext,
+            // Update the top level fields if they exist in response
+            firstName: variables.updates.firstName || updatedUserData.firstName || currentUserData.firstName || '',
+            lastName: variables.updates.lastName || updatedUserData.lastName || currentUserData.lastName || '',
+            email: variables.updates.email || updatedUserData.email || currentUserData.email || '',
+            // Also update nested user object if it exists in the structure
+            user: 'user' in authContext ? {
+              ...(authContext.user || {}),
+              firstName: variables.updates.firstName || updatedUserData.firstName || currentUserData.firstName || '',
+              lastName: variables.updates.lastName || updatedUserData.lastName || currentUserData.lastName || '',
+              email: variables.updates.email || updatedUserData.email || currentUserData.email || ''
+            } : undefined
+          };
+          queryClient.setQueryData(['me'], updatedUser);
+          console.log("[HOOK:PROFILE] Updated AuthContext with new user data:", updatedUser);
+          
+          // Directly update AuthContext to ensure components re-render
+          try {
+            // Use the updateUser function from AuthContext if available
+            const authContextInstance = (window as any).__AUTH_CONTEXT;
+            if (authContextInstance && typeof authContextInstance.updateUser === 'function') {
+              await authContextInstance.updateUser({
+                firstName: variables.updates.firstName || updatedUserData.firstName || currentUserData.firstName || '',
+                lastName: variables.updates.lastName || updatedUserData.lastName || currentUserData.lastName || '',
+                email: variables.updates.email || updatedUserData.email || currentUserData.email || ''
+              });
+              console.log("[HOOK:PROFILE] Directly called updateUser on AuthContext instance");
+            } else {
+              console.warn("[HOOK:PROFILE] Could not find AuthContext instance to directly update user data");
+            }
+          } catch (error) {
+            console.error("[HOOK:PROFILE] Error when trying to directly update AuthContext:", error);
+          }
+          
+          // Force a refetch to ensure data consistency with backend
+          try {
+            await queryClient.refetchQueries({ queryKey: ['me'] });
+            console.log("[HOOK:PROFILE] Forced refetch of 'me' query to update user data from backend");
+          } catch (error) {
+            console.error("[HOOK:PROFILE] Error when trying to refetch user data:", error);
+          }
+        }
+      }
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully."

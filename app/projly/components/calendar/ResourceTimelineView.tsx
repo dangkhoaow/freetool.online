@@ -226,7 +226,7 @@ const ResourceTimelineView = ({
               </SelectContent>
             </Select>
             
-            {onAddEvent && (
+            {false && onAddEvent && (
               <Button 
                 size="sm" 
                 onClick={onAddEvent}

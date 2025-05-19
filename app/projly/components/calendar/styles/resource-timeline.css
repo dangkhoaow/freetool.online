@@ -122,3 +122,11 @@
     width: 120px !important;
   }
 }
+
+.text-foreground {
+  color: #fff !important;
+}
+
+.fc-h-event {
+  opacity: 0.9;
+}

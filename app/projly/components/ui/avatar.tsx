@@ -41,6 +41,11 @@ const Avatar = React.forwardRef<
   
   console.log("[PROJLY:AVATAR] initials for display:", initials);
   
+  // Log when user data changes for debugging
+  React.useEffect(() => {
+    console.log('[PROJLY:AVATAR] User data changed:', { user, fullName });
+  }, [user, fullName]);
+  
   return (
     <AvatarPrimitive.Root
       ref={ref}

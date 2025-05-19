@@ -7,6 +7,9 @@ import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { projlyAuthService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
+import { API_ENDPOINTS, API_BASE_URL, SERVER_URL } from "@/app/projly/config/apiConfig";
+import { getAuthToken } from "@/app/projly/utils/auth-utils";
+import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
 
 // Import our modular settings components
 import { 
@@ -18,18 +21,66 @@ import {
 export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   
-  // User profile state
-  const [profile, setProfile] = useState({
-    id: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    avatar: ''
+  // Define profile type
+  interface Profile {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    avatar: string;
+    bio?: string;
+    jobTitle?: string;
+    department?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    language?: string;
+    timezone?: string;
+    theme?: string;
+  }
+  
+  // Get auth context data
+  const { user, isLoading, updateUser } = useAuth();
+
+  // Use data directly from AuthContext to ensure consistency
+  const [profile, setProfile] = useState<Profile>({
+    id: user?.id || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    avatar: '',
+    bio: '',
+    jobTitle: '',
+    department: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+    language: 'en',
+    timezone: 'UTC',
+    theme: 'system'
   });
+
+  useEffect(() => {
+    console.log('[SETTINGS_PAGE] Updating profile state with AuthContext user data:', user);
+    if (user) {
+      setProfile(prev => ({
+        ...prev,
+        id: user.id || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || ''
+      }));
+    }
+  }, [user]);
   
   // Password change state
   const [passwordForm, setPasswordForm] = useState({
@@ -54,62 +105,6 @@ export default function SettingsPage() {
       console.log(`[PROJLY:SETTINGS] ${message}`);
     }
   };
-  
-  // Check authentication and load user profile on page load
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        log('Checking authentication');
-        const isAuthenticated = await projlyAuthService.isAuthenticated();
-        
-        if (!isAuthenticated) {
-          log('User not authenticated, redirecting to login');
-          router.push('/projly/login');
-          return;
-        }
-        
-        log('Fetching user profile');
-        const userData = await projlyAuthService.getCurrentUser();
-        
-        if (!userData) {
-          log('User data not found');
-          toast({
-            title: 'Error',
-            description: 'Could not load user profile',
-            variant: 'destructive'
-          });
-          return;
-        }
-        
-        log('Profile loaded:', userData);
-        setProfile({
-          id: userData.id || '',
-          firstName: userData.firstName || '',
-          lastName: userData.lastName || '',
-          email: userData.email || '',
-          // The User type doesn't include avatar property
-          avatar: ''
-        });
-        
-        // In a real app, we would also load notification settings from an API
-        // For now, we'll use default values
-        log('Using default notification settings');
-        
-      } catch (error) {
-        console.error('[PROJLY:SETTINGS] Error loading profile:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load user profile. Please try again.',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-        log('Settings page initialization completed');
-      }
-    };
-    
-    loadProfile();
-  }, [router, toast]);
   
   // Handle profile form input changes
   const handleProfileChange = (field: string, value: string) => {
@@ -138,38 +133,52 @@ export default function SettingsPage() {
     }));
   };
   
-  // Handle profile form submission
+  // Handle profile form submission with added error handling and token check
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
-      log('Validating profile submission');
-      if (!profile.firstName.trim() || !profile.lastName.trim() || !profile.email.trim()) {
+      log('Saving profile changes:', profile);
+      setIsSaving(true);
+      const token = getAuthToken();
+      if (!token) {
+        log('Error: No auth token available for update');
         toast({
-          title: 'Validation Error',
-          description: 'All fields are required',
+          title: 'Authentication Error',
+          description: 'You must be logged in to update your profile',
           variant: 'destructive'
         });
+        setIsSaving(false);
         return;
       }
-      
-      setIsSaving(true);
-      log('Simulating profile update API call');
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      log('Profile updated successfully');
-      toast({
-        title: 'Success',
-        description: 'Profile updated successfully'
+      // Make API call with token
+      const response = await fetch(`${SERVER_URL}/api/projly/auth/update-user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName
+        })
       });
-      
+      if (!response.ok) {
+        throw new Error(`Failed to update user: ${response.statusText}`);
+      }
+      const updateResult = await response.json();
+      log('User update result:', updateResult);
+      // Update AuthContext so avatar and other components reflect change
+      if (updateUser) {
+        await updateUser({ firstName: profile.firstName, lastName: profile.lastName });
+        log('AuthContext updated with new user data');
+      }
+      // Update local state or refetch data
+      toast({ title: 'Success', description: 'Profile updated successfully' });
     } catch (error) {
-      console.error('[PROJLY:SETTINGS] Error updating profile:', error);
+      console.error('[PROJLY:SETTINGS] Error saving profile:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update profile. Please try again.',
+        description: 'Failed to save profile changes. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -212,12 +221,42 @@ export default function SettingsPage() {
       }
       
       setIsSaving(true);
-      log('Simulating password change API call');
+      log('Making password change API call to:', API_ENDPOINTS.AUTH.CHANGE_PASSWORD);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get the authentication token
+      const token = getAuthToken();
+      log('Using auth token for password change request:', token ? 'Token found' : 'No token');
       
-      log('Password updated successfully');
+      const response = await fetch(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Add the token to the Authorization header
+        },
+        credentials: 'include', // Include cookies
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+      
+      log('Password change API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        log('Password change API error:', errorData);
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('Current password is incorrect or authentication failed');
+        } else {
+          throw new Error(errorData.error?.message || 'Failed to update password');
+        }
+      }
+      
+      const data = await response.json();
+      log('Password updated successfully:', data);
+      
       toast({
         title: 'Success',
         description: 'Password updated successfully'
@@ -234,7 +273,7 @@ export default function SettingsPage() {
       console.error('[PROJLY:SETTINGS] Error updating password:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update password. Ensure your current password is correct and try again.',
+        description: error instanceof Error ? error.message : 'Failed to update password. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -297,7 +336,7 @@ export default function SettingsPage() {
           <TabsList className="mb-8">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger disabled={true} value="notifications">Notifications</TabsTrigger>
           </TabsList>
           
           <TabsContent value="profile">
