@@ -133,7 +133,7 @@ export function ProfileSettings({
               </Avatar>
               <Label 
                 htmlFor="avatar" 
-                className="cursor-pointer text-sm text-primary hover:underline"
+                className="hidden cursor-pointer text-sm text-primary hover:underline"
               >
                 Change Avatar
               </Label>

@@ -8,6 +8,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  role?: string;
   [key: string]: any;
 }
 
@@ -40,16 +41,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('[AUTH_CONTEXT] Raw response from auth/me:', response);
         
         if (response.ok) {
-          const data = await response.json();
-          // Map nested user data to flat structure if needed
-          const userData = {
-            ...data,
-            ...(data.user ? {
-              email: data.user.email,
-              firstName: data.user.firstName,
-              lastName: data.user.lastName,
-            } : {}),
-            id: data.userId || data.id,
+          const json = await response.json();
+          console.log('[AUTH_CONTEXT] JSON data from auth/me:', json);
+          
+          // Expecting { success: boolean, user: {...}, role?: string }
+          if (!json.success || !json.user) {
+            console.log('[AUTH_CONTEXT] auth/me returned no user data, returning null');
+            return null;
+          }
+          
+          // Map API response to User type, including role
+          const userData: User = {
+            id: json.user.id,
+            email: json.user.email,
+            firstName: json.user.firstName || '',
+            lastName: json.user.lastName || '',
+            // include additional properties
+            ...(json.role ? { role: json.role } : {})
           };
           console.log('[AUTH_CONTEXT] Returning mapped user data:', userData);
           return userData;
