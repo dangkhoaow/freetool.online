@@ -123,7 +123,7 @@ export function NotificationSettings({
             />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex justify-end p-6">
           <Button type="submit" disabled={isSaving}>
             {isSaving ? (
               <>

@@ -256,7 +256,7 @@ export function PasswordSettings({
             </ul>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex justify-end p-6">
           <Button 
             type="submit" 
             disabled={isSaving || !isFormValid()}
