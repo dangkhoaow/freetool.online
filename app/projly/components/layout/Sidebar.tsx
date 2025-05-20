@@ -288,7 +288,9 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
           <div className="px-3 py-2">
             <h2 className="mb-2 text-lg font-semibold tracking-tight">Settings</h2>
             <div className="space-y-1">
-              <SidebarItem icon={<Settings className="h-4 w-4" />} label="Account Settings" href="/projly/settings" active={pathname === "/projly/settings"} />
+              {(isSiteOwner || isAdmin) && (
+                <SidebarItem icon={<Settings className="h-4 w-4" />} label="Account Settings" href="/projly/settings" active={pathname === "/projly/settings"} />
+              )}
               {isSiteOwner && (
                 <SidebarItem icon={<UserCog className="h-4 w-4" />} label="User Settings" href="/projly/user-settings" active={pathname === "/projly/user-settings"} />
               )}

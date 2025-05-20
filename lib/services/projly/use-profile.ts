@@ -125,7 +125,12 @@ export function useUpdateProfile() {
       
       console.log("[HOOK:PROFILE] Updating profile with ID:", id);
       // Call API endpoint with the correct path
-      const response: ApiResponse = await apiClient.put(`api/projly/profiles/${id}`, updates);
+      const response: ApiResponse = await apiClient.put(`/api/projly/auth/update-user`, {
+        id,
+        firstName: updates.firstName,
+        lastName: updates.lastName
+      });
+      console.log("[HOOK:PROFILE] Update request sent with data:", { id, firstName: updates.firstName, lastName: updates.lastName });
       console.log("[HOOK:PROFILE] API response received for profile update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {

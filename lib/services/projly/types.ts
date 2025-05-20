@@ -83,7 +83,8 @@ export interface UserWithSettings {
     updatedAt: string;
   } | null;
   role?: UserRole; // Direct role field added by the backend
-  activationStatus?: string; // Added for compatibility with existing code
+  status?: 'Active' | 'Inactive' | 'Deleted'; // Status field matching UserStatus in Prisma schema
+  activationStatus?: 'Active' | 'Inactive' | 'Deleted'; // For backward compatibility, maps to status
   name?: string; // Added for compatibility with existing code
   image?: string; // Added for compatibility with existing code
   emailVerified?: Date | null; // Added for compatibility with existing code
@@ -97,8 +98,7 @@ export interface UserRoleUpdateParams {
 
 export interface ActivationStatusUpdateParams {
   userId: string;
-  isActive: boolean;
-  status?: string; // For backward compatibility
+  status: 'Active' | 'Inactive' | 'Deleted'; // Matches UserStatus enum in Prisma schema
 }
 
 export interface PasswordResetParams {

@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Shield, ShieldCheck, ShieldAlert, Activity, Lock, RefreshCw, Search, UserPlus, Filter, MoreHorizontal, PencilIcon, ShieldIcon, Eye, EyeOff } from "lucide-react";
+import { Shield, ShieldCheck, ShieldAlert, Activity, Lock, RefreshCw, Search, UserPlus, Filter, MoreHorizontal, PencilIcon, ShieldIcon, Eye, EyeOff, Trash, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import {
   Dialog,
@@ -45,6 +45,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import apiClient from "@/lib/api-client";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Define the form schema for adding a new user
 const addUserFormSchema = z.object({
@@ -53,12 +54,14 @@ const addUserFormSchema = z.object({
   lastName: z.string().min(1, { message: "Last name is required" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   role: z.string({ required_error: "Please select a role" }),
-  activationStatus: z.enum(["active", "unverified", "inactive"], { 
+  activationStatus: z.enum(["Active", "Inactive", "Deleted"], { 
     required_error: "Please select an activation status" 
   })
 });
 
 type AddUserFormValues = z.infer<typeof addUserFormSchema>;
+
+// Removed personal profile schema as it's handled in /projly/settings
 
 export default function UserSettings() {
   console.log("Rendering UserSettings component");
@@ -78,8 +81,15 @@ export default function UserSettings() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   
+  // State for delete user confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{id: string, name: string} | null>(null);
+  
+  // Removed profile form handling as it's handled in /projly/settings
+
   // Properly handle the currentUserRole and ensure proper typing
   const isSiteOwner = currentUserRole.data === 'site_owner';
+  const isAdmin = currentUserRole.data === 'admin';
   
   if (isSiteOwner && currentUserRole) {
     console.log("Current user is site owner");
@@ -94,7 +104,7 @@ export default function UserSettings() {
       lastName: "",
       password: "",
       role: "regular_user" as UserRole,
-      activationStatus: "active"
+      activationStatus: "Active"
     }
   });
   
@@ -108,9 +118,24 @@ export default function UserSettings() {
     return Array.isArray(users.data) ? users.data : [];
   }, [users.data]);
   
-  // Filter users based on search query and filters
+  // Get distinct status values from the user list for the status filter dropdown
+  const distinctStatuses = useMemo(() => {
+    // Extract all status values and filter out undefined/null
+    const allStatuses = usersList
+      .map(user => user.status || (user.profile ? 'Active' : 'Inactive'))
+      .filter(Boolean);
+    
+    // Get unique values and sort them
+    const uniqueStatuses = Array.from(new Set(allStatuses)).sort();
+    
+    console.log(`[PROJLY:USER_SETTINGS] Found ${uniqueStatuses.length} distinct status values:`, uniqueStatuses);
+    return uniqueStatuses;
+  }, [usersList]);
+
+  // Filter users based on search query and filters, and sort by email
   const filteredUsers = useMemo(() => {
-    return usersList.filter(user => {
+    // First filter the users
+    const filtered = usersList.filter(user => {
       // Search by name or email
       const searchMatch = !searchQuery || 
         (user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -125,14 +150,24 @@ export default function UserSettings() {
       // Filter by role
       const roleMatch = roleFilter === 'all' || userRole === roleFilter;
       
-      // Determine activation status based on profile existence
-      const activationStatus = user.profile ? 'active' : 'unverified';
+      // Get user status from the status field or determine based on profile existence
+      const activationStatus = user.status || (user.profile ? 'Active' : 'Inactive');
       
       // Filter by status
       const statusMatch = statusFilter === 'all' || activationStatus === statusFilter;
       
       return searchMatch && roleMatch && statusMatch;
     });
+    
+    // Then sort the filtered users by email alphabetically
+    const sorted = [...filtered].sort((a, b) => {
+      const emailA = (a.email || '').toLowerCase();
+      const emailB = (b.email || '').toLowerCase();
+      return emailA.localeCompare(emailB);
+    });
+    
+    console.log(`[PROJLY:USER_SETTINGS] Filtered ${filtered.length} users from ${usersList.length} total, sorted by email`);
+    return sorted;
   }, [usersList, searchQuery, roleFilter, statusFilter]);
   
   // Debug logging
@@ -178,11 +213,30 @@ export default function UserSettings() {
     }
   };
 
-  const handleActivationStatusChange = async (userId: string, status: 'active' | 'unverified' | 'inactive') => {
-    if (!isSiteOwner) {
+  // Function to open the delete confirmation dialog
+  const openDeleteDialog = (userId: string, userName: string) => {
+    console.log(`[PROJLY:USER_SETTINGS] Opening delete dialog for user ${userId} (${userName})`);
+    setUserToDelete({ id: userId, name: userName });
+    setDeleteDialogOpen(true);
+  };
+
+  // Function to handle user activation status change (Active/Inactive)
+  const handleActivationStatusChange = async (userId: string, status: 'Active' | 'Inactive' | 'Deleted') => {
+    // For Delete action, use the confirmation dialog instead of direct execution
+    if (status === 'Deleted') {
+      const user = usersList.find(u => u.id === userId);
+      if (user) {
+        const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+        openDeleteDialog(userId, userName);
+      }
+      return;
+    }
+    
+    // Check permissions for activation/deactivation
+    if (!isSiteOwner && !isAdmin) {
       toast({
         title: "Permission denied",
-        description: "Only Site Owners can update activation status.",
+        description: "Only Site Owners and Admins can update activation status.",
         variant: "destructive"
       });
       return;
@@ -190,10 +244,11 @@ export default function UserSettings() {
     
     setIsUpdating(userId);
     try {
+      console.log(`[PROJLY:USER_SETTINGS] Updating user ${userId} status to ${status}`);
       await updateActivationStatus.mutateAsync({ userId, status });
       toast({
         title: "Status updated",
-        description: "User activation status has been updated successfully.",
+        description: `User activation status has been updated to ${status}.`,
         variant: "default"
       });
       // Force refresh the data after a short delay to ensure we get the updated data
@@ -201,6 +256,7 @@ export default function UserSettings() {
         users.refetch();
       }, 1000);
     } catch (error) {
+      console.error(`[PROJLY:USER_SETTINGS] Error updating user status:`, error);
       toast({
         title: "Error updating status",
         description: "There was a problem updating the activation status.",
@@ -208,6 +264,48 @@ export default function UserSettings() {
       });
     } finally {
       setIsUpdating(null);
+    }
+  };
+  
+  // Function to handle user deletion (setting status to 'Deleted')
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    // Check permissions for deletion
+    if (!isSiteOwner && !isAdmin) {
+      toast({
+        title: "Permission denied",
+        description: "Only Site Owners and Admins can delete users.",
+        variant: "destructive"
+      });
+      setDeleteDialogOpen(false);
+      return;
+    }
+    
+    setIsUpdating(userToDelete.id);
+    try {
+      console.log(`[PROJLY:USER_SETTINGS] Deleting user ${userToDelete.id} (setting status to Deleted)`);
+      await updateActivationStatus.mutateAsync({ userId: userToDelete.id, status: 'Deleted' });
+      toast({
+        title: "User deleted",
+        description: `${userToDelete.name} has been deleted successfully.`,
+        variant: "default"
+      });
+      // Force refresh the data after a short delay to ensure we get the updated data
+      setTimeout(() => {
+        users.refetch();
+      }, 1000);
+    } catch (error) {
+      console.error(`[PROJLY:USER_SETTINGS] Error deleting user:`, error);
+      toast({
+        title: "Error deleting user",
+        description: "There was a problem deleting the user.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(null);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     }
   };
   
@@ -232,7 +330,7 @@ export default function UserSettings() {
     
     setIsUpdating(userId);
     try {
-      await resetPassword.mutateAsync({ userId, password: newPassword });
+      await resetPassword.mutateAsync({ userId, newPassword });
       setNewPassword("");
       setPasswordDialogOpen(false);
       toast({
@@ -331,11 +429,15 @@ export default function UserSettings() {
   };
 
   const getActivationBadge = (status: string) => {
-    switch (status) {
+    console.log(`[PROJLY:USER_SETTINGS] Rendering badge for status: ${status}`);
+    const lowerStatus = (status || '').toLowerCase();
+    switch (lowerStatus) {
       case 'active':
         return <Badge className="bg-green-600"><Activity className="mr-1 h-3 w-3" /> Active</Badge>;
       case 'inactive':
         return <Badge className="bg-red-600"><Activity className="mr-1 h-3 w-3" /> Inactive</Badge>;
+      case 'deleted':
+        return <Badge className="bg-gray-800"><Trash className="mr-1 h-3 w-3" /> Deleted</Badge>;
       default:
         return <Badge className="bg-amber-500"><Activity className="mr-1 h-3 w-3" /> Unverified</Badge>;
     }
@@ -356,12 +458,15 @@ export default function UserSettings() {
   // Helper functions for UI display will be defined once
   
   return (
-    <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>User Settings</CardTitle>
-          <CardDescription>Manage users, their roles, and access permissions</CardDescription>
-        </div>
+    <>
+      {/* User Management Card - Only show for site owners and admins */}
+      {(isSiteOwner || isAdmin) && (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>Manage users, their roles, and access permissions</CardDescription>
+            </div>
         <div className="flex gap-2">
           {isSiteOwner && (
             <Button 
@@ -426,14 +531,21 @@ export default function UserSettings() {
                 onValueChange={setStatusFilter}
               >
                 <SelectTrigger className="w-[130px]">
-                  <Activity className="mr-2 h-4 w-4" />
+                  <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="unverified">Unverified</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {/* Dynamically generate status options from distinct statuses */}
+                  {distinctStatuses.map(status => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                  {/* Add Deleted option if not already in the list */}
+                  {!distinctStatuses.includes('Deleted') && (
+                    <SelectItem value="Deleted">Deleted</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -509,7 +621,7 @@ export default function UserSettings() {
                           {getRoleBadge(userRole.role || 'regular_user')}
                         </TableCell>
                         <TableCell>
-                          {getActivationBadge(userRole.profile ? 'active' : 'unverified')}
+                          {getActivationBadge(userRole.status || 'Unverified')}
                         </TableCell>
                         <TableCell className="text-right">
                           {isUpdating === userRole.id ? (
@@ -571,16 +683,32 @@ export default function UserSettings() {
                                   )
                                 }
                                 
+                                {/* Status management options */}
                                 <DropdownMenuItem 
                                   onClick={() => handleActivationStatusChange(
                                     userRole.id, 
-                                    userRole.activationStatus === 'active' ? 'inactive' : 'active'
+                                    userRole.status === 'Active' ? 'Inactive' : 'Active'
                                   )}
-                                  disabled={isFixedUser}
+                                  disabled={isFixedUser || currentUserRole.data !== 'site_owner' && userRole.role === 'site_owner'}
                                 >
                                   <Activity className="mr-2 h-4 w-4" />
-                                  {userRole.activationStatus === 'active' ? 'Deactivate User' : 'Activate User'}
+                                  {userRole.status === 'Active' ? 'Deactivate User' : 'Activate User'}
                                 </DropdownMenuItem>
+                                
+                                {/* Separate Delete option */}
+                                {(isSiteOwner || isAdmin) && (
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      const userName = `${userRole.firstName || ''} ${userRole.lastName || ''}`.trim() || userRole.email;
+                                      openDeleteDialog(userRole.id, userName);
+                                    }}
+                                    disabled={isFixedUser || userRole.role === 'site_owner'}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Delete User
+                                  </DropdownMenuItem>
+                                )}
                                 
                                 <DropdownMenuItem onClick={() => openPasswordDialog(userRole.id)} disabled={isFixedUser}>
                                   <Lock className="mr-2 h-4 w-4" />
@@ -831,5 +959,45 @@ export default function UserSettings() {
         </DialogContent>
       </Dialog>
     </Card>
+    )}
+    
+    {/* Delete User Confirmation Dialog */}
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            Confirm User Deletion
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {userToDelete && (
+              <>
+                <p className="mb-2">Are you sure you want to delete user <strong>{userToDelete.name}</strong>?</p>
+                <p className="mb-2">This action will set the user's status to <Badge variant="destructive">Deleted</Badge>, preventing them from accessing the system.</p>
+                <p className="text-sm text-muted-foreground">Note: This is a soft delete. The user's data will remain in the database but they will not be able to log in.</p>
+              </>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isUpdating !== null}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteUser}
+            disabled={isUpdating !== null}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            {isUpdating && userToDelete && isUpdating === userToDelete.id ? (
+              <>
+                <Spinner className="mr-2 h-4 w-4" />
+                Deleting...
+              </>
+            ) : (
+              <>Delete User</>
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

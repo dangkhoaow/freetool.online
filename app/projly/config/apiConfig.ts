@@ -66,6 +66,8 @@ export const API_ENDPOINTS = {
     DELETE: `${API_BASE_URL}/tasks/:id`,
     DETAIL: (id: string) => `${API_BASE_URL}/tasks/${id}`,
   },
+  // User Status endpoints
+  USER_STATUS: `${API_BASE_URL}/user-status`,
   // Teams endpoints
   TEAMS: {
     BASE: `${API_BASE_URL}/teams`,
@@ -85,6 +87,8 @@ Object.entries(API_ENDPOINTS).forEach(([group, endpoints]) => {
         console.debug(`[API CONFIG] ${group}.${key}:`, value);
       }
     });
+  } else {
+    console.debug(`[API CONFIG] ${group}:`, endpoints);
   }
 });
 

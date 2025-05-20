@@ -258,7 +258,7 @@ export function useUserRoles() {
                             response.error.message.includes("session"));
         
         console.log("useUserRoles: Got error while checking role, is it auth error?", isAuthError, {
-          errorMessage: typeof response.error === 'object' && response.error !== null && 'message' in response.error ? 
+          errorMessage: typeof response.error === 'object' && response.error !== null ? 
             response.error.message : String(response.error),
           timestamp: new Date().toISOString()
         });
@@ -366,8 +366,7 @@ export function useUserRoles() {
             
             toast({
               title: "Error fetching users",
-              description: typeof response.error === 'object' && response.error !== null && 'message' in response.error ? 
-                response.error.message : String(response.error),
+              description: typeof response.error === 'object' && response.error !== null ? response.error.message : String(response.error),
               variant: "destructive"
             });
             
@@ -380,17 +379,17 @@ export function useUserRoles() {
           
           // Process the API response to ensure each user has the required fields
           const processedData = Array.isArray(response.data) ? response.data.map(user => {
-            // Add activationStatus based on profile existence or other criteria
-            const activationStatus = user.profile ? 'active' : 'unverified';
+            // Use the status field from the API response if available, otherwise determine based on profile
+            const activationStatus = user.status || (user.profile ? 'Active' : 'Unverified');
             
-            console.log(`[PROJLY:USER_ROLES] Processing user ${user.id} with role: ${user.role || 'none'}, activation status: ${activationStatus}`);
+            console.log(`[PROJLY:USER_ROLES] Processing user ${user.id} with role: ${user.role || 'none'}, status from API: ${user.status}, mapped activation status: ${activationStatus}`);
             
             return {
               ...user,
               // Ensure role is set from the direct role field added by the backend
               // or from userRole.role if available, defaulting to regular_user
               role: user.role || (user.userRole?.role as UserRole) || 'regular_user',
-              // Add activationStatus for compatibility with existing code
+              // Use the actual status from the API response
               activationStatus: activationStatus
             };
           }) : [];
@@ -527,15 +526,18 @@ export function useUserRoles() {
     
     updateActivationStatus: useMutation({
       mutationFn: async ({ userId, status }: ActivationStatusUpdateParams) => {
-        console.log("[HOOK:USER-ROLES] Updating activation status:", { userId, status });
-        
-        // Call API endpoint instead of service directly
-        return await apiClient.put(`user-roles/${userId}/status`, { status });
+        console.log("[HOOK:USER-ROLES] Attempting to update activation status for userId: " + userId + " with status: " + status);
+        // Use the fully qualified API path to avoid URL resolution issues
+        console.log("[HOOK:USER-ROLES] Using API endpoint: " + API_ENDPOINTS.USER_STATUS);
+        // Ensure we're using /api/projly prefix by using the full path
+        const response = await apiClient.put("/api/projly/user-status", { userId, status });
+        console.log("[HOOK:USER-ROLES] Response from status update API: ", response);
+        return response;
       },
       onError: (error) => {
         toast({
           title: "Error updating activation status",
-          description: error instanceof Error ? error.message : "Unknown error",
+          description: typeof error === 'object' && error !== null ? error.message : String(error),
           variant: "destructive"
         });
       },
@@ -543,7 +545,7 @@ export function useUserRoles() {
         if (result.error) {
           toast({
             title: "Error updating activation status",
-            description: result.error.message,
+            description: typeof result.error === 'object' && result.error !== null ? result.error.message : String(result.error),
             variant: "destructive"
           });
           return;

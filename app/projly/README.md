@@ -43,6 +43,14 @@ app/projly/
 - Team collaboration
 - Resource management
 
+### User Management
+- User status management (Active, Inactive, Deleted)
+  - Site owners can activate/deactivate users
+  - Status-based access control
+  - Integration with authentication system
+- User role management (site_owner, admin, regular_user)
+- User profile management
+
 ### UI Components
 - Modern UI with responsive design
 - Dashboard layout with sidebar navigation
@@ -109,6 +117,16 @@ app/projly/
 - `TeamsList`: Shows available teams
 - `TeamMembers`: Displays team membership
 - `TeamForm`: Team management form
+
+## Recent Updates (2025-05-19)
+
+Added support for user status management:
+- Introduced a 'status' field (enum: Active, Inactive, Deleted) in the ProjlyUser model, with default 'Active' on registration.
+- Updated login logic to restrict access for non-'Active' users, showing an error message.
+- Enhanced UI in UserSettings for status toggling and access controls in Sidebar.
+- Ensured consistent data fetching with hooks like useUserProfile and useUserRoles.
+
+For details, see [User Status Documentation](/freetool.online/app/projly/user-status/README.md) if created, or related satellite files.
 
 ## Documentation Structure
 

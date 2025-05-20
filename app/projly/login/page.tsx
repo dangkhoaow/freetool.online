@@ -79,11 +79,25 @@ export default function LoginPage() {
         router.push('/projly/dashboard');
       } else {
         log('Login failed:', result.error);
-        setError(result.error || "Invalid email or password");
+        
+        // Handle specific error messages
+        let errorMessage = result.error || "Invalid email or password";
+        let errorTitle = "Login failed";
+        
+        // Check for account disabled/inactive message
+        if (result.error && result.error.toLowerCase().includes('account disabled')) {
+          errorMessage = "Your account has been disabled by an administrator. Please contact support to restore access.";
+          errorTitle = "Account Disabled";
+        } else if (result.error && result.error.toLowerCase().includes('inactive')) {
+          errorMessage = "Your account is currently inactive. Please contact an administrator to activate your account.";
+          errorTitle = "Account Inactive";
+        }
+        
+        setError(errorMessage);
         toast({
           variant: "destructive",
-          title: "Login failed",
-          description: result.error || "Invalid email or password",
+          title: errorTitle,
+          description: errorMessage,
         });
       }
     } catch (err: any) {
