@@ -250,12 +250,16 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       });
       
       // Create an update payload that matches the TaskUpdateInput interface
-      await projlyTasksService.updateTask(taskId, {
+      const updatePayload = {
         ...taskBasicData,
-        assigneeId: assignedTo,
+        assigneeId: assignedTo,  // This is the key field the backend expects
         startDate: startDate,
         dueDate: dueDate
-      });
+      };
+      
+      log('Final update payload being sent to API:', updatePayload);
+      
+      await projlyTasksService.updateTask(taskId, updatePayload);
       log('Task updated successfully');
       
       toast({
@@ -382,8 +386,8 @@ export default function TaskEditPage({}: TaskEditPageProps) {
                       // Show project members if available
                       projectMembers.map((member: ProjectMember) => (
                         <SelectItem key={member.userId} value={member.userId}>
-                            {member.user?.name 
-                              ? `${member.user.name} - ${member.user.email}` 
+                            {member.user?.firstName && member.user?.lastName 
+                              ? `${member.user.firstName} ${member.user.lastName} - ${member.user.email}` 
                               : member.user?.email || 'Unknown user'}
                           </SelectItem>
                       ))

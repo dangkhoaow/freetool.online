@@ -112,6 +112,8 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         // Format dates for the form and map API model to form state
         // Adding detailed logging to help debug the task data structure
         console.log('[PROJLY:TASK_DETAILS] Raw task data:', taskData);
+        console.log('[PROJLY:TASK_DETAILS] Task assignee data:', taskData.assignee);
+        console.log('[PROJLY:TASK_DETAILS] Task assigneeId:', taskData.assigneeId);
         
         const formattedTask = {
           id: taskData.id,
@@ -129,6 +131,10 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
           project: taskData.project || null,
           assignee: taskData.assignee || null
         };
+        
+        // Log assignee information for debugging
+        console.log('[PROJLY:TASK_DETAILS] Formatted task assignee:', formattedTask.assignee);
+        console.log('[PROJLY:TASK_DETAILS] Formatted task assignedTo:', formattedTask.assignedTo);
         
         console.log('[PROJLY:TASK_DETAILS] Task timestamps:', {
           createdAt: formattedTask.createdAt,
@@ -150,6 +156,17 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         // For now we'll use a placeholder
         const teamMembers = [currentUser].filter(Boolean);
         setUsers(teamMembers);
+        
+        // If the task has a project, load the project members to ensure we can display the assignee correctly
+        if (formattedTask.projectId) {
+          log('Loading project members for project:', formattedTask.projectId);
+          try {
+            // This will trigger the useProjectMembers hook to load the members
+            // The hook is already being used with taskForm.projectId
+          } catch (error) {
+            console.error('[PROJLY:TASK_DETAILS] Error loading project members:', error);
+          }
+        }
         
       } catch (error) {
         console.error(`[PROJLY:TASK_DETAILS:${taskId}] Error loading task:`, error);
@@ -441,13 +458,28 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                         );
                       }
                       
+                      console.log('[PROJLY:TASK_DETAILS] Assignee lookup - taskForm.assignedTo:', taskForm.assignedTo);
+                      console.log('[PROJLY:TASK_DETAILS] Assignee lookup - projectMembers:', projectMembers);
+                      console.log('[PROJLY:TASK_DETAILS] Assignee lookup - taskForm.assignee:', taskForm.assignee);
+                      
+                      // First try to use the assignee object directly from taskForm if it exists
+                      if (taskForm.assignee) {
+                        console.log('[PROJLY:TASK_DETAILS] Using assignee from taskForm:', taskForm.assignee);
+                        return taskForm.assignee.firstName && taskForm.assignee.lastName
+                          ? `${taskForm.assignee.firstName} ${taskForm.assignee.lastName}`
+                          : taskForm.assignee.email || 'Unknown user';
+                      }
+                      
+                      // If no assignee in taskForm, try to find in project members
                       const assignee = projectMembers.find(m => m.userId === taskForm.assignedTo);
                       if (assignee?.user) {
+                        console.log('[PROJLY:TASK_DETAILS] Found assignee in project members:', assignee.user);
                         return assignee.user.firstName && assignee.user.lastName
                           ? `${assignee.user.firstName} ${assignee.user.lastName}`
                           : assignee.user.email || 'Unknown user';
                       }
                       
+                      console.log('[PROJLY:TASK_DETAILS] No assignee found for ID:', taskForm.assignedTo);
                       return 'Unknown user';
                     })()}
                   </p>

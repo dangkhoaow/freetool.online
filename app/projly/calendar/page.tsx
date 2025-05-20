@@ -348,7 +348,7 @@ export default function CalendarPage() {
             <p className="text-muted-foreground">View and manage your tasks and events</p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="hidden flex items-center gap-2">
             <Button onClick={() => {
               setNewEventDate(new Date());
               setIsNewEventDialogOpen(true);
@@ -356,62 +356,6 @@ export default function CalendarPage() {
               <Plus className="mr-2 h-4 w-4" />
               New Event
             </Button>
-          </div>
-        </div>
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <div className="flex items-center gap-2">
-            <Select 
-              value={filterProject} 
-              onValueChange={(value) => {
-                log('Project filter changed:', value);
-                setFilterProject(value === 'all' ? '' : value);
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select 
-              value={filterStatus || 'all'} 
-              onValueChange={(value) => {
-                log('Status filter changed:', value);
-                setFilterStatus(value === 'all' ? '' : value);
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="Not Started">Not Started</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="Overdue">Overdue</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {(filterProject || filterStatus) && (
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => {
-                  setFilterProject("");
-                  setFilterStatus("");
-                }}
-              >
-                <Filter className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         </div>
         
@@ -456,6 +400,61 @@ export default function CalendarPage() {
             />
           </TabsContent>
           <TabsContent value="month" className="mt-0">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={filterProject} 
+                  onValueChange={(value) => {
+                    log('Project filter changed:', value);
+                    setFilterProject(value === 'all' ? '' : value);
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select 
+                  value={filterStatus || 'all'} 
+                  onValueChange={(value) => {
+                    log('Status filter changed:', value);
+                    setFilterStatus(value === 'all' ? '' : value);
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="Not Started">Not Started</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {(filterProject || filterStatus) && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => {
+                      setFilterProject("");
+                      setFilterStatus("");
+                    }}
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
             <CalendarGrid 
               events={filteredEvents}
               onEventClick={handleEventClick}
