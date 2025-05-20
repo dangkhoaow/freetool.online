@@ -502,8 +502,12 @@ export function useUserRoles() {
       mutationFn: async ({ userId, role }: UserRoleUpdateParams) => {
         console.log("[HOOK:USER-ROLES] Assigning role:", { userId, role });
         
+        // Use the correct API endpoint path with the /api/projly prefix
+        const endpoint = '/api/projly/user-roles/assign';
+        console.log(`[HOOK:USER-ROLES] Calling endpoint: ${endpoint}`);
+        
         // Call API endpoint instead of service directly
-        return await apiClient.post('user-roles/assign', { userId, role });
+        return await apiClient.post(endpoint, { userId, role });
       },
       onSuccess: (result: ApiResponse<any>) => {
         if (result.error) {
@@ -563,11 +567,20 @@ export function useUserRoles() {
     }),
     
     resetPassword: useMutation({
-      mutationFn: async ({ userId, password }: PasswordResetParams) => {
-        console.log("[HOOK:USER-ROLES] Resetting password for user:", userId);
-        
-        // Call API endpoint instead of service directly
-        return await apiClient.put(`user-roles/${userId}/reset-password`, { password });
+      mutationFn: async ({ token, password }: { token: string, password: string }) => {
+        // Log input
+        console.log("[HOOK:USER-ROLES] Resetting password with token:", token);
+        // Use correct endpoint and POST method from apiConfig
+        try {
+          const endpoint = `/api/projly/auth/reset-password`;
+          console.log("[HOOK:USER-ROLES] Calling endpoint:", endpoint);
+          const response = await apiClient.post(endpoint, { token, password });
+          console.log("[HOOK:USER-ROLES] Password reset API response:", response);
+          return response;
+        } catch (error) {
+          console.error("[HOOK:USER-ROLES] Error in password reset API call:", error);
+          throw error;
+        }
       },
       onSuccess: (result) => {
         if (result.error) {

@@ -25,7 +25,8 @@ lib/services/projly/
 ├── use-team.ts                # Team management hooks
 ├── use-toast.ts               # Toast notification utilities
 ├── use-user-extended.ts       # Extended user operations
-└── use-user-roles.ts          # Role-based permissions
+├── use-user-roles.ts          # Role-based permissions
+└── use-users.ts              # User management operations (New 2025-05-20)
 ```
 
 ## Key Services
@@ -62,12 +63,33 @@ lib/services/projly/
 - Assign team roles
 - Associate teams with projects
 
-### User Management (use-profile.ts, use-user-roles.ts) (Updated 2025-05-18)
+### User Management (use-profile.ts, use-user-roles.ts, use-users.ts) (Updated 2025-05-20)
 - Fetch and update user profiles
 - Manage user roles and permissions
 - Check user authorization for specific actions
+- Create, update, and delete users (New 2025-05-20)
 
 #### User Roles Service (use-user-roles.ts)
+
+- Provides hooks and utilities for role-based access control
+- Exposes API endpoints for checking and managing user roles
+- Key endpoints:
+  - `/api/projly/user-roles/current` - Gets the current user's role
+  - `/api/projly/user-roles/check/[role]` - Checks if user has a specific role
+  - `/api/projly/user-roles/all-with-settings` - Gets all users with their roles
+  
+#### Users Service (use-users.ts) (New 2025-05-20)
+
+- Provides hooks and utilities for user management operations
+- Implements CRUD operations for user accounts
+- Key endpoints:
+  - `/api/projly/users` - List all users (GET) and create new users (POST)
+  - `/api/projly/users/id/[id]` - Get, update, or delete specific users
+- Features:
+  - Role-based access control (only site owners can create users)
+  - Proper error handling and validation
+  - Integration with React Query for state management
+  - Automatic data refresh after mutations
 - Provides hooks and utilities for role-based access control
 - Exposes API endpoints for checking and managing user roles
 - Key endpoints:

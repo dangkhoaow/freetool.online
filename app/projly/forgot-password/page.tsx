@@ -190,7 +190,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center">
               <Link 
                 href="/projly/login" 
-                className="text-primary font-medium hover:underline inline-flex items-center"
+                className="pb-6 text-primary font-medium hover:underline inline-flex items-center"
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 <span>Back to Login</span>

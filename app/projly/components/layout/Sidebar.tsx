@@ -43,8 +43,8 @@ const SidebarItem = ({
   return (
     <Link 
       href={href} 
-      className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all hover:bg-project-primary hover:text-white", 
-        active ? "bg-project-primary text-white" : "text-gray-700")}
+      className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all hover:bg-primary hover:text-white", 
+        active ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white" : "text-gray-700")}
       onClick={handleClick}
     >
       <div className="flex h-5 w-5 items-center justify-center">{icon}</div>
@@ -288,10 +288,8 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
           <div className="px-3 py-2">
             <h2 className="mb-2 text-lg font-semibold tracking-tight">Settings</h2>
             <div className="space-y-1">
+              <SidebarItem icon={<Settings className="h-4 w-4" />} label="Account Settings" href="/projly/settings" active={pathname === "/projly/settings"} />
               {(isSiteOwner || isAdmin) && (
-                <SidebarItem icon={<Settings className="h-4 w-4" />} label="Account Settings" href="/projly/settings" active={pathname === "/projly/settings"} />
-              )}
-              {isSiteOwner && (
                 <SidebarItem icon={<UserCog className="h-4 w-4" />} label="User Settings" href="/projly/user-settings" active={pathname === "/projly/user-settings"} />
               )}
             </div>
