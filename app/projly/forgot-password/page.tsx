@@ -11,16 +11,15 @@ import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { projlyAuthService } from '@/lib/services/projly';
+import { useForgotPassword } from '@/lib/services/projly/use-forgot-password';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const router = useRouter();
   const { toast } = useToast();
+  const { forgotPassword, isLoading, error, success, reset } = useForgotPassword();
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -60,58 +59,29 @@ export default function ForgotPasswordPage() {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setIsSubmitting(true);
-    
     log('Password reset request for email:', email);
     
     try {
-      // Since there's no direct forgotPassword method in the service,
-      // we'll simulate the password recovery flow using the API client
-      log('Simulating password reset request for:', email);
+      // Call the forgotPassword function from the hook
+      const result = await forgotPassword(email);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      log('Password reset request result:', result);
       
-      // Simulate successful response
-      // Use the AuthResponse type from projlyAuthService
-      const result = { 
-        success: true,
-        message: "Reset instructions have been sent to your email address."
-      };      
-      log('Password reset request simulated result:', result.success);
-      
-      if (result.success) {
-        log('Password reset email sent');
-        setSuccess("Reset instructions have been sent to your email address. Please check your inbox.");
+      // Toast notification handled by the hook via success state
+      if (success) {
         toast({
           title: "Email sent",
           description: "Reset instructions have been sent to your email address.",
         });
-      } else {
-        // This won't execute in our simulation but keeping for structure
-        // In a real implementation, this would handle the error case
-        const errorMessage = result.message || "Failed to send reset email. Please try again.";
-        log('Password reset request failed:', errorMessage);
-        setError(errorMessage);
-        toast({
-          variant: "destructive",
-          title: "Request failed",
-          description: errorMessage,
-        });
       }
     } catch (err: any) {
+      // Error handling is done by the hook
       console.error("[PROJLY:FORGOT_PASSWORD] Password reset error:", err);
-      setError(err.message || "Failed to send reset email. Please try again.");
       toast({
         variant: "destructive",
         title: "Request failed",
         description: err.message || "Failed to send reset email. Please try again.",
       });
-    } finally {
-      setIsSubmitting(false);
-      log('Password reset request completed');
     }
   };
   
@@ -164,15 +134,15 @@ export default function ForgotPasswordPage() {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
-                  disabled={isSubmitting || !!success}
+                  disabled={isLoading || !!success}
                 />
               </div>
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isSubmitting || !!success}
+                disabled={isLoading || !!success}
               >
-                {isSubmitting ? (
+                {isLoading ? (
                   <div className="flex items-center">
                     <span className="mr-2">Sending...</span>
                     <Loader2 className="h-4 w-4 animate-spin" />

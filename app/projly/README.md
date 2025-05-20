@@ -118,7 +118,17 @@ app/projly/
 - `TeamMembers`: Displays team membership
 - `TeamForm`: Team management form
 
-## Recent Updates (2025-05-19)
+## Recent Updates (2025-05-20)
+
+Implemented forgot password functionality:
+- Added complete password reset flow with email integration
+- Created secure token-based authentication for password resets
+- Implemented client-side validation for passwords
+- Added comprehensive logging for debugging
+
+For details, see [Forgot Password Documentation](/freetool.online/app/projly/forgot-password/README.md).
+
+### Previous Updates (2025-05-19)
 
 Added support for user status management:
 - Introduced a 'status' field (enum: Active, Inactive, Deleted) in the ProjlyUser model, with default 'Active' on registration.
