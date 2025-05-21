@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
 import { useUpdateMember, TeamMemberWithUser } from "@/lib/services/projly/use-members";
 import type { Team } from "@/lib/services/projly/use-team";
+import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,48 @@ interface EditMemberFormProps {
 
 export function EditMemberForm({ member, teams, onSuccess }: EditMemberFormProps) {
   const { mutate: updateMember, isPending } = useUpdateMember();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+  
+  // Filter teams to only show those owned by the current user
+  const ownedTeams = useMemo(() => {
+    console.log('[EditMemberForm] Filtering teams by ownership, currentUserId:', currentUserId);
+    if (!currentUserId || !teams || teams.length === 0) {
+      console.log('[EditMemberForm] No user ID or teams data available');
+      return [];
+    }
+    
+    // Check if the current user is the owner of each team
+    const filtered = teams.filter(team => {
+      // Check if the team has an ownerId property directly
+      if ('ownerId' in team && team.ownerId === currentUserId) {
+        return true;
+      }
+      
+      // If not, check if any team member has the owner role and matches the current user
+      if (team.members && team.members.length > 0) {
+        return team.members.some(member => 
+          member.userId === currentUserId && 
+          member.role?.toLowerCase() === 'owner'
+        );
+      }
+      
+      return false;
+    });
+    
+    console.log(`[EditMemberForm] Found ${filtered.length} teams owned by current user out of ${teams.length} total teams`);
+    return filtered;
+  }, [teams, currentUserId]);
+  
+  // Always include the member's current team in the list, even if not owned by current user
+  const displayTeams = useMemo(() => {
+    const currentTeam = teams.find(t => t.id === member.teamId);
+    if (currentTeam && !ownedTeams.some(t => t.id === currentTeam.id)) {
+      console.log('[EditMemberForm] Adding current team to list even though not owned by current user');
+      return [...ownedTeams, currentTeam];
+    }
+    return ownedTeams;
+  }, [ownedTeams, member.teamId, teams]);
   
   // Initialize the form with react-hook-form and zod validation
   const form = useForm<MemberFormValues>({
@@ -103,11 +146,18 @@ export function EditMemberForm({ member, teams, onSuccess }: EditMemberFormProps
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
+                  {displayTeams.length > 0 ? (
+                    displayTeams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                        {team.id === member.teamId ? " (Current)" : ""}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-4 text-sm text-gray-500">
+                      No teams available. You must own a team to edit members.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />

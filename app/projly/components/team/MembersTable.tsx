@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMembers, useDeleteMember, useAccessibleMembers } from "@/lib/services/projly/use-members";
 import { useTeams } from "@/lib/services/projly/use-team";
 import { useUserRoles } from "@/lib/services/projly/use-user-roles";
@@ -76,6 +77,12 @@ export function MembersTable() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
+  // Get current user session to check team ownership
+  const { data: session } = useSession();
+  
+  // Get query client for data invalidation
+  const queryClient = useQueryClient();
+
   // Get members data - use the new useAccessibleMembers hook to get filtered members
   const { data: accessibleMembers = [], isLoading: isLoadingAccessible, error: accessibleError } = useAccessibleMembers();
   const { data: members = [], isLoading: isLoadingMembers } = useMembers(teamFilter !== "all" ? teamFilter : undefined);
@@ -86,18 +93,28 @@ export function MembersTable() {
   const isLoading = isLoadingAccessible || isLoadingMembers || isLoadingTeams;
   const error = null; // Don't show error to user, just fall back to regular members
   
-  // Use the accessible members if available, otherwise fall back to regular members
-  // This ensures we still show data even if the accessible members API fails
-  const membersData = accessibleError || accessibleMembers.length === 0 ? members : accessibleMembers;
-  console.log('[MEMBERS:TABLE] Using members data, source:', accessibleError ? 'fallback regular members' : 'filtered accessible members', 'count:', membersData.length);
+  // Choose the appropriate data source based on filters
+  // When a specific team is selected, use the members from useMembers hook which has the team filter applied
+  // Otherwise use accessible members for the "All Teams" view
+  let membersData = [];
+  if (teamFilter !== "all") {
+    // When a specific team is selected, use the members from the useMembers hook
+    membersData = members;
+    console.log(`[MEMBERS:TABLE] Using team-specific members for team ID: ${teamFilter}, count:`, members.length);
+  } else {
+    // For "All Teams" view, use accessible members if available, otherwise fall back to regular members
+    membersData = accessibleError || accessibleMembers.length === 0 ? members : accessibleMembers;
+    console.log('[MEMBERS:TABLE] Using members data for "All Teams" view, source:', 
+      accessibleError ? 'fallback regular members' : 'filtered accessible members', 
+      'count:', membersData.length);
+  }
   
   // If there was an error with the accessible members API, log it but don't show to user
   if (accessibleError) {
     console.error('[MEMBERS:TABLE] Error fetching accessible members, falling back to regular members:', accessibleError);
   }
 
-  // Get current user session to check team ownership
-  const { data: session } = useSession();
+  // Get current user ID from session
   const currentUserId = session?.user?.id;
   console.log('[MEMBERS:TABLE] Current user ID:', currentUserId);
   
@@ -119,13 +136,11 @@ export function MembersTable() {
     return isOwner;
   };
 
-  // Default to first team on load for non-privileged users
+  // Removed automatic team filter selection to allow 'All Teams' option to work
+  // Now users can explicitly select 'All Teams' and it will stay selected
   useEffect(() => {
-    // Only apply default filter after role is loaded and user not privileged
-    if (!isLoading && teams.length > 0 && teamFilter === "all") {
-      setTeamFilter(teams[0].id);
-    }
-  }, [teams, teamFilter, isLoading]);
+    console.log(`[MEMBERS:TABLE] Team filter value: ${teamFilter}`);
+  }, [teamFilter]);
 
   // Filter and sort the members data
   const filteredMembers = membersData.filter((member) => {
@@ -187,6 +202,47 @@ export function MembersTable() {
     }
   };
 
+  // Function to refresh all member-related queries
+  const refreshMemberQueries = () => {
+    console.log('[MEMBERS:TABLE] Refreshing all member queries');
+    // Invalidate the general members query
+    queryClient.invalidateQueries({ queryKey: ['members'] });
+    
+    // Invalidate team-specific members queries
+    if (teamFilter !== 'all') {
+      console.log(`[MEMBERS:TABLE] Refreshing team-specific members query for team: ${teamFilter}`);
+      queryClient.invalidateQueries({ queryKey: ['members', teamFilter] });
+    }
+    
+    // Also invalidate accessible members query
+    queryClient.invalidateQueries({ queryKey: ['accessible-members'] });
+    
+    console.log('[MEMBERS:TABLE] All member queries invalidated');
+  };
+  
+  // Setup event listener for manual refresh of members list
+  useEffect(() => {
+    const handleRefreshMembersList = () => {
+      console.log('[MEMBERS:TABLE] Event triggered to refresh members list');
+      refreshMemberQueries();
+    };
+
+    window.addEventListener('refreshMembersList', handleRefreshMembersList);
+    
+    return () => {
+      window.removeEventListener('refreshMembersList', handleRefreshMembersList);
+    };
+  }, [queryClient, teamFilter]);
+
+  // Handle closing the edit dialog and refreshing the members list
+  const handleEditMemberClose = () => {
+    setIsEditDialogOpen(false);
+    setSelectedMember(null);
+    // Refresh members list after editing a member
+    console.log('[MEMBERS:TABLE] Edit Member Dialog closed, refreshing members list');
+    refreshMemberQueries();
+  };
+
   if (isLoading || isLoadingTeams) {
     return (
       <div className="flex justify-center p-8">
@@ -213,7 +269,7 @@ export function MembersTable() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">Team Members</h2>
+        <h2 className="text-2xl font-bold">Your Colleagues</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             {/* Only show enabled Add Member button if user owns the selected team */}
@@ -236,7 +292,12 @@ export function MembersTable() {
                 Add a new team member to your organization.
               </DialogDescription>
             </DialogHeader>
-            <AddMemberForm teams={teams} onSuccess={() => setIsAddDialogOpen(false)} />
+            <AddMemberForm teams={teams} onSuccess={() => {
+              setIsAddDialogOpen(false);
+              // Refresh members list after adding a new member
+              console.log('[MEMBERS:TABLE] Add Member Form submitted, refreshing members list');
+              refreshMemberQueries();
+            }} />
           </DialogContent>
         </Dialog>
       </div>
@@ -366,10 +427,7 @@ export function MembersTable() {
                               <EditMemberForm 
                                 member={selectedMember} 
                                 teams={teams}
-                                onSuccess={() => {
-                                  setSelectedMember(null);
-                                  setIsEditDialogOpen(false);
-                                }} 
+                                onSuccess={handleEditMemberClose} 
                               />
                             )}
                           </DialogContent>
@@ -397,7 +455,16 @@ export function MembersTable() {
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction 
                                 disabled={isDeleting}
-                                onClick={() => deleteMember(member.id)}
+                                onClick={() => {
+                                  console.log(`[MEMBERS:TABLE] Deleting member: ${member.id}`);
+                                  deleteMember(member.id, {
+                                    onSuccess: () => {
+                                      // Refresh members list after deletion
+                                      console.log('[MEMBERS:TABLE] Member deleted, refreshing members list');
+                                      refreshMemberQueries();
+                                    }
+                                  });
+                                }}
                               >
                                 {isDeleting ? <Spinner className="h-4 w-4 mr-2" /> : null}
                                 Remove

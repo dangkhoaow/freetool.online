@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useCreateMember, useInviteMember } from "@/lib/services/projly/use-members";
 import { TeamWithProject } from "@/lib/services/projly/use-team";
+import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,38 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
   const [selectedTeam, setSelectedTeam] = useState<TeamWithProject | null>(null);
   const { toast } = useToast();
   const { mutate: inviteMember, isPending } = useInviteMember();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+  
+  // Filter teams to only show those owned by the current user
+  const ownedTeams = useMemo(() => {
+    console.log('[AddMemberForm] Filtering teams by ownership, currentUserId:', currentUserId);
+    if (!currentUserId || !teams || teams.length === 0) {
+      console.log('[AddMemberForm] No user ID or teams data available');
+      return [];
+    }
+    
+    // Check if the current user is the owner of each team
+    const filtered = teams.filter(team => {
+      // Check if the team has an ownerId property directly
+      if ('ownerId' in team && team.ownerId === currentUserId) {
+        return true;
+      }
+      
+      // If not, check if any team member has the owner role and matches the current user
+      if (team.members && team.members.length > 0) {
+        return team.members.some(member => 
+          member.userId === currentUserId && 
+          member.role?.toLowerCase() === 'owner'
+        );
+      }
+      
+      return false;
+    });
+    
+    console.log(`[AddMemberForm] Found ${filtered.length} teams owned by current user out of ${teams.length} total teams`);
+    return filtered;
+  }, [teams, currentUserId]);
 
   // No need to fetch users as we're using email input
 
@@ -127,11 +160,17 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
+                  {ownedTeams.length > 0 ? (
+                    ownedTeams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-4 text-sm text-gray-500">
+                      No teams available. You must own a team to add members.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               {selectedTeam?.project && (

@@ -170,8 +170,23 @@ export const useMembers = (teamId?: string) => {
       // Extract members from teams response
       if (Array.isArray(response.data)) {
         console.log("[HOOK:MEMBERS] Processing teams response to extract members");
+        console.log("[HOOK:MEMBERS] Response data sample:", JSON.stringify(response.data[0]).substring(0, 200) + '...');
         
-        // Check if the response is an array of teams with nested members
+        // If we're filtering by teamId, first find the specific team
+        if (teamId) {
+          console.log(`[HOOK:MEMBERS] Looking for team with ID: ${teamId}`);
+          const targetTeam = response.data.find(team => team.id === teamId);
+          
+          if (targetTeam && Array.isArray(targetTeam.members)) {
+            console.log(`[HOOK:MEMBERS] Found team '${targetTeam.name}' with ${targetTeam.members.length} members`);
+            return targetTeam.members as TeamMemberWithUser[];
+          } else {
+            console.log(`[HOOK:MEMBERS] Team with ID ${teamId} not found or has no members`);
+            return [];
+          }
+        }
+        
+        // If not filtering by teamId, extract all members from all teams
         if (response.data.length > 0 && 'members' in response.data[0]) {
           // Extract and flatten all members from all teams
           const allMembers = response.data.flatMap(team => {
@@ -183,13 +198,7 @@ export const useMembers = (teamId?: string) => {
           });
           
           console.log(`[HOOK:MEMBERS] Extracted ${allMembers.length} members from ${response.data.length} teams`);
-          
-          // Filter by teamId if specified
-          const filteredMembers = teamId 
-            ? allMembers.filter(member => member.teamId === teamId)
-            : allMembers;
-            
-          return filteredMembers as TeamMemberWithUser[];
+          return allMembers as TeamMemberWithUser[];
         }
       }
       
