@@ -328,6 +328,54 @@ export const useUpdateMember = () => {
   });
 };
 
+/**
+ * Hook for inviting a team member by email
+ * This handles both existing and new users
+ */
+export const useInviteMember = () => {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+
+  return useMutation({
+    mutationFn: async (invitation: { email: string; teamId: string; role?: string; department?: string }) => {
+      console.log("[HOOK:MEMBERS] Inviting member by email:", invitation);
+      if (!session?.user?.id) {
+        console.error("[HOOK:MEMBERS] No user session found in useInviteMember");
+        throw new Error("You must be logged in to invite a team member");
+      }
+      
+      // Call API endpoint for invitation
+      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members/invite');
+      const response = await apiClient.post('/api/projly/members/invite', invitation);
+      console.log("[HOOK:MEMBERS] API response received for member invitation:", response.error ? 'Error' : 'Success');
+      
+      if (response.error) {
+        console.error("[HOOK:MEMBERS] Error inviting member:", response.error);
+        throw response.error;
+      }
+      
+      return response.data;
+    },
+    onSuccess: () => {
+      console.log("[HOOK:MEMBERS] Member invited successfully, invalidating queries");
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      toast({
+        title: "Success",
+        description: "Team invitation has been sent successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("[HOOK:MEMBERS] Error in invite member mutation:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to invite team member.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
 export const useDeleteMember = () => {
   const queryClient = useQueryClient();
   const { data: session } = useSession();

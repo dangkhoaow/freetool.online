@@ -49,6 +49,10 @@ app/projly/
   - Status-based access control
   - Integration with authentication system
 - User role management (site_owner, admin, regular_user)
+- Team member invitation system
+  - Email-based invitations for existing and new users
+  - Automatic user creation for new invitees with 'Inactive' status
+  - Email notifications with signup/login links
 - User profile management
 
 ### UI Components
@@ -118,7 +122,21 @@ app/projly/
 - `TeamMembers`: Displays team membership
 - `TeamForm`: Team management form
 
-## Recent Updates (2025-05-20)
+## Recent Updates
+
+### Latest Updates (2025-05-21)
+
+Enhanced team member management:
+- Added email-based team member invitation system
+  - Allows inviting users by email address instead of selecting from existing users
+  - Creates placeholder users for emails not yet in the system
+  - Sends email notifications with appropriate links for signup or login
+- Updated AddMemberForm component to use email input
+- Added new API endpoint at `/api/projly/members/invite`
+- Added email template for team invitations
+- For details, see [Team Components Documentation](/freetool.online/app/projly/components/team/README.md)
+
+### Previous Updates (2025-05-20)
 
 Implemented forgot password functionality:
 - Added complete password reset flow with email integration

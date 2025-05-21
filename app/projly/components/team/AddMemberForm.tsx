@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useCreateMember } from "@/lib/services/projly/use-members";
+import { useCreateMember, useInviteMember } from "@/lib/services/projly/use-members";
 import { TeamWithProject } from "@/lib/services/projly/use-team";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +30,7 @@ import apiClient from "@/lib/api-client";
 import { FolderOpen } from "lucide-react";
 
 const formSchema = z.object({
-  userId: z.string().min(1, "User is required"),
+  email: z.string().email("Valid email is required"),
   teamId: z.string().min(1, "Team is required"),
   role: z.string().optional(),
   department: z.string().optional(),
@@ -43,73 +43,19 @@ type AddMemberFormProps = {
   onSuccess: () => void;
 };
 
-// Define a type for users fetched from profiles to match the actual API response structure
-type ProfileUser = {
-  id: string;
-  userId: string;
-  bio?: string;
-  avatarUrl?: string | null;
-  jobTitle?: string;
-  department?: string;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    id: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-  };
-};
+// No longer need the ProfileUser type as we're using email input
 
 export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
-  const [users, setUsers] = useState<ProfileUser[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true);
   const [selectedTeam, setSelectedTeam] = useState<TeamWithProject | null>(null);
   const { toast } = useToast();
-  const { mutate: createMember, isPending } = useCreateMember();
+  const { mutate: inviteMember, isPending } = useInviteMember();
 
-  // Fetch users from profiles table
-  useEffect(() => {
-    async function fetchUsers() {
-      setIsLoadingUsers(true);
-      try {
-        console.log('[AddMemberForm] Fetching profiles from API');
-        // Use API client to fetch profiles with correct /api/projly prefix
-        const response = await apiClient.get('/api/projly/profiles');
-        
-        if (response.error) {
-          throw response.error;
-        }
-
-        if (response.data) {
-          // Store the profiles data as is
-          const profiles = response.data as ProfileUser[];
-          console.log('[AddMemberForm] Fetched profiles:', profiles);
-          setUsers(profiles);
-        } else {
-          console.log('[AddMemberForm] No profiles returned from API');
-          setUsers([]);
-        }
-      } catch (error: any) {
-        console.error("[AddMemberForm] Error fetching profiles:", error);
-        toast({
-          variant: "destructive",
-          title: "Error fetching users",
-          description: error.message || "Failed to load users",
-        });
-      } finally {
-        setIsLoadingUsers(false);
-        console.log('[AddMemberForm] User loading complete. Current users state:', users);
-      }
-    }
-
-    fetchUsers();
-  }, [toast]);
+  // No need to fetch users as we're using email input
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      userId: "",
+      email: "",
       teamId: "",
       role: "Member",
       department: "",
@@ -125,18 +71,18 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
   }, [form.watch("teamId"), teams]);
 
   const onSubmit = (data: FormValues) => {
-    const memberData = {
-      userId: data.userId,
+    const invitationData = {
+      email: data.email,
       teamId: data.teamId,
       role: data.role || "Member",
       department: data.department,
     };
-    console.log('Submitting AddMemberForm with data:', memberData);
-    createMember(memberData, {
+    console.log('[AddMemberForm] Submitting invitation with data:', invitationData);
+    inviteMember(invitationData, {
       onSuccess: () => {
         onSuccess();
         form.reset();
-        console.log('Member added successfully.');
+        console.log('[AddMemberForm] Invitation sent successfully.');
       },
     });
   };
@@ -146,30 +92,20 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="userId"
+          name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>User</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                disabled={isLoadingUsers}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoadingUsers ? "Loading users..." : "Select a user"} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {users.map((profile) => (
-                    <SelectItem key={profile.userId} value={profile.userId}>
-                      {profile.user.firstName && profile.user.lastName 
-                        ? `${profile.user.firstName} ${profile.user.lastName}` 
-                        : profile.user.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input 
+                  type="email" 
+                  placeholder="Enter email address" 
+                  {...field} 
+                />
+              </FormControl>
+              <FormDescription>
+                Enter the email address of the person you want to invite.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -250,7 +186,7 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isPending || isLoadingUsers}>
+        <Button type="submit" className="w-full" disabled={isPending}>
           {isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
           Add Member
         </Button>

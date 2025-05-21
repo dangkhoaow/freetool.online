@@ -58,6 +58,12 @@ export type Team = {
   ownerId?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  owner?: {
+    id: string;
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
   project?: {
     id: string;
     name: string;

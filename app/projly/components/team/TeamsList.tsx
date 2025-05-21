@@ -187,11 +187,27 @@ function TeamMemberCard({
     team.id, 
     team.project?.id
   );
+  const membersCountWithOwner = membersCount + 1; //include owner
   const { data: session } = useSession();
   // Check if the logged-in user is the team owner (not the project owner)
   const isOwner = session?.user?.id === team.ownerId;
   
-  console.log("TeamMemberCard - Team:", team.name, "User ID:", session?.user?.id, "Team Owner ID:", team.ownerId, "Is Owner:", isOwner);
+  // Get owner display name - use firstName + lastName if available, otherwise use email
+  const getOwnerDisplayName = () => {
+    if (!team.owner) return 'Unknown';
+    
+    if (team.owner.firstName && team.owner.lastName) {
+      return `${team.owner.firstName} ${team.owner.lastName} - ${team.owner.email}`;
+    } else if (team.owner.firstName) {
+      return `${team.owner.firstName} - ${team.owner.email}`;
+    } else {
+      return `${team.owner.email}`;
+    }
+  };
+  
+  const ownerDisplayName = getOwnerDisplayName();
+  
+  console.log("TeamMemberCard - Team:", team.name, "Owner:", ownerDisplayName, "Is Owner:", isOwner);
 
   return (
     <Card key={team.id}>
@@ -206,13 +222,13 @@ function TeamMemberCard({
             >
               <Trash className="h-4 w-4" />
             </Button>}
-            <Button
+            {isOwner && <Button
               variant="ghost"
               size="icon"
               onClick={() => onEdit(team)}
             >
               <Pencil className="h-4 w-4" />
-            </Button>
+            </Button>}
           </div>
         </div>
         {team.project && (
@@ -232,15 +248,20 @@ function TeamMemberCard({
             No description
           </p>
         )}
-        <div className="flex items-center gap-1">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <Badge variant="outline">
-            {isCountLoading ? (
-              <Spinner className="h-3 w-3 mr-1" />
-            ) : (
-              `${membersCount} ${membersCount === 1 ? 'member' : 'members'}`
-            )}
-          </Badge>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <Badge variant="outline">
+              {isCountLoading ? (
+                <Spinner className="h-3 w-3 mr-1" />
+              ) : (
+                `${membersCountWithOwner} ${membersCountWithOwner === 1 ? 'member' : 'members'}`
+              )}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <span>Owner: {ownerDisplayName}</span>
+          </div>
         </div>
       </CardContent>
     </Card>
