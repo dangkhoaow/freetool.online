@@ -15,9 +15,9 @@ export const HeaderWrapper: React.FC<HeaderWrapperProps> = ({ children }) => {
           {children}
         </div>
         
-        <div className="flex items-center gap-2">
-          <HeaderActions />
+        <div className="flex items-center gap-2 mr-4">
           <ModeToggle />
+          <HeaderActions />
         </div>
       </div>
     </header>
