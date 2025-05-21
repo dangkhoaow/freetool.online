@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, Eye, EyeOff } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, Lock, Eye, EyeOff, AlertTriangle, AlertCircle } from "lucide-react";
 
 // Types
 interface PasswordFormData {
@@ -34,13 +35,15 @@ interface PasswordSettingsProps {
   onPasswordChange: (field: string, value: string) => void;
   onSubmit: (e: React.FormEvent) => Promise<void>;
   isSaving: boolean;
+  error?: string | null; // Add error prop for API error messages
 }
 
 export function PasswordSettings({ 
   passwordForm, 
   onPasswordChange, 
   onSubmit,
-  isSaving 
+  isSaving,
+  error 
 }: PasswordSettingsProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -142,6 +145,14 @@ export function PasswordSettings({
           <CardDescription>Update your password securely</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Display API error message if present */}
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-2">
             <Label htmlFor="currentPassword">Current Password</Label>
             <div className="relative">

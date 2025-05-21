@@ -89,6 +89,9 @@ export default function SettingsPage() {
     confirmPassword: ''
   });
   
+  // Add error state for displaying in UI
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  
   // Notification settings state
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -191,9 +194,12 @@ export default function SettingsPage() {
     e.preventDefault();
     
     try {
+      // Clear any previous errors
+      setPasswordError(null);
       log('Validating password change submission');
       
       if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+        setPasswordError('All password fields are required');
         toast({
           title: 'Validation Error',
           description: 'All password fields are required',
@@ -203,6 +209,7 @@ export default function SettingsPage() {
       }
       
       if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setPasswordError('New passwords do not match');
         toast({
           title: 'Validation Error',
           description: 'New passwords do not match',
@@ -212,6 +219,7 @@ export default function SettingsPage() {
       }
       
       if (passwordForm.newPassword.length < 8) {
+        setPasswordError('Password must be at least 8 characters long');
         toast({
           title: 'Validation Error',
           description: 'Password must be at least 8 characters long',
@@ -242,19 +250,21 @@ export default function SettingsPage() {
       
       log('Password change API response status:', response.status);
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        log('Password change API error:', errorData);
+      // Parse the response data
+      const data = await response.json();
+      log('Password change API response data:', data);
+      
+      // Check for successful response based on the success flag
+      if (!data.success) {
+        // Extract error message from response
+        const errorMessage = data.message || 
+                            (data.error?.message) || 
+                            (typeof data.error === 'string' ? data.error : 'Failed to update password');
         
-        // Handle specific error cases
-        if (response.status === 401) {
-          throw new Error('Current password is incorrect or authentication failed');
-        } else {
-          throw new Error(errorData.error?.message || 'Failed to update password');
-        }
+        log('Password change failed:', errorMessage);
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json();
       log('Password updated successfully:', data);
       
       toast({
@@ -271,10 +281,17 @@ export default function SettingsPage() {
       
     } catch (error) {
       console.error('[PROJLY:SETTINGS] Error updating password:', error);
+      
+      // Extract error message and set it for display in the UI
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update password. Please try again.';
+      setPasswordError(errorMessage);
+      
+      // Show error toast with extended duration to ensure visibility
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update password. Please try again.',
-        variant: 'destructive'
+        title: 'Password Error',
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 5000 // Show for 5 seconds to ensure user sees it
       });
     } finally {
       setIsSaving(false);
@@ -354,6 +371,7 @@ export default function SettingsPage() {
               onPasswordChange={handlePasswordChange}
               onSubmit={handlePasswordSubmit}
               isSaving={isSaving}
+              error={passwordError}
             />
           </TabsContent>
           

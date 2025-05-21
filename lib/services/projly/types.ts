@@ -57,14 +57,7 @@ export interface UserWithSettings {
   resetTokenExpiry?: string | null;
   createdAt: string;
   updatedAt: string;
-  teamMembers?: Array<{
-    id: string;
-    teamId: string;
-    userId: string;
-    role: string;
-    department?: string | null;
-    joinedAt: string;
-  }>;
+  // Removed teamMembers to separate site roles from team roles
   profile?: {
     id: string;
     userId: string;
@@ -82,7 +75,7 @@ export interface UserWithSettings {
     createdAt: string;
     updatedAt: string;
   } | null;
-  role?: UserRole; // Direct role field added by the backend
+  role?: UserRole; // Direct role field added by the backend - site role only
   status?: 'Active' | 'Inactive' | 'Deleted'; // Status field matching UserStatus in Prisma schema
   activationStatus?: 'Active' | 'Inactive' | 'Deleted'; // For backward compatibility, maps to status
   name?: string; // Added for compatibility with existing code
