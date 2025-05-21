@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMembers, useDeleteMember, useAccessibleMembers } from "@/lib/services/projly/use-members";
 import { useTeams } from "@/lib/services/projly/use-team";
 import { useUserRoles } from "@/lib/services/projly/use-user-roles";
+import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 // import { TeamMember } from "@/services/members"; // Not needed, type comes from hook
 
 // Local type for team member with user (matches backend and hook)
@@ -95,17 +96,36 @@ export function MembersTable() {
     console.error('[MEMBERS:TABLE] Error fetching accessible members, falling back to regular members:', accessibleError);
   }
 
-  // Get current user role for privileged access (admin/site_owner)
-  const { data: currentRole, isLoading: isLoadingRole } = useUserRoles().currentUserRole;
-  const isPrivileged = !isLoadingRole && (currentRole === 'admin' || currentRole === 'site_owner');
+  // Get current user session to check team ownership
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+  console.log('[MEMBERS:TABLE] Current user ID:', currentUserId);
+  
+  // Function to check if current user is owner of a specific team
+  const isTeamOwner = (teamId: string): boolean => {
+    if (!currentUserId || !teams || teams.length === 0) {
+      console.log('[MEMBERS:TABLE] Cannot check ownership - missing user ID or teams data');
+      return false;
+    }
+    
+    const team = teams.find(t => t.id === teamId);
+    if (!team) {
+      console.log(`[MEMBERS:TABLE] Team not found for ID: ${teamId}`);
+      return false;
+    }
+    
+    const isOwner = team.ownerId === currentUserId;
+    console.log(`[MEMBERS:TABLE] Team ownership check - TeamID: ${teamId}, TeamOwnerID: ${team.ownerId}, CurrentUserID: ${currentUserId}, IsOwner: ${isOwner}`);
+    return isOwner;
+  };
 
   // Default to first team on load for non-privileged users
   useEffect(() => {
     // Only apply default filter after role is loaded and user not privileged
-    if (!isLoadingRole && teams.length > 0 && teamFilter === "all" && !isPrivileged) {
+    if (!isLoading && teams.length > 0 && teamFilter === "all") {
       setTeamFilter(teams[0].id);
     }
-  }, [teams, teamFilter, isPrivileged, isLoadingRole]);
+  }, [teams, teamFilter, isLoading]);
 
   // Filter and sort the members data
   const filteredMembers = membersData.filter((member) => {
@@ -196,10 +216,18 @@ export function MembersTable() {
         <h2 className="text-2xl font-bold">Team Members</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Member
-            </Button>
+            {/* Only show enabled Add Member button if user owns the selected team */}
+            {(teamFilter !== "all" && isTeamOwner(teamFilter)) ? (
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Member
+              </Button>
+            ) : (
+              <Button disabled title="Only team owners can add members">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Member
+              </Button>
+            )}
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -300,6 +328,13 @@ export function MembersTable() {
                     <TableCell>{member.role}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {/* Determine if current user can edit this specific member */}
+                        {(() => {
+                          const canEdit = isTeamOwner(member.teamId);
+                          console.log(`[MEMBERS:TABLE] Edit permission for member: ${member.id}, Team: ${member.teamId}, CanEdit: ${canEdit}`);
+                          return null;
+                        })()}
+                        
                         <Dialog open={isEditDialogOpen && selectedMember?.id === member.id} onOpenChange={(open) => {
                           if (!open) {
                             setSelectedMember(null);
@@ -310,6 +345,8 @@ export function MembersTable() {
                             <Button 
                               variant="outline" 
                               size="icon" 
+                              disabled={!isTeamOwner(member.teamId)}
+                              title={!isTeamOwner(member.teamId) ? "Only team owners can edit members" : "Edit member"}
                               onClick={() => {
                                 setSelectedMember(member);
                                 setIsEditDialogOpen(true);
@@ -340,7 +377,12 @@ export function MembersTable() {
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="icon">
+                            <Button 
+                              variant="outline" 
+                              size="icon"
+                              disabled={!isTeamOwner(member.teamId)}
+                              title={!isTeamOwner(member.teamId) ? "Only team owners can remove members" : "Remove member"}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
