@@ -534,8 +534,12 @@ export const projlyTasksService = {
         return [];
       }
 
-      console.log('[PROJLY:TASKS] Calling API endpoint:', API_ENDPOINTS.TASKS.ALL);
-      const response = await fetch(API_ENDPOINTS.TASKS.ALL, {
+      // Add assignedTo=me parameter to filter tasks assigned to the current user
+      const url = new URL(API_ENDPOINTS.TASKS.ALL);
+      url.searchParams.append('assignedTo', 'me');
+      console.log('[PROJLY:TASKS] Calling API endpoint with filter:', url.toString());
+      
+      const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -551,7 +555,7 @@ export const projlyTasksService = {
       }
 
       const data = await response.json();
-      console.log('[PROJLY:TASKS] Tasks fetched successfully, count:', data.data?.length || 0);
+      console.log('[PROJLY:TASKS] Tasks assigned to me fetched successfully, count:', data.data?.length || 0);
       return data.data || [];
     } catch (error) {
       console.error('[PROJLY:TASKS] Error in getMyTasks:', error);

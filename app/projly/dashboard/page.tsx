@@ -123,11 +123,11 @@ export default function Dashboard() {
           setProjects([]);
         }
         
-        // Fetch user tasks
-        log('Fetching user tasks');
+        // Fetch user tasks assigned to the current user
+        log('Fetching tasks assigned to current user');
         try {
-          const tasksData = await projlyTasksService.getUserTasks();
-          log('Tasks loaded:', tasksData.length);
+          const tasksData = await projlyTasksService.getMyTasks();
+          log('Tasks assigned to me loaded:', tasksData.length);
           setUserTasks(tasksData);
         } catch (taskError) {
           console.error('[PROJLY:DASHBOARD] Error fetching tasks:', taskError);

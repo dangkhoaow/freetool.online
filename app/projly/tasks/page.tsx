@@ -38,7 +38,7 @@ export default function TasksPage() {
         }
         
         log('Fetching tasks');
-        const userTasks = await projlyTasksService.getMyTasks();
+        const userTasks = await projlyTasksService.getUserTasks();
         log('Tasks loaded:', userTasks.length);
         setTasks(userTasks);
         
