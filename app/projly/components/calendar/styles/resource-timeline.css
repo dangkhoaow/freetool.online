@@ -130,3 +130,70 @@
 .fc-h-event {
   opacity: 0.9;
 }
+
+/* Event title overflow handling */
+.fc-event-title,
+.event-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+  max-width: 100%;
+}
+
+/* Specific styles for custom event-title rendering */
+.event-content-wrapper {
+  width: 100%;
+  overflow: hidden;
+}
+
+.event-content-wrapper .event-title {
+  font-weight: 500;
+  padding-right: 4px;
+  line-height: 1.2;
+}
+
+/* Ensure title is visible even when details are hidden */
+.fc-event-title-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Event details overflow handling */
+.event-details {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Style for status badge */
+.event-details .inline-flex {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  flex-shrink: 0;
+}
+
+/* Style for assignee name */
+.event-details .assignee {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+/* Handle small widths */
+@media (max-width: 992px) {
+  .event-details {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Handle very small widths - hiding elements */
+@media (max-width: 576px) {
+  .event-details {
+    display: none;
+  }
+}
