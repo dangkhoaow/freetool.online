@@ -16,9 +16,10 @@ interface ResourceDialogProps {
   resourceId?: string;
   projectId: string;
   resources?: any[]; // Add resources prop to avoid fetching again
+  onResourceChange?: () => Promise<void>; // Add callback for resource changes
 }
 
-export function ResourceDialog({ open, onOpenChange, resourceId, projectId, resources = [] }: ResourceDialogProps) {
+export function ResourceDialog({ open, onOpenChange, resourceId, projectId, resources = [], onResourceChange }: ResourceDialogProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState("Equipment");
   const [fileType, setFileType] = useState("Equipment");
@@ -102,11 +103,14 @@ export function ResourceDialog({ open, onOpenChange, resourceId, projectId, reso
         await createResourceMutation.mutateAsync(resourceData);
       }
       
+      // Refresh resources data if callback provided
+      if (onResourceChange) {
+        console.log("[ResourceDialog] Calling onResourceChange to refresh data");
+        await onResourceChange();
+      }
+      
       // Close the dialog
       onOpenChange(false);
-      
-      // Refresh the page to show updated resources
-      window.location.reload();
     } catch (err) {
       console.error("[ResourceDialog] Error saving resource:", err);
       setError(err instanceof Error ? err.message : "Failed to save resource");

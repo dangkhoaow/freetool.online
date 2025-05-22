@@ -27,7 +27,14 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const { data: projectTasks, isLoading: tasksLoading } = useTasks({ projectId });
-  const { data: resourcesResponse, isLoading: resourcesLoading } = useResources();
+  const { data: resourcesResponse, isLoading: resourcesLoading, refetch: refetchResources } = useResources();
+  
+  // Function to refresh resources data
+  const handleResourceChange = async () => {
+    console.log("[ProjectDetail] Refreshing resources data");
+    await refetchResources();
+    console.log("[ProjectDetail] Resources data refreshed");
+  };
   
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
@@ -313,8 +320,13 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
         resources={filteredResources} // Pass the already loaded and filtered resources
         onOpenChange={(open) => {
           console.log("[ProjectDetail] ResourceDialog onOpenChange", open);
-          if (!open) setSelectedResource(null);
+          if (!open) {
+            setSelectedResource(null);
+            // If dialog is closed, refresh resources data
+            handleResourceChange();
+          }
         }}
+        onResourceChange={handleResourceChange} // Pass the refresh function to ResourceDialog
       />
       </div>
     </DashboardLayout>
