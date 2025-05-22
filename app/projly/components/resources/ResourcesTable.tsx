@@ -72,20 +72,26 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
     console.log(`[ResourcesTable] After name filter, resources count: ${filteredResources.length}`);
   }
   
-  // Filter by fileType
-  if (filters.fileType) {
+  // Filter by fileType (skip if set to 'all_types')
+  if (filters.fileType && filters.fileType !== 'all_types') {
+    console.log(`[ResourcesTable] Filtering by fileType: ${filters.fileType}`);
     filteredResources = filteredResources.filter(resource => 
       resource.fileType?.toLowerCase().includes(filters.fileType.toLowerCase()) || false
     );
     console.log(`[ResourcesTable] After fileType filter, resources count: ${filteredResources.length}`);
+  } else {
+    console.log(`[ResourcesTable] Skipping fileType filter (set to "${filters.fileType}")`);
   }
   
-  // Filter by project
-  if (filters.projectId) {
+  // Filter by project (skip if set to 'all_projects')
+  if (filters.projectId && filters.projectId !== 'all_projects') {
+    console.log(`[ResourcesTable] Filtering by projectId: ${filters.projectId}`);
     filteredResources = filteredResources.filter(resource => 
       resource.projectId === filters.projectId
     );
     console.log(`[ResourcesTable] After project filter, resources count: ${filteredResources.length}`);
+  } else {
+    console.log(`[ResourcesTable] Skipping projectId filter (set to "${filters.projectId}")`);
   }
 
   // Apply sorting with logging

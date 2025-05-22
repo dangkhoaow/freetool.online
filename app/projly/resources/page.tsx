@@ -13,9 +13,12 @@ export default function Resources() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     name: "",
-    type: "",
-    projectId: "",
+    fileType: "all_types",
+    projectId: "all_projects",
   });
+  
+  // Log initial state
+  console.log("[PROJLY:RESOURCES_PAGE] Initial filters:", filters);
 
   // Function to handle logging
   const log = (message: string, data?: any) => {

@@ -33,8 +33,8 @@ export function ResourceFilters({ filters, setFilters }: ResourceFiltersProps) {
   const handleClearFilters = () => {
     setFilters({
       name: "",
-      fileType: "",
-      projectId: "",
+      fileType: "all_types",
+      projectId: "all_projects",
     });
   };
 
@@ -70,7 +70,7 @@ export function ResourceFilters({ filters, setFilters }: ResourceFiltersProps) {
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All types</SelectItem>
+              <SelectItem value="all_types">All types</SelectItem>
               <SelectItem value="Material">Material</SelectItem>
               <SelectItem value="Equipment">Equipment</SelectItem>
               <SelectItem value="Software">Software</SelectItem>
@@ -92,7 +92,7 @@ export function ResourceFilters({ filters, setFilters }: ResourceFiltersProps) {
               <SelectValue placeholder="All projects" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All projects</SelectItem>
+              <SelectItem value="all_projects">All projects</SelectItem>
               {isLoadingProjects ? (
                 <div className="flex justify-center p-2">
                   <Spinner className="h-4 w-4" />
