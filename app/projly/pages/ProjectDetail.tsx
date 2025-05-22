@@ -26,7 +26,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   const router = useRouter();
   
   const { data: project, isLoading: projectLoading } = useProject(projectId);
-  const { data: projectTasks, isLoading: tasksLoading } = useTasks({ projectId });
+  const { data: projectTasks, isLoading: tasksLoading, refetch: refetchTasks } = useTasks({ projectId });
   const { data: resourcesResponse, isLoading: resourcesLoading, refetch: refetchResources } = useResources();
   
   // Function to refresh resources data
@@ -34,6 +34,28 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
     console.log("[ProjectDetail] Refreshing resources data");
     await refetchResources();
     console.log("[ProjectDetail] Resources data refreshed");
+  };
+  
+  // Function to refresh tasks data
+  const handleTaskChange = async () => {
+    console.log("[ProjectDetail] Refreshing tasks data");
+    try {
+      // Force a complete refetch of the tasks data
+      const result = await refetchTasks({ throwOnError: true });
+      console.log("[ProjectDetail] Tasks data refreshed successfully:", result.data?.length || 0, "tasks found");
+      
+      // This line is important - log each task to verify they're loaded correctly
+      if (result.data && Array.isArray(result.data)) {
+        result.data.forEach((task, index) => {
+          console.log(`[ProjectDetail] Refreshed task ${index+1}:`, task.id, task.title);
+        });
+      }
+      
+      // Manually trigger a router refresh to ensure UI updates
+      router.refresh();
+    } catch (error) {
+      console.error("[ProjectDetail] Error refreshing tasks data:", error);
+    }
   };
   
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
@@ -303,14 +325,20 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       </Tabs>
 
       {/* Task Dialog */}
-      {selectedTask && (
-        <TaskDialog 
-          projectId={projectId as string}
-          taskId={selectedTask === "new" ? undefined : selectedTask}
-          open={!!selectedTask}
-          onOpenChange={() => setSelectedTask(null)}
-        />
-      )}
+      <TaskDialog 
+        projectId={projectId as string}
+        taskId={selectedTask === "new" ? "new" : selectedTask || undefined}
+        open={!!selectedTask}
+        onOpenChange={(open) => {
+          console.log("[ProjectDetail] TaskDialog onOpenChange", open);
+          if (!open) {
+            setSelectedTask(null);
+            // If dialog is closed, refresh tasks data
+            handleTaskChange();
+          }
+        }}
+        onTaskChange={handleTaskChange} // Pass the refresh function to TaskDialog
+      />
 
       {/* Resource Dialog */}
       <ResourceDialog 

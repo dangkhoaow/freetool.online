@@ -143,9 +143,15 @@ export function useCreateTask() {
       
       return response.data;
     },
-    onSuccess: () => {
-      // Invalidate and refetch
+    onSuccess: (data) => {
+      // Invalidate and refetch both tasks list and individual task
+      console.log('[HOOK:TASKS] Invalidating cache after task creation:', data?.id);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      
+      // Also invalidate the specific task if we have its ID
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: ['task', data.id] });
+      }
       
       toast({
         title: "Task created successfully",
@@ -192,8 +198,13 @@ export function useUpdateTask() {
       
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      console.log('[HOOK:TASKS] Invalidating cache after task update:', variables.id);
+      
+      // Invalidate both tasks list and the specific task that was updated
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['task', variables.id] });
+      
       toast({
         title: "Task updated successfully",
         variant: "default"
