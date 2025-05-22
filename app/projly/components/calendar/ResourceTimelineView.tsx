@@ -82,6 +82,17 @@ const ResourceTimelineView = ({
   const filteredEvents = events.filter(event => 
     selectedProject === 'all' || event.projectId === selectedProject
   );
+  
+  // Effect to update calendar size when filtered events change
+  useEffect(() => {
+    if (calendarApi && filteredEvents) {
+      // Allow DOM to update before resizing
+      setTimeout(() => {
+        log('Updating calendar size after events filtering');
+        calendarApi.updateSize();
+      }, 50);
+    }
+  }, [filteredEvents.length, calendarApi]);
 
   // Handle date navigation
   const handlePrev = () => {
@@ -118,6 +129,14 @@ const ResourceTimelineView = ({
   const handleProjectSelect = (projectId: string) => {
     log('Project selected', projectId);
     setSelectedProject(projectId);
+    
+    // Force re-render and recalculate heights after a slight delay
+    if (calendarApi) {
+      setTimeout(() => {
+        log('Forcing calendar update after project filter change');
+        calendarApi.updateSize();
+      }, 50);
+    }
   };
 
   // Handle event click
@@ -151,6 +170,11 @@ const ResourceTimelineView = ({
   const handleCalendarReady = (calendar: any) => {
     setCalendarApi(calendar);
     log('Calendar ready', calendar);
+    
+    // Set a specific height for the calendar to ensure consistency
+    if (calendar) {
+      calendar.setOption('height', 600);
+    }
   };
 
   // Handle dates set

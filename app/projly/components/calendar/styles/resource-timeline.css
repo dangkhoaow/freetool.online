@@ -5,8 +5,23 @@
 
 /* Calendar Container */
 .calendar-container {
+  height: 600px;
   min-height: 600px;
-  position: relative;
+  max-height: 600px;
+  background-color: white;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Ensure FullCalendar maintains height */
+.fc {
+  height: 100% !important;
+  min-height: 500px !important;
+}
+
+/* Fix resource area height */
+.fc-resource-timeline .fc-resource-area {
+  height: 100% !important;
 }
 
 /* Resource area styling */
