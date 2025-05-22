@@ -1,5 +1,6 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
 import { useRouter } from "next/navigation";
 
 // Helper function for date formatting
@@ -16,7 +17,8 @@ import {
   ExternalLink,
   Calendar,
   CheckCircle,
-  Clock
+  Clock,
+  MoreHorizontal
 } from "lucide-react";
 import { projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 
@@ -47,6 +49,8 @@ export interface Task {
 // Props for TasksTable
 export interface TasksTableProps {
   tasks: Task[];
+  onOperationComplete?: (filters?: any) => void; // Callback to refresh data after operations with current filters
+  initialFilters?: any; // Initial filters passed from parent
 }
 import { CreateTaskForm } from "./CreateTaskForm";
 import { EditTaskForm } from "./EditTaskForm";
@@ -97,17 +101,26 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-export function TasksTable({ tasks }: TasksTableProps) {
+export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: TasksTableProps) {
   // Initialize router for navigation
   const router = useRouter();
+  // Get current user from AuthContext
+  const { user } = useAuth();
   
-  // State for filters and sorting
+  console.log("[TASKS TABLE] Current user:", user?.id);
+  
+  // State for filters and sorting - initialize from props if available
   const [filters, setFilters] = useState<{
     projectId?: string;
     assignedTo?: string;
     status?: string;
     search?: string;
-  }>({});
+  }>(initialFilters || {});
+  
+  // Log filters for debugging
+  useEffect(() => {
+    console.log('[TASKS TABLE] Current filters:', filters);
+  }, [filters]);
   const [sortBy, setSortBy] = useState<{ field: string; direction: "asc" | "desc" }>({
     field: "dueDate",
     direction: "asc",
@@ -115,15 +128,28 @@ export function TasksTable({ tasks }: TasksTableProps) {
   
   console.log("[TASKS TABLE] Initialized with default sort by dueDate");
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
-  const [editTask, setEditTask] = useState<Task | null>(null);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   // State for loading and projects
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [projects, setProjects] = useState<{id: string; name: string}[]>([]);
+  
+  // Get unique statuses from tasks for the dropdown
+  const uniqueStatuses = useMemo(() => {
+    const statusSet = new Set<string>();
+    
+    // Collect all unique statuses from tasks
+    tasks.forEach(task => {
+      if (task.status) {
+        statusSet.add(task.status);
+      }
+    });
+    
+    // Convert to array and sort alphabetically
+    return Array.from(statusSet).sort();
+  }, [tasks]);
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -242,16 +268,46 @@ export function TasksTable({ tasks }: TasksTableProps) {
       log(`Deleting task with ID: ${id}`);
       await projlyTasksService.deleteTask(id);
       log('Task deleted successfully');
-      // Notify parent component about the change if needed
+      
+      // Reset state and refresh data
       setDeleteTaskId(null);
+      
+      // Call callback to refresh tasks list if provided
+      if (onOperationComplete) {
+        log('Calling onOperationComplete callback to refresh tasks with current filters');
+        log('Current filters:', filters);
+        onOperationComplete(filters);
+      }
     } catch (error) {
       console.error('[PROJLY:TASKS_TABLE] Error deleting task:', error);
     }
   };
 
-  // Handle edit task - navigate directly to edit page
+  // Check if current user can delete a task
+  // According to backend logic: only project owners or task assignees can delete tasks
+  const canDeleteTask = (task: Task): boolean => {
+    if (!user || !task) {
+      console.log("[TASKS TABLE] Cannot check delete permission: missing user or task data");
+      return false;
+    }
+    
+    // For project ownership check, we'd need additional API data
+    // According to backend logic in tasks.ts, we should check if the user is the project owner
+    // Since we don't have direct access to project ownership in our current task data,
+    // we'll simplify to just check if user is assigned to the task
+    
+    // Check if the current user is assigned to the task
+    const isAssigned = task.assignedTo === user.id || task.assignee?.id === user.id;
+    
+    console.log(`[TASKS TABLE] Task ${task.id} delete permission check: isAssigned=${isAssigned}`);
+    console.log(`[TASKS TABLE] Task details - assignedTo: ${task.assignedTo}, assignee.id: ${task.assignee?.id}`);
+    
+    return isAssigned;
+  };
+
+  // Handle edit task click - navigate to edit page
   const handleEditTask = (task: Task) => {
-    console.log("[TasksTable] Navigating to edit task page:", task.id);
+    console.log("[TASKS TABLE] Navigating to edit page for task:", task.id);
     router.push(`/projly/tasks/${task.id}/edit`);
   };
 
@@ -264,11 +320,13 @@ export function TasksTable({ tasks }: TasksTableProps) {
   // Handle dialog close
   const handleCreateDialogClose = () => {
     setIsCreateDialogOpen(false);
-  };
-
-  const handleEditDialogClose = () => {
-    setIsEditDialogOpen(false);
-    setEditTask(null);
+    
+    // Call callback to refresh tasks list if provided
+    if (onOperationComplete) {
+      log('Calling onOperationComplete callback to refresh tasks after create with current filters');
+      log('Current filters:', filters);
+      onOperationComplete(filters);
+    }
   };
 
   const handleDetailDialogClose = () => {
@@ -385,10 +443,9 @@ export function TasksTable({ tasks }: TasksTableProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="Not Started">Not Started</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
+                {uniqueStatuses.map((status) => (
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             
@@ -529,19 +586,24 @@ export function TasksTable({ tasks }: TasksTableProps) {
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">Actions</Button>
+                      <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onSelect={() => handleEditTask(task)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
                       
-                      <DropdownMenuItem 
-                        className="text-destructive focus:text-destructive"
-                        onSelect={() => setDeleteTaskId(task.id)}
-                      >
-                        <Trash className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
+                      {/* Only show Delete option if user has permission */}
+                      {canDeleteTask(task) && (
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive"
+                          onSelect={() => setDeleteTaskId(task.id)}
+                        >
+                          <Trash className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -551,20 +613,7 @@ export function TasksTable({ tasks }: TasksTableProps) {
         </Table>
       </div>
 
-      {/* Edit Task Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-          </DialogHeader>
-          {editTask && (
-            <EditTaskForm 
-              task={editTask} 
-              onSuccess={handleEditDialogClose}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Create Task Dialog removed - using page navigation instead */}
       
       {/* Task Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>

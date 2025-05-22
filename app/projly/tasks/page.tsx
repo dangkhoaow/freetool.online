@@ -14,6 +14,8 @@ export default function TasksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  // Maintain filters at the page level to preserve during refresh
+  const [currentFilters, setCurrentFilters] = useState<any>({});
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -24,32 +26,47 @@ export default function TasksPage() {
     }
   };
   
-  // Check authentication and load tasks on page load
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        log('Checking authentication');
-        const isAuthenticated = await projlyAuthService.isAuthenticated();
-        
-        if (!isAuthenticated) {
-          log('User not authenticated, redirecting to login');
-          router.push('/projly/login');
-          return;
-        }
-        
-        log('Fetching tasks');
-        const userTasks = await projlyTasksService.getUserTasks();
-        log('Tasks loaded:', userTasks.length);
-        setTasks(userTasks);
-        
-      } catch (error) {
-        console.error('[PROJLY:TASKS] Error fetching tasks:', error);
-      } finally {
-        setIsLoading(false);
-        log('Tasks loading completed');
+  // Function to fetch tasks data
+  const fetchTasks = async () => {
+    try {
+      setIsLoading(true);
+      log('Checking authentication');
+      const isAuthenticated = await projlyAuthService.isAuthenticated();
+      
+      if (!isAuthenticated) {
+        log('User not authenticated, redirecting to login');
+        router.push('/projly/login');
+        return;
       }
-    };
+      
+      log('Fetching tasks');
+      const userTasks = await projlyTasksService.getUserTasks();
+      log('Tasks loaded:', userTasks.length);
+      setTasks(userTasks);
+      
+    } catch (error) {
+      console.error('[PROJLY:TASKS] Error fetching tasks:', error);
+    } finally {
+      setIsLoading(false);
+      log('Tasks loading completed');
+    }
+  };
+  
+  // Refresh tasks handler for TasksTable to call after operations
+  const handleRefreshTasks = (filters?: any) => {
+    log('Refreshing tasks data after operation');
+    log('Preserving filters:', filters);
     
+    // Update current filters if provided
+    if (filters) {
+      setCurrentFilters(filters);
+    }
+    
+    fetchTasks();
+  };
+  
+  // Check authentication and load tasks on page load
+  useEffect(() => {    
     fetchTasks();
   }, [router]);
   
@@ -81,7 +98,11 @@ export default function TasksPage() {
         <Card>
           <CardContent>
             {tasks.length > 0 ? (
-              <TasksTable tasks={tasks} />
+              <TasksTable 
+                tasks={tasks} 
+                initialFilters={currentFilters}
+                onOperationComplete={handleRefreshTasks} 
+              />
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">You don't have any tasks assigned to you yet.</p>
