@@ -466,7 +466,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                       if (taskForm.assignee) {
                         console.log('[PROJLY:TASK_DETAILS] Using assignee from taskForm:', taskForm.assignee);
                         return taskForm.assignee.firstName && taskForm.assignee.lastName
-                          ? `${taskForm.assignee.firstName} ${taskForm.assignee.lastName}`
+                          ? `${taskForm.assignee.firstName} ${taskForm.assignee.lastName} - ${taskForm.assignee.email}`
                           : taskForm.assignee.email || 'Unknown user';
                       }
                       
@@ -475,7 +475,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                       if (assignee?.user) {
                         console.log('[PROJLY:TASK_DETAILS] Found assignee in project members:', assignee.user);
                         return assignee.user.firstName && assignee.user.lastName
-                          ? `${assignee.user.firstName} ${assignee.user.lastName}`
+                          ? `${assignee.user.firstName} ${assignee.user.lastName} - ${assignee.user.email}`
                           : assignee.user.email || 'Unknown user';
                       }
                       

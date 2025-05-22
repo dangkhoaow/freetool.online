@@ -353,10 +353,9 @@ export default function NewTaskPage() {
                         // Show project members if available
                         projectMembers.map((member: ProjectMember) => (
                           <SelectItem key={member.userId} value={member.userId}>
-                            {member.user?.name 
-                              ? `${member.user.name} - ${member.user.email}` 
+                            {member.user?.name?.trim() || member.user?.lastName?.trim() ? `${member.user?.name} - ${member.user?.email}` 
                               : member.user?.email || 'Unknown user'}
-                          </SelectItem>
+                          </SelectItem> 
                         ))
                       ) : (
                         // Show message if no members found
