@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -39,6 +39,9 @@ export interface TimelineEvent {
 export interface ResourceTimelineViewProps {
   events: TimelineEvent[];
   projects: any[];
+  taskViewMode?: "myTasks" | "allTasks";
+  onTaskViewModeChange?: (mode: "myTasks" | "allTasks") => void;
+  isLoading?: boolean;
   onEventClick?: (event: TimelineEvent) => void;
   onDateClick?: (date: Date) => void;
   onAddEvent?: () => void;
@@ -54,6 +57,9 @@ const FullCalendarWithNoSSR = dynamic(
 const ResourceTimelineView = ({
   events,
   projects,
+  taskViewMode = "myTasks",
+  onTaskViewModeChange,
+  isLoading = false,
   onEventClick,
   onDateClick,
   onAddEvent
@@ -209,6 +215,20 @@ const ResourceTimelineView = ({
           </div>
           
           <div className="flex items-center gap-2">
+            <Select 
+              value={taskViewMode} 
+              onValueChange={(value) => onTaskViewModeChange?.(value as "myTasks" | "allTasks")}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select Tasks View" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="myTasks">My Tasks</SelectItem>
+                <SelectItem value="allTasks">All Tasks</SelectItem>
+              </SelectContent>
+            </Select>
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+            
             <Select 
               value={selectedProject} 
               onValueChange={handleProjectSelect}

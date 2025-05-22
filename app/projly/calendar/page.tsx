@@ -36,6 +36,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterProject, setFilterProject] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [taskViewMode, setTaskViewMode] = useState<"myTasks" | "allTasks">("myTasks");
   
   // Event state
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -78,8 +79,15 @@ export default function CalendarPage() {
         log('Projects loaded:', projectsData.length);
         setProjects(projectsData);
         
-        // Load tasks which will be converted to calendar events
-        const tasksData = await projlyTasksService.getMyTasks();
+        // Load tasks which will be converted to calendar events based on view mode
+        let tasksData: any[] = [];
+        if (taskViewMode === 'myTasks') {
+          log('Loading tasks assigned to current user');
+          tasksData = await projlyTasksService.getMyTasks();
+        } else {
+          log('Loading tasks for all users');
+          tasksData = await projlyTasksService.getUserTasks();
+        }
         log('Tasks loaded:', tasksData.length);
         
         // Define a Task interface that matches our service
@@ -153,7 +161,7 @@ export default function CalendarPage() {
     };
     
     loadCalendarData();
-  }, [router, toast]);
+  }, [router, toast, taskViewMode]);
   
   // Apply filters when they change
   useEffect(() => {
@@ -389,8 +397,14 @@ export default function CalendarPage() {
                   }
                 };
               })}
-              
               projects={projects}
+              taskViewMode={taskViewMode}
+              onTaskViewModeChange={(mode) => {
+                log(`Changing task view mode to: ${mode}`);
+                setTaskViewMode(mode);
+                setIsLoading(true);
+              }}
+              isLoading={isLoading}
               onEventClick={handleEventClick}
               onDateClick={handleDateClick}
               onAddEvent={() => {
@@ -466,7 +480,7 @@ export default function CalendarPage() {
         </Tabs>
         
         {/* Event Details Dialog */}
-        <EventDetailsDialog
+        {false && <EventDetailsDialog
           event={selectedEvent}
           isOpen={isEventDialogOpen}
           onClose={() => {
@@ -478,10 +492,10 @@ export default function CalendarPage() {
           isEditing={isEditing}
           onEditToggle={handleEditToggle}
           projects={projects}
-        />
+        />}
         
         {/* New Event Dialog */}
-        {isNewEventDialogOpen && (
+        {false && isNewEventDialogOpen && (
           <EventDetailsDialog
             event={{
               id: `new-${Date.now()}`,

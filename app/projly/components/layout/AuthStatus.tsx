@@ -4,6 +4,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { projlyAuthService } from '@/lib/services/projly';
+import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import {
@@ -52,7 +53,7 @@ function getInitials(name?: string, fallback: string = 'U'): string {
 }
 
 export const AuthStatus = () => {
-  const [user, setUser] = React.useState<any>(null);
+  const { user, logout } = useAuth();
   const router = useRouter();
   
   // Function to handle logging
@@ -64,37 +65,20 @@ export const AuthStatus = () => {
     }
   };
   
-  // Load user data on component mount
+  // Log user information for debugging
   React.useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const currentUser = projlyAuthService.getCurrentUser();
-        log('Current user:', currentUser);
-        setUser(currentUser);
-      } catch (error) {
-        console.error('[PROJLY:AUTH_STATUS] Error loading user:', error);
-      }
-    };
-    
-    loadUser();
-  }, []);
+    if (user) {
+      log('User data from AuthContext:', user);
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     log('Initiating logout');
     try {
-      // Call the signOut method
-      const result = await projlyAuthService.signOut();
-      
-      if (result.success) {
-        log('Logout successful, redirecting to login');
-        // Use window.location.replace for more reliable redirection
-        // This ensures a complete page reload and clears any cached state
-        window.location.replace('/projly/login');
-      } else {
-        log('Logout failed:', result.error);
-        // Fallback redirect if the signOut method fails
-        window.location.replace('/projly/login');
-      }
+      // Use the logout function from AuthContext
+      await logout();
+      log('Logout initiated via AuthContext');
+      // Note: The redirect is handled by the logout function in AuthContext
     } catch (error) {
       console.error('[PROJLY:AUTH_STATUS] Logout failed:', error);
       // Fallback redirect if an exception occurs
@@ -132,7 +116,7 @@ export const AuthStatus = () => {
     user?.email || 'User';
     
   // Log user information for debugging
-  console.log('[AUTH STATUS] User info:', { user, firstName, lastName, fullName, email: user?.email });
+  log('Rendering user info:', { firstName, lastName, fullName, email: user?.email });
   
   return (
     <DropdownMenu>
