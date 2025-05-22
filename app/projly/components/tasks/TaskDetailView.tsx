@@ -33,25 +33,41 @@ export function TaskDetailView({ task, onEdit, onClose }: TaskDetailViewProps) {
   // Helper function to render status badge with appropriate color
   const renderStatusBadge = (status: string) => {
     let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let customClass = "";
+    
+    console.log(`[TaskDetailView] Rendering badge for status: ${status}`);
     
     switch (status) {
       case "Completed":
         variant = "default";
+        customClass = "bg-green-600 text-white hover:bg-green-700 border-green-600";
         break;
       case "In Progress":
         variant = "secondary";
+        customClass = "bg-blue-600 text-white hover:bg-blue-700 border-blue-600";
+        break;
+      case "In Review":
+        variant = "outline";
+        customClass = "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
         break;
       case "Not Started":
         variant = "outline";
+        customClass = "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
+        break;
+      case "On Hold":
+        variant = "outline";
+        customClass = "bg-orange-500 text-white hover:bg-orange-600 border-orange-500";
         break;
       case "Pending":
         variant = "destructive";
+        customClass = "bg-amber-500 text-white hover:bg-amber-600 border-amber-500";
         break;
       default:
         variant = "outline";
+        customClass = "bg-gray-400 text-white hover:bg-gray-500 border-gray-400";
     }
     
-    return <Badge variant={variant}>{status}</Badge>;
+    return <Badge variant={variant} className={customClass}>{status}</Badge>;
   };
 
   return (

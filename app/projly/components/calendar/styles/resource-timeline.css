@@ -212,3 +212,7 @@
     display: none;
   }
 }
+
+.event-details .inline-flex {
+  border-color: #fff !important;
+}

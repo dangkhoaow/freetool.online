@@ -30,18 +30,74 @@ interface Task {
   } | null;
 }
 
-// Move all status color logic outside the component to avoid conditional hook calls
-const getStatusColor = (status: string): string => {
+// Render status badge with appropriate color - moved outside component to avoid conditional hook calls
+const renderStatusBadge = (status: string) => {
+  console.log(`[TasksOverviewTable] Rendering badge for status: ${status}`);
+  
+  // Define style object for more consistent styling
+  let style = {};
+  let className = "";
+  
   switch (status) {
-    case 'Completed':
-      return 'bg-green-100 text-green-800';
-    case 'In Progress':
-      return 'bg-orange-100 text-orange-800';
-    case 'Pending':
-      return 'bg-blue-100 text-blue-800';
+    case "Active":
+    case "In Progress":
+      style = { 
+        backgroundColor: '#2563eb !important', 
+        color: 'white !important', 
+        borderColor: '#2563eb !important' 
+      };
+      className = "bg-blue-600 text-white border-blue-600";
+      break;
+    case "Completed":
+      style = { 
+        backgroundColor: '#16a34a !important', 
+        color: 'white !important', 
+        borderColor: '#16a34a !important' 
+      };
+      className = "bg-green-600 text-white border-green-600";
+      break;
+    case "In Review":
+      style = { 
+        backgroundColor: '#a855f7 !important', 
+        color: 'white !important', 
+        borderColor: '#a855f7 !important' 
+      };
+      className = "bg-purple-500 text-white border-purple-500";
+      break;
+    case "Not Started":
+      style = { 
+        backgroundColor: '#6b7280 !important', 
+        color: 'white !important', 
+        borderColor: '#6b7280 !important' 
+      };
+      className = "bg-gray-500 text-white border-gray-500";
+      break;
+    case "On Hold":
+      style = { 
+        backgroundColor: '#f97316 !important', 
+        color: 'white !important', 
+        borderColor: '#f97316 !important' 
+      };
+      className = "bg-orange-500 text-white border-orange-500";
+      break;
+    case "Pending":
+      style = { 
+        backgroundColor: '#f59e0b !important', 
+        color: 'white !important', 
+        borderColor: '#f59e0b !important' 
+      };
+      className = "bg-amber-500 text-white border-amber-500";
+      break;
     default:
-      return 'bg-gray-100 text-gray-800';
+      style = { 
+        backgroundColor: '#9ca3af !important', 
+        color: 'white !important', 
+        borderColor: '#9ca3af !important' 
+      };
+      className = "bg-gray-400 text-white border-gray-400";
   }
+  
+  return { style, className };
 };
 
 // Move isOverdue function outside the component to avoid hook dependencies
@@ -246,9 +302,12 @@ export function TasksOverviewTable() {
               <TableRow key={task.id}>
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell>
-                  <Badge className={getStatusColor(task.status)}>
-                    {task.status}
-                  </Badge>
+                  {
+                    (() => {
+                      const { style, className } = renderStatusBadge(task.status);
+                      return <Badge style={style} className={className}>{task.status}</Badge>;
+                    })()
+                  }
                 </TableCell>
                 <TableCell>
                   {task.startDate ? (() => {

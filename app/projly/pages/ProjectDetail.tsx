@@ -96,6 +96,95 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   const handleResourceClick = (resourceId: string) => {
     setSelectedResource(resourceId);
   };
+  
+  // Render status badge with appropriate color
+  const renderStatusBadge = (status: string) => {
+    console.log(`[ProjectDetail] Rendering badge for status: ${status}`);
+    
+    // Define a direct style object for more control
+    let style = {};
+    let className = "";
+    
+    switch (status) {
+      case "Active":
+      case "In Progress":
+        style = { 
+          backgroundColor: '#2563eb !important', 
+          color: 'white !important', 
+          borderColor: '#2563eb !important' 
+        };
+        className = "bg-blue-600 text-white border-blue-600";
+        break;
+      case "Completed":
+        style = { 
+          backgroundColor: '#16a34a !important', 
+          color: 'white !important', 
+          borderColor: '#16a34a !important' 
+        };
+        className = "bg-green-600 text-white border-green-600";
+        break;
+      case "In Review":
+        style = { 
+          backgroundColor: '#a855f7 !important', 
+          color: 'white !important', 
+          borderColor: '#a855f7 !important' 
+        };
+        className = "bg-purple-500 text-white border-purple-500";
+        break;
+      case "Not Started":
+        style = { 
+          backgroundColor: '#6b7280 !important', 
+          color: 'white !important', 
+          borderColor: '#6b7280 !important' 
+        };
+        className = "bg-gray-500 text-white border-gray-500";
+        break;
+      case "On Hold":
+        style = { 
+          backgroundColor: '#f97316 !important', 
+          color: 'white !important', 
+          borderColor: '#f97316 !important' 
+        };
+        className = "bg-orange-500 text-white border-orange-500";
+        break;
+      case "Canceled":
+        style = { 
+          backgroundColor: '#ef4444 !important', 
+          color: 'white !important', 
+          borderColor: '#ef4444 !important' 
+        };
+        className = "bg-red-500 text-white border-red-500";
+        break;
+      case "Planned":
+        style = { 
+          backgroundColor: '#8b5cf6 !important', 
+          color: 'white !important', 
+          borderColor: '#8b5cf6 !important' 
+        };
+        className = "bg-purple-500 text-white border-purple-500";
+        break;
+      case "Archived":
+        style = { 
+          backgroundColor: '#6b7280 !important', 
+          color: 'white !important', 
+          borderColor: '#6b7280 !important' 
+        };
+        className = "bg-gray-500 text-white border-gray-500";
+        break;
+      default:
+        style = { 
+          backgroundColor: '#9ca3af !important', 
+          color: 'white !important', 
+          borderColor: '#9ca3af !important' 
+        };
+        className = "bg-gray-400 text-white border-gray-400";
+    }
+    
+    console.log(`[ProjectDetail] Applied style for ${status}:`, style);
+    
+    // Apply both style and className for maximum compatibility
+    return <Badge style={style} className={className}>{status || 'Unknown'}</Badge>;
+  };
 
   if (isLoading) {
     return (
@@ -134,11 +223,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <Badge variant={(project as Project).status === "Completed" ? "default" : 
-                          (project as Project).status === "In Progress" ? "secondary" : 
-                          "outline"}>
-              {(project as Project).status}
-            </Badge>
+            {renderStatusBadge((project as Project).status || 'Unknown')}
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{(project as Project).name}</h1>
           <p className="text-muted-foreground mt-1">{(project as Project).description}</p>
@@ -212,13 +297,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
                         >
                           <TableCell>{task.title}</TableCell>
                           <TableCell>
-                            <Badge variant={
-                              task.status === "Completed" ? "default" : 
-                              task.status === "In Progress" ? "secondary" : 
-                              "outline"
-                            }>
-                              {task.status}
-                            </Badge>
+                            {renderStatusBadge(task.status || 'Unknown')}
                           </TableCell>
                           <TableCell>
   {/* Log the assignee object for debugging */}

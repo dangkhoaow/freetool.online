@@ -1,0 +1,110 @@
+/* 
+ * Status Badge Colors for Calendar Views
+ * Provides consistent styling for task status badges across the application
+ */
+
+/* Completed tasks - Green */
+.fc-event.status-completed {
+  background-color: #16a34a !important;
+  border-color: #15803d !important;
+  color: white !important;
+}
+
+/* In Progress tasks - Blue */
+.fc-event.status-in-progress {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: white !important;
+}
+
+/* In Review tasks - Purple */
+.fc-event.status-in-review {
+  background-color: #a855f7 !important;
+  border-color: #9333ea !important;
+  color: white !important;
+}
+
+/* Not Started tasks - Gray */
+.fc-event.status-not-started {
+  background-color: #6b7280 !important;
+  border-color: #4b5563 !important;
+  color: white !important;
+}
+
+/* On Hold tasks - Orange */
+.fc-event.status-on-hold {
+  background-color: #f97316 !important;
+  border-color: #ea580c !important;
+  color: white !important;
+}
+
+/* Pending tasks - Amber */
+.fc-event.status-pending {
+  background-color: #f59e0b !important;
+  border-color: #d97706 !important;
+  color: white !important;
+}
+
+/* Active tasks - Blue (same as In Progress) */
+.fc-event.status-active {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: white !important;
+}
+
+/* Planned tasks - Violet */
+.fc-event.status-planned {
+  background-color: #8b5cf6 !important;
+  border-color: #7c3aed !important;
+  color: white !important;
+}
+
+/* Cancelled tasks - Red */
+.fc-event.status-cancelled,
+.fc-event.status-canceled {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* Archived tasks - Gray (same as Not Started) */
+.fc-event.status-archived {
+  background-color: #6b7280 !important;
+  border-color: #4b5563 !important;
+  color: white !important;
+}
+
+/* Overdue tasks - Red */
+.fc-event.status-overdue {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* To Do tasks - Gray (same as Not Started) */
+.fc-event.status-to-do {
+  background-color: #6b7280 !important;
+  border-color: #4b5563 !important;
+  color: white !important;
+}
+
+/* Default styling for events without a recognized status */
+.fc-event.status-default {
+  background-color: #9ca3af !important;
+  border-color: #6b7280 !important;
+  color: white !important;
+}
+
+/* Add status badges inside events */
+.fc-event-title-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Make sure text is visible */
+.fc-event-title, 
+.fc-event-time {
+  color: white !important;
+  font-weight: 500 !important;
+}

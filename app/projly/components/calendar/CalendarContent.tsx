@@ -4,9 +4,12 @@ import FullCalendar from '@fullcalendar/react';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { CalendarEvent } from './utils/eventUtils';
+import { CalendarEvent, STATUS_COLORS } from './utils/eventUtils';
 import { CalendarResource } from './utils/resourceUtils';
 import { toast } from '@/components/ui/use-toast';
+
+// Import status badge styling
+import './styles/status-badges.css';
 
 interface CalendarContentProps {
   events: CalendarEvent[];
@@ -77,6 +80,17 @@ export const CalendarContent = ({
         "title", 
         `${event.title} | Assignee: ${event.extendedProps.assignee} | Status: ${event.extendedProps.status}`
       );
+      
+      // Add appropriate status class to apply our status badge colors
+      if (event.extendedProps.status) {
+        // Convert status to kebab-case for CSS class (e.g., 'In Progress' -> 'status-in-progress')
+        const statusClass = `status-${event.extendedProps.status.toLowerCase().replace(/\s+/g, '-')}`;
+        el.classList.add(statusClass);
+        console.log(`[CALENDAR] Added status class to event: ${statusClass}`, event.title);
+      } else {
+        // Add default status class if no status
+        el.classList.add('status-default');
+      }
     },
     resourceLabelDidMount: (info: any) => {
       const { resource, el } = info;

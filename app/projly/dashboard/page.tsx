@@ -41,6 +41,76 @@ export default function Dashboard() {
       return newErrors;
     });
   };
+  
+  // Render status badge with appropriate color
+  const renderStatusBadge = (status: string) => {
+    console.log(`[DASHBOARD] Rendering badge for status: ${status}`);
+    
+    // Define a direct style object for more control
+    let style = {};
+    let className = "";
+    
+    switch (status) {
+      case "Active":
+      case "In Progress":
+        style = { 
+          backgroundColor: '#2563eb !important', 
+          color: 'white !important', 
+          borderColor: '#2563eb !important' 
+        };
+        className = "bg-blue-600 text-white border-blue-600 rounded-full px-2 py-1 text-xs font-medium";
+        break;
+      case "Completed":
+        style = { 
+          backgroundColor: '#16a34a !important', 
+          color: 'white !important', 
+          borderColor: '#16a34a !important' 
+        };
+        className = "bg-green-600 text-white border-green-600 rounded-full px-2 py-1 text-xs font-medium";
+        break;
+      case "In Review":
+        style = { 
+          backgroundColor: '#a855f7 !important', 
+          color: 'white !important', 
+          borderColor: '#a855f7 !important' 
+        };
+        className = "bg-purple-500 text-white border-purple-500 rounded-full px-2 py-1 text-xs font-medium";
+        break;
+      case "Not Started":
+        style = { 
+          backgroundColor: '#6b7280 !important', 
+          color: 'white !important', 
+          borderColor: '#6b7280 !important' 
+        };
+        className = "bg-gray-500 text-white border-gray-500 rounded-full px-2 py-1 text-xs font-medium";
+        break;
+      case "On Hold":
+        style = { 
+          backgroundColor: '#f97316 !important', 
+          color: 'white !important', 
+          borderColor: '#f97316 !important' 
+        };
+        className = "bg-orange-500 text-white border-orange-500 rounded-full px-2 py-1 text-xs font-medium";
+        break;
+      case "Pending":
+        style = { 
+          backgroundColor: '#f59e0b !important', 
+          color: 'white !important', 
+          borderColor: '#f59e0b !important' 
+        };
+        className = "bg-amber-500 text-white border-amber-500 rounded-full px-2 py-1 text-xs font-medium";
+        break;
+      default:
+        style = { 
+          backgroundColor: '#9ca3af !important', 
+          color: 'white !important', 
+          borderColor: '#9ca3af !important' 
+        };
+        className = "bg-gray-400 text-white border-gray-400 rounded-full px-2 py-1 text-xs font-medium";
+    }
+    
+    return <span style={style} className={className}>{status}</span>;
+  };
 
   // Component to display errors with toast-like styling
   const ErrorDisplay = ({ message, onDismiss }: { message: string; onDismiss: () => void }) => {
@@ -304,12 +374,7 @@ export default function Dashboard() {
                             Project: {task.project?.name}
                           </span>
                         </div>
-                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium
-                          ${task.status === 'Completed' ? 'bg-green-100 text-green-800' : 
-                            task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : 
-                            'bg-yellow-100 text-yellow-800'}`}>
-                          {task.status}
-                        </span>
+                        {renderStatusBadge(task.status || 'Unknown')}
                       </div>
                       {task.due_date && (
                         <div className="mt-2 text-xs text-muted-foreground">

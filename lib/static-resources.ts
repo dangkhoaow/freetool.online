@@ -1,5 +1,5 @@
 // Auto-generated file. DO NOT EDIT.
-// Generated on 2025-05-21T16:12:03.104Z
+// Generated on 2025-05-22T12:24:58.306Z
 
 export const STATIC_RESOURCES = [
   "/404.html",

@@ -77,6 +77,28 @@ const ResourceTimelineView = ({
       console.log(`[PROJLY:RESOURCE_TIMELINE] ${message}`);
     }
   };
+  
+  // Define a consistent color scheme matching our status badges
+  const STATUS_COLORS = {
+    'Completed': { bg: '#16a34a', border: '#15803d' }, // green-600/700
+    'In Progress': { bg: '#2563eb', border: '#1d4ed8' }, // blue-600/700
+    'In Review': { bg: '#a855f7', border: '#9333ea' }, // purple-500/600
+    'Not Started': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600
+    'On Hold': { bg: '#f97316', border: '#ea580c' }, // orange-500/600
+    'Pending': { bg: '#f59e0b', border: '#d97706' }, // amber-500/600
+    'Active': { bg: '#2563eb', border: '#1d4ed8' }, // blue-600/700 (same as In Progress)
+    'Planned': { bg: '#8b5cf6', border: '#7c3aed' }, // violet-500/600
+    'Canceled': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
+    'Archived': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600 (same as Not Started)
+    'Overdue': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
+    'default': { bg: '#9ca3af', border: '#6b7280' }, // gray-400/500
+  };
+  
+  // Helper function to get color by status
+  const getStatusColor = (status: string) => {
+    const colors = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
+    return colors;
+  };
 
   // Filter events by selected project
   const filteredEvents = events.filter(event => 
@@ -299,12 +321,8 @@ const ResourceTimelineView = ({
               start: event.start,
               end: event.end,
               resourceId: event.projectId,
-              backgroundColor: event.status === 'Completed' ? '#10b981' : 
-                              event.status === 'In Progress' ? '#f97316' : 
-                              event.status === 'Overdue' ? '#ef4444' : '#6b7280',
-              borderColor: event.status === 'Completed' ? '#059669' : 
-                          event.status === 'In Progress' ? '#ea580c' : 
-                          event.status === 'Overdue' ? '#dc2626' : '#4b5563',
+              backgroundColor: getStatusColor(event.status || 'default').bg,
+              borderColor: getStatusColor(event.status || 'default').border,
               textColor: '#ffffff',
               extendedProps: {
                 description: event.description,
@@ -337,7 +355,15 @@ const ResourceTimelineView = ({
                 <div className="event-content-wrapper p-1">
                   <div className="event-title font-medium">{arg.event.title}</div>
                   <div className="event-details flex items-center justify-between text-xs mt-1">
-                    <Badge variant="outline" className="text-xs px-1 py-0">
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs px-1 py-0"
+                      style={{
+                        backgroundColor: getStatusColor(status).bg,
+                        color: 'white',
+                        borderColor: getStatusColor(status).border
+                      }}
+                    >
                       {status}
                     </Badge>
                     <span className="assignee">{assignee}</span>

@@ -159,6 +159,47 @@ export default function Projects() {
     router.push(`/projly/projects/${projectId}`);
   };
   
+  // Render status badge with appropriate color
+  const renderStatusBadge = (status: string) => {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let customClass = "";
+    
+    log(`Rendering badge for status: ${status}`);
+    
+    switch (status) {
+      case "Active":
+      case "In Progress":
+        variant = "secondary";
+        customClass = "bg-blue-600 text-white hover:bg-blue-700 border-blue-600";
+        break;
+      case "Completed":
+        variant = "default";
+        customClass = "bg-green-600 text-white hover:bg-green-700 border-green-600";
+        break;
+      case "On Hold":
+        variant = "outline";
+        customClass = "bg-orange-500 text-white hover:bg-orange-600 border-orange-500";
+        break;
+      case "Canceled":
+        variant = "destructive";
+        customClass = "bg-red-500 text-white hover:bg-red-600 border-red-500";
+        break;
+      case "Planned":
+        variant = "outline";
+        customClass = "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
+        break;
+      case "Archived":
+        variant = "outline";
+        customClass = "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
+        break;
+      default:
+        variant = "outline";
+        customClass = "bg-gray-400 text-white hover:bg-gray-500 border-gray-400";
+    }
+    
+    return <Badge variant={variant} className={customClass}>{status || 'Unknown'}</Badge>;
+  };
+  
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -247,9 +288,7 @@ export default function Projects() {
                       {project.description || '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {project.status || 'Unknown'}
-                      </Badge>
+                      {renderStatusBadge(project.status || 'Unknown')}
                     </TableCell>
                     <TableCell>
                       {project.createdAt 

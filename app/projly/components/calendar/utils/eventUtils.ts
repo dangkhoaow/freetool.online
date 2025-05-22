@@ -91,24 +91,47 @@ export const transformTasksToEvents = (tasks: TaskWithDetails[] | null): Calenda
 // This comment is kept for documentation purposes
 
 /**
+ * Define a consistent color scheme matching our status badges across the application
+ */
+export type StatusColorKey = 'completed' | 'in progress' | 'in review' | 'not started' | 
+  'on hold' | 'pending' | 'active' | 'planned' | 'cancelled' | 'canceled' | 
+  'archived' | 'overdue' | 'to do' | 'default';
+
+export const STATUS_COLORS: Record<StatusColorKey, { bg: string; border: string }> = {
+  'completed': { bg: '#16a34a', border: '#15803d' }, // green-600/700
+  'in progress': { bg: '#2563eb', border: '#1d4ed8' }, // blue-600/700
+  'in review': { bg: '#a855f7', border: '#9333ea' }, // purple-500/600
+  'not started': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600
+  'on hold': { bg: '#f97316', border: '#ea580c' }, // orange-500/600
+  'pending': { bg: '#f59e0b', border: '#d97706' }, // amber-500/600
+  'active': { bg: '#2563eb', border: '#1d4ed8' }, // blue-600/700 (same as In Progress)
+  'planned': { bg: '#8b5cf6', border: '#7c3aed' }, // violet-500/600
+  'cancelled': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
+  'canceled': { bg: '#ef4444', border: '#dc2626' }, // red-500/600 (alternative spelling)
+  'archived': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600 (same as Not Started)
+  'overdue': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
+  'to do': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600
+  'default': { bg: '#9ca3af', border: '#6b7280' }, // gray-400/500
+};
+
+/**
  * Gets background and border colors based on task status
  */
 export const getTaskStatusColors = (status: string): { backgroundColor: string; borderColor: string } => {
-  switch (status?.toLowerCase()) {
-    case 'completed':
-      return { backgroundColor: '#10b981', borderColor: '#059669' }; // Green
-    case 'in progress':
-      return { backgroundColor: '#f97316', borderColor: '#ea580c' }; // Orange
-    case 'on hold':
-      return { backgroundColor: '#6366f1', borderColor: '#4f46e5' }; // Indigo
-    case 'cancelled':
-      return { backgroundColor: '#ef4444', borderColor: '#dc2626' }; // Red
-    case 'not started':
-    case 'to do':
-    case 'pending':
-    default:
-      return { backgroundColor: '#3b82f6', borderColor: '#2563eb' }; // Blue
-  }
+  const normalizedStatus = (status || 'default').toLowerCase();
+  // Use a type assertion to handle any status string safely
+  const colors = STATUS_COLORS[normalizedStatus as StatusColorKey] || STATUS_COLORS.default;
+  
+  // Add detailed logging for debugging
+  console.log(`[EVENT UTILS] Getting colors for status: ${status}, normalized: ${normalizedStatus}`, {
+    backgroundColor: colors.bg,
+    borderColor: colors.border
+  });
+  
+  return {
+    backgroundColor: colors.bg,
+    borderColor: colors.border
+  };
 };
 
 /**
