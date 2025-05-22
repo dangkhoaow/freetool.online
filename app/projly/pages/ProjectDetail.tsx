@@ -306,14 +306,16 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       )}
 
       {/* Resource Dialog */}
-      {selectedResource && (
-        <ResourceDialog 
-          projectId={projectId as string}
-          resourceId={selectedResource === "new" ? undefined : selectedResource}
-          open={!!selectedResource}
-          onOpenChange={() => setSelectedResource(null)}
-        />
-      )}
+      <ResourceDialog 
+        projectId={projectId as string}
+        resourceId={selectedResource === "new" ? undefined : selectedResource || undefined}
+        open={!!selectedResource}
+        resources={filteredResources} // Pass the already loaded and filtered resources
+        onOpenChange={(open) => {
+          console.log("[ProjectDetail] ResourceDialog onOpenChange", open);
+          if (!open) setSelectedResource(null);
+        }}
+      />
       </div>
     </DashboardLayout>
   );
