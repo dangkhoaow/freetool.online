@@ -129,7 +129,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
             <p className="text-sm text-muted-foreground">Project Owner</p>
             <div className="flex items-center">
               <UserCircle className="mr-2 h-4 w-4" />
-              <p>{(project as Project).owner?.firstName || ''} {(project as Project).owner?.lastName || ''}</p>
+              <p>{(project as Project).owner?.firstName || ''} {(project as Project).owner?.lastName || ''} - {(project as Project).owner?.email || ''}</p>
             </div>
           </div>
           <div className="space-y-1">
@@ -271,7 +271,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
                           onDoubleClick={() => handleResourceClick(resource.id)}
                         >
                           <TableCell>{resource.name}</TableCell>
-                          <TableCell>{resource.type}</TableCell>
+                          <TableCell>{resource.fileType}</TableCell>
                           <TableCell>{resource.quantity}</TableCell>
                         </TableRow>
                       ))}

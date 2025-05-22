@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import { toast } from '@/components/ui/use-toast';
 
 export default function Projects() {
   const router = useRouter();
+  const { user } = useAuth(); // Get current user from AuthContext
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -42,6 +44,13 @@ export default function Projects() {
     } else {
       console.log(`[PROJLY:PROJECTS] ${message}`);
     }
+  };
+
+  // Function to check if current user is the owner of a project
+  const isProjectOwner = (project: any): boolean => {
+    if (!user || !project) return false;
+    log(`Checking if user ${user.id} is owner of project ${project.id} (owner: ${project.ownerId})`);
+    return user.id === project.ownerId;
   };
   
   useEffect(() => {
@@ -279,12 +288,15 @@ export default function Projects() {
                               Edit Project
                             </DropdownMenuItem>
                             
-                            <DropdownMenuItem 
-                              onClick={(e) => handleArchiveProject(project.id, e)}
-                            >
-                              <Archive className="mr-2 h-4 w-4" />
-                              Archive Project
-                            </DropdownMenuItem>
+                            {/* Only show Archive Project option if user is the project owner */}
+                            {isProjectOwner(project) && (
+                              <DropdownMenuItem 
+                                onClick={(e) => handleArchiveProject(project.id, e)}
+                              >
+                                <Archive className="mr-2 h-4 w-4" />
+                                Archive Project
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
