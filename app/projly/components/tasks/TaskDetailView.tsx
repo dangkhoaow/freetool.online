@@ -1,9 +1,7 @@
-
 import React from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Edit, Calendar, Clock, User, Briefcase, FileText, CheckCircle } from "lucide-react";
-import { Task } from "./TasksTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +12,50 @@ interface TaskDetailViewProps {
   task: Task;
   onEdit?: () => void;
   onClose: () => void;
+}
+
+// Add formatDateForDisplay function
+const formatDateForDisplay = (date: string | null | undefined): string => {
+  if (!date) return "-";
+  try {
+    const parsedDate = parseDateSafe(date);
+    if (parsedDate) {
+      return format(parsedDate, "MMM d, yyyy");
+    }
+  } catch (error) {
+    console.error("[TaskDetailView] Error formatting date:", error);
+  }
+  return "-";
+};
+
+// Update Task interface to include parentTask
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  projectId: string;
+  assignedTo?: string;
+  startDate?: string;
+  dueDate?: string;
+  parentTaskId?: string;
+  parentTask?: {
+    id: string;
+    title: string;
+  };
+  subTasks?: Task[];
+  project?: {
+    id: string;
+    name: string;
+  };
+  assignee?: {
+    id: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatar?: string;
+  };
 }
 
 export function TaskDetailView({ task, onEdit, onClose }: TaskDetailViewProps) {
@@ -71,116 +113,88 @@ export function TaskDetailView({ task, onEdit, onClose }: TaskDetailViewProps) {
   };
 
   return (
-    <div className="space-y-6 py-4">
-      <div>
-        <h2 className="text-2xl font-semibold">{task.title}</h2>
-        {renderStatusBadge(task.status)}
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Briefcase className="h-4 w-4" />
-            <span className="font-medium">Project:</span>
-            <span>{task.project?.name || "No project"}</span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">
-              {/* Log the assignee object for debugging */}
-              {(() => {
-                console.log("[TaskDetailView] Rendering assignee for task:", task.id, task.assignee);
-                if (task.assignee) {
-                  // Log each property
-                  console.log("[TaskDetailView] Assignee firstName:", task.assignee.firstName);
-                  console.log("[TaskDetailView] Assignee lastName:", task.assignee.lastName);
-                  // Display name using camelCase fields
-                  return `${task.assignee.firstName || ''} ${task.assignee.lastName || ''}`.trim() || task.assignee.email || "Unassigned";
-                }
-                return "Unassigned";
-              })()}
-            </span>
-          </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-2xl font-bold">{task.title}</h2>
+          <p className="text-muted-foreground mt-1">{task.description}</p>
         </div>
-        
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span className="font-medium">Start date:</span>
-            <span>
-              {(() => {
-                // Standardize to camelCase field names
-                const startDate = task.startDate;
-                console.log("[TaskDetailView] Start date value:", startDate);
-                
-                if (startDate) {
-                  try {
-                    const parsedDate = parseDateSafe(startDate);
-                    if (parsedDate) {
-                      return format(parsedDate, "MMM d, yyyy");
-                    }
-                  } catch (error) {
-                    console.error("[TaskDetailView] Error formatting start date:", error);
-                  }
-                }
-                return "Not specified";
-              })()}
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span className="font-medium">Due date:</span>
-            <span>
-              {(() => {
-                // Standardize to camelCase field names
-                const dueDate = task.dueDate;
-                console.log("[TaskDetailView] Due date value:", dueDate);
-                
-                if (dueDate) {
-                  try {
-                    const parsedDate = parseDateSafe(dueDate);
-                    if (parsedDate) {
-                      return format(parsedDate, "MMM d, yyyy");
-                    }
-                  } catch (error) {
-                    console.error("[TaskDetailView] Error formatting due date:", error);
-                  }
-                }
-                return "No deadline";
-              })()}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      <Separator />
-      
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <FileText className="h-4 w-4" />
-          <h3 className="font-medium">Description</h3>
-        </div>
-        {task.description ? (
-          <p className="text-muted-foreground whitespace-pre-wrap">
-            {task.description}
-          </p>
-        ) : (
-          <p className="text-muted-foreground italic">No description provided</p>
-        )}
-      </div>
-      
-      <div className="flex justify-end space-x-2 pt-4">
-        <DialogClose asChild>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </DialogClose>
         <Button onClick={handleEditClick}>
-          <Edit className="mr-2 h-4 w-4" /> Edit
+          <Edit className="mr-2 h-4 w-4" />
+          Edit Task
         </Button>
       </div>
+
+      <Separator />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Project:</span>
+            <span>{task.project?.name || "-"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Assignee:</span>
+            <span>{task.assignee?.name || "-"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Status:</span>
+            {renderStatusBadge(task.status)}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Start Date:</span>
+            <span>{formatDateForDisplay(task.startDate)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Due Date:</span>
+            <span>{formatDateForDisplay(task.dueDate)}</span>
+          </div>
+        </div>
+      </div>
+
+      {task.parentTaskId && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <h3 className="font-medium">Parent Task</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-l border-b border-gray-300" />
+              <span>{task.parentTask?.title || "Loading..."}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {task.subTasks && task.subTasks.length > 0 && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <h3 className="font-medium">Sub-tasks</h3>
+            <div className="space-y-2">
+              {task.subTasks.map((subTask) => (
+                <div key={subTask.id} className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-l border-b border-gray-300" />
+                  <span>{subTask.title}</span>
+                  {renderStatusBadge(subTask.status)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      <DialogClose asChild>
+        <Button variant="outline" className="w-full">
+          Close
+        </Button>
+      </DialogClose>
     </div>
   );
 }

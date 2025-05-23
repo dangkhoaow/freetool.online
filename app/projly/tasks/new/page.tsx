@@ -36,6 +36,7 @@ export default function NewTaskPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [parentTasks, setParentTasks] = useState<any[]>([]);
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -46,7 +47,8 @@ export default function NewTaskPage() {
     assignedTo: 'none', // Using 'none' instead of empty string for the Select component
     startDate: null as Date | null,
     dueDate: null as Date | null,
-    priority: 'Medium'
+    priority: 'Medium',
+    parentTaskId: 'none' // Add parent task ID field
   });
   
   // Use the useAccessibleProjectMembers hook to get accessible members for the selected project
@@ -137,6 +139,31 @@ export default function NewTaskPage() {
     initPage();
   }, [router, toast]);
   
+  // Load parent tasks when project changes
+  useEffect(() => {
+    const loadParentTasks = async () => {
+      if (!taskForm.projectId) return;
+      
+      try {
+        log('Loading parent tasks for project:', taskForm.projectId);
+        const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
+        // Filter out tasks that already have a parent (they can't be parent tasks)
+        const availableParentTasks = tasks.filter((task: any) => !task.parentTaskId);
+        setParentTasks(availableParentTasks);
+        log('Loaded parent tasks:', availableParentTasks.length);
+      } catch (error) {
+        console.error('[PROJLY:NEW_TASK] Error loading parent tasks:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load parent tasks. Please try again.',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    loadParentTasks();
+  }, [taskForm.projectId, toast]);
+  
   // Handle form input changes
   const handleChange = (field: string, value: any) => {
     log(`Updating form field: ${field} with value:`, value);
@@ -194,11 +221,12 @@ export default function NewTaskPage() {
       setIsSubmitting(true);
       log('Submitting new task:', taskForm);
       
-      // Format dates for API and handle 'none' value for assignedTo
+      // Format dates for API and handle 'none' value for assignedTo and parentTaskId
       const formattedTask = {
         ...taskForm,
         // Convert 'none' to null or undefined for the API
         assignedTo: taskForm.assignedTo === 'none' ? null : taskForm.assignedTo,
+        parentTaskId: taskForm.parentTaskId === 'none' ? null : taskForm.parentTaskId,
         startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
         dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined
       };
@@ -366,6 +394,25 @@ export default function NewTaskPage() {
                           No team members found for this project
                         </div>
                       )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="parentTaskId">Parent Task (Optional)</Label>
+                  <Select
+                    value={taskForm.parentTaskId}
+                    onValueChange={(value) => handleChange('parentTaskId', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a parent task" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Parent Task</SelectItem>
+                      {parentTasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id}>
+                          {task.title}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

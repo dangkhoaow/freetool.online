@@ -174,14 +174,40 @@ export interface Project {
   updatedAt?: string;
 }
 
+export interface TaskFilters {
+  projectId?: string;
+  assignedTo?: string;
+  status?: string;
+  includeSubTasks?: boolean;
+  parentOnly?: boolean;
+  parentTaskId?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
-  description?: string | null;
-  status?: string;
-  priority?: string;
-  projectId?: string;
-  assigneeId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  description?: string;
+  status: string;
+  projectId: string;
+  assignedTo?: string;
+  startDate?: string;
+  dueDate?: string;
+  parentTaskId?: string;
+  parentTask?: {
+    id: string;
+    title: string;
+  };
+  subTasks?: Task[];
+  project?: {
+    id: string;
+    name: string;
+  };
+  assignee?: {
+    id: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatar?: string;
+  };
 }

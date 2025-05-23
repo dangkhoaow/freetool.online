@@ -1,31 +1,147 @@
+# Task Components Documentation
 
-# Tasks Components
-
-This directory contains components related to task management in the application.
+## Overview
+The task components provide the UI for managing tasks in the Projly application, including support for hierarchical task organization through parent-child relationships.
 
 ## Components
 
-- **CreateTaskForm.tsx**: A form component for creating new tasks. It includes fields for title, description, project selection, due date, and status.
-- **CreateTaskButton.tsx**: A button component that opens either a Dialog (on desktop) or a Drawer (on mobile) containing the task creation form.
+### TasksTable
+Main component for displaying tasks in a table format:
+```typescript
+interface TasksTableProps {
+  tasks: TaskWithRelations[];
+  initialFilters?: TaskFilters;
+  onOperationComplete?: (filters?: TaskFilters) => void;
+}
+```
 
-## Features
+Features:
+- Task list display with sorting
+- Sub-task filtering options
+- Parent-child relationship visualization
+- Progress indicators
+- Action buttons for CRUD operations
 
-- Responsive design that adapts to different screen sizes
-- Form validation using zod schema
-- Integration with the project's existing task management system
-- Status selection with appropriate styling
-- Date selection with calendar popup
+### TaskForm
+Form component for creating and updating tasks:
+```typescript
+interface TaskFormProps {
+  initialData?: Task;
+  projectId: string;
+  onSubmit: (data: TaskFormData) => void;
+  onCancel: () => void;
+}
+```
 
-## Usage
+Features:
+- Parent task selection dropdown
+- Project-specific task filtering
+- Validation for task hierarchy
+- Status and priority selection
+- Due date and assignment fields
 
-The `CreateTaskButton` can be placed anywhere in the application where users need to create tasks. Currently, it's used in the Dashboard page in two locations:
-1. In the header section next to the "New Project" button
-2. In the "Your Tasks" card header
+### ParentTaskSelect
+Component for selecting parent tasks:
+```typescript
+interface ParentTaskSelectProps {
+  projectId: string;
+  currentTaskId?: string;
+  value?: string;
+  onChange: (value: string) => void;
+}
+```
 
-## Dependencies
+Features:
+- Filters tasks by project
+- Excludes current task and its sub-tasks
+- Shows only valid parent tasks
+- Handles selection changes
 
-These components rely on:
-- react-hook-form for form handling
-- zod for validation
-- shadcn UI components
-- Lucide React for icons
+### TaskFilter
+Component for filtering tasks:
+```typescript
+interface TaskFilterProps {
+  filters: TaskFilters;
+  onFilterChange: (filters: TaskFilters) => void;
+}
+```
+
+Features:
+- Status filter
+- Project filter
+- Assignee filter
+- Sub-task filter options:
+  - Parent tasks only
+  - Include sub-tasks
+- Date range filter
+
+## Sub-task UI Features
+
+### Task Hierarchy Display
+- Indentation for sub-tasks
+- Parent-child relationship indicators
+- Collapsible sub-task sections
+- Progress bars for parent tasks
+
+### Parent Task Selection
+- Dropdown with project tasks
+- Validation feedback
+- Clear selection option
+- Search/filter functionality
+
+### Filtering Options
+- Toggle for sub-task visibility
+- Parent task only view
+- Combined filters with other criteria
+
+## Usage Examples
+
+### Basic Task List
+```tsx
+<TasksTable 
+  tasks={tasks}
+  initialFilters={{ includeSubTasks: true }}
+  onOperationComplete={handleRefresh}
+/>
+```
+
+### Task Creation Form
+```tsx
+<TaskForm
+  projectId="123"
+  onSubmit={handleSubmit}
+  onCancel={handleCancel}
+/>
+```
+
+### Parent Task Selection
+```tsx
+<ParentTaskSelect
+  projectId="123"
+  currentTaskId="456"
+  value={parentTaskId}
+  onChange={handleParentChange}
+/>
+```
+
+## Styling
+- Uses shadcn/ui components
+- Consistent spacing and alignment
+- Clear visual hierarchy
+- Responsive design
+
+## Error Handling
+- Form validation messages
+- API error displays
+- Loading states
+- Empty state handling
+
+## Recent Updates
+- 2024-03-21: Added sub-task UI components
+- 2024-03-20: Enhanced task filtering
+- 2024-03-19: Added progress indicators
+
+## Related Documentation
+- [Task Service](../../lib/services/projly/use-task.README.md)
+- [Task API Integration](../../lib/services/projly/task-service.README.md)
+- [UI Components](../README.md)

@@ -264,3 +264,69 @@ Access the application at http://localhost:3000/projly
 - [Analytics Dashboard Documentation](/app/projly/dashboard/analytics/README.md) - Analytics UI and visualization
 - [Analytics Hooks Documentation](/lib/services/projly/use-analytics.README.md) - Analytics data fetching hooks
 - [Analytics Components Documentation](/app/projly/components/analytics/README.md) - Reusable analytics components
+
+## Task Management
+The task management system supports hierarchical task organization through parent-child relationships. For detailed documentation:
+- [Task Service Documentation](../../lib/services/projly/use-task.README.md)
+- [Task Components Documentation](./components/tasks/README.md)
+- [Task API Integration](../../lib/services/projly/task-service.README.md)
+
+## Recent Updates
+- 2024-03-21: Added sub-task functionality for hierarchical task management
+- 2024-03-20: Implemented task filtering and sorting
+- 2024-03-19: Added task progress tracking
+
+## Getting Started
+1. Install dependencies:
+```bash
+npm install --legacy-peer-deps
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+3. Access the application at http://localhost:3000
+
+## Development Guidelines
+- Follow TypeScript best practices
+- Maintain component reusability
+- Keep files under 300 lines
+- Add proper error handling and logging
+- Document all major changes
+
+## Integration Points
+- Backend API: service.freetool.online
+- Authentication: JWT-based
+- State Management: React Query
+- UI Components: Custom components with shadcn/ui
+
+## Security Considerations
+- JWT token management
+- Role-based access control
+- Input validation
+- XSS prevention
+
+## Error Handling
+- Global error boundary
+- Toast notifications for user feedback
+- Detailed error logging
+- Graceful fallbacks
+
+## Performance Optimization
+- Code splitting
+- Lazy loading
+- Image optimization
+- Caching strategies
+
+## Testing
+- Unit tests for components
+- Integration tests for API calls
+- E2E tests for critical flows
+
+## Deployment
+- Vercel deployment
+- Environment configuration
+- Build optimization
+- Monitoring setup

@@ -115,6 +115,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     assignedTo?: string;
     status?: string;
     search?: string;
+    taskHierarchy?: string; // New filter for parent tasks only or include sub-tasks
   }>(initialFilters || {});
   
   // Log filters for debugging
@@ -201,6 +202,12 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     // Apply assignee filter
     if (filters.assignedTo && task.assignedTo !== filters.assignedTo) {
       return false;
+    }
+    
+    // Apply task hierarchy filter (client-side filtering based on parentTaskId)
+    // Note: Ideally this would be handled by the backend, but we're implementing it client-side for now
+    if (filters.taskHierarchy === 'parent_only' && task.parentTaskId) {
+      return false; // Filter out tasks that have a parent (sub-tasks)
     }
     
     return true;
@@ -373,26 +380,79 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     return <Badge variant={variant} className={customClass}>{status}</Badge>;
   };
 
-  // Handle filter changes
+  // Function to handle filter changes
   const handleProjectFilterChange = (value: string) => {
-    setFilters({
-      ...filters,
-      projectId: value === "all" ? undefined : value
-    });
+    const newFilters = { ...filters };
+    if (value === "all") {
+      delete newFilters.projectId;
+    } else {
+      newFilters.projectId = value;
+    }
+    setFilters(newFilters);
+    
+    // If callback provided, notify parent component
+    if (onOperationComplete) {
+      // Transform UI filters to API parameters
+      const apiFilters = { ...newFilters };
+      if (newFilters.taskHierarchy === 'parent_only') {
+        apiFilters.parentOnly = 'true';
+        apiFilters.includeSubTasks = 'false';
+      } else if (newFilters.taskHierarchy === 'include_subtasks') {
+        apiFilters.parentOnly = 'false';
+        apiFilters.includeSubTasks = 'true';
+      }
+      onOperationComplete(apiFilters);
+    }
   };
 
   const handleStatusFilterChange = (value: string) => {
-    setFilters({
-      ...filters,
-      status: value === "all" ? undefined : value
-    });
+    const newFilters = { ...filters };
+    if (value === "all") {
+      delete newFilters.status;
+    } else {
+      newFilters.status = value;
+    }
+    setFilters(newFilters);
+    
+    // If callback provided, notify parent component
+    if (onOperationComplete) {
+      // Transform UI filters to API parameters
+      const apiFilters = { ...newFilters };
+      if (newFilters.taskHierarchy === 'parent_only') {
+        apiFilters.parentOnly = 'true';
+        apiFilters.includeSubTasks = 'false';
+      } else if (newFilters.taskHierarchy === 'include_subtasks') {
+        apiFilters.parentOnly = 'false';
+        apiFilters.includeSubTasks = 'true';
+      }
+      onOperationComplete(apiFilters);
+    }
   };
 
   const handleAssigneeFilterChange = (value: string) => {
-    setFilters({
-      ...filters,
-      assignedTo: value === "all" ? undefined : value
-    });
+    const newFilters = { ...filters };
+    if (value === "all") {
+      delete newFilters.assignedTo;
+    } else if (value === "current" && user?.id) {
+      newFilters.assignedTo = user.id;
+    } else {
+      newFilters.assignedTo = value;
+    }
+    setFilters(newFilters);
+    
+    // If callback provided, notify parent component
+    if (onOperationComplete) {
+      // Transform UI filters to API parameters
+      const apiFilters = { ...newFilters };
+      if (newFilters.taskHierarchy === 'parent_only') {
+        apiFilters.parentOnly = 'true';
+        apiFilters.includeSubTasks = 'false';
+      } else if (newFilters.taskHierarchy === 'include_subtasks') {
+        apiFilters.parentOnly = 'false';
+        apiFilters.includeSubTasks = 'true';
+      }
+      onOperationComplete(apiFilters);
+    }
   };
 
   // Show loading state for projects only
@@ -461,11 +521,48 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
                 <SelectItem value="current">My Tasks</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select
+              value={filters.taskHierarchy || "all"}
+              onValueChange={(value) => {
+                console.log('[TASK TABLE] Setting task hierarchy filter to:', value);
+                setFilters({ ...filters, taskHierarchy: value });
+                
+                // If callback provided, notify parent component to fetch with updated filters
+                if (onOperationComplete) {
+                  const apiFilters = { ...filters, taskHierarchy: value };
+                  // Transform UI filter value to API parameters
+                  if (value === 'parent_only') {
+                    apiFilters.parentOnly = 'true';
+                    apiFilters.includeSubTasks = 'false';
+                  } else if (value === 'include_subtasks') {
+                    apiFilters.parentOnly = 'false';
+                    apiFilters.includeSubTasks = 'true';
+                  }
+                  onOperationComplete(apiFilters);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Task Hierarchy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tasks</SelectItem>
+                <SelectItem value="parent_only">Parent Tasks Only</SelectItem>
+                <SelectItem value="include_subtasks">Include Sub-Tasks</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <Button 
             variant="outline" 
-            onClick={() => setFilters({})} 
+            onClick={() => {
+              setFilters({});
+              // Clear filters should also notify parent component with empty filters
+              if (onOperationComplete) {
+                onOperationComplete({});
+              }
+            }} 
             className="md:ml-auto"
           >
             Clear Filters
