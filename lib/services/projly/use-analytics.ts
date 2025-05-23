@@ -38,6 +38,32 @@ const logAnalytics = (message: string, data?: any) => {
   console.log(`[ANALYTICS] ${message}`, data ? data : '', 'at', new Date().toISOString());
 };
 
+// Helper function to transform backend data to chart format
+const transformToChartData = (data: any[], nameKey: string, valueKey: string) => {
+  console.log(`[ANALYTICS] Transforming data with keys: nameKey=${nameKey}, valueKey=${valueKey}`, data);
+  
+  if (!data || !Array.isArray(data)) {
+    console.log('[ANALYTICS] Invalid data for transformation:', data);
+    return [];
+  }
+  
+  const transformedData = data.map(item => {
+    if (!item || typeof item !== 'object') {
+      console.log('[ANALYTICS] Invalid item in data:', item);
+      return { name: 'Unknown', value: 0 };
+    }
+    
+    const name = String(item[nameKey] || 'Unknown');
+    const value = typeof item[valueKey] === 'number' ? item[valueKey] : 0;
+    
+    console.log(`[ANALYTICS] Transforming item: ${nameKey}=${name}, ${valueKey}=${value}`);
+    return { name, value };
+  });
+
+  console.log('[ANALYTICS] Transformed data:', transformedData);
+  return transformedData;
+};
+
 // Task status analytics
 export function useTaskStatusAnalytics() {
   const { data: session } = useSession();
@@ -56,12 +82,18 @@ export function useTaskStatusAnalytics() {
       }
       
       try {
-        // Call the dedicated analytics API endpoint
         const response = await projlyClient.get('analytics/task-status');
+        logAnalytics("Task status analytics response:", response);
         
-        // Our new client throws errors directly on failure, so no need to check response.error
-        logAnalytics("Task status analytics data:", response);
-        return response;
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch task status analytics');
+        }
+        
+        // Transform the data to match the chart format
+        const transformedData = transformToChartData(response.data || [], 'status', 'count');
+        logAnalytics("Transformed task status data:", transformedData);
+        return transformedData;
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching task status analytics:", error);
         toast({
@@ -94,12 +126,18 @@ export function useTaskDueDateAnalytics() {
       }
       
       try {
-        // Call the dedicated analytics API endpoint
         const response = await projlyClient.get('analytics/task-due-date');
+        logAnalytics("Task due date analytics response:", response);
         
-        // Our new client throws errors directly on failure, so no need to check response.error
-        logAnalytics("Task due date analytics data:", response);
-        return response;
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch task due date analytics');
+        }
+        
+        // Transform the data to match the chart format
+        const transformedData = transformToChartData(response.data || [], 'period', 'count');
+        logAnalytics("Transformed task due date data:", transformedData);
+        return transformedData;
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching task due date analytics:", error);
         toast({
@@ -132,12 +170,18 @@ export function useProjectStatusAnalytics() {
       }
       
       try {
-        // Call the dedicated analytics API endpoint
         const response = await projlyClient.get('analytics/project-status');
+        logAnalytics("Project status analytics response:", response);
         
-        // Our new client throws errors directly on failure, so no need to check response.error
-        logAnalytics("Project status analytics data:", response);
-        return response;
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch project status analytics');
+        }
+        
+        // Transform the data to match the chart format
+        const transformedData = transformToChartData(response.data || [], 'status', 'count');
+        logAnalytics("Transformed project status data:", transformedData);
+        return transformedData;
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching project status analytics:", error);
         toast({
@@ -170,12 +214,18 @@ export function useResourcesAnalytics() {
       }
       
       try {
-        // Call the dedicated analytics API endpoint
         const response = await projlyClient.get('analytics/resources');
+        logAnalytics("Resources analytics response:", response);
         
-        // Our new client throws errors directly on failure, so no need to check response.error
-        logAnalytics("Resources analytics data:", response);
-        return response;
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch resources analytics');
+        }
+        
+        // Transform the data to match the chart format
+        const transformedData = transformToChartData(response.data || [], 'type', 'count');
+        logAnalytics("Transformed resources data:", transformedData);
+        return transformedData;
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching resources analytics:", error);
         toast({
@@ -198,7 +248,7 @@ export function useTeamTaskDistributionAnalytics() {
   logAnalytics("Fetching team task distribution analytics");
   
   return useQuery({
-    queryKey: ["analytics", "team", "tasks", userId],
+    queryKey: ["analytics", "tasks", "team-distribution", userId],
     queryFn: async () => {
       logAnalytics("Executing team task distribution analytics query");
       
@@ -208,12 +258,22 @@ export function useTeamTaskDistributionAnalytics() {
       }
       
       try {
-        // Call the dedicated analytics API endpoint
         const response = await projlyClient.get('analytics/team-task-distribution');
+        logAnalytics("Team task distribution analytics response:", response);
         
-        // Our new client throws errors directly on failure, so no need to check response.error
-        logAnalytics("Team task distribution analytics data:", response);
-        return response;
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch team task distribution analytics');
+        }
+        
+        // Transform the data to match the chart format
+        const transformedData = (response.data || []).map((item: any) => ({
+          name: item.name || 'Unknown',
+          value: item.taskCount || 0
+        }));
+        
+        logAnalytics("Transformed team task distribution data:", transformedData);
+        return transformedData;
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching team task distribution analytics:", error);
         toast({
@@ -246,12 +306,23 @@ export function useTaskTimelineAnalytics() {
       }
       
       try {
-        // Call the dedicated analytics API endpoint
         const response = await projlyClient.get('analytics/task-timeline');
+        logAnalytics("Task timeline analytics response:", response);
         
-        // Our new client throws errors directly on failure, so no need to check response.error
-        logAnalytics("Task timeline analytics data:", response);
-        return response;
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch task timeline analytics');
+        }
+        
+        // Transform the data to match the chart format
+        const transformedData = (response.data || []).map((item: any) => ({
+          name: item.month,
+          total: item.total || 0,
+          completed: item.completed || 0
+        }));
+        
+        logAnalytics("Transformed task timeline data:", transformedData);
+        return transformedData;
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching task timeline analytics:", error);
         toast({

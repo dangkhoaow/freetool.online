@@ -13,10 +13,7 @@ import {
 interface TeamTaskDistributionChartProps {
   data: Array<{
     name: string;
-    total: number;
-    completed: number;
-    inProgress: number;
-    pending: number;
+    value: number;
   }>;
 }
 
@@ -27,8 +24,8 @@ export function TeamTaskDistributionChart({ data }: TeamTaskDistributionChartPro
     return <div className="flex h-[300px] items-center justify-center">No data available</div>;
   }
 
-  // Sort data by total tasks (descending)
-  const sortedData = [...data].sort((a, b) => b.total - a.total);
+  // Sort data by task count (descending)
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -42,14 +39,20 @@ export function TeamTaskDistributionChart({ data }: TeamTaskDistributionChartPro
           width={100}
           tickFormatter={(value) => {
             // Truncate long names
-            return value.length > 13 ? value.substring(0, 10) + '...' : value;
+            return value && typeof value === 'string' && value.length > 13 ? value.substring(0, 10) + '...' : value;
           }}
         />
-        <Tooltip />
+        <Tooltip formatter={(value: any, name: any) => {
+          // Add comprehensive error handling to prevent NaN issues
+          console.log(`[TeamTaskDistributionChart] Tooltip formatting: value=${value}, name=${name}`);
+          
+          // Ensure value is a valid number
+          const formattedValue = value === undefined || value === null || isNaN(Number(value)) ? 0 : Number(value);
+          
+          return [`${formattedValue} tasks`, 'Assigned Tasks'];
+        }} />
         <Legend />
-        <Bar dataKey="completed" stackId="a" fill="#10b981" name="Completed" />
-        <Bar dataKey="inProgress" stackId="a" fill="#f97316" name="In Progress" />
-        <Bar dataKey="pending" stackId="a" fill="#3b82f6" name="Pending" />
+        <Bar dataKey="value" fill="#3b82f6" name="Assigned Tasks" />
       </BarChart>
     </ResponsiveContainer>
   );

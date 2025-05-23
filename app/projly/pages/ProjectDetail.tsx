@@ -406,7 +406,9 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Task Dialog */}
       <TaskDialog 
         projectId={projectId as string}
-        taskId={selectedTask === "new" ? "new" : selectedTask || undefined}
+        // Only pass taskId for existing tasks, not for new ones
+        // This prevents unnecessary API calls to /api/projly/tasks/new
+        taskId={selectedTask === "new" ? undefined : (selectedTask || undefined)}
         open={!!selectedTask}
         onOpenChange={(open) => {
           console.log("[ProjectDetail] TaskDialog onOpenChange", open);

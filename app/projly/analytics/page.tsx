@@ -1,94 +1,49 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
-import { Loader2, Calendar, BarChart3, PieChart, TrendingUp, Users, CheckCircle2, Clock } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line
+} from 'recharts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { projlyAuthService, projlyProjectsService, projlyTasksService } from '@/lib/services/projly';
-import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Spinner } from "@/components/ui/spinner";
+import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
+import { projlyAuthService } from '@/lib/services/projly';
+import { 
+  useTaskStatusAnalytics,
+  useTaskDueDateAnalytics,
+  useProjectStatusAnalytics,
+  useResourcesAnalytics,
+  useTeamTaskDistributionAnalytics,
+  useTaskTimelineAnalytics
+} from '@/lib/services/projly/use-analytics';
 
-// Analytics data types
-interface AnalyticsSummary {
-  totalProjects: number;
-  activeProjects: number;
-  completedProjects: number;
-  totalTasks: number;
-  completedTasks: number;
-  pendingTasks: number;
-  overdueTask: number;
-  teamMembers: number;
-  completionRate: number;
-}
-
-interface ProjectStats {
-  id: string;
-  name: string;
-  tasksTotal: number;
-  tasksCompleted: number;
-  progress: number;
-  status: string;
-  dueDate?: string;
-}
-
-interface TaskDistribution {
-  status: string;
-  count: number;
-  percentage: number;
-}
-
-export default function AnalyticsPage() {
+export default function AnalyticsDashboard() {
   const router = useRouter();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeFrame, setTimeFrame] = useState("month");
+  const [activeTab, setActiveTab] = useState('overview');
   
-  // Analytics state
-  const [summary, setSummary] = useState<AnalyticsSummary>({
-    totalProjects: 0,
-    activeProjects: 0,
-    completedProjects: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    pendingTasks: 0,
-    overdueTask: 0,
-    teamMembers: 0,
-    completionRate: 0
-  });
-  
-  const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
-  const [taskDistribution, setTaskDistribution] = useState<TaskDistribution[]>([]);
+  // Analytics hooks
+  const taskStatusData = useTaskStatusAnalytics();
+  const taskDueDateData = useTaskDueDateAnalytics();
+  const projectStatusData = useProjectStatusAnalytics();
+  const resourcesData = useResourcesAnalytics();
+  const teamTaskDistributionData = useTeamTaskDistributionAnalytics();
+  const taskTimelineData = useTaskTimelineAnalytics();
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -99,13 +54,44 @@ export default function AnalyticsPage() {
     }
   };
   
-  // Check authentication and load analytics data on page load
+  // Define a consistent color scheme matching our status badges
+  const STATUS_COLORS = {
+    'Completed': '#16a34a', // green-600
+    'In Progress': '#2563eb', // blue-600
+    'In Review': '#a855f7', // purple-500
+    'Not Started': '#6b7280', // gray-500
+    'On Hold': '#f97316', // orange-500
+    'Pending': '#f59e0b', // amber-500
+    'Active': '#2563eb', // blue-600 (same as In Progress)
+    'Planned': '#8b5cf6', // purple-500 (similar to In Review)
+    'Canceled': '#ef4444', // red-500
+    'Archived': '#6b7280', // gray-500 (same as Not Started)
+    'Overdue': '#ef4444', // red-500
+    'Due Soon': '#f59e0b', // amber-500 (same as Pending)
+    'Due Later': '#0ea5e9', // sky-500
+    'No Due Date': '#9ca3af', // gray-400
+    // Fallback colors for other categories
+    'default': '#9ca3af', // gray-400
+  };
+  
+  // Helper function to get color by status name
+  const getStatusColor = (status: string) => {
+    return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
+  };
+  
+  // Generate a color array based on data entries for charts
+  const getColorsForData = (data: any[] | undefined) => {
+    if (!data) return [];
+    return data.map(entry => getStatusColor(entry.name));
+  };
+  
   useEffect(() => {
-    const loadAnalyticsData = async () => {
+    log('Analytics dashboard loaded');
+    
+    const checkAuth = async () => {
       try {
         log('Checking authentication');
         const isAuthenticated = await projlyAuthService.isAuthenticated();
-        log('Authentication check result:', isAuthenticated);
         
         if (!isAuthenticated) {
           log('User not authenticated, redirecting to login');
@@ -113,464 +99,492 @@ export default function AnalyticsPage() {
           return;
         }
         
-        log('Loading analytics data');
-        await fetchAnalyticsData();
-        
-      } catch (error) {
-        console.error('[PROJLY:ANALYTICS] Error loading analytics data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load analytics data. Please try again.',
-          variant: 'destructive'
-        });
-      } finally {
         setIsLoading(false);
-        log('Analytics page initialization completed');
+        log('Analytics data loading completed');
+      } catch (error) {
+        console.error('[PROJLY:ANALYTICS] Error in analytics dashboard:', error);
+        setIsLoading(false);
       }
     };
     
-    loadAnalyticsData();
-  }, [router, toast]);
-  
-  // Effect to refresh data when timeframe changes
+    checkAuth();
+  }, [router]);
+
+  // Log data when it changes
   useEffect(() => {
-    if (!isLoading) {
-      log('Time frame changed, refreshing data:', timeFrame);
-      fetchAnalyticsData();
-    }
-  }, [timeFrame]);
-  
-  // Fetch analytics data based on the current timeframe
-  const fetchAnalyticsData = async () => {
-    try {
-      setIsLoading(true);
-      log('Fetching analytics data for timeframe:', timeFrame);
-      
-      // In a real app, we would call different API endpoints
-      // For demonstration, we'll use mock data
-      
-      // Fetch projects first
-      const projects = await projlyProjectsService.getProjects();
-      log('Projects loaded:', projects.length);
-      
-      // Fetch tasks
-      const tasks = await projlyTasksService.getMyTasks();
-      log('Tasks loaded:', tasks.length);
-      
-      // Calculate summary stats
-      const activeProjects = projects.filter(p => p.status !== 'Completed').length;
-      log('Active projects count:', activeProjects);
-      
-      const completedProjects = projects.filter(p => p.status === 'Completed').length;
-      log('Completed projects count:', completedProjects);
-      
-      const completedTasks = tasks.filter(t => t.status === 'Completed').length;
-      log('Completed tasks count:', completedTasks);
-      
-      const pendingTasks = tasks.filter(t => t.status === 'Pending' || t.status === 'Not Started').length;
-      log('Pending tasks count:', pendingTasks);
-      
-      const overdueTasks = tasks.filter(t => {
-        if (!t.dueDate) return false;
-        return new Date(t.dueDate) < new Date() && t.status !== 'Completed';
-      }).length;
-      log('Overdue tasks count:', overdueTasks);
-      
-      const completionRate = tasks.length > 0 
-        ? Math.round((completedTasks / tasks.length) * 100) 
-        : 0;
-      log('Task completion rate:', completionRate);
-      
-      // Update summary
-      const summaryData = {
-        totalProjects: projects.length,
-        activeProjects,
-        completedProjects,
-        totalTasks: tasks.length,
-        completedTasks,
-        pendingTasks,
-        overdueTask: overdueTasks,
-        teamMembers: 4, // Mock data
-        completionRate
-      };
-      log('Summary data calculated:', summaryData);
-      setSummary(summaryData);
-      
-      // Calculate project stats
-      const projectStatsData = projects.map(project => {
-        const projectTasks = tasks.filter(t => t.projectId === project.id);
-        const tasksCompleted = projectTasks.filter(t => t.status === 'Completed').length;
-        const progress = projectTasks.length > 0 
-          ? Math.round((tasksCompleted / projectTasks.length) * 100) 
-          : 0;
-        
-        return {
-          id: project.id,
-          name: project.name,
-          tasksTotal: projectTasks.length,
-          tasksCompleted,
-          progress,
-          status: project.status,
-          dueDate: project.dueDate
-        };
-      });
-      log('Project stats calculated:', projectStatsData);
-      setProjectStats(projectStatsData);
-      
-      // Calculate task distribution
-      const statusCounts = tasks.reduce((acc, task) => {
-        acc[task.status] = (acc[task.status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      const distribution = Object.entries(statusCounts).map(([status, count]) => ({
-        status,
-        count,
-        percentage: Math.round((count / tasks.length) * 100)
-      }));
-      log('Task distribution calculated:', distribution);
-      setTaskDistribution(distribution);
-      
-    } catch (error) {
-      console.error('[PROJLY:ANALYTICS] Error fetching analytics data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to refresh analytics data',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
-      log('Analytics data refresh completed');
-    }
-  };
-  
-  // Format date for display
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-  
-  // Show loading state
-  if (isLoading) {
+    log('Task status data:', taskStatusData.data);
+    log('Task due date data:', taskDueDateData.data);
+    log('Project status data:', projectStatusData.data);
+    log('Resources data:', resourcesData.data);
+    log('Team task distribution data:', teamTaskDistributionData.data);
+    log('Task timeline data:', taskTimelineData.data);
+  }, [
+    taskStatusData.data,
+    taskDueDateData.data,
+    projectStatusData.data,
+    resourcesData.data,
+    teamTaskDistributionData.data,
+    taskTimelineData.data
+  ]);
+
+  // Check if any data is still loading
+  const isDataLoading = 
+    taskStatusData.isLoading ||
+    taskDueDateData.isLoading ||
+    projectStatusData.isLoading ||
+    resourcesData.isLoading ||
+    teamTaskDistributionData.isLoading ||
+    taskTimelineData.isLoading;
+
+  // Check if any data has errors
+  const hasErrors = 
+    taskStatusData.error ||
+    taskDueDateData.error ||
+    projectStatusData.error ||
+    resourcesData.error ||
+    teamTaskDistributionData.error ||
+    taskTimelineData.error;
+
+  if (isLoading || isDataLoading) {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
+          <Spinner className="h-10 w-10" />
         </div>
       </DashboardLayout>
     );
   }
+
+  if (hasErrors) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-[80vh] space-y-4">
+          <h2 className="text-2xl font-bold text-red-600">Error Loading Analytics</h2>
+          <p className="text-muted-foreground">There was an error loading the analytics data. Please try again later.</p>
+          <Button variant="outline" onClick={() => router.refresh()}>
+            Retry
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Calculate totals from data with proper type checking
+  const calculateTotal = (data: any[] | undefined, key: string): number => {
+    if (!data || !Array.isArray(data)) {
+      console.log(`[ANALYTICS] Invalid data for total calculation:`, data);
+      return 0;
+    }
+    
+    return data.reduce((acc: number, curr: any) => {
+      if (!curr || typeof curr !== 'object') {
+        console.log(`[ANALYTICS] Invalid item in data:`, curr);
+        return acc;
+      }
+      const value = typeof curr[key] === 'number' ? curr[key] : 0;
+      console.log(`[ANALYTICS] Adding value to total: ${value}`);
+      return acc + value;
+    }, 0);
+  };
+
+  // Calculate totals
+  const totalProjects = calculateTotal(projectStatusData.data || [], 'value');
+  const totalTasks = calculateTotal(taskStatusData.data || [], 'value');
+  const totalTeamMembers = teamTaskDistributionData.data?.length || 0;
+
+  console.log('[ANALYTICS] Calculated totals:', {
+    totalProjects,
+    totalTasks,
+    totalTeamMembers
+  });
+
+  // Helper function to safely get data for charts
+  const getChartData = (data: any[] | undefined) => {
+    if (!data || !Array.isArray(data)) return [];
+    return data.filter(item => item && typeof item.value === 'number');
+  };
+
+  // Task Status Chart
+  const renderTaskStatusChart = () => {
+    const { data: taskStatusData, isLoading: isTaskStatusLoading } = useTaskStatusAnalytics();
+    
+    if (isTaskStatusLoading) {
+      return <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>;
+    }
+
+    if (!taskStatusData || taskStatusData.length === 0) {
+      return <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No task status data available
+      </div>;
+    }
+
+    console.log('[ANALYTICS] Rendering TaskStatusChart with data:', taskStatusData);
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={taskStatusData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            fill="#8884d8"
+            label={({ name, percent }) => {
+              if (name === undefined || percent === undefined || isNaN(percent)) {
+                return '';
+              }
+              return `${String(name)}: ${(percent * 100).toFixed(0)}%`;
+            }}
+          >
+            {taskStatusData.map((entry: any, index: number) => (
+              <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value: any) => {
+            if (value === undefined || value === null || isNaN(value)) return '0';
+            return String(Number(value).toFixed(0));
+          }} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Task Due Date Chart
+  const renderTaskDueDateChart = () => {
+    const { data: taskDueDateData, isLoading: isTaskDueDateLoading } = useTaskDueDateAnalytics();
+    
+    if (isTaskDueDateLoading) {
+      return <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>;
+    }
+
+    if (!taskDueDateData || taskDueDateData.length === 0) {
+      return <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No task due date data available
+      </div>;
+    }
+
+    console.log('[ANALYTICS] Rendering TaskDueDateChart with data:', taskDueDateData);
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={taskDueDateData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip formatter={(value: any) => {
+            if (value === undefined || value === null || isNaN(value)) return '0';
+            return String(Number(value).toFixed(0));
+          }} />
+          <Legend />
+          <Bar dataKey="value" fill="#8884d8" />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Project Status Chart
+  const renderProjectStatusChart = () => {
+    const { data: projectStatusData, isLoading: isProjectStatusLoading } = useProjectStatusAnalytics();
+    
+    if (isProjectStatusLoading) {
+      return <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>;
+    }
+
+    if (!projectStatusData || projectStatusData.length === 0) {
+      return <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No project status data available
+      </div>;
+    }
+
+    console.log('[ANALYTICS] Rendering ProjectStatusChart with data:', projectStatusData);
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={projectStatusData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            fill="#8884d8"
+            label={({ name, percent }) => {
+              if (name && percent !== undefined) {
+                return `${name}: ${(percent * 100).toFixed(0)}%`;
+              }
+              return '';
+            }}
+          >
+            {projectStatusData && projectStatusData.map((entry: any, index: number) => (
+              <Cell key={`cell-${index}`} fill={getStatusColor(entry?.name || 'default')} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value: any) => {
+            if (value === undefined || value === null || isNaN(value)) return '0';
+            return String(value);
+          }} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Resources Chart
+  const renderResourcesChart = () => {
+    const { data: resourcesData, isLoading: isResourcesLoading } = useResourcesAnalytics();
+    
+    if (isResourcesLoading) {
+      return <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>;
+    }
+
+    if (!resourcesData || resourcesData.length === 0) {
+      return <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No resources data available
+      </div>;
+    }
+
+    console.log('[ANALYTICS] Rendering ResourcesChart with data:', resourcesData);
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={resourcesData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            fill="#8884d8"
+            label={({ name, percent }) => {
+              if (name && percent !== undefined) {
+                return `${name}: ${(percent * 100).toFixed(0)}%`;
+              }
+              return '';
+            }}
+          >
+            {resourcesData && Array.isArray(resourcesData) && resourcesData.map((entry: any, index: number) => {
+              if (!entry) return null;
+              return <Cell key={`cell-${index}`} fill={getStatusColor(entry?.name || 'default')} />;
+            })}
+          </Pie>
+          <Tooltip formatter={(value: any) => {
+            if (value === undefined || value === null || isNaN(value)) return '0';
+            return String(value);
+          }} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Team Task Distribution Chart
+  const renderTeamTaskDistributionChart = () => {
+    const { data: teamTaskData, isLoading: isTeamTaskLoading } = useTeamTaskDistributionAnalytics();
+    
+    if (isTeamTaskLoading) {
+      return <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>;
+    }
+
+    if (!teamTaskData || teamTaskData.length === 0) {
+      return <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No team task distribution data available
+      </div>;
+    }
+
+    console.log('[ANALYTICS] Rendering TeamTaskDistributionChart with data:', teamTaskData);
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={teamTaskData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip formatter={(value: any) => {
+            if (value === undefined || value === null || isNaN(value)) return '0';
+            return String(value);
+          }} />
+          <Legend />
+          <Bar dataKey="value" fill="#8884d8" name="Assigned Tasks" />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Task Timeline Chart
+  const renderTaskTimelineChart = () => {
+    const { data: timelineData, isLoading: isTimelineLoading } = useTaskTimelineAnalytics();
+    
+    if (isTimelineLoading) {
+      return <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>;
+    }
+
+    if (!timelineData || timelineData.length === 0) {
+      return <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No task timeline data available
+      </div>;
+    }
+
+    console.log('[ANALYTICS] Rendering TaskTimelineChart with data:', timelineData);
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={timelineData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip formatter={(value: any) => {
+            if (value === undefined || value === null || isNaN(value)) return '0';
+            return String(value);
+          }} />
+          <Legend />
+          <Line type="monotone" dataKey="total" stroke="#8884d8" name="Total Tasks" />
+          <Line type="monotone" dataKey="completed" stroke="#82ca9d" name="Completed Tasks" />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Ensure all display values are properly formatted to avoid NaN errors
+  const formatDisplayValue = (value: any): string => {
+    if (value === undefined || value === null) return '0';
+    if (typeof value === 'number') return String(value);
+    return String(value);
+  };
   
   return (
     <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
+      <div className="container mx-auto py-6 space-y-4">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-            <p className="text-muted-foreground">Project insights and performance metrics</p>
+            <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+            <p className="text-muted-foreground">
+              View insights and metrics for your projects and tasks
+            </p>
           </div>
-          
-          <Select value={timeFrame} onValueChange={setTimeFrame}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time frame" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">Last Week</SelectItem>
-              <SelectItem value="month">Last Month</SelectItem>
-              <SelectItem value="quarter">Last Quarter</SelectItem>
-              <SelectItem value="year">Last Year</SelectItem>
-              <SelectItem value="all">All Time</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push('/projly/dashboard')}>
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
-        
-        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
+
+        <Tabs defaultValue="overview" className="w-full" onValueChange={(value) => setActiveTab(value)}>
+          <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="overview">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 text-muted-foreground mr-2" />
-                    <div className="text-2xl font-bold">{summary.totalProjects}</div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {summary.activeProjects} active, {summary.completedProjects} completed
-                  </p>
+                  <div className="text-2xl font-bold">{formatDisplayValue(totalProjects)}</div>
                 </CardContent>
               </Card>
-              
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Tasks</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-5 w-5 text-muted-foreground mr-2" />
-                    <div className="text-2xl font-bold">{summary.totalTasks}</div>
-                  </div>
-                  <div className="mt-2">
-                    <Progress value={summary.completionRate} className="h-2" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {summary.completionRate}% completion rate
-                  </p>
+                  <div className="text-2xl font-bold">{formatDisplayValue(totalTasks)}</div>
                 </CardContent>
               </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center">
-                    <Clock className="h-5 w-5 text-muted-foreground mr-2" />
-                    <div className="text-2xl font-bold">{summary.overdueTask}</div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {Math.round((summary.overdueTask / (summary.totalTasks || 1)) * 100)}% of total tasks
-                  </p>
-                </CardContent>
-              </Card>
-              
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Team Members</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center">
-                    <Users className="h-5 w-5 text-muted-foreground mr-2" />
-                    <div className="text-2xl font-bold">{summary.teamMembers}</div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Active collaborators on projects
-                  </p>
+                  <div className="text-2xl font-bold">{formatDisplayValue(totalTeamMembers)}</div>
                 </CardContent>
               </Card>
             </div>
             
-            {/* Projects Progress */}
-            <Card className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Project Status</CardTitle>
+                  <CardDescription>Distribution of projects by status</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  {renderProjectStatusChart()}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task Status</CardTitle>
+                  <CardDescription>Distribution of tasks by status</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  {renderTaskStatusChart()}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="projects" className="space-y-4">
+            <Card>
               <CardHeader>
-                <CardTitle>Project Progress</CardTitle>
-                <CardDescription>Completion status of your active projects</CardDescription>
+                <CardTitle>Project Timeline</CardTitle>
+                <CardDescription>Project creation and completion over time</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {projectStats.filter(p => p.status !== 'Completed').slice(0, 5).map(project => (
-                    <div key={project.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{project.name}</div>
-                        <div className="text-sm text-muted-foreground">{project.progress}%</div>
-                      </div>
-                      <Progress value={project.progress} className="h-2" />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <div>{project.tasksCompleted} / {project.tasksTotal} tasks</div>
-                        <div>Due {formatDate(project.dueDate)}</div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {projectStats.filter(p => p.status !== 'Completed').length === 0 && (
-                    <div className="py-4 text-center text-muted-foreground">
-                      No active projects found
-                    </div>
-                  )}
-                </div>
+              <CardContent className="h-80">
+                {renderTaskTimelineChart()}
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="tasks" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task Due Dates</CardTitle>
+                  <CardDescription>Tasks by due date category</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  {renderTaskDueDateChart()}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Task Distribution</CardTitle>
+                  <CardDescription>Tasks assigned to team members</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  {renderTeamTaskDistributionChart()}
+                </CardContent>
+              </Card>
+            </div>
             
-            {/* Task Distribution */}
             <Card>
               <CardHeader>
-                <CardTitle>Task Distribution</CardTitle>
-                <CardDescription>Tasks by status</CardDescription>
+                <CardTitle>Resource Types</CardTitle>
+                <CardDescription>Distribution of resources by type</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {taskDistribution.map(item => (
-                    <div key={item.status} className="flex items-center">
-                      <div className="w-1/3 font-medium">{item.status}</div>
-                      <div className="w-2/3">
-                        <div className="flex items-center gap-2">
-                          <Progress value={item.percentage} className="h-2" />
-                          <span className="text-sm text-muted-foreground w-16">
-                            {item.count} ({item.percentage}%)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {taskDistribution.length === 0 && (
-                    <div className="py-4 text-center text-muted-foreground">
-                      No tasks found
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="projects">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Performance</CardTitle>
-                <CardDescription>Progress and status of all projects</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Name</TableHead>
-                      <TableHead>Progress</TableHead>
-                      <TableHead>Tasks</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projectStats.map(project => (
-                      <TableRow key={project.id}>
-                        <TableCell className="font-medium">{project.name}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={project.progress} className="h-2 w-[60px]" />
-                            <span>{project.progress}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{project.tasksCompleted}/{project.tasksTotal}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            className={project.status === 'Completed' ? 'bg-green-100 text-green-800' : 
-                                    project.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : ''}
-                            variant={project.status === 'In Progress' ? 'default' : 'outline'}
-                          >
-                            {project.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatDate(project.dueDate)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => router.push(`/projly/projects/${project.id}`)}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    
-                    {projectStats.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                          No projects found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="tasks">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Task Analytics</CardTitle>
-                    <CardDescription>Task completion and status breakdown</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-8">
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Completion Rate</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Overall</div>
-                        <div className="text-sm text-muted-foreground">{summary.completionRate}%</div>
-                      </div>
-                      <Progress value={summary.completionRate} className="h-2" />
-                      <div className="text-xs text-muted-foreground">
-                        {summary.completedTasks} completed out of {summary.totalTasks} total tasks
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Task Status Distribution</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {taskDistribution.map(item => (
-                        <Card key={item.status}>
-                          <CardContent className="pt-6">
-                            <div className="text-2xl font-bold mb-1">{item.count}</div>
-                            <div className="text-sm font-medium">{item.status}</div>
-                            <Progress value={item.percentage} className="h-1 mt-2" />
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {item.percentage}% of total
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Task Timeline</h3>
-                    <div className="flex items-center justify-between bg-muted p-4 rounded-lg">
-                      <div className="text-center">
-                        <div className="text-sm text-muted-foreground">Upcoming</div>
-                        <div className="text-2xl font-bold">{summary.pendingTasks}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-muted-foreground">Overdue</div>
-                        <div className="text-2xl font-bold">{summary.overdueTask}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-muted-foreground">Completed</div>
-                        <div className="text-2xl font-bold">{summary.completedTasks}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="team">
-            <Card>
-              <CardHeader>
-                <CardTitle>Team Performance</CardTitle>
-                <CardDescription>Workload and contribution metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">
-                    Team analytics are available in the premium version.
-                  </p>
-                  <Button onClick={() => router.push('/projly/team')}>
-                    View Team Members
-                  </Button>
-                </div>
+              <CardContent className="h-80">
+                {renderResourcesChart()}
               </CardContent>
             </Card>
           </TabsContent>

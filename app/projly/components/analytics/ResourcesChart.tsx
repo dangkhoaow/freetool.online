@@ -10,8 +10,8 @@ import {
 
 interface ResourcesChartProps {
   data: Array<{
-    type: string;
-    total: number;
+    name: string;
+    value: number;
   }>;
 }
 
@@ -24,8 +24,8 @@ export function ResourcesChart({ data }: ResourcesChartProps) {
     return <div className="flex h-[300px] items-center justify-center">No data available</div>;
   }
 
-  // Sort data by total (descending)
-  const sortedData = [...data].sort((a, b) => b.total - a.total);
+  // Sort data by value (descending)
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -37,16 +37,27 @@ export function ResourcesChart({ data }: ResourcesChartProps) {
           labelLine={false}
           outerRadius={120}
           fill="#8884d8"
-          dataKey="total"
-          nameKey="type"
-          label={({ type, percent }) => `${type}: ${(percent * 100).toFixed(0)}%`}
+          dataKey="value"
+          nameKey="name"
+          label={({ name, percent }) => {
+            // Check for undefined, null, or NaN values to prevent rendering errors
+            if (!name || percent === undefined || percent === null || isNaN(percent)) {
+              console.log(`[ResourcesChart] Invalid label values: name=${name}, percent=${percent}`);
+              return '';
+            }
+            return `${String(name)}: ${(percent * 100).toFixed(0)}%`;
+          }}
         >
           {sortedData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
         <Tooltip 
-          formatter={(value: number, name: string) => [`${value} units`, name]}
+          formatter={(value: number, name: string) => {
+            // Ensure value is a valid number
+            const formattedValue = value === undefined || value === null || isNaN(value) ? 0 : value;
+            return [`${formattedValue} resources`, String(name || 'Unknown')];
+          }}
         />
         <Legend />
       </PieChart>

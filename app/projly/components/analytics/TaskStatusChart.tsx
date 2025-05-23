@@ -10,8 +10,8 @@ import {
 
 interface TaskStatusChartProps {
   data: Array<{
-    status: string;
-    count: number;
+    name: string;
+    value: number;
   }>;
 }
 
@@ -24,8 +24,8 @@ export function TaskStatusChart({ data }: TaskStatusChartProps) {
     return <div className="flex h-[200px] items-center justify-center">No data available</div>;
   }
 
-  // Sort data by count (descending)
-  const sortedData = [...data].sort((a, b) => b.count - a.count);
+  // Sort data by value (descending)
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -37,16 +37,28 @@ export function TaskStatusChart({ data }: TaskStatusChartProps) {
           labelLine={false}
           outerRadius={80}
           fill="#8884d8"
-          dataKey="count"
-          nameKey="status"
-          label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
+          dataKey="value"
+          nameKey="name"
+          label={({ name, percent }) => {
+            // Check for undefined, null, or NaN values to prevent rendering errors
+            if (!name || percent === undefined || percent === null || isNaN(percent)) {
+              console.log(`[TaskStatusChart] Invalid label values: name=${name}, percent=${percent}`);
+              return '';
+            }
+            return `${String(name)}: ${(percent * 100).toFixed(0)}%`;
+          }}
         >
           {sortedData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
         <Tooltip 
-          formatter={(value: number, name: string) => [`${value} tasks`, name]}
+          formatter={(value: any, name: any) => {
+            // Ensure value is a valid number
+            const formattedValue = value === undefined || value === null || isNaN(Number(value)) ? 0 : Number(value);
+            console.log(`[TaskStatusChart] Tooltip formatting: value=${value}, name=${name}`);
+            return [`${formattedValue} tasks`, String(name || '')]; 
+          }}
         />
         <Legend />
       </PieChart>

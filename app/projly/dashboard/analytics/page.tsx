@@ -21,22 +21,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { projlyAuthService, projlyAnalyticsService } from '@/lib/services/projly';
+import { 
+  useTaskStatusAnalytics,
+  useTaskDueDateAnalytics,
+  useProjectStatusAnalytics,
+  useResourcesAnalytics,
+  useTeamTaskDistributionAnalytics,
+  useTaskTimelineAnalytics
+} from '@/lib/services/projly/use-analytics';
 
 export default function AnalyticsDashboard() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [analyticsData, setAnalyticsData] = useState<any>({
-    projects: {
-      byStatus: [],
-      byMonth: []
-    },
-    tasks: {
-      byStatus: [],
-      byPriority: []
-    }
-  });
   const [activeTab, setActiveTab] = useState('overview');
   
+  // Use React Query hooks for analytics data
+  const { data: taskStatusData, isLoading: isTaskStatusLoading } = useTaskStatusAnalytics();
+  const { data: taskDueDateData, isLoading: isTaskDueDateLoading } = useTaskDueDateAnalytics();
+  const { data: projectStatusData, isLoading: isProjectStatusLoading } = useProjectStatusAnalytics();
+  const { data: resourcesData, isLoading: isResourcesLoading } = useResourcesAnalytics();
+  const { data: teamTaskData, isLoading: isTeamTaskLoading } = useTeamTaskDistributionAnalytics();
+  const { data: taskTimelineData, isLoading: isTaskTimelineLoading } = useTaskTimelineAnalytics();
+
   // Function to handle logging
   const log = (message: string, data?: any) => {
     if (data) {
@@ -48,96 +53,15 @@ export default function AnalyticsDashboard() {
   
   // Colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-  
-  useEffect(() => {
-    log('Analytics dashboard loaded');
-    
-    const fetchData = async () => {
-      try {
-        log('Checking authentication');
-        const isAuthenticated = await projlyAuthService.isAuthenticated();
-        
-        if (!isAuthenticated) {
-          log('User not authenticated, redirecting to login');
-          router.push('/projly/login');
-          return;
-        }
-        
-        log('Fetching analytics data');
-        try {
-          const data = await projlyAnalyticsService.getAnalytics();
-          log('Analytics data loaded:', data);
-          
-          if (data) {
-            setAnalyticsData(data);
-          } else {
-            throw new Error('No analytics data returned');
-          }
-        } catch (error) {
-          console.error('[PROJLY:ANALYTICS] Error fetching analytics data:', error);
-          
-          // Use mock data if the API fails
-          const mockData = generateMockAnalyticsData();
-          log('Using mock analytics data:', mockData);
-          setAnalyticsData(mockData);
-        }
-      } catch (error) {
-        console.error('[PROJLY:ANALYTICS] Error in analytics dashboard:', error);
-      } finally {
-        setIsLoading(false);
-        log('Analytics data loading completed');
-      }
-    };
-    
-    fetchData();
-  }, [router]);
-  
-  // Generate mock data for development/fallback
-  const generateMockAnalyticsData = () => {
-    log('Generating mock analytics data');
-    
-    return {
-      projects: {
-        byStatus: [
-          { name: 'Not Started', value: 4 },
-          { name: 'In Progress', value: 6 },
-          { name: 'Completed', value: 3 },
-          { name: 'On Hold', value: 2 }
-        ],
-        byMonth: [
-          { name: 'Jan', count: 2 },
-          { name: 'Feb', count: 3 },
-          { name: 'Mar', count: 1 },
-          { name: 'Apr', count: 4 },
-          { name: 'May', count: 2 },
-          { name: 'Jun', count: 3 },
-        ]
-      },
-      tasks: {
-        byStatus: [
-          { name: 'To Do', value: 8 },
-          { name: 'In Progress', value: 5 },
-          { name: 'Done', value: 12 },
-          { name: 'Blocked', value: 2 }
-        ],
-        byPriority: [
-          { name: 'Low', value: 7 },
-          { name: 'Medium', value: 10 },
-          { name: 'High', value: 8 },
-          { name: 'Critical', value: 2 }
-        ]
-      },
-      users: {
-        active: 12,
-        inactive: 3
-      },
-      activity: {
-        today: 23,
-        week: 145,
-        month: 567
-      }
-    };
-  };
+
+  // Check if any data is still loading
+  const isLoading = isTaskStatusLoading || isTaskDueDateLoading || isProjectStatusLoading || 
+                   isResourcesLoading || isTeamTaskLoading || isTaskTimelineLoading;
+
+  // Calculate total counts
+  const totalProjects = projectStatusData?.reduce((acc, curr) => acc + curr.value, 0) || 0;
+  const totalTasks = taskStatusData?.reduce((acc, curr) => acc + curr.value, 0) || 0;
+  const totalTeamMembers = teamTaskData?.length || 0;
 
   if (isLoading) {
     return (
@@ -160,9 +84,6 @@ export default function AnalyticsDashboard() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setAnalyticsData(generateMockAnalyticsData())}>
-              Refresh Data
-            </Button>
             <Button variant="outline" size="sm" onClick={() => router.push('/projly/dashboard')}>
               Back to Dashboard
             </Button>
@@ -183,9 +104,7 @@ export default function AnalyticsDashboard() {
                   <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {analyticsData.projects.byStatus.reduce((acc: number, curr: any) => acc + curr.value, 0)}
-                  </div>
+                  <div className="text-2xl font-bold">{totalProjects}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -193,19 +112,15 @@ export default function AnalyticsDashboard() {
                   <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {analyticsData.tasks.byStatus.reduce((acc: number, curr: any) => acc + curr.value, 0)}
-                  </div>
+                  <div className="text-2xl font-bold">{totalTasks}</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                  <CardTitle className="text-sm font-medium">Team Members</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {analyticsData.users?.active || 12}
-                  </div>
+                  <div className="text-2xl font-bold">{totalTeamMembers}</div>
                 </CardContent>
               </Card>
             </div>
@@ -220,7 +135,7 @@ export default function AnalyticsDashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={analyticsData.projects.byStatus}
+                        data={projectStatusData}
                         cx="50%"
                         cy="50%"
                         labelLine={true}
@@ -229,7 +144,7 @@ export default function AnalyticsDashboard() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {analyticsData.projects.byStatus.map((entry: any, index: number) => (
+                        {projectStatusData?.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -249,7 +164,7 @@ export default function AnalyticsDashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={analyticsData.tasks.byStatus}
+                        data={taskStatusData}
                         cx="50%"
                         cy="50%"
                         labelLine={true}
@@ -258,7 +173,57 @@ export default function AnalyticsDashboard() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {analyticsData.tasks.byStatus.map((entry: any, index: number) => (
+                        {taskStatusData?.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task Due Dates</CardTitle>
+                  <CardDescription>Tasks by due date period</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={taskDueDateData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="value" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resource Types</CardTitle>
+                  <CardDescription>Distribution of resources by type</CardDescription>
+                </CardHeader>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={resourcesData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {resourcesData?.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -270,60 +235,62 @@ export default function AnalyticsDashboard() {
               </Card>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="projects" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Projects Created by Month</CardTitle>
-                <CardDescription>Number of new projects started per month</CardDescription>
+                <CardTitle>Project Status Distribution</CardTitle>
+                <CardDescription>Overview of project statuses</CardDescription>
               </CardHeader>
-              <CardContent className="h-96">
+              <CardContent className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={analyticsData.projects.byMonth}
-                    margin={{
-                      top: 5,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
+                  <BarChart data={projectStatusData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="count" fill="#8884d8" name="Project Count" />
+                    <Bar dataKey="value" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="tasks" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Tasks by Priority</CardTitle>
-                <CardDescription>Distribution of tasks by priority level</CardDescription>
+                <CardTitle>Task Status Distribution</CardTitle>
+                <CardDescription>Overview of task statuses</CardDescription>
               </CardHeader>
-              <CardContent className="h-96">
+              <CardContent className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={analyticsData.tasks.byPriority}
-                    layout="vertical"
-                    margin={{
-                      top: 5,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
+                  <BarChart data={taskStatusData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={80} />
+                    <XAxis dataKey="name" />
+                    <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="value" fill="#82ca9d" name="Task Count" />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Task Distribution</CardTitle>
+                <CardDescription>Tasks assigned to team members</CardDescription>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={teamTaskData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="value" fill="#82ca9d" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

@@ -19,8 +19,8 @@ interface Task {
   id: string;
   title: string;
   status: string;
-  startDate: Date | null;
-  dueDate: Date | null;
+  startDate: Date | string | null;
+  dueDate: Date | string | null;
   assignee: {
     firstName: string;
     lastName: string;
@@ -38,7 +38,10 @@ const renderStatusBadge = (status: string) => {
   let style = {};
   let className = "";
   
-  switch (status) {
+  // Normalize status string to handle case sensitivity and null/undefined
+  const normalizedStatus = status ? status.trim() : 'Unknown';
+  
+  switch (normalizedStatus) {
     case "Active":
     case "In Progress":
       style = { 
@@ -88,6 +91,22 @@ const renderStatusBadge = (status: string) => {
       };
       className = "bg-amber-500 text-white border-amber-500";
       break;
+    case "Archived":
+      style = { 
+        backgroundColor: '#64748b !important', 
+        color: 'white !important', 
+        borderColor: '#64748b !important' 
+      };
+      className = "bg-gray-500 text-white border-gray-500";
+      break;
+    case "Planning":
+      style = { 
+        backgroundColor: '#3b82f6 !important', 
+        color: 'white !important', 
+        borderColor: '#3b82f6 !important' 
+      };
+      className = "bg-blue-500 text-white border-blue-500";
+      break;
     default:
       style = { 
         backgroundColor: '#9ca3af !important', 
@@ -133,17 +152,24 @@ export function TasksOverviewTable() {
     });
     
     return tasksArray.map(task => {
+      // Skip invalid task objects
+      if (!task) {
+        console.error("[ANALYTICS] Invalid task object encountered:", task);
+        return null;
+      }
+      
       // Log task data for debugging
-      if (task && task.id) {
+      if (task.id) {
         console.log(`[ANALYTICS] Processing task ${task.id}:`, {
           hasProject: task.project !== null && task.project !== undefined,
-          hasAssignee: task.assignee !== null && task.assignee !== undefined
+          hasAssignee: task.assignee !== null && task.assignee !== undefined,
+          status: task.status || 'Unknown'
         });
       }
       
       // Return normalized data with default values
       return {
-        id: task.id || 'unknown-id',
+        id: task.id || `unknown-id-${Math.random().toString(36).substring(2, 9)}`,
         title: task.title || 'Untitled Task',
         status: task.status || 'Unknown',
         startDate: task.startDate || null,
@@ -157,7 +183,7 @@ export function TasksOverviewTable() {
           name: task.project.name || 'Unnamed Project'
         } : { name: 'No Project' }
       };
-    });
+    }).filter(task => task !== null) as Task[]; // Filter out null tasks and cast to Task[]
   }, [rawTasks, apiError, isLoading]); // Depend on all data from useTasks
   
   // Error handling effect - runs consistently
@@ -311,23 +337,33 @@ export function TasksOverviewTable() {
                 </TableCell>
                 <TableCell>
                   {task.startDate ? (() => {
-                    const parsedDate = parseDateSafe(task.startDate);
-                    return parsedDate ? format(parsedDate, 'MMM d, yyyy') : '-';
+                    try {
+                      const parsedDate = parseDateSafe(task.startDate);
+                      return parsedDate ? format(parsedDate, 'MMM d, yyyy') : '-';
+                    } catch (err) {
+                      console.error(`[ANALYTICS] Error formatting start date: ${task.startDate}`, err);
+                      return '-';
+                    }
                   })() : '-'}
                 </TableCell>
                 <TableCell>
                   {task.dueDate ? (
                     <span className={isOverdue(task.dueDate, task.status) ? 'text-red-600 font-semibold' : ''}>
                       {(() => {
-                        const parsedDate = parseDateSafe(task.dueDate);
-                        return parsedDate ? format(parsedDate, 'MMM d, yyyy') : 'Invalid date';
+                        try {
+                          const parsedDate = parseDateSafe(task.dueDate);
+                          return parsedDate ? format(parsedDate, 'MMM d, yyyy') : 'Invalid date';
+                        } catch (err) {
+                          console.error(`[ANALYTICS] Error formatting due date: ${task.dueDate}`, err);
+                          return 'Invalid date';
+                        }
                       })()}
                       {isOverdue(task.dueDate, task.status) ? ' (Overdue)' : ''}
                     </span>
                   ) : 'Not set'}
                 </TableCell>
                 <TableCell>
-                  {task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : '-'}
+                  {task.assignee ? `${task.assignee.firstName || ''} ${task.assignee.lastName || ''}`.trim() || '-' : '-'}
                 </TableCell>
                 <TableCell>{task.project?.name || 'Not assigned'}</TableCell>
               </TableRow>

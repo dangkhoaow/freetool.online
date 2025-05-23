@@ -66,11 +66,19 @@ interface TaskDialogProps {
 }
 
 export function TaskDialog({ projectId, taskId, open, onOpenChange }: TaskDialogProps) {
-  const isNewTask = !taskId;
+  // Check if this is a new task (either taskId is undefined or explicitly set to "new")
+  const isNewTask = !taskId || taskId === "new";
   const title = isNewTask ? "Create Task" : "Edit Task";
+  
+  console.log("[TASK DIALOG] Task mode:", isNewTask ? "Create new task" : "Edit existing task");
 
-  // Fetch task data from API (as fallback)
-  const { data: task, isLoading: singleTaskLoading } = useTask(taskId);
+  // Only fetch task data if we're editing an existing task (not creating a new one)
+  // This prevents unnecessary API calls to /api/projly/tasks/new
+  const actualTaskId = (!isNewTask && taskId !== "new") ? taskId : undefined;
+  console.log("[TASK DIALOG] Fetching task with ID:", actualTaskId || "<none - creating new task>");
+  
+  // Fetch task data from API (as fallback) - only when editing existing task
+  const { data: task, isLoading: singleTaskLoading } = useTask(actualTaskId);
   // Fetch all tasks for the project to find the task by ID
   const { data: projectTasks, isLoading: tasksLoading } = useTasks({ projectId });
   const { data: profile } = useProfile();

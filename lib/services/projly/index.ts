@@ -9,7 +9,7 @@
 import { API_ENDPOINTS } from '@/app/projly/config/apiConfig';
 import { getAuthToken, setAuthToken, clearAuthToken } from '@/app/projly/utils/auth-utils';
 import { signIn, signOut, useSession, getSession } from './jwt-auth-adapter';
-import { ApiResponse } from '@/lib/api-client';
+import apiClient, { ApiResponse } from '@/lib/api-client';
 
 // Define Project type
 interface Project {
@@ -770,6 +770,179 @@ export const projlyTasksService = {
     } catch (error) {
       console.error(`[PROJLY:TASKS] Error deleting task ${id}:`, error);
       throw error;
+    }
+  }
+};
+
+/**
+ * Analytics Service
+ * Provides operations for retrieving analytics data in the Projly application
+ */
+export const projlyAnalyticsService = {
+  /**
+   * Get combined analytics data from all endpoints
+   * @returns Promise resolving to analytics data
+   */
+  async getAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching combined analytics data');
+    try {
+      // Fetch data from all available analytics endpoints
+      const [projectStatus, taskStatus, taskDueDate, resources, teamTaskDistribution, taskTimeline] = await Promise.allSettled([
+        this.getProjectStatusAnalytics(),
+        this.getTaskStatusAnalytics(),
+        this.getTaskDueDateAnalytics(),
+        this.getResourcesAnalytics(),
+        this.getTeamTaskDistributionAnalytics(),
+        this.getTaskTimelineAnalytics()
+      ]);
+      
+      // Combine all analytics data
+      const analyticsData = {
+        projects: {
+          byStatus: projectStatus.status === 'fulfilled' ? projectStatus.value : [],
+          byMonth: taskTimeline.status === 'fulfilled' ? taskTimeline.value?.projects || [] : []
+        },
+        tasks: {
+          byStatus: taskStatus.status === 'fulfilled' ? taskStatus.value : [],
+          byPriority: [],
+          byDueDate: taskDueDate.status === 'fulfilled' ? taskDueDate.value : [],
+          byAssignee: teamTaskDistribution.status === 'fulfilled' ? teamTaskDistribution.value : []
+        },
+        resources: resources.status === 'fulfilled' ? resources.value : []
+      };
+      
+      console.log('[PROJLY:ANALYTICS] Combined analytics data prepared');
+      return analyticsData;
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error combining analytics data:', error);
+      // Return null to let the caller handle with mock data if needed
+      return null;
+    }
+  },
+  
+  /**
+   * Get project status analytics
+   * @returns Promise resolving to project status analytics data
+   */
+  async getProjectStatusAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching project status analytics');
+    try {
+      const response = await apiClient.get<any>('api/projly/analytics/project-status');
+      
+      if (response.error) {
+        console.error('[PROJLY:ANALYTICS] Error fetching project status analytics:', response.error);
+        throw new Error(response.error);
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error fetching project status analytics:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get task status analytics
+   * @returns Promise resolving to task status analytics data
+   */
+  async getTaskStatusAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching task status analytics');
+    try {
+      const response = await apiClient.get<any>('api/projly/analytics/task-status');
+      
+      if (response.error) {
+        console.error('[PROJLY:ANALYTICS] Error fetching task status analytics:', response.error);
+        throw new Error(response.error);
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error fetching task status analytics:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get task due date analytics
+   * @returns Promise resolving to task due date analytics data
+   */
+  async getTaskDueDateAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching task due date analytics');
+    try {
+      const response = await apiClient.get<any>('api/projly/analytics/task-due-date');
+      
+      if (response.error) {
+        console.error('[PROJLY:ANALYTICS] Error fetching task due date analytics:', response.error);
+        throw new Error(response.error);
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error fetching task due date analytics:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get resources analytics
+   * @returns Promise resolving to resources analytics data
+   */
+  async getResourcesAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching resources analytics');
+    try {
+      const response = await apiClient.get<any>('api/projly/analytics/resources');
+      
+      if (response.error) {
+        console.error('[PROJLY:ANALYTICS] Error fetching resources analytics:', response.error);
+        throw new Error(response.error);
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error fetching resources analytics:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get team task distribution analytics
+   * @returns Promise resolving to team task distribution analytics data
+   */
+  async getTeamTaskDistributionAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching team task distribution analytics');
+    try {
+      const response = await apiClient.get<any>('api/projly/analytics/team-task-distribution');
+      
+      if (response.error) {
+        console.error('[PROJLY:ANALYTICS] Error fetching team task distribution analytics:', response.error);
+        throw new Error(response.error);
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error fetching team task distribution analytics:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get task timeline analytics
+   * @returns Promise resolving to task timeline analytics data
+   */
+  async getTaskTimelineAnalytics(): Promise<any> {
+    console.log('[PROJLY:ANALYTICS] Fetching task timeline analytics');
+    try {
+      const response = await apiClient.get<any>('api/projly/analytics/task-timeline');
+      
+      if (response.error) {
+        console.error('[PROJLY:ANALYTICS] Error fetching task timeline analytics:', response.error);
+        throw new Error(response.error);
+      }
+      
+      return response.data || { projects: [], tasks: [] };
+    } catch (error) {
+      console.error('[PROJLY:ANALYTICS] Error fetching task timeline analytics:', error);
+      return { projects: [], tasks: [] };
     }
   }
 };
