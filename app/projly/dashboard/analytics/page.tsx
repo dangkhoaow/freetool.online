@@ -30,6 +30,37 @@ import {
   useTaskTimelineAnalytics
 } from '@/lib/services/projly/use-analytics';
 
+// Define a consistent color scheme matching our status badges
+const STATUS_COLORS = {
+  'Completed': '#16a34a', // green-600
+  'In Progress': '#2563eb', // blue-600
+  'In Review': '#a855f7', // purple-500
+  'Not Started': '#6b7280', // gray-500
+  'On Hold': '#f97316', // orange-500
+  'Pending': '#f59e0b', // amber-500
+  'Active': '#2563eb', // blue-600 (same as In Progress)
+  'Planned': '#8b5cf6', // purple-500 (similar to In Review)
+  'Canceled': '#ef4444', // red-500
+  'Archived': '#6b7280', // gray-500 (same as Not Started)
+  'Overdue': '#ef4444', // red-500
+  'Due Soon': '#f59e0b', // amber-500 (same as Pending)
+  'Due Later': '#0ea5e9', // sky-500
+  'No Due Date': '#9ca3af', // gray-400
+  // Resource types
+  'License': '#16a34a', // green-600
+  'File': '#2563eb', // blue-600
+  'Software': '#a855f7', // purple-500
+  'Equipment': '#f97316', // orange-500
+  // Fallback colors for other categories
+  'default': '#9ca3af', // gray-400
+};
+
+// Helper function to get color based on status/category
+const getStatusColor = (name: string): string => {
+  console.log(`[ANALYTICS] Getting color for status: ${name}`);
+  return STATUS_COLORS[name as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
+};
+
 export default function AnalyticsDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
@@ -51,9 +82,6 @@ export default function AnalyticsDashboard() {
     }
   };
   
-  // Colors for charts
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
   // Check if any data is still loading
   const isLoading = isTaskStatusLoading || isTaskDueDateLoading || isProjectStatusLoading || 
                    isResourcesLoading || isTeamTaskLoading || isTaskTimelineLoading;
@@ -145,7 +173,7 @@ export default function AnalyticsDashboard() {
                         dataKey="value"
                       >
                         {projectStatusData?.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -174,7 +202,7 @@ export default function AnalyticsDashboard() {
                         dataKey="value"
                       >
                         {taskStatusData?.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -199,7 +227,7 @@ export default function AnalyticsDashboard() {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="value" fill="#8884d8" />
+                      <Bar dataKey="value" fill={getStatusColor('Due Later')} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -224,7 +252,7 @@ export default function AnalyticsDashboard() {
                         dataKey="value"
                       >
                         {resourcesData?.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -250,7 +278,7 @@ export default function AnalyticsDashboard() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="value" fill="#8884d8" />
+                    <Bar dataKey="value" fill={getStatusColor('In Progress')} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -271,7 +299,7 @@ export default function AnalyticsDashboard() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="value" fill="#8884d8" />
+                    <Bar dataKey="value" fill={getStatusColor('In Progress')} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -290,7 +318,7 @@ export default function AnalyticsDashboard() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="value" fill="#82ca9d" />
+                    <Bar dataKey="value" fill={getStatusColor('Active')} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

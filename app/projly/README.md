@@ -136,6 +136,23 @@ Enhanced team member management:
 - Added email template for team invitations
 - For details, see [Team Components Documentation](/freetool.online/app/projly/components/team/README.md)
 
+Enhanced analytics dashboard:
+- Implemented status-based color scheme for charts
+- Added consistent color mapping for all status types and resource categories
+- Improved data visualization with semantic colors
+- Added comprehensive logging for debugging
+- Integrated with backend analytics API endpoints
+
+For details, see [Analytics Dashboard Documentation](/app/projly/dashboard/analytics/README.md).
+
+Enhanced task management system:
+- Added comprehensive sub-task functionality
+  - Implemented parent-child task relationships in UI
+  - Added task hierarchy display
+  - Enhanced task filtering options
+  - Added parent task selection in forms
+- For details, see [Frontend Task Service Documentation](/lib/services/projly/use-task.README.md)
+
 ### Previous Updates (2025-05-20)
 
 Implemented forgot password functionality:
@@ -242,3 +259,8 @@ npm run dev -- -p 3000
 ```
 
 Access the application at http://localhost:3000/projly
+
+### Analytics System
+- [Analytics Dashboard Documentation](/app/projly/dashboard/analytics/README.md) - Analytics UI and visualization
+- [Analytics Hooks Documentation](/lib/services/projly/use-analytics.README.md) - Analytics data fetching hooks
+- [Analytics Components Documentation](/app/projly/components/analytics/README.md) - Reusable analytics components
