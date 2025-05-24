@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { toISOStringSafe } from "@/app/projly/utils/dateUtils";
 import { CalendarIcon, Plus } from "lucide-react";
-import { useCreateTask } from "@/lib/services/projly/use-tasks";
+import { useCreateTask, useUpdateTask } from "@/lib/services/projly/use-tasks";
 import { useProjects } from "@/lib/services/projly/use-projects";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { useProfiles } from "@/lib/services/projly/use-profile";
@@ -87,18 +87,47 @@ console.log("[CreateTaskForm] Task schema updated to accept both Date objects an
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 interface CreateTaskFormProps {
+  // Callbacks
   onSuccess?: () => void;
   onSubmit?: () => void;
   onCancel?: () => void;
+  
+  // Initial data and mode
   initialData?: Partial<TaskFormValues>;
-  projectId?: string;
+  taskId?: string;   // For edit mode
+  projectId?: string; // For when creating within a project context
+  
+  // Display options
+  mode?: 'create' | 'edit';
+  inDialog?: boolean; // Whether this form is being rendered inside a dialog
+  hideProjectField?: boolean; // For when in a project context
+  submitButtonText?: string; // Custom submit button text
+  isSubmitting?: boolean; // For external control of submit button state
 }
 
-export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, projectId }: CreateTaskFormProps) {
+export function CreateTaskForm({ 
+  onSuccess, 
+  onSubmit, 
+  onCancel, 
+  initialData, 
+  projectId,
+  taskId,
+  mode = 'create',
+  inDialog = false,
+  hideProjectField = false,
+  submitButtonText,
+  isSubmitting: externalIsSubmitting
+}: CreateTaskFormProps) {
+  console.log("[CreateTaskForm] Rendering in mode:", mode, "inDialog:", inDialog, "hideProjectField:", hideProjectField);
   const { data: session } = useSession();
   const { data: profiles = [], isLoading: isLoadingProfiles } = useProfiles();
   
-  const { mutate: createTask, isPending } = useCreateTask();
+  // Use the appropriate mutation based on the mode
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  
+  // Determine if task is being created or updated
+  const isPending = externalIsSubmitting || createTaskMutation.isPending || updateTaskMutation.isPending;
   const { data: projects = [], isLoading: loadingProjects } = useProjects();
   
   // Initialize the form first so we can watch projectId
@@ -152,7 +181,7 @@ export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, pro
     console.log('[CreateTaskForm] Form submitted with data:', data);
     
     // Validation (could be moved to zod schema)
-    if (data.projectId === "" || !data.projectId) {
+    if (!hideProjectField && (data.projectId === "" || !data.projectId)) {
       toast({
         title: "Error",
         description: "Please select a project",
@@ -220,43 +249,84 @@ export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, pro
     
     console.log("Submitting task data:", taskData);
     
-    // Call the createTask mutation function
-    createTask(taskData, {
-      onSuccess: (data) => {
-        console.log("[CreateTaskForm] Task created successfully:", data);
-        
-        // Reset form immediately
-        form.reset();
-        
-        // Show success message
-        toast({
-          title: "Success",
-          description: "Task created successfully",
-        });
-        
-        // IMPORTANT: Execute callback immediately - no delay
-        console.log("[CreateTaskForm] Executing success callback immediately");
-        
-        // Call onSubmit with highest priority, then onSuccess
-        if (onSubmit) {
-          console.log("[CreateTaskForm] Calling onSubmit callback");
-          onSubmit();
-        } 
-        
-        if (onSuccess) {
-          console.log("[CreateTaskForm] Calling onSuccess callback");
-          onSuccess();
+    // Handle create or update based on mode
+    if (mode === 'edit' && taskId) {
+      console.log("[CreateTaskForm] Updating task with ID:", taskId);
+      updateTaskMutation.mutate(
+        { id: taskId, data: taskData },
+        {
+          onSuccess: (data) => {
+            console.log("[CreateTaskForm] Task updated successfully:", data);
+            
+            // Show success message
+            toast({
+              title: "Success",
+              description: "Task updated successfully",
+            });
+            
+            // IMPORTANT: Execute callback immediately - no delay
+            console.log("[CreateTaskForm] Executing success callback immediately");
+            
+            // Call onSubmit with highest priority, then onSuccess
+            if (onSubmit) {
+              console.log("[CreateTaskForm] Calling onSubmit callback");
+              onSubmit();
+            } 
+            
+            if (onSuccess) {
+              console.log("[CreateTaskForm] Calling onSuccess callback");
+              onSuccess();
+            }
+          },
+          onError: (error: Error) => {
+            console.error("Error updating task:", error);
+            toast({
+              title: "Error",
+              description: error.message || "Failed to update task. Please try again.",
+              variant: "destructive"
+            });
+          }
         }
-      },
-      onError: (error: Error) => {
-        console.error("Error creating task:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to create task. Please try again.",
-          variant: "destructive"
-        });
-      }
-    });
+      );
+    } else {
+      // Call the createTask mutation function
+      createTaskMutation.mutate(taskData, {
+        onSuccess: (data) => {
+          console.log("[CreateTaskForm] Task created successfully:", data);
+          
+          // Reset form immediately
+          form.reset();
+          
+          // Show success message
+          toast({
+            title: "Success",
+            description: "Task created successfully",
+          });
+          
+          // IMPORTANT: Execute callback immediately - no delay
+          console.log("[CreateTaskForm] Executing success callback immediately");
+          
+          // Call onSubmit with highest priority, then onSuccess
+          if (onSubmit) {
+            console.log("[CreateTaskForm] Calling onSubmit callback");
+            onSubmit();
+          } 
+          
+          if (onSuccess) {
+            console.log("[CreateTaskForm] Calling onSuccess callback");
+            onSuccess();
+          }
+        },
+        onError: (error: Error) => {
+          console.error("Error creating task:", error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to create task. Please try again.",
+            variant: "destructive"
+          });
+        }
+      });
+    }
   };
 
   if (loadingProjects && isLoadingProfiles) {
@@ -287,10 +357,13 @@ export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, pro
               )}
             />
           </div>
-          <div>
-            <TaskProjectField />
-          </div>
-          <div>
+          {/* Only show project field if not hidden */}
+          {!hideProjectField && (
+            <div>
+              <TaskProjectField />
+            </div>
+          )}
+          <div className={hideProjectField ? "md:col-span-2" : ""}>
             {/* Use the TaskAssigneeField component with project members */}
             <TaskAssigneeField 
               profiles={currentProjectId && projectMembers?.length > 0 ? projectMembers : profiles} 
@@ -419,7 +492,7 @@ export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, pro
             control={form.control}
             name="status"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Status</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
@@ -429,9 +502,12 @@ export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, pro
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="Not Started">Not Started</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="In Review">In Review</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -440,10 +516,24 @@ export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, pro
           />
         </div>
 
-        <Button type="submit" disabled={isPending} className="w-full">
-          {isPending ? <Spinner className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          Create Task
-        </Button>
+        <div className="flex justify-end space-x-2 pt-4">
+          {onCancel && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel} 
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+          )}
+          
+          <Button type="submit" disabled={isPending} className={!onCancel ? "w-full" : undefined}>
+            {isPending ? <Spinner className="mr-2 h-4 w-4" /> : 
+              mode === 'edit' ? null : <Plus className="mr-2 h-4 w-4" />}
+            {submitButtonText || (mode === 'edit' ? 'Save Task' : 'Create Task')}
+          </Button>
+        </div>
       </form>
     </Form>
   );

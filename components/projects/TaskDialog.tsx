@@ -2,14 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
-import { useTask, useCreateTask, useUpdateTask } from "@/lib/services/projly/use-tasks";
+import { useTask } from "@/lib/services/projly/use-tasks";
+import { CreateTaskForm } from "@/app/projly/components/tasks/CreateTaskForm";
+import { Task } from "@/lib/services/projly/types";
 
 interface TaskDialogProps {
   open: boolean;
@@ -20,133 +16,65 @@ interface TaskDialogProps {
 }
 
 export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange }: TaskDialogProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("Not Started");
-  const [dueDate, setDueDate] = useState("");
-
-  // Use React Query hooks
-  // Only fetch task data if we have a valid taskId that's not 'new'
-  // Create a valid query key for the useTask hook
-  const validTaskId = taskId && taskId !== 'new' ? taskId : '';
-  const { data: taskData, isLoading: isTaskLoading } = useTask(validTaskId);
-  console.log("[TaskDialog] Using taskId for query:", validTaskId);
-  const createTaskMutation = useCreateTask();
-  const updateTaskMutation = useUpdateTask();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   
-  // Debug logging for state changes
-  useEffect(() => {
-    console.log("[TaskDialog] Description state changed:", description);
-  }, [description]);
-
-  console.log("[TaskDialog] Rendering with props:", { open, taskId, projectId });
+  // Determine if we're in edit or create mode
+  const mode = taskId && taskId !== "new" ? 'edit' : 'create';
+  console.log("[TaskDialog] Rendering in mode:", mode, "with taskId:", taskId, "projectId:", projectId);
   
-  useEffect(() => {
-    console.log("[TaskDialog] useEffect triggered with taskId:", taskId, "open:", open);
-    if (!open) return;
+  // Only fetch task data if we're editing an existing task
+  const validTaskId = taskId && taskId !== 'new' ? taskId : '';
+  const { data: taskData, isLoading: isTaskLoading } = useTask(validTaskId);
+  
+  // Handle form success (create or update)
+  const handleSuccess = async () => {
+    console.log("[TaskDialog] Task saved successfully");
     
-    if (!taskId || taskId === "new") {
-      console.log("[TaskDialog] Resetting form for new task");
-      setTitle("");
-      setDescription("");
-      setStatus("Not Started");
-      setDueDate("");
-      setError("");
-      return;
-    }
-    
-    if (taskData) {
-      console.log("[TaskDialog] Loading task data for editing:", taskData);
-      setTitle(taskData.title || "");
-      // Explicitly log the description to ensure it's being loaded correctly
-      console.log("[TaskDialog] Setting description from API data:", taskData.description);
-      setDescription(taskData.description || "");
-      
-      // Map API status values to our dropdown values if needed
-      const apiStatus = taskData.status || "Not Started";
-      setStatus(apiStatus);
-      
-      // Format date from ISO string to YYYY-MM-DD for input
-      if (taskData.dueDate) {
-        const date = new Date(taskData.dueDate);
-        const formattedDate = date.toISOString().split('T')[0];
-        setDueDate(formattedDate);
-      } else {
-        setDueDate("");
+    // Refresh tasks data if callback provided
+    if (onTaskChange) {
+      console.log("[TaskDialog] Calling onTaskChange to refresh data");
+      try {
+        await onTaskChange();
+        console.log("[TaskDialog] Successfully completed onTaskChange callback");
+      } catch (callbackError) {
+        console.error("[TaskDialog] Error in onTaskChange callback:", callbackError);
       }
-      
-      setError("");
+    } else {
+      console.warn("[TaskDialog] No onTaskChange callback provided, tasks will not auto-refresh");
     }
-  }, [taskId, open, taskData]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("[TaskDialog] Submitting form");
-    setError("");
-    setIsSubmitting(true);
     
-    try {
-      // Log all form field values before submission to verify data
-      console.log("[TaskDialog] Current form values before submission:", {
-        title,
-        description,
-        status,
-        dueDate,
-        projectId
-      });
-      
-      const formattedTaskData = {
-        title,
-        description,
-        status,
-        dueDate: dueDate || undefined,
-        projectId
+    // Close the dialog
+    onOpenChange(false);
+  };
+  
+  // Map the task data to form values
+  const getInitialData = () => {
+    if (mode === 'edit' && taskData) {
+      console.log("[TaskDialog] Preparing initial data for edit mode:", taskData);
+      return {
+        title: taskData.title || "",
+        description: taskData.description || "",
+        status: taskData.status || "Not Started",
+        dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
+        startDate: taskData.startDate ? new Date(taskData.startDate) : undefined,
+        projectId: taskData.projectId || projectId || "",
+        assignedTo: taskData.assignedTo || ""
       };
-      
-      console.log("[TaskDialog] Task data to submit:", formattedTaskData);
-      
-      if (taskId && taskId !== "new") {
-        // Update existing task using the hook
-        console.log(`[TaskDialog] Updating task with ID ${taskId} using useUpdateTask hook`);
-        await updateTaskMutation.mutateAsync({ id: taskId, data: formattedTaskData });
-      } else {
-        // Create new task using the hook
-        console.log("[TaskDialog] Creating new task using useCreateTask hook");
-        await createTaskMutation.mutateAsync(formattedTaskData);
-      }
-      
-      // Refresh tasks data if callback provided
-      if (onTaskChange) {
-        console.log("[TaskDialog] Calling onTaskChange to refresh data");
-        try {
-          await onTaskChange();
-          console.log("[TaskDialog] Successfully completed onTaskChange callback");
-        } catch (callbackError) {
-          console.error("[TaskDialog] Error in onTaskChange callback:", callbackError);
-        }
-      } else {
-        console.warn("[TaskDialog] No onTaskChange callback provided, tasks will not auto-refresh");
-      }
-      
-      // Close the dialog
-      onOpenChange(false);
-    } catch (err) {
-      console.error("[TaskDialog] Error saving task:", err);
-      setError(err instanceof Error ? err.message : "Failed to save task");
-    } finally {
-      setIsSubmitting(false);
     }
+    
+    // For create mode, just use the projectId
+    return {
+      projectId: projectId || ""
+    };
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>{taskId && taskId !== "new" ? 'Edit Task' : 'Create New Task'}</DialogTitle>
+          <DialogTitle>{mode === 'edit' ? 'Edit Task' : 'Create New Task'}</DialogTitle>
           <DialogDescription>
-            {taskId && taskId !== "new" ? 'Update the task details below.' : 'Fill in the details to create a new task for this project.'}
+            {mode === 'edit' ? 'Update the task details below.' : 'Fill in the details to create a new task for this project.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -155,87 +83,24 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
             {error}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title field takes full width since this is already in a project context */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title"
-              required
-            />
+        
+        {isTaskLoading && mode === 'edit' ? (
+          <div className="flex justify-center p-4">
+            <p>Loading task data...</p>
           </div>
-          
-          {/* Description field */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => {
-                console.log("[TaskDialog] Description field onChange event:", e.target.value);
-                setDescription(e.target.value);
-              }}
-              placeholder="Task description"
-              rows={3}
-              onBlur={() => console.log("[TaskDialog] Description field onBlur, current value:", description)}
-            />
-          </div>
-          
-          {/* Status and Due Date fields on the same line */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Status field */}
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Not Started">Not Started</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="In Review">In Review</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Due Date field */}
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)} 
-              disabled={isSubmitting || isTaskLoading || createTaskMutation.isPending || updateTaskMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting || isTaskLoading || createTaskMutation.isPending || updateTaskMutation.isPending}
-            >
-              {(isSubmitting || createTaskMutation.isPending || updateTaskMutation.isPending) ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : 'Save Task'}
-            </Button>
-          </div>
-        </form>
+        ) : (
+          <CreateTaskForm
+            mode={mode}
+            inDialog={true}
+            hideProjectField={!!projectId} // Hide project field if projectId is provided
+            projectId={projectId}
+            taskId={validTaskId}
+            initialData={getInitialData()}
+            onSuccess={handleSuccess}
+            onCancel={() => onOpenChange(false)}
+            submitButtonText={mode === 'edit' ? 'Save Task' : 'Create Task'}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
