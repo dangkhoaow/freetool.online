@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import {
   Select,
   SelectContent,
@@ -273,7 +274,11 @@ const ResourceTimelineView = ({
                 <SelectItem value="allTasks">All Tasks</SelectItem>
               </SelectContent>
             </Select>
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+            {isLoading && (
+              <div className="inline-flex ml-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            )}
             
             <Select 
               value={selectedProject} 

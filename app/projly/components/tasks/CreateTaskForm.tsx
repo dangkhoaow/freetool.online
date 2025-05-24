@@ -37,6 +37,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Spinner } from "@/components/ui/spinner";
 // Import Task type from the central types file instead of from use-tasks
 import { Task } from "@/lib/services/projly/types";
@@ -330,11 +331,8 @@ export function CreateTaskForm({
   };
 
   if (loadingProjects && isLoadingProfiles) {
-    return (
-      <div className="flex justify-center p-4">
-        <Spinner />
-      </div>
-    );
+    console.log('[PROJLY:TASKS:CREATE_FORM] Loading form dependencies');
+    return <PageLoading standalone={true} logContext="PROJLY:TASKS:CREATE_FORM" height="20vh" />;
   }
 
   return (

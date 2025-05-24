@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Loader2, ArrowLeft, Save } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -291,15 +292,10 @@ export default function TaskEditPage({}: TaskEditPageProps) {
     }
   };
   
-  // Show loading state
+  // Show loading state using the centralized PageLoading component
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing loading state');
+    return <PageLoading logContext="PROJLY:TASK_EDIT" />;
   }
   
   return (
@@ -386,9 +382,12 @@ export default function TaskEditPage({}: TaskEditPageProps) {
                     
                     {/* Show loading state if fetching members */}
                     {isLoadingMembers ? (
-                      <div className="flex items-center justify-center py-2">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        <span>Loading members...</span>
+                      <div className="px-2 py-1 text-sm">
+                        <PageLoading 
+                          standalone={true} 
+                          logContext="PROJLY:TASK_EDIT:MEMBERS" 
+                          height="5vh" 
+                        />
                       </div>
                     ) : projectMembers.length > 0 ? (
                       // Show project members if available

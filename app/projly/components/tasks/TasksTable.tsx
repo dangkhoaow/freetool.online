@@ -19,7 +19,9 @@ import {
   Clock,
   MoreHorizontal
 } from "lucide-react";
-import { projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
+import { PageLoading } from '@/app/projly/components/ui/PageLoading';
+import { projlyTasksService, projlyProjectsService, projlyAuthService } from '@/lib/services/projly';
+import { Task as ProjlyTask } from '@/lib/services/projly/types';
 
 // Define Task interface to match API response structure
 export interface Task {
@@ -725,11 +727,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
 
   // Show loading state for projects only
   if (isLoadingProjects) {
-    return (
-      <div className="flex justify-center p-8">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-      </div>
-    );
+    console.log('[PROJLY:TASKS:TABLE] Loading projects data');
+    return <PageLoading standalone={true} logContext="PROJLY:TASKS:TABLE" height="20vh" />;
   }
 
   return (

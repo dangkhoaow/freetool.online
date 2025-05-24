@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle } from "lucide-react";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { format } from "date-fns";
 import { projlyAuthService, projlyProjectsService, projlyTasksService } from '@/lib/services/projly';
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
@@ -220,13 +221,8 @@ export default function Dashboard() {
   }, [router]);
 
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing dashboard loading spinner');
+    return <PageLoading logContext="PROJLY:DASHBOARD" />;
   }
   
   return (

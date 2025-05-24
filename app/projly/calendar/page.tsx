@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Plus, Filter } from "lucide-react";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -336,15 +337,10 @@ export default function CalendarPage() {
     setIsEditing(true);
   };
   
-  // Show loading state
+  // Show loading state using the centralized PageLoading component
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing loading state');
+    return <PageLoading logContext="PROJLY:CALENDAR" />;
   }
   
   return (

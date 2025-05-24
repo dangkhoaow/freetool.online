@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { Loader2 } from "lucide-react";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { projlyAuthService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
@@ -328,15 +329,10 @@ export default function SettingsPage() {
     }
   };
   
-  // Show loading state
+  // Show loading state using the centralized PageLoading component
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing loading state');
+    return <PageLoading logContext="PROJLY:SETTINGS" />;
   }
   
   return (

@@ -15,6 +15,7 @@ import { Button } from "../../components/ui/button";
 import { EditResourceDialog } from "./EditResourceDialog";
 import { DeleteResourceDialog } from "./DeleteResourceDialog";
 import { Spinner } from "../../components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { ArrowDown, ArrowUp, Edit, Trash2 } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
 
@@ -41,11 +42,8 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
   const { data: resourcesData, isLoading, isError, refetch } = useResources();
 
   if (isLoading) {
-    return (
-      <div className="w-full flex justify-center py-8">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
+    console.log('[PROJLY:RESOURCES:TABLE] Loading resources data');
+    return <PageLoading standalone={true} logContext="PROJLY:RESOURCES:TABLE" height="20vh" />;
   }
 
   if (isError || !resourcesData) {

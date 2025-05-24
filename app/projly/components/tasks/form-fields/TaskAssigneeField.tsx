@@ -20,6 +20,7 @@ import { TaskFormValues } from "../schemas/taskSchema";
 import { Profile } from "@/app/projly/projects/new/page";
 import { useProjectMembers } from "@/lib/services/projly/use-projects";
 import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 
 interface TaskAssigneeFieldProps {
   profiles: Profile[];
@@ -95,8 +96,11 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
               {/* Loading state */}
               {(isLoading || isMembersLoading) && (
                 <div className="flex items-center justify-center py-2">
-                  <Spinner className="mr-2 h-4 w-4" />
-                  <span className="text-sm">Loading...</span>
+                  <PageLoading 
+                    standalone={true} 
+                    logContext="PROJLY:TASKS:ASSIGNEE_FIELD" 
+                    height="10vh" 
+                  />
                 </div>
               )}
               

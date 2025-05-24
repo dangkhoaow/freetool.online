@@ -26,6 +26,7 @@ import { tasksService } from '@/lib/services/projly/tasks/tasks-service';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageLoading } from '@/app/projly/components/ui/PageLoading';
 import { PlusCircle } from 'lucide-react';
 
 // Create a detailed log function for debugging
@@ -290,11 +291,11 @@ export function TasksContainer({
       
       <CardContent>
         {loading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
+          <PageLoading 
+            standalone={true} 
+            logContext="PROJLY:TASKS:CONTAINER" 
+            height="20vh" 
+          />
         ) : error ? (
           <div className="p-4 text-center text-red-500">
             {error}

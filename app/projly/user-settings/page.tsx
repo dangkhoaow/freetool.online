@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useUserRoles } from "@/lib/services/projly/use-user-roles";
-import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import dynamic from "next/dynamic";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -12,11 +12,10 @@ import { ShieldAlert } from "lucide-react";
 const UserSettingsContent = dynamic(
   () => import("@/app/projly/pages/settings/UserSettings"),
   {
-    loading: () => (
-      <div className="flex justify-center p-8">
-        <Spinner size="lg" />
-      </div>
-    ),
+    loading: () => {
+      console.log("[PROJLY:USER-SETTINGS-PAGE] Loading UserSettings component");
+      return <PageLoading logContext="PROJLY:USER-SETTINGS:DYNAMIC" standalone={true} height="20vh" />;
+    },
     ssr: false, // Disable server-side rendering for this component
   }
 );
@@ -35,7 +34,13 @@ export default function UserSettingsPage() {
   // Use hooks to get user role and profile data
   const { currentUserRole } = useUserRoles();
   
-  // Check if the current user is a site owner or admin
+  // Show loading while checking user role
+  if (currentUserRole.isLoading) {
+    console.log("[PROJLY:USER-SETTINGS-PAGE] Loading user role data");
+    return <PageLoading logContext="PROJLY:USER-SETTINGS:AUTH" />;
+  }
+  
+  // Check if the current user is a site owner or admin - only after loading completes
   const isSiteOwner = currentUserRole.data === 'site_owner';
   const isAdmin = currentUserRole.data === 'admin';
   const hasAccess = isSiteOwner || isAdmin;

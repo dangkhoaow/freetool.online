@@ -6,6 +6,7 @@ import { UserRole } from "@/lib/services/projly/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { UserPlus } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -627,7 +628,8 @@ function UserSettingsPage() {
   }, [filteredUsers, roleFilter, statusFilter, userRoleUsers.isLoading, users.isLoading, usersList, updateCounter]);
 
   if (userRoleUsers.isLoading || users.isLoading || currentUserRole.isLoading) {
-    return <div className="flex justify-center p-8"><Spinner size="lg" /></div>;
+    console.log("[PROJLY:USER_SETTINGS] Loading user data");
+    return <PageLoading logContext="PROJLY:USER-SETTINGS" standalone={true} height="40vh" />;
   }
 
   return (

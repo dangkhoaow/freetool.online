@@ -30,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Plus } from "lucide-react";
 
 const resourceSchema = z.object({
@@ -281,7 +282,11 @@ export function CreateResourceDialog({ open, onClose }: CreateResourceDialogProp
                       <SelectContent>
                         {isLoadingProjects ? (
                           <div className="flex justify-center p-2">
-                            <Spinner className="h-4 w-4" />
+                            <PageLoading 
+                              standalone={true} 
+                              logContext="PROJLY:RESOURCES:CREATE:PROJECTS" 
+                              height="5vh" 
+                            />
                           </div>
                         ) : (
                           projectsData?.map((project) => (

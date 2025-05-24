@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Loader2, ArrowLeft, Save, Trash, Clock, Calendar, Edit, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -566,15 +567,10 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     direction: "asc"
   });
   
-  // Show loading state
+  // Show loading state using the centralized PageLoading component
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing loading state');
+    return <PageLoading logContext="PROJLY:TASK_DETAILS" />;
   }
   
   return (

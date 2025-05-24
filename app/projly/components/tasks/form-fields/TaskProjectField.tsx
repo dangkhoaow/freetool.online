@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskFormValues } from "../schemas/taskSchema";
-import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 
 export function TaskProjectField() {
   const form = useFormContext<TaskFormValues>();
@@ -23,7 +23,8 @@ export function TaskProjectField() {
   console.log('[TaskProjectField] Available projects:', projects);
   
   if (loadingProjects) {
-    return <Spinner />;
+    console.log('[PROJLY:TASKS:PROJECT_FIELD] Loading projects data');
+    return <PageLoading standalone={true} logContext="PROJLY:TASKS:PROJECT_FIELD" height="10vh" />;
   }
 
   return (

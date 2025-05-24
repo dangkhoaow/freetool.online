@@ -5,7 +5,8 @@ import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, PlusCircle, FolderOpen, MoreHorizontal, Archive, Edit, Eye, Trash2 } from 'lucide-react';
+import { Plus, PlusCircle, FolderOpen, MoreHorizontal, Archive, Edit, Eye, Trash2, Loader2 } from 'lucide-react';
+import { PageLoading } from '@/app/projly/components/ui/PageLoading';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -201,13 +202,8 @@ export default function Projects() {
   };
   
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing projects loading spinner');
+    return <PageLoading logContext="PROJLY:PROJECTS" />;
   }
   
   return (

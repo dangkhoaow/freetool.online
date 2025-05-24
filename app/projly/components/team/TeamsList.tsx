@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TeamForm } from "./TeamForm";
 import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 
@@ -62,11 +63,8 @@ export function TeamsList() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center p-8">
-        <Spinner size="lg" />
-      </div>
-    );
+    console.log('[PROJLY:TEAMS:LIST] Loading teams data');
+    return <PageLoading standalone={true} logContext="PROJLY:TEAMS:LIST" height="20vh" />;
   }
 
   return (

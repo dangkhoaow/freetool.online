@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { projlyAuthService } from '@/lib/services/projly';
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { TasksContainer } from "../components/tasks/TasksContainer";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 
@@ -28,15 +28,10 @@ export default function TasksPage() {
     setIsLoading(false);
   }, []);
 
-  // Show loading state
+  // Show loading state using the enhanced PageLoading component
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    log("Showing loading state");
+    return <PageLoading logContext="PROJLY:TASKS" />;
   }
   
   return (

@@ -31,6 +31,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Spinner } from "../../components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 
 const resourceSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -288,7 +289,11 @@ export function EditResourceDialog({ resource, onClose, onSuccess }: EditResourc
                         <SelectItem value="unassigned">Not Assigned</SelectItem>
                         {isLoadingProjects ? (
                           <div className="flex justify-center p-2">
-                            <Spinner className="h-4 w-4" />
+                            <PageLoading 
+                              standalone={true} 
+                              logContext="PROJLY:RESOURCES:EDIT:PROJECTS" 
+                              height="5vh" 
+                            />
                           </div>
                         ) : (
                           projectsData?.map((project) => (

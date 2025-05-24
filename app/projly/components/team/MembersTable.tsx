@@ -63,6 +63,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { AddMemberForm } from "./AddMemberForm";
 import { EditMemberForm } from "./EditMemberForm";
 
@@ -244,11 +245,8 @@ export function MembersTable() {
   };
 
   if (isLoading || isLoadingTeams) {
-    return (
-      <div className="flex justify-center p-8">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
+    console.log('[PROJLY:TEAMS:MEMBERS] Loading members data');
+    return <PageLoading standalone={true} logContext="PROJLY:TEAMS:MEMBERS" height="20vh" />;
   }
 
   if (error) {

@@ -18,7 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Spinner } from "@/components/ui/spinner";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { projlyAuthService, projlyAnalyticsService } from '@/lib/services/projly';
 import { 
@@ -92,13 +92,8 @@ export default function AnalyticsDashboard() {
   const totalTeamMembers = teamTaskData?.length || 0;
 
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Spinner className="h-10 w-10" />
-        </div>
-      </DashboardLayout>
-    );
+    log('Showing analytics loading spinner');
+    return <PageLoading logContext="PROJLY:ANALYTICS" />;
   }
 
   return (
