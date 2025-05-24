@@ -7,12 +7,14 @@ import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { TasksContainer } from "../components/tasks/TasksContainer";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 
-const log = (...args: any[]) => console.log("[TasksPage]", ...args);
+// Define constant log prefix for consistent logging
+const LOG_PREFIX = "[PROJLY:TASKS_PAGE]";
+const log = (...args: any[]) => console.log(LOG_PREFIX, ...args);
 
 export default function TasksPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-
+  
   // Check if user is authenticated and redirect if not
   const checkAuth = async () => {
     const isAuthenticated = await projlyAuthService.isAuthenticated();
@@ -44,7 +46,7 @@ export default function TasksPage() {
           </div>
         </div>
         
-        {/* Use the new TasksContainer component which handles everything internally */}
+        {/* Use the TasksContainer component */}
         <TasksContainer 
           context="main"
           autoLoad={true}

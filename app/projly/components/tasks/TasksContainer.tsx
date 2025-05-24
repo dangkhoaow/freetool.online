@@ -276,9 +276,9 @@ export function TasksContainer({
   };
   
   return (
-    <Card className={`w-full ${displayOptions.compact ? 'shadow-none border-0' : ''}`}>
+    <Card className={`w-full ${displayOptions.compact ? 'shadow-none border-0' : 'p-6'}`}>
       {displayOptions.showHeader && (
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex p-0 flex-row items-center justify-between">
           <CardTitle>{getContextTitle()}</CardTitle>
           {displayOptions.showAddButton && (
             <Button onClick={handleAddTask} size="sm">
@@ -289,7 +289,7 @@ export function TasksContainer({
         </CardHeader>
       )}
       
-      <CardContent>
+      <CardContent className='p-0 pt-4'>
         {loading ? (
           <PageLoading 
             standalone={true} 

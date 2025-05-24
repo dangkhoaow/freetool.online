@@ -433,7 +433,7 @@ export default function NewTaskPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <div className="flex w-full justify-end space-x-2 p-6">
+              <div className="flex w-full justify-end space-x-2 p-4">
                 <Button
                   type="button"
                   variant="outline"

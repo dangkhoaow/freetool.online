@@ -38,9 +38,9 @@ export default function Resources() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col space-y-4">
+      <div className="container flex flex-col space-y-4 py-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Resources</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Resources</h1>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -70,7 +70,7 @@ export default function Resources() {
         )}
 
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-6">
             <ResourcesTable filters={filters} />
           </CardContent>
         </Card>

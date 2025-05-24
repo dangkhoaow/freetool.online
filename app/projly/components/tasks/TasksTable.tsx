@@ -17,7 +17,8 @@ import {
   Calendar,
   CheckCircle,
   Clock,
-  MoreHorizontal
+  MoreHorizontal,
+  Filter
 } from "lucide-react";
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
 import { projlyTasksService, projlyProjectsService, projlyAuthService } from '@/lib/services/projly';
@@ -79,6 +80,12 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -277,6 +284,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   
   // State for filters and sorting - initialize from props if available
   const [filters, setFilters] = useState<UIFilters>(initialFilters || {});
+  // State for filter visibility
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  // Function to toggle filter visibility
+  const toggleFilters = () => {
+    console.log('[TASKS TABLE] Toggling filter visibility:', !showFilters);
+    setShowFilters(!showFilters);
+  };
   
   // Helper function to convert UI filters to API filters
   const toApiFilters = (uiFilters: UIFilters): APIFilters => {
@@ -732,114 +747,162 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   }
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-md p-4 space-y-4">
-        {/* Filters and search */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <Input 
-            placeholder="Search tasks..." 
-            className="md:w-1/3"
-            value={filters.search || ""}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-          />
-          
-          <div className="flex flex-row gap-2">
-            <Select 
-              value={filters.projectId || "all"}
-              onValueChange={handleProjectFilterChange}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {Array.isArray(projects) && projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select
-              value={filters.status || "all"}
-              onValueChange={handleStatusFilterChange}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {uniqueStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select
-              value={filters.assignedTo || "all"}
-              onValueChange={handleAssigneeFilterChange}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Assigned To" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                <SelectItem value="current">My Tasks</SelectItem>
-                {uniqueUsers.length > 0 && (
-                  <>
-                    <SelectItem value="divider" disabled>
-                      <Separator className="my-1" />
-                    </SelectItem>
-                    {uniqueUsers.map(assignee => (
-                      <SelectItem key={assignee.id} value={assignee.id}>
-                        {assignee.name}
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.taskHierarchy || "all"}
-              onValueChange={(value) => {
-                console.log('[TASK TABLE] Setting task hierarchy filter to:', value);
-                setFilters({ ...filters, taskHierarchy: value });
-                
-                // If callback provided, notify parent component to fetch with updated filters
-                if (onOperationComplete) {
-                  const newFilters = { ...filters, taskHierarchy: value };
-                  const apiFilters = toApiFilters(newFilters);
-                  onOperationComplete(apiFilters);
-                }
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Task Hierarchy" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tasks</SelectItem>
-                <SelectItem value="parent_only">Parent Tasks Only</SelectItem>
-                <SelectItem value="include_subtasks">Include Sub-Tasks</SelectItem>
-              </SelectContent>
-            </Select>
+    <div>
+      <div className="bg-card rounded-md space-y-4">
+        {/* Filter toggle button */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Input 
+              placeholder="Search tasks..." 
+              className="w-[300px]"
+              value={filters.search || ""}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            />
           </div>
-          
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setFilters({});
-              // Clear filters should also notify parent component with empty filters
-              if (onOperationComplete) {
-                onOperationComplete(toApiFilters({}));
-              }
-            }} 
-            className="md:ml-auto"
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleFilters}
+            className="flex items-center gap-1"
           >
-            Clear Filters
+            <Filter className="h-4 w-4" />
+            Filters
           </Button>
         </div>
+
+        {/* Expandable filters section */}
+        {showFilters && (
+          <Card className="mt-4 mb-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-md">Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Project Filter */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="project-filter" className="text-sm font-medium">
+                      Project
+                    </label>
+                    <Select 
+                      value={filters.projectId || "all"}
+                      onValueChange={handleProjectFilterChange}
+                    >
+                      <SelectTrigger id="project-filter">
+                        <SelectValue placeholder="All Projects" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Projects</SelectItem>
+                        {Array.isArray(projects) && projects.map(project => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Status Filter */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="status-filter" className="text-sm font-medium">
+                      Status
+                    </label>
+                    <Select
+                      value={filters.status || "all"}
+                      onValueChange={handleStatusFilterChange}
+                    >
+                      <SelectTrigger id="status-filter">
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        {uniqueStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>{status}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Assigned To Filter */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="assigned-filter" className="text-sm font-medium">
+                      Assigned To
+                    </label>
+                    <Select
+                      value={filters.assignedTo || "all"}
+                      onValueChange={handleAssigneeFilterChange}
+                    >
+                      <SelectTrigger id="assigned-filter">
+                        <SelectValue placeholder="All Users" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Users</SelectItem>
+                        <SelectItem value="current">My Tasks</SelectItem>
+                        {uniqueUsers.length > 0 && (
+                          <>
+                            <SelectItem value="divider" disabled>
+                              <Separator className="my-1" />
+                            </SelectItem>
+                            {uniqueUsers.map(assignee => (
+                              <SelectItem key={assignee.id} value={assignee.id}>
+                                {assignee.name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Task Hierarchy Filter */}
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="hierarchy-filter" className="text-sm font-medium">
+                      Task Hierarchy
+                    </label>
+                    <Select
+                      value={filters.taskHierarchy || "all"}
+                      onValueChange={(value) => {
+                        console.log('[TASK TABLE] Setting task hierarchy filter to:', value);
+                        setFilters({ ...filters, taskHierarchy: value });
+                        
+                        // If callback provided, notify parent component to fetch with updated filters
+                        if (onOperationComplete) {
+                          const newFilters = { ...filters, taskHierarchy: value };
+                          const apiFilters = toApiFilters(newFilters);
+                          onOperationComplete(apiFilters);
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="hierarchy-filter">
+                        <SelectValue placeholder="All Tasks" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Tasks</SelectItem>
+                        <SelectItem value="parent_only">Parent Tasks Only</SelectItem>
+                        <SelectItem value="include_subtasks">Include Sub-Tasks</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setFilters({});
+                      // Clear filters should also notify parent component with empty filters
+                      if (onOperationComplete) {
+                        onOperationComplete(toApiFilters({}));
+                      }
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <Separator />
         

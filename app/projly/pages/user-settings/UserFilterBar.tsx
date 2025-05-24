@@ -80,7 +80,7 @@ const UserFilterBar: React.FC<UserFilterBarProps> = ({
             setRoleFilter(value);
           }}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[150px]">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue placeholder="Filter role" />
           </SelectTrigger>
