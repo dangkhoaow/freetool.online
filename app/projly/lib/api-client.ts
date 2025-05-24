@@ -171,15 +171,32 @@ export class ApiClient {
 
   // GET request
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-    console.log('[API CLIENT] GET request to:', endpoint, 'with params:', params);
+    console.log('[API CLIENT] GET request to:', endpoint, params);
     try {
       const url = new URL(this.buildUrl(endpoint), window.location.origin);
       
       // Add query parameters
       if (params) {
-        Object.entries(params).forEach(([key, value]) => {
+        // Transform params to snake_case before adding to URL
+        const snakeCaseParams = transformToSnakeCase(params);
+        console.log('[API CLIENT] Transformed params to snake_case:', snakeCaseParams);
+        
+        // Process each parameter
+        Object.entries(snakeCaseParams).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
-            url.searchParams.append(key, String(value));
+            // Handle objects by converting them to JSON strings
+            if (typeof value === 'object' && !Array.isArray(value)) {
+              url.searchParams.append(key, JSON.stringify(value));
+              console.log(`[API CLIENT] Object param ${key} serialized to JSON:`, JSON.stringify(value));
+            } else if (Array.isArray(value)) {
+              // Handle arrays
+              url.searchParams.append(key, JSON.stringify(value));
+              console.log(`[API CLIENT] Array param ${key} serialized to JSON:`, JSON.stringify(value));
+            } else {
+              // Handle primitive values
+              url.searchParams.append(key, String(value));
+              console.log(`[API CLIENT] Primitive param ${key} added:`, String(value));
+            }
           }
         });
       }

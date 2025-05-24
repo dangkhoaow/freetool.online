@@ -28,9 +28,10 @@ class TasksService {
   async getTasks(filters?: TaskFilters): Promise<Task[]> {
     try {
       console.log(`${LOG_PREFIX} Fetching tasks with filters:`, filters);
+      // Pass filters directly to apiClient.get instead of wrapping in a params object
       const response = await apiClient.get(
         API_ENDPOINTS.TASKS.ALL,
-        { params: filters }
+        filters
       );
 
       console.log(`${LOG_PREFIX} Tasks response:`, response.data);
