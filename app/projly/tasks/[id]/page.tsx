@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
-import { Loader2, ArrowLeft, Save, Trash, Clock, Calendar, Edit } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Trash, Clock, Calendar, Edit, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "../../components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -21,12 +21,25 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import { format } from 'date-fns';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
 import { Task } from "@/app/projly/components/tasks/TasksTable";
+import { CreateTaskForm } from "@/app/projly/components/tasks/CreateTaskForm";
 
 interface TaskDetailsPageProps {
   // Props are no longer needed here since we'll use useParams
@@ -45,6 +58,9 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("details");
+  const [subTasks, setSubTasks] = useState<Task[]>([]);
+  const [isCreateSubTaskOpen, setIsCreateSubTaskOpen] = useState(false);
+  const [isRefreshingSubTasks, setIsRefreshingSubTasks] = useState(false);
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -114,6 +130,13 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         console.log('[PROJLY:TASK_DETAILS] Raw task data:', taskData);
         console.log('[PROJLY:TASK_DETAILS] Task assignee data:', taskData.assignee);
         console.log('[PROJLY:TASK_DETAILS] Task assigneeId:', taskData.assigneeId);
+        console.log('[PROJLY:TASK_DETAILS] Task sub-tasks:', taskData.subTasks);
+        
+        // Load sub-tasks if available
+        if (taskData.subTasks && Array.isArray(taskData.subTasks)) {
+          setSubTasks(taskData.subTasks);
+          console.log(`[PROJLY:TASK_DETAILS] Loaded ${taskData.subTasks.length} sub-tasks`);
+        }
         
         const formattedTask = {
           id: taskData.id,
@@ -129,7 +152,8 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
           updatedAt: taskData.updatedAt ? new Date(taskData.updatedAt) : new Date(),
           // For displaying purposes
           project: taskData.project || null,
-          assignee: taskData.assignee || null
+          assignee: taskData.assignee || null,
+          parentTaskId: taskData.parentTaskId || null
         };
         
         // Log assignee information for debugging
@@ -298,6 +322,124 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     }
   };
   
+  // Function to refresh sub-tasks
+  const refreshSubTasks = async () => {
+    try {
+      setIsRefreshingSubTasks(true);
+      log('Refreshing sub-tasks');
+      
+      const taskData = await projlyTasksService.getTask(taskId);
+      if (taskData && taskData.subTasks) {
+        setSubTasks(taskData.subTasks);
+        log(`Refreshed ${taskData.subTasks.length} sub-tasks`);
+      } else {
+        setSubTasks([]);
+        log('No sub-tasks found or task data missing');
+      }
+    } catch (error) {
+      console.error(`[PROJLY:TASK_DETAILS] Error refreshing sub-tasks:`, error);
+      toast({
+        title: 'Error',
+        description: 'Failed to refresh sub-tasks',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsRefreshingSubTasks(false);
+    }
+  };
+  
+  // Handle sub-task creation completion
+  const handleSubTaskCreated = async () => {
+    console.log('[PROJLY:TASK_DETAILS] Sub-task created callback triggered');
+    
+    // IMPORTANT: Immediately close the dialog first with no delay
+    // This is critical to ensure the UI updates properly
+    console.log('[PROJLY:TASK_DETAILS] Immediately closing sub-task dialog');
+    setIsCreateSubTaskOpen(false);
+    
+    // Then handle refreshing separately - no need to wait for it to close the dialog
+    try {
+      console.log('[PROJLY:TASK_DETAILS] Refreshing sub-tasks after creation');
+      await refreshSubTasks();
+      
+      // Toast notification only after successful refresh
+      toast({
+        title: 'Success',
+        description: 'Sub-task created and list refreshed successfully'
+      });
+    } catch (error) {
+      console.error('[PROJLY:TASK_DETAILS] Error refreshing sub-tasks after creation:', error);
+      // Still show success for creation, but note refresh issue
+      toast({
+        title: 'Success',
+        description: 'Sub-task created, but list refresh failed. Please reload the page.'
+      });
+    }
+  };
+  
+  // Handle sub-task deletion
+  const handleDeleteSubTask = async (subTaskId: string) => {
+    try {
+      log(`Deleting sub-task: ${subTaskId}`);
+      await projlyTasksService.deleteTask(subTaskId);
+      log('Sub-task deleted successfully');
+      
+      toast({
+        title: 'Success',
+        description: 'Sub-task deleted successfully'
+      });
+      
+      // Refresh sub-tasks
+      await refreshSubTasks();
+      
+    } catch (error) {
+      console.error(`[PROJLY:TASK_DETAILS] Error deleting sub-task ${subTaskId}:`, error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete sub-task. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+  
+  // Render status badge
+  const renderStatusBadge = (status: string) => {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let customClass = "";
+    
+    switch (status) {
+      case "Completed":
+        variant = "default";
+        customClass = "bg-green-600 text-white hover:bg-green-700 border-green-600";
+        break;
+      case "In Progress":
+        variant = "secondary";
+        customClass = "bg-blue-600 text-white hover:bg-blue-700 border-blue-600";
+        break;
+      case "In Review":
+        variant = "outline";
+        customClass = "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
+        break;
+      case "Not Started":
+        variant = "outline";
+        customClass = "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
+        break;
+      case "On Hold":
+        variant = "outline";
+        customClass = "bg-orange-500 text-white hover:bg-orange-600 border-orange-500";
+        break;
+      case "Pending":
+        variant = "destructive";
+        customClass = "bg-amber-500 text-white hover:bg-amber-600 border-amber-500";
+        break;
+      default:
+        variant = "outline";
+        customClass = "bg-gray-400 text-white hover:bg-gray-500 border-gray-400";
+    }
+    
+    return <Badge variant={variant} className={customClass}>{status}</Badge>;
+  };
+  
   // Handle task deletion
   const handleDelete = async () => {
     try {
@@ -381,6 +523,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="subtasks">Sub-Tasks {subTasks.length > 0 && `(${subTasks.length})`}</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
           
@@ -484,6 +627,147 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                     })()}
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="subtasks">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Sub-Tasks</CardTitle>
+                  <Dialog open={isCreateSubTaskOpen} onOpenChange={setIsCreateSubTaskOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Sub-Task
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl">
+                      <DialogHeader>
+                        <DialogTitle>Create Sub-Task</DialogTitle>
+                        <DialogDescription>
+                          Add a new sub-task to "{taskForm.title}"
+                        </DialogDescription>
+                      </DialogHeader>
+                      <CreateTaskForm
+                        initialData={{
+                          projectId: taskForm.projectId,
+                          parentTaskId: taskId // Set current task as parent
+                        }}
+                        onSuccess={handleSubTaskCreated}
+                        onCancel={() => setIsCreateSubTaskOpen(false)}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <CardDescription>Tasks that are part of this task</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isRefreshingSubTasks ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-10 w-10 animate-spin" />
+                  </div>
+                ) : subTasks.length > 0 ? (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Assignee</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {subTasks.map((subTask) => (
+                          <TableRow key={subTask.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center pl-6 border-l-4 border-blue-400">
+                                <span className="text-gray-400 mr-2">└─</span>
+                                {subTask.title}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {renderStatusBadge(subTask.status || 'Not Started')}
+                            </TableCell>
+                            <TableCell>
+                              {(() => {
+                                if (!subTask.assignee) return "Unassigned";
+                                
+                                const firstName = subTask.assignee.firstName || "";
+                                const lastName = subTask.assignee.lastName || "";
+                                const email = subTask.assignee.email || "";
+                                const fullName = `${firstName} ${lastName}`.trim();
+                                
+                                if (fullName) return fullName;
+                                if (email) return email;
+                                return "Unassigned";
+                              })()}
+                            </TableCell>
+                            <TableCell>
+                              {subTask.dueDate 
+                                ? format(new Date(subTask.dueDate), "MMM d, yyyy")
+                                : "Not set"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => router.push(`/projly/tasks/${subTask.id}`)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      <Trash className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Sub-Task</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete the sub-task "{subTask.title}"? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteSubTask(subTask.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No sub-tasks found for this task.</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setIsCreateSubTaskOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Sub-Task
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,7 +1,7 @@
 # Task Components Documentation
 
 ## Overview
-The task components provide the UI for managing tasks in the Projly application, including support for hierarchical task organization through parent-child relationships.
+The task components provide the UI for managing tasks in the Projly application, including support for hierarchical task organization through parent-child relationships. The UI features visual indicators for sub-tasks, preserves parent-child relationships during filtering/sorting, and offers flexible task hierarchy display options.
 
 ## Components
 
@@ -16,9 +16,10 @@ interface TasksTableProps {
 ```
 
 Features:
-- Task list display with sorting
-- Sub-task filtering options
-- Parent-child relationship visualization
+- Task list display with sorting that preserves parent-child relationships
+- Smart filtering that maintains task hierarchy in all views
+- Visual indicators for sub-tasks (indentation, left border, tree lines)
+- User-specific filtering with distinct user dropdown
 - Progress indicators
 - Action buttons for CRUD operations
 
@@ -78,21 +79,27 @@ Features:
 ## Sub-task UI Features
 
 ### Task Hierarchy Display
-- Indentation for sub-tasks
-- Parent-child relationship indicators
-- Collapsible sub-task sections
-- Progress bars for parent tasks
+- Indentation for sub-tasks with left blue border
+- Tree-style connector lines (└─) for visual parent-child relationship
+- Consistent hierarchy visualization across all views
+- Progress indicators for parent tasks reflecting sub-task status
 
 ### Parent Task Selection
-- Dropdown with project tasks
-- Validation feedback
+- Dropdown with project tasks (excludes current task and descendants)
+- Validation feedback to prevent circular references
 - Clear selection option
 - Search/filter functionality
 
-### Filtering Options
-- Toggle for sub-task visibility
-- Parent task only view
-- Combined filters with other criteria
+### Filtering and Sorting Features
+- Dedicated dropdown for task hierarchy filtering:
+  - "All Tasks" - shows all tasks without hierarchy filtering
+  - "Parent Tasks Only" - shows only parent tasks (no sub-tasks)
+  - "Include Sub-Tasks" - explicitly shows all tasks including sub-tasks
+- Smart filtering that maintains parent-child relationships:
+  - Parent tasks remain visible when any of their sub-tasks match filters
+  - Sub-tasks remain visible when their parent matches filters
+- Intelligent sorting that keeps sub-tasks grouped with their parents
+- Distinct users dropdown for filtering by specific assignees
 
 ## Usage Examples
 

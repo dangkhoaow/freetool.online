@@ -48,9 +48,11 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
     position: member.position || undefined
   })) as Profile[] : [];
   
-  // Add debug logging
+  // Add detailed debug logging
   console.log('[TaskAssigneeField] Project members:', projectMembers);
   console.log('[TaskAssigneeField] Converted members:', members);
+  console.log('[TaskAssigneeField] Form projectId:', projectId);
+  console.log('[TaskAssigneeField] Safe projectId:', safeProjectId);
 
   useEffect(() => {
     // If a project is selected, filter assignees to project members
@@ -99,14 +101,34 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
               )}
               
               {/* Show filtered profiles */}
-              {!isLoading && !isMembersLoading && filteredProfiles.map((profile) => (
-                <SelectItem key={profile.id} value={profile.id}>
-                  console.log('[TaskAssigneeField] Rendering profile item:', profile);
-                  {profile.user.firstName && profile.user.lastName
-                    ? `${profile.user.firstName} ${profile.user.lastName}`
-                    : profile.user.email || 'Unknown User'}
-                </SelectItem>
-              ))}
+              {!isLoading && !isMembersLoading && filteredProfiles.map((profile) => {
+                console.log('[TaskAssigneeField] Rendering profile item:', profile);
+                
+                // Handle different profile structures safely
+                const user = profile.user || profile;
+                
+                // Build display name with fallbacks for different API formats
+                let displayName = 'Unknown User';
+                
+                if (user.firstName && user.lastName) {
+                  displayName = `${user.firstName} ${user.lastName}`;
+                } else if (user.email) {
+                  displayName = user.email;
+                }
+                  
+                // Extract the correct user ID, which is what the database constraint requires
+                // For team members, we need to use the userId field, not the team member ID
+                const userId = user.id || (profile.userId ? profile.userId : profile.id);
+                
+                // Log the ID mapping for debugging
+                console.log(`[TaskAssigneeField] Mapping profile to userId: profileId=${profile.id}, userId=${userId}`);
+                
+                return (
+                  <SelectItem key={profile.id} value={userId}>
+                    {displayName}
+                  </SelectItem>
+                );
+              })}
               
               {/* No profiles found */}
               {!isLoading && !isMembersLoading && filteredProfiles.length === 0 && (

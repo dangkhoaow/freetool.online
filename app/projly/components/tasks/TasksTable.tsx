@@ -32,6 +32,7 @@ export interface Task {
   assignedTo?: string;
   startDate?: string;
   dueDate?: string;
+  parentTaskId?: string; // Add parentTaskId to know if it's a sub-task
   project?: {
     id: string;
     name: string;
@@ -44,6 +45,8 @@ export interface Task {
     email?: string;
     avatar?: string;
   };
+  parentTask?: Task; // Reference to parent task
+  subTasks?: Task[]; // Reference to sub-tasks
 }
 
 // Props for TasksTable
@@ -109,14 +112,39 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
   
   console.log("[TASKS TABLE] Current user:", user?.id);
   
-  // State for filters and sorting - initialize from props if available
-  const [filters, setFilters] = useState<{
+  // Define interface for UI filters
+  interface UIFilters {
     projectId?: string;
     assignedTo?: string;
     status?: string;
     search?: string;
     taskHierarchy?: string; // New filter for parent tasks only or include sub-tasks
-  }>(initialFilters || {});
+  }
+  
+  // Define interface for API filters that includes backend parameters
+  interface APIFilters extends UIFilters {
+    parentOnly?: string;
+    includeSubTasks?: string;
+  }
+  
+  // State for filters and sorting - initialize from props if available
+  const [filters, setFilters] = useState<UIFilters>(initialFilters || {});
+  
+  // Helper function to convert UI filters to API filters
+  const toApiFilters = (uiFilters: UIFilters): APIFilters => {
+    const apiFilters: APIFilters = { ...uiFilters };
+    
+    // Add backend-specific parameters based on task hierarchy selection
+    if (uiFilters.taskHierarchy === 'parent_only') {
+      apiFilters.parentOnly = 'true';
+      apiFilters.includeSubTasks = 'false';
+    } else if (uiFilters.taskHierarchy === 'include_subtasks') {
+      apiFilters.parentOnly = 'false';
+      apiFilters.includeSubTasks = 'true';
+    }
+    
+    return apiFilters;
+  };
   
   // Log filters for debugging
   useEffect(() => {
@@ -182,70 +210,292 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
   
   log('Rendering TasksTable with tasks:', tasks.length);
 
+  // First extract parent tasks IDs and their sub-tasks before filtering
+  // This is used to maintain relationships even when filtering
+  const taskRelationships = new Map<string, string[]>();
+  const subTaskParents = new Map<string, string>();
+  
+  // Build relationship maps
+  tasks.forEach(task => {
+    if (task.parentTaskId) {
+      // Record which parent this task belongs to
+      subTaskParents.set(task.id, task.parentTaskId);
+      
+      // Add this task to its parent's list of children
+      if (!taskRelationships.has(task.parentTaskId)) {
+        taskRelationships.set(task.parentTaskId, []);
+      }
+      taskRelationships.get(task.parentTaskId)?.push(task.id);
+    }
+  });
+  
+  console.log(`[TASKS TABLE] Built relationship maps: ${taskRelationships.size} parents, ${subTaskParents.size} sub-tasks`);
+  
+  // Helper to check if any sub-task of a parent matches the filters
+  const hasMatchingSubTask = (parentId: string, checkFilters: UIFilters, allTasks: Task[]): boolean => {
+    const subTaskIds = taskRelationships.get(parentId) || [];
+    return subTaskIds.some(subTaskId => {
+      const subTask = allTasks.find(t => t.id === subTaskId);
+      if (!subTask) return false;
+      
+      // Apply the same filter checks as below, but for the sub-task
+      if (checkFilters.search && subTask.title && 
+          !subTask.title.toLowerCase().includes(checkFilters.search.toLowerCase())) {
+        return false;
+      }
+      
+      if (checkFilters.status && subTask.status !== checkFilters.status) {
+        return false;
+      }
+      
+      if (checkFilters.projectId && subTask.projectId !== checkFilters.projectId) {
+        return false;
+      }
+      
+      if (checkFilters.assignedTo && subTask.assignedTo !== checkFilters.assignedTo) {
+        return false;
+      }
+      
+      return true;
+    });
+  };
+  
+  // Helper to check if the parent of a sub-task matches filters
+  const hasMatchingParent = (subTaskId: string, checkFilters: UIFilters, allTasks: Task[]): boolean => {
+    const parentId = subTaskParents.get(subTaskId);
+    if (!parentId) return false;
+    
+    const parentTask = allTasks.find(t => t.id === parentId);
+    if (!parentTask) return false;
+    
+    // Apply filters to the parent task
+    if (checkFilters.search && parentTask.title && 
+        !parentTask.title.toLowerCase().includes(checkFilters.search.toLowerCase())) {
+      return false;
+    }
+    
+    if (checkFilters.status && parentTask.status !== checkFilters.status) {
+      return false;
+    }
+    
+    if (checkFilters.projectId && parentTask.projectId !== checkFilters.projectId) {
+      return false;
+    }
+    
+    if (checkFilters.assignedTo && parentTask.assignedTo !== checkFilters.assignedTo) {
+      return false;
+    }
+    
+    return true;
+  };
+  
+  // Extract all unique users from tasks to populate the assignee filter dropdown
+  const uniqueUsers = useMemo(() => {
+    const userMap = new Map<string, {id: string, name: string}>(); 
+    
+    tasks.forEach(task => {
+      if (task.assignee) {
+        const userId = task.assignee.id;
+        const userName = task.assignee.firstName && task.assignee.lastName 
+          ? `${task.assignee.firstName} ${task.assignee.lastName}`
+          : task.assignee.name || task.assignee.email || 'Unknown User';
+        
+        userMap.set(userId, {id: userId, name: userName});
+      }
+    });
+    
+    // Convert map to array for rendering
+    return Array.from(userMap.values());
+  }, [tasks]);
+  
+  console.log(`[TASKS TABLE] Found ${uniqueUsers.length} unique users for dropdown`);
+  uniqueUsers.forEach(user => {
+    console.log(`[TASKS TABLE] Unique user: ${user.id} - ${user.name}`);
+  });
+  
+  // DEBUG: Log task assignment data
+  tasks.forEach(task => {
+    console.log(`[TASKS TABLE] Task ${task.id} (${task.title}) assignment data:`);
+    console.log(`  - assignedTo: ${task.assignedTo || 'null'}`);
+    console.log(`  - assignee.id: ${task.assignee?.id || 'null'}`);
+    console.log(`  - assignee.email: ${task.assignee?.email || 'null'}`);
+  });
+  
   // Filter tasks based on search and filters with proper type safety
+  // But also keep parent tasks if any of their children match the filter
+  // And keep sub-tasks if their parent matches the filter
   const filteredTasks = tasks.filter(task => {
-    // Apply search filter
-    if (filters.search && task.title && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false;
-    }
-    
-    // Apply status filter
-    if (filters.status && task.status !== filters.status) {
-      return false;
-    }
-    
-    // Apply project filter
-    if (filters.projectId && task.projectId !== filters.projectId) {
-      return false;
-    }
-    
-    // Apply assignee filter
-    if (filters.assignedTo && task.assignedTo !== filters.assignedTo) {
-      return false;
-    }
-    
-    // Apply task hierarchy filter (client-side filtering based on parentTaskId)
-    // Note: Ideally this would be handled by the backend, but we're implementing it client-side for now
+    // Special case for task hierarchy filter
     if (filters.taskHierarchy === 'parent_only' && task.parentTaskId) {
       return false; // Filter out tasks that have a parent (sub-tasks)
     }
     
-    return true;
+    // Check basic filter conditions
+    let matchesBasicFilters = true;
+    
+    // Apply search filter
+    if (filters.search && task.title && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
+      matchesBasicFilters = false;
+    }
+    
+    // Apply status filter
+    if (filters.status && task.status !== filters.status) {
+      matchesBasicFilters = false;
+    }
+    
+    // Apply project filter
+    if (filters.projectId && task.projectId !== filters.projectId) {
+      matchesBasicFilters = false;
+    }
+    
+    // Apply assignee filter - check both assignedTo and assignee.id
+    if (filters.assignedTo) {
+      if (task.assignedTo !== filters.assignedTo && task.assignee?.id !== filters.assignedTo) {
+        console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
+        console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+        console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+        matchesBasicFilters = false;
+      } else {
+        console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
+      }
+    }
+    
+    // If the task passes basic filters, include it
+    if (matchesBasicFilters) {
+      return true;
+    }
+    
+    // Even if this task doesn't match filters, include it if:
+    // 1. It's a parent task and any of its sub-tasks match the filters
+    if (taskRelationships.has(task.id) && hasMatchingSubTask(task.id, filters, tasks)) {
+      console.log(`[TASKS TABLE] Including parent task ${task.id} because it has matching sub-tasks`);
+      return true;
+    }
+    
+    // 2. It's a sub-task and its parent matches the filters
+    if (task.parentTaskId && hasMatchingParent(task.id, filters, tasks)) {
+      console.log(`[TASKS TABLE] Including sub-task ${task.id} because its parent matches filters`);
+      return true;
+    }
+    
+    return false;
   });
   
   console.log("[TasksTable] Filtered tasks:", filteredTasks.length);
+  console.log("[TasksTable] Sub-tasks count:", filteredTasks.filter(task => task.parentTaskId).length);
 
-  // Sort tasks
-  const sortedTasks = filteredTasks?.slice().sort((a, b) => {
-    if (sortBy.field === "dueDate") {
-      if (!a.dueDate) return sortBy.direction === "asc" ? 1 : -1;
-      if (!b.dueDate) return sortBy.direction === "asc" ? -1 : 1;
-      return sortBy.direction === "asc" 
-        ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-        : new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
-    } else if (sortBy.field === "startDate") {
-      if (!a.startDate) return sortBy.direction === "asc" ? 1 : -1;
-      if (!b.startDate) return sortBy.direction === "asc" ? -1 : 1;
-      return sortBy.direction === "asc" 
-        ? new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-        : new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-    } else if (sortBy.field === "title") {
-      return sortBy.direction === "asc"
-        ? a.title.localeCompare(b.title)
-        : b.title.localeCompare(a.title);
-    } else if (sortBy.field === "status") {
-      return sortBy.direction === "asc"
-        ? a.status.localeCompare(b.status)
-        : b.status.localeCompare(a.status);
-    } else if (sortBy.field === "project") {
-      const projectA = a.project?.name || "";
-      const projectB = b.project?.name || "";
-      return sortBy.direction === "asc"
-        ? projectA.localeCompare(projectB)
-        : projectB.localeCompare(projectA);
-    }
-    return 0;
-  });
+  // Helper function to organize tasks into a hierarchy
+  const organizeTasksHierarchy = (tasks: Task[]): Task[] => {
+    console.log('[TASKS TABLE] Organizing tasks into hierarchy');
+    
+    // Create a map of parent tasks and their children
+    const parentTaskMap = new Map<string, Task[]>();
+    
+    // First pass - identify all parent tasks and collect children
+    tasks.forEach(task => {
+      if (task.parentTaskId) {
+        // This is a child task
+        if (!parentTaskMap.has(task.parentTaskId)) {
+          parentTaskMap.set(task.parentTaskId, []);
+        }
+        parentTaskMap.get(task.parentTaskId)?.push(task);
+      }
+    });
+    
+    console.log(`[TASKS TABLE] Found ${parentTaskMap.size} parent-child relationships`);
+    
+    // Sort tasks within each parent group
+    parentTaskMap.forEach((children, parentId) => {
+      children.sort((a, b) => {
+        if (sortBy.field === "dueDate") {
+          if (!a.dueDate) return sortBy.direction === "asc" ? 1 : -1;
+          if (!b.dueDate) return sortBy.direction === "asc" ? -1 : 1;
+          return sortBy.direction === "asc" 
+            ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+            : new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        } else if (sortBy.field === "title") {
+          return sortBy.direction === "asc"
+            ? a.title.localeCompare(b.title)
+            : b.title.localeCompare(a.title);
+        }
+        // Default to title sort if other fields
+        return a.title.localeCompare(b.title);
+      });
+    });
+    
+    // Create final organized list with parent tasks followed by their children
+    const organizedTasks: Task[] = [];
+    
+    // Get parent tasks (those without a parentTaskId) and orphaned tasks
+    // (those with a parentTaskId that's not in our filtered set)
+    const parentTasks = tasks.filter(task => {
+      // Include tasks without a parent
+      if (!task.parentTaskId) return true;
+      
+      // Include orphaned tasks (parent not in our filtered set)
+      if (task.parentTaskId && !tasks.some(t => t.id === task.parentTaskId)) {
+        console.log(`[TASKS TABLE] Found orphaned task: ${task.id} with missing parent: ${task.parentTaskId}`);
+        return true;
+      }
+      
+      return false;
+    });
+    
+    // Sort parent tasks
+    parentTasks.sort((a, b) => {
+      if (sortBy.field === "dueDate") {
+        if (!a.dueDate) return sortBy.direction === "asc" ? 1 : -1;
+        if (!b.dueDate) return sortBy.direction === "asc" ? -1 : 1;
+        return sortBy.direction === "asc" 
+          ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+          : new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+      } else if (sortBy.field === "startDate") {
+        if (!a.startDate) return sortBy.direction === "asc" ? 1 : -1;
+        if (!b.startDate) return sortBy.direction === "asc" ? -1 : 1;
+        return sortBy.direction === "asc" 
+          ? new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+          : new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      } else if (sortBy.field === "title") {
+        return sortBy.direction === "asc"
+          ? a.title.localeCompare(b.title)
+          : b.title.localeCompare(a.title);
+      } else if (sortBy.field === "status") {
+        return sortBy.direction === "asc"
+          ? a.status.localeCompare(b.status)
+          : b.status.localeCompare(a.status);
+      } else if (sortBy.field === "project") {
+        const projectA = a.project?.name || "";
+        const projectB = b.project?.name || "";
+        return sortBy.direction === "asc"
+          ? projectA.localeCompare(projectB)
+          : projectB.localeCompare(projectA);
+      }
+      return 0;
+    });
+    
+    // Add each parent followed by its children
+    parentTasks.forEach(parent => {
+      organizedTasks.push(parent);
+      
+      // Add children if they exist
+      const children = parentTaskMap.get(parent.id) || [];
+      organizedTasks.push(...children);
+    });
+    
+    // Add any remaining tasks that might have been orphaned
+    // (their parent wasn't in the filtered set)
+    tasks.forEach(task => {
+      if (task.parentTaskId && !organizedTasks.includes(task)) {
+        organizedTasks.push(task);
+      }
+    });
+    
+    console.log(`[TASKS TABLE] Organized ${organizedTasks.length} tasks with hierarchy preserved`);
+    return organizedTasks;
+  };
+  
+  // Sort tasks while preserving parent-child relationships
+  const sortedTasks = organizeTasksHierarchy(filteredTasks);
 
   // Toggle sort when clicking on a header
   const toggleSort = (field: string) => {
@@ -392,15 +642,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     
     // If callback provided, notify parent component
     if (onOperationComplete) {
-      // Transform UI filters to API parameters
-      const apiFilters = { ...newFilters };
-      if (newFilters.taskHierarchy === 'parent_only') {
-        apiFilters.parentOnly = 'true';
-        apiFilters.includeSubTasks = 'false';
-      } else if (newFilters.taskHierarchy === 'include_subtasks') {
-        apiFilters.parentOnly = 'false';
-        apiFilters.includeSubTasks = 'true';
-      }
+      // Use the helper function to convert UI filters to API parameters
+      const apiFilters = toApiFilters(newFilters);
       onOperationComplete(apiFilters);
     }
   };
@@ -416,15 +659,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     
     // If callback provided, notify parent component
     if (onOperationComplete) {
-      // Transform UI filters to API parameters
-      const apiFilters = { ...newFilters };
-      if (newFilters.taskHierarchy === 'parent_only') {
-        apiFilters.parentOnly = 'true';
-        apiFilters.includeSubTasks = 'false';
-      } else if (newFilters.taskHierarchy === 'include_subtasks') {
-        apiFilters.parentOnly = 'false';
-        apiFilters.includeSubTasks = 'true';
-      }
+      // Use the helper function to convert UI filters to API parameters
+      const apiFilters = toApiFilters(newFilters);
       onOperationComplete(apiFilters);
     }
   };
@@ -434,7 +670,10 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     if (value === "all") {
       delete newFilters.assignedTo;
     } else if (value === "current" && user?.id) {
+      // Make sure we're using the actual user ID and log it for debugging
       newFilters.assignedTo = user.id;
+      console.log(`[TASKS TABLE] Setting 'My Tasks' filter with user ID: ${user.id}`);
+      console.log(`[TASKS TABLE] User email for reference: ${user.email || 'unknown'}`);
     } else {
       newFilters.assignedTo = value;
     }
@@ -442,15 +681,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
     
     // If callback provided, notify parent component
     if (onOperationComplete) {
-      // Transform UI filters to API parameters
-      const apiFilters = { ...newFilters };
-      if (newFilters.taskHierarchy === 'parent_only') {
-        apiFilters.parentOnly = 'true';
-        apiFilters.includeSubTasks = 'false';
-      } else if (newFilters.taskHierarchy === 'include_subtasks') {
-        apiFilters.parentOnly = 'false';
-        apiFilters.includeSubTasks = 'true';
-      }
+      // Use the helper function to convert UI filters to API parameters
+      const apiFilters = toApiFilters(newFilters);
       onOperationComplete(apiFilters);
     }
   };
@@ -519,6 +751,18 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
               <SelectContent>
                 <SelectItem value="all">All Users</SelectItem>
                 <SelectItem value="current">My Tasks</SelectItem>
+                {uniqueUsers.length > 0 && (
+                  <>
+                    <SelectItem value="divider" disabled>
+                      <Separator className="my-1" />
+                    </SelectItem>
+                    {uniqueUsers.map(assignee => (
+                      <SelectItem key={assignee.id} value={assignee.id}>
+                        {assignee.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
 
@@ -530,15 +774,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
                 
                 // If callback provided, notify parent component to fetch with updated filters
                 if (onOperationComplete) {
-                  const apiFilters = { ...filters, taskHierarchy: value };
-                  // Transform UI filter value to API parameters
-                  if (value === 'parent_only') {
-                    apiFilters.parentOnly = 'true';
-                    apiFilters.includeSubTasks = 'false';
-                  } else if (value === 'include_subtasks') {
-                    apiFilters.parentOnly = 'false';
-                    apiFilters.includeSubTasks = 'true';
-                  }
+                  const newFilters = { ...filters, taskHierarchy: value };
+                  const apiFilters = toApiFilters(newFilters);
                   onOperationComplete(apiFilters);
                 }
               }}
@@ -560,7 +797,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
               setFilters({});
               // Clear filters should also notify parent component with empty filters
               if (onOperationComplete) {
-                onOperationComplete({});
+                onOperationComplete(toApiFilters({}));
               }
             }} 
             className="md:ml-auto"
@@ -633,10 +870,17 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
             {sortedTasks?.map((task) => (
               <TableRow 
                 key={task.id}
-                className="cursor-pointer hover:bg-muted/50"
+                className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''}`}
                 onClick={() => handleViewTaskDetails(task)}
               >
-                <TableCell className="font-medium">{task.title}</TableCell>
+                <TableCell className="font-medium">
+                  <div className={`flex items-center ${task.parentTaskId ? 'pl-6 border-l-4 border-blue-400' : ''}`}>
+                    {task.parentTaskId && (
+                      <span className="text-gray-400 mr-2">└─</span>
+                    )}
+                    {task.title}
+                  </div>
+                </TableCell>
                 <TableCell>{task.project?.name || "-"}</TableCell>
                 <TableCell>
                   {(() => {

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { useSession } from "./jwt-auth-adapter";
-import { taskService } from "./task-service";
+import { taskService } from "./tasks/tasks-service";
 import { Task, TaskFilters } from "./types";
 
 // Log initialization of hook for debugging

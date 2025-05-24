@@ -8,6 +8,9 @@ This directory contains custom React hooks and service modules that facilitate c
 ```
 lib/services/projly/
 ├── jwt-auth-adapter.ts        # Authentication utilities
+├── tasks/                     # Consolidated task services (New 2025-05-24)
+│   ├── tasks-service.ts       # Centralized task service implementation
+│   └── README.md              # Task service documentation
 ├── use-analytics.ts           # Analytics data hooks
 ├── use-members.ts             # Team membership hooks
 ├── use-mobile.tsx             # Mobile detection utilities
@@ -51,11 +54,15 @@ lib/services/projly/
 - Delete projects
 - Query project members
 
-### Task Management (use-tasks.ts)
-- Fetch tasks for a project
-- Create, update, and delete tasks
-- Filter tasks by status, priority, assignee
-- Track task completion
+### Task Management (tasks/tasks-service.ts, use-tasks.ts) (Updated 2025-05-24)
+- Consolidated task service implementation with improved error handling
+- Fetch tasks for a project with advanced filtering options
+- Create, update, and delete tasks with robust error handling
+- Complete sub-task management with parent-child relationships
+- Filter tasks by status, priority, assignee, and parent task
+- Track task completion and progress
+- Consistent API interface with backward compatibility
+- Detailed documentation in [tasks/README.md](./tasks/README.md)
 
 ### Team Management (use-team.ts, use-members.ts)
 - Create and manage teams

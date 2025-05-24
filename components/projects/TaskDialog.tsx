@@ -26,7 +26,11 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
   const [dueDate, setDueDate] = useState("");
 
   // Use React Query hooks
-  const { data: taskData, isLoading: isTaskLoading } = useTask(taskId);
+  // Only fetch task data if we have a valid taskId that's not 'new'
+  // Create a valid query key for the useTask hook
+  const validTaskId = taskId && taskId !== 'new' ? taskId : '';
+  const { data: taskData, isLoading: isTaskLoading } = useTask(validTaskId);
+  console.log("[TaskDialog] Using taskId for query:", validTaskId);
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,7 +110,7 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
       if (taskId && taskId !== "new") {
         // Update existing task using the hook
         console.log(`[TaskDialog] Updating task with ID ${taskId} using useUpdateTask hook`);
-        await updateTaskMutation.mutateAsync({ id: taskId, updates: formattedTaskData });
+        await updateTaskMutation.mutateAsync({ id: taskId, data: formattedTaskData });
       } else {
         // Create new task using the hook
         console.log("[TaskDialog] Creating new task using useCreateTask hook");
@@ -138,11 +142,11 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{taskId && taskId !== "new" ? 'Edit Task' : 'Create New Task'}</DialogTitle>
           <DialogDescription>
-            {taskId && taskId !== "new" ? 'Update the task details below.' : 'Fill in the details to create a new task.'}
+            {taskId && taskId !== "new" ? 'Update the task details below.' : 'Fill in the details to create a new task for this project.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -152,6 +156,7 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title field takes full width since this is already in a project context */}
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
@@ -163,6 +168,7 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
             />
           </div>
           
+          {/* Description field */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -178,7 +184,9 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          {/* Status and Due Date fields on the same line */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Status field */}
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select value={status} onValueChange={setStatus}>
@@ -194,6 +202,7 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
               </Select>
             </div>
             
+            {/* Due Date field */}
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date</Label>
               <Input

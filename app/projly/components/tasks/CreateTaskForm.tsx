@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,7 @@ import { useCreateTask } from "@/lib/services/projly/use-tasks";
 import { useProjects } from "@/lib/services/projly/use-projects";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { useProfiles } from "@/lib/services/projly/use-profile";
+import { useAccessibleProjectMembers } from "@/lib/services/projly/use-members";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { Task } from "@/lib/services/projly/use-tasks";
+// Import Task type from the central types file instead of from use-tasks
+import { Task } from "@/lib/services/projly/types";
 import { TaskProjectField } from "./form-fields/TaskProjectField";
 import { TaskAssigneeField } from "./form-fields/TaskAssigneeField";
 
@@ -58,12 +60,14 @@ function toSafeDate(value: string | Date | undefined): Date | undefined {
 const taskSchema = z.object({
   title: z.string().min(3, { message: "Title must be at least 3 characters" }),
   description: z.string().optional(),
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().optional(),
   // Accept either Date objects or date strings
   startDate: z.union([z.date(), z.string()]).optional(),
   dueDate: z.union([z.date(), z.string()]).optional(),
   status: z.string().default("Not Started"),
   assignedTo: z.string().optional().transform(val => val === "unassigned" ? undefined : val),
+  priority: z.string().optional().default("Medium"),
+  parentTaskId: z.string().optional(),
 }).refine(data => {
   // If both dates are provided, ensure startDate is not after dueDate
   if (data.startDate && data.dueDate) {
@@ -84,50 +88,121 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 
 interface CreateTaskFormProps {
   onSuccess?: () => void;
+  onSubmit?: () => void;
+  onCancel?: () => void;
+  initialData?: Partial<TaskFormValues>;
+  projectId?: string;
 }
 
-export function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
+export function CreateTaskForm({ onSuccess, onSubmit, onCancel, initialData, projectId }: CreateTaskFormProps) {
   const { data: session } = useSession();
   const { data: profiles = [], isLoading: isLoadingProfiles } = useProfiles();
   
   const { mutate: createTask, isPending } = useCreateTask();
   const { data: projects = [], isLoading: loadingProjects } = useProjects();
   
-  console.log("[CreateTaskForm] Initializing form with session:", session?.user?.id);
-  
+  // Initialize the form first so we can watch projectId
   // Initialize the form with react-hook-form and zod validation
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      status: "Not Started",
-      assignedTo: session?.user?.id || "unassigned", // Default to current user but can be unassigned
+      title: initialData?.title || "",
+      description: initialData?.description || "",
+      status: initialData?.status || "Not Started",
+      assignedTo: initialData?.assignedTo || session?.user?.id || "unassigned",
+      projectId: initialData?.projectId || projectId || "",
+      dueDate: initialData?.dueDate,
+      startDate: initialData?.startDate,
+      priority: initialData?.priority || "Medium",
+      parentTaskId: initialData?.parentTaskId
     },
   });
-
-  // Get the current projectId value from the form
-  const projectId = form.watch("projectId");
+  
+  // Watch current form values for projectId
+  const currentProjectId = form.watch("projectId");
+  
+  // Use the same hook as the edit task page to get project members
+  const { 
+    data: projectMembers = [], 
+    isLoading: isLoadingMembers 
+  } = useAccessibleProjectMembers(currentProjectId || undefined) as {
+    data: any[],
+    isLoading: boolean
+  };
+  
+  console.log("[CreateTaskForm] Initializing form with session:", session?.user?.id);
+  console.log("[CreateTaskForm] Initial data:", initialData);
+  console.log("[CreateTaskForm] Project ID:", projectId);
   
   console.log("[CreateTaskForm] Loaded profiles:", profiles.length);
+  console.log("[CreateTaskForm] Current project ID from form:", currentProjectId);
   console.log("[CreateTaskForm] Loaded projects:", projects.length);
+  console.log("[CreateTaskForm] Loaded project members:", projectMembers?.length);
   
-  // Handle form submission
-  function onSubmit(data: TaskFormValues) {
-    console.log("Form data to be submitted:", data);
+  // Log project members when they change
+  useEffect(() => {
+    if (currentProjectId && projectMembers?.length > 0) {
+      console.log(`[CreateTaskForm] Loaded ${projectMembers.length} members for project ${currentProjectId}`);
+      console.log('[CreateTaskForm] Project members sample:', projectMembers[0]);
+    }
+  }, [currentProjectId, projectMembers]);
+  
+  // Define the submission handler
+  const onFormSubmit = (data: TaskFormValues) => {
+    console.log('[CreateTaskForm] Form submitted with data:', data);
     
-    // Make sure title is always present (satisfying the type requirement)
-    if (!data.title) {
-      console.error("Title is required");
+    // Validation (could be moved to zod schema)
+    if (data.projectId === "" || !data.projectId) {
+      toast({
+        title: "Error",
+        description: "Please select a project",
+        variant: "destructive",
+      });
       return;
     }
     
-    // Create a new object with the data formatted for the API that matches TaskCreateInput
-    const isoStartDate = data.startDate != null ? toISOStringSafe(data.startDate) : undefined;
-    console.log('[CreateTaskForm] Converted startDate to ISO string or undefined, value was:', data.startDate);
-    const isoDueDate = data.dueDate != null ? toISOStringSafe(data.dueDate) : undefined;
-    console.log('[CreateTaskForm] Converted dueDate to ISO string or undefined, value was:', data.dueDate);
-    const taskData: { title: string; description?: string; status?: string; assignedTo?: string; projectId?: string; startDate?: string; dueDate?: string } = {
+    // Handle date conversion with proper type safety
+    // Explicitly typed as string | undefined to avoid string | null issues
+    let isoStartDate: string | undefined = undefined;
+    let isoDueDate: string | undefined = undefined;
+    
+    try {
+      // Only convert dates if they exist and are valid - with explicit type safety
+      if (data.startDate) {
+        if (typeof data.startDate === 'string') {
+          // If it's already a string, use it directly (force type as string | undefined)
+          isoStartDate = data.startDate as string;
+        } else if (data.startDate instanceof Date) {
+          // If it's a Date object, convert it safely and ensure it's string | undefined
+          const convertedDate = toISOStringSafe(data.startDate);
+          isoStartDate = convertedDate ? convertedDate : undefined;
+        }
+      }
+      
+      if (data.dueDate) {
+        if (typeof data.dueDate === 'string') {
+          // If it's already a string, use it directly (force type as string | undefined)
+          isoDueDate = data.dueDate as string;
+        } else if (data.dueDate instanceof Date) {
+          // If it's a Date object, convert it safely and ensure it's string | undefined
+          const convertedDate = toISOStringSafe(data.dueDate);
+          isoDueDate = convertedDate ? convertedDate : undefined;
+        }
+      }
+      
+      console.log('[CreateTaskForm] Converted dates:', { 
+        startDate: data.startDate, 
+        isoStartDate, 
+        dueDate: data.dueDate, 
+        isoDueDate 
+      });
+    } catch (error) {
+      console.error('[CreateTaskForm] Error converting dates:', error);
+    }
+    
+    // Create task data with the correct types for the API
+    // Explicitly type the taskData object to match only properties available in the Task interface
+    const taskData = {
       title: data.title,
       description: data.description,
       status: data.status || "Not Started",
@@ -135,20 +210,41 @@ export function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
       projectId: data.projectId || "",
       startDate: isoStartDate,
       dueDate: isoDueDate,
+      parentTaskId: data.parentTaskId
     };
+    
+    // Log the exact task data being sent to API
+    console.log('[CreateTaskForm] Final task data for API (after priority handling):', taskData);
+    
+    console.log('[CreateTaskForm] Prepared task data for API:', taskData);
     
     console.log("Submitting task data:", taskData);
     
     // Call the createTask mutation function
     createTask(taskData, {
-      onSuccess: () => {
-        console.log("Task created successfully");
+      onSuccess: (data) => {
+        console.log("[CreateTaskForm] Task created successfully:", data);
+        
+        // Reset form immediately
+        form.reset();
+        
+        // Show success message
         toast({
           title: "Success",
           description: "Task created successfully",
         });
         
+        // IMPORTANT: Execute callback immediately - no delay
+        console.log("[CreateTaskForm] Executing success callback immediately");
+        
+        // Call onSubmit with highest priority, then onSuccess
+        if (onSubmit) {
+          console.log("[CreateTaskForm] Calling onSubmit callback");
+          onSubmit();
+        } 
+        
         if (onSuccess) {
+          console.log("[CreateTaskForm] Calling onSuccess callback");
           onSuccess();
         }
       },
@@ -161,7 +257,7 @@ export function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
         });
       }
     });
-  }
+  };
 
   if (loadingProjects && isLoadingProfiles) {
     return (
@@ -173,20 +269,35 @@ export function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="Task title" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4">
+        {/* Title, Project and Assignee fields on the same line */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Task title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div>
+            <TaskProjectField />
+          </div>
+          <div>
+            {/* Use the TaskAssigneeField component with project members */}
+            <TaskAssigneeField 
+              profiles={currentProjectId && projectMembers?.length > 0 ? projectMembers : profiles} 
+              isLoading={currentProjectId ? isLoadingMembers : isLoadingProfiles} 
+            />
+          </div>
+        </div>
 
         <FormField
           control={form.control}
@@ -206,131 +317,128 @@ export function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
             </FormItem>
           )}
         />
-
-        <TaskProjectField />
-
-        {/* Use the TaskAssigneeField component instead of inline implementation */}
-        <TaskAssigneeField 
-          profiles={profiles} 
-          isLoading={isLoadingProfiles} 
-        />
         
-        {/* Start Date field */}
-        <FormField
-          control={form.control}
-          name="startDate"
-          render={({ field }) => {
-            // Create a safe date handler for the Calendar component
-            const handleSelect = (date: Date | undefined) => {
-              field.onChange(date);
-            };
-            
-            return (
-              <FormItem className="flex flex-col">
-                <FormLabel>Start Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal ${
-                          !field.value ? "text-muted-foreground" : ""
-                        }`}
-                      >
-                        {field.value ? (
-                          format(toSafeDate(field.value) || new Date(), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={toSafeDate(field.value)}
-                      onSelect={handleSelect}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+        {/* Start Date, Due Date, and Status fields on the same line */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Start Date field */}
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => {
+              // Create a safe date handler for the Calendar component
+              const handleSelect = (date: Date | undefined) => {
+                field.onChange(date);
+              };
+              
+              return (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Start Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={`w-full pl-3 text-left font-normal ${
+                            !field.value ? "text-muted-foreground" : ""
+                          }`}
+                        >
+                          {field.value ? (
+                            format(toSafeDate(field.value) || new Date(), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={toSafeDate(field.value)}
+                        onSelect={handleSelect}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          {/* Due Date field */}
+          <FormField
+            control={form.control}
+            name="dueDate"
+            render={({ field }) => {
+              // Create a safe date handler for the Calendar component
+              const handleSelect = (date: Date | undefined) => {
+                field.onChange(date);
+              };
+              
+              return (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Due Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={`w-full pl-3 text-left font-normal ${
+                            !field.value ? "text-muted-foreground" : ""
+                          }`}
+                        >
+                          {field.value ? (
+                            format(toSafeDate(field.value) || new Date(), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={toSafeDate(field.value)}
+                        onSelect={handleSelect}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          {/* Status field */}
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Not Started">Not Started</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
-            );
-          }}
-        />
-
-        <FormField
-          control={form.control}
-          name="dueDate"
-          render={({ field }) => {
-            // Create a safe date handler for the Calendar component
-            const handleSelect = (date: Date | undefined) => {
-              field.onChange(date);
-            };
-            
-            return (
-              <FormItem className="flex flex-col">
-                <FormLabel>Due Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal ${
-                          !field.value ? "text-muted-foreground" : ""
-                        }`}
-                      >
-                        {field.value ? (
-                          format(toSafeDate(field.value) || new Date(), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={toSafeDate(field.value)}
-                      onSelect={handleSelect}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
-
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="Not Started">Not Started</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            )}
+          />
+        </div>
 
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? <Spinner className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
