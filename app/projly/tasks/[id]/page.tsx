@@ -38,12 +38,96 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
+import { organizeTasksHierarchy } from "@/app/projly/components/tasks/TasksTable";
+// Define a custom task type that includes all the properties we need to work with
+// This helps bypass the type conflicts between different Task interfaces in the codebase
+type ProjlyTaskData = {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority?: string;
+  startDate?: string | Date | null;
+  dueDate?: string | Date | null;
+  projectId: string;
+  assigneeId?: string | null;
+  createdById?: string;
+  parentTaskId?: string | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  project?: any;
+  assignee?: any;
+  subTasks?: ProjlyTaskData[];
+  [key: string]: any; // Allow any additional properties
+};
+
+// Import the Task type just for reference, but we'll use our custom type for actual work
 import { Task } from "@/app/projly/components/tasks/TasksTable";
 import { CreateTaskForm } from "@/app/projly/components/tasks/CreateTaskForm";
+import { TasksContainer } from "@/app/projly/components/tasks/TasksContainer";
 
 interface TaskDetailsPageProps {
   // Props are no longer needed here since we'll use useParams
 }
+
+// Utility function to recursively fetch subtasks up to a certain depth
+async function fetchSubTasksRecursive(taskId: string, depth: number = 2, log: (msg: string, data?: any) => void): Promise<ProjlyTaskData[]> {
+  if (depth <= 0) return [];
+  const taskData = await projlyTasksService.getTask(taskId);
+  log('Fetched task for recursive subtasks', taskData);
+  if (!taskData || !Array.isArray(taskData.subTasks)) return [];
+  let allSubtasks: ProjlyTaskData[] = [...taskData.subTasks];
+  for (const subtask of taskData.subTasks) {
+    const nested = await fetchSubTasksRecursive(subtask.id, depth - 1, log);
+    allSubtasks.push(...nested);
+  }
+  log('All subtasks after recursion', allSubtasks);
+  return allSubtasks;
+}
+
+// Utility function to get all descendant tasks for a given parent taskId
+function getTaskSubtree(tasks: ProjlyTaskData[], parentId: string, log: (msg: string, data?: any) => void): ProjlyTaskData[] {
+  const subtree: ProjlyTaskData[] = [];
+  const idToTask = Object.fromEntries(tasks.map(t => [t.id, t]));
+  function collect(currentId: string) {
+    const children = tasks.filter(t => t.parentTaskId === currentId);
+    for (const child of children) {
+      subtree.push(child);
+      log('Collected subtask', child);
+      collect(child.id);
+    }
+  }
+  collect(parentId);
+  return subtree;
+}
+
+// Utility to get all descendants up to n+2
+function getSubTasksUpToDepth(
+  tasks: ProjlyTaskData[],
+  parentId: string,
+  maxDepth: number = 2
+): (ProjlyTaskData & { _depth: number })[] {
+  const result: (ProjlyTaskData & { _depth: number })[] = [];
+  function collect(currentId: string, depth: number) {
+    if (depth > maxDepth) return;
+    const children = tasks.filter((t: ProjlyTaskData) => t.parentTaskId === currentId);
+    for (const child of children) {
+      result.push({ ...child, _depth: depth });
+      collect(child.id, depth + 1);
+    }
+  }
+  collect(parentId, 1);
+  return result;
+}
+
+// Map to Task type for compatibility
+const mapToTask = (t: ProjlyTaskData & Partial<{ _depth: number }>): Task => ({
+  ...t,
+  startDate: t.startDate ? (typeof t.startDate === 'string' ? t.startDate : (t.startDate instanceof Date ? t.startDate.toISOString() : undefined)) : undefined,
+  dueDate: t.dueDate ? (typeof t.dueDate === 'string' ? t.dueDate : (t.dueDate instanceof Date ? t.dueDate.toISOString() : undefined)) : undefined,
+  parentTaskId: t.parentTaskId ?? undefined,
+  subTasks: t.subTasks ? t.subTasks.map(mapToTask) : undefined,
+});
 
 export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   // Use useParams to get the route parameters
@@ -58,7 +142,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("details");
-  const [subTasks, setSubTasks] = useState<Task[]>([]);
+  const [subTasks, setSubTasks] = useState<ProjlyTaskData[]>([]);
   const [isCreateSubTaskOpen, setIsCreateSubTaskOpen] = useState(false);
   const [isRefreshingSubTasks, setIsRefreshingSubTasks] = useState(false);
   
@@ -129,14 +213,11 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         // Adding detailed logging to help debug the task data structure
         console.log('[PROJLY:TASK_DETAILS] Raw task data:', taskData);
         console.log('[PROJLY:TASK_DETAILS] Task assignee data:', taskData.assignee);
-        console.log('[PROJLY:TASK_DETAILS] Task assigneeId:', taskData.assigneeId);
         console.log('[PROJLY:TASK_DETAILS] Task sub-tasks:', taskData.subTasks);
         
-        // Load sub-tasks if available
-        if (taskData.subTasks && Array.isArray(taskData.subTasks)) {
-          setSubTasks(taskData.subTasks);
-          console.log(`[PROJLY:TASK_DETAILS] Loaded ${taskData.subTasks.length} sub-tasks`);
-        }
+        // Always fetch all nested subtasks recursively on initial load
+        await refreshSubTasks();
+        log('[PROJLY:TASK_DETAILS] Called refreshSubTasks on initial load');
         
         const formattedTask = {
           id: taskData.id,
@@ -144,12 +225,9 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
           description: taskData.description || '',
           projectId: taskData.projectId || '',
           status: taskData.status || 'Not Started',
-          priority: taskData.priority || 'Medium',
-          assignedTo: taskData.assigneeId || 'none',
+          assignedTo: taskData.assignedTo || 'none',
           startDate: taskData.startDate ? new Date(taskData.startDate) : null,
           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-          createdAt: taskData.createdAt ? new Date(taskData.createdAt) : new Date(),
-          updatedAt: taskData.updatedAt ? new Date(taskData.updatedAt) : new Date(),
           // For displaying purposes
           project: taskData.project || null,
           assignee: taskData.assignee || null,
@@ -159,14 +237,10 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         // Log assignee information for debugging
         console.log('[PROJLY:TASK_DETAILS] Formatted task assignee:', formattedTask.assignee);
         console.log('[PROJLY:TASK_DETAILS] Formatted task assignedTo:', formattedTask.assignedTo);
-        
-        console.log('[PROJLY:TASK_DETAILS] Task timestamps:', {
-          createdAt: formattedTask.createdAt,
-          updatedAt: formattedTask.updatedAt
-        });
+        console.log('[PROJLY:TASK_DETAILS] Raw taskData for type inspection:', taskData);
         
         console.log('[PROJLY:TASK_DETAILS] Formatted task for form:', formattedTask);
-        setTaskForm(formattedTask);
+        setTaskForm(formattedTask as any);
         
         // Get projects for dropdown
         const projectsData = await projlyProjectsService.getProjects();
@@ -271,11 +345,12 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
       const assigneeIdForApi = assignedTo === 'none' ? null : assignedTo;
       console.log('[PROJLY:TASK_DETAILS] Assignee ID for API:', assigneeIdForApi);
       
+      // Cast the update data to any to bypass type checking since the API and UI use different Task types
       await projlyTasksService.updateTask(taskId, {
         ...taskBasicData,
         assigneeId: assigneeIdForApi,
         dueDate: dueDate && typeof dueDate === 'object' && dueDate !== null ? (dueDate as Date).toISOString() : dueDate
-      });
+      } as any);
       log('Task updated successfully');
       
       toast({
@@ -288,22 +363,26 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
       
       if (updatedTask) {
         // Convert API task model to form state model
-        setTaskForm({
+        // Add detailed logging for debugging
+        console.log('[PROJLY:TASK_DETAILS] Updating task form with API response:', updatedTask);
+        
+        // Use type assertion to avoid type errors
+        const taskUpdate: any = {
           id: updatedTask.id,
           title: updatedTask.title || '',
           description: updatedTask.description || '',
           projectId: updatedTask.projectId || '',
           status: updatedTask.status || 'Not Started',
-          priority: updatedTask.priority || 'Medium',
-          assignedTo: updatedTask.assigneeId || 'none',
+          assignedTo: updatedTask.assignedTo || 'none',
           startDate: updatedTask.startDate ? new Date(updatedTask.startDate) : null,
           dueDate: updatedTask.dueDate ? new Date(updatedTask.dueDate) : null,
-          createdAt: updatedTask.createdAt ? new Date(updatedTask.createdAt) : new Date(),
-          updatedAt: updatedTask.updatedAt ? new Date(updatedTask.updatedAt) : new Date(),
           // For displaying purposes
           project: updatedTask.project || null,
-          assignee: updatedTask.assignee || null
-        });
+          assignee: updatedTask.assignee || null,
+          parentTaskId: updatedTask.parentTaskId || null
+        };
+        
+        setTaskForm(taskUpdate);
         
         console.log('[PROJLY:TASK_DETAILS] Task refreshed successfully');
       } else {
@@ -322,20 +401,25 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     }
   };
   
-  // Function to refresh sub-tasks
+  // Refactored: Fetch all tasks and filter for the current task and its subtree
   const refreshSubTasks = async () => {
     try {
       setIsRefreshingSubTasks(true);
-      log('Refreshing sub-tasks');
-      
-      const taskData = await projlyTasksService.getTask(taskId);
-      if (taskData && taskData.subTasks) {
-        setSubTasks(taskData.subTasks);
-        log(`Refreshed ${taskData.subTasks.length} sub-tasks`);
-      } else {
-        setSubTasks([]);
-        log('No sub-tasks found or task data missing');
+      log('Refreshing sub-tasks using main task list API');
+      const allTasks = await projlyTasksService.getTasks();
+      log('Fetched all tasks', allTasks);
+      // Find the current task
+      const parentTask = allTasks.find(t => t.id === taskId);
+      if (!parentTask) {
+        log('Parent task not found in all tasks', { taskId });
+          setSubTasks([]);
+        return;
       }
+      // Get all descendants (n+1, n+2, ...)
+      const subtree = getTaskSubtree(allTasks, taskId, log);
+      log('Filtered subtree for current task', subtree);
+      setSubTasks(subtree as ProjlyTaskData[]);
+      log('SubTasks updated with filtered subtree');
     } catch (error) {
       console.error(`[PROJLY:TASK_DETAILS] Error refreshing sub-tasks:`, error);
       toast({
@@ -468,6 +552,12 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     }
   };
   
+  // Sort state for subtasks table (reuse same logic as main tasks list)
+  const [subtaskSortBy, setSubtaskSortBy] = useState<{ field: string; direction: "asc" | "desc" }>({
+    field: "dueDate",
+    direction: "asc"
+  });
+  
   // Show loading state
   if (isLoading) {
     return (
@@ -523,7 +613,10 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="subtasks">Sub-Tasks {subTasks.length > 0 && `(${subTasks.length})`}</TabsTrigger>
+            <TabsTrigger value="subtasks">Sub-Tasks {(() => {
+              const filteredSubTasks = getSubTasksUpToDepth(subTasks, taskId, 2);
+              return filteredSubTasks.length > 0 ? `(${filteredSubTasks.length})` : '';
+            })()}</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
           
@@ -668,94 +761,40 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                   <div className="flex justify-center p-8">
                     <Loader2 className="h-10 w-10 animate-spin" />
                   </div>
-                ) : subTasks.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Assignee</TableHead>
-                          <TableHead>Due Date</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {subTasks.map((subTask) => (
-                          <TableRow key={subTask.id}>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center pl-6 border-l-4 border-blue-400">
-                                <span className="text-gray-400 mr-2">└─</span>
-                                {subTask.title}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {renderStatusBadge(subTask.status || 'Not Started')}
-                            </TableCell>
-                            <TableCell>
-                              {(() => {
-                                if (!subTask.assignee) return "Unassigned";
-                                
-                                const firstName = subTask.assignee.firstName || "";
-                                const lastName = subTask.assignee.lastName || "";
-                                const email = subTask.assignee.email || "";
-                                const fullName = `${firstName} ${lastName}`.trim();
-                                
-                                if (fullName) return fullName;
-                                if (email) return email;
-                                return "Unassigned";
-                              })()}
-                            </TableCell>
-                            <TableCell>
-                              {subTask.dueDate 
-                                ? format(new Date(subTask.dueDate), "MMM d, yyyy")
-                                : "Not set"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => router.push(`/projly/tasks/${subTask.id}`)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-destructive hover:text-destructive"
-                                    >
-                                      <Trash className="h-4 w-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Sub-Task</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete the sub-task "{subTask.title}"? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteSubTask(subTask.id)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
                 ) : (
+                  (() => {
+                    // Custom grouping/order: n+1, then n+2 under each n+1
+                    const n1Tasks = subTasks.filter(t => t.parentTaskId === taskId);
+                    const n2Tasks = subTasks.filter(t => n1Tasks.some(n1 => n1.id === t.parentTaskId));
+                    const displayTasks: Task[] = [];
+                    n1Tasks.forEach(n1 => {
+                      displayTasks.push(mapToTask(n1));
+                      n2Tasks.filter(n2 => n2.parentTaskId === n1.id).forEach(n2 => {
+                        displayTasks.push(mapToTask(n2));
+                      });
+                    });
+                    log('Custom grouped displayTasks (n+1 and n+2 grouped)', displayTasks);
+                    return (
+                      <TasksContainer
+                        context="task"
+                        initialTasks={displayTasks}
+                        autoLoad={false}
+                        displayOptions={{
+                          showHeader: false,
+                          showAddButton: true,
+                          compact: true,
+                          title: "Subtasks"
+                        }}
+                        hierarchyOptions={{
+                          maxDepth: 2,
+                          showAllSubtasks: false
+                        }}
+                        tableParentTaskId={taskId}
+                      />
+                    );
+                  })()
+                )}
+                {subTasks.length === 0 && !isRefreshingSubTasks && (
                   <div className="text-center py-8 text-muted-foreground">
                     <p>No sub-tasks found for this task.</p>
                     <Button 

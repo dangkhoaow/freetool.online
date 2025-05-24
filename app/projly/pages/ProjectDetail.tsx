@@ -17,6 +17,7 @@ import { TaskDialog } from "@/components/projects/TaskDialog";
 import { ResourceDialog } from "@/components/projects/ResourceDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
+import { TasksContainer } from "../components/tasks/TasksContainer";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -272,81 +273,31 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Tasks</CardTitle>
-                <Button onClick={() => setSelectedTask("new")} size="sm">Add Task</Button>
               </div>
               <CardDescription>Tasks associated with this project</CardDescription>
             </CardHeader>
             <CardContent>
-              {projectTasks && (projectTasks as Task[]).length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Assignee</TableHead>
-                        <TableHead>Due Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(projectTasks as Task[]).map((task) => (
-                        <TableRow 
-                          key={task.id} 
-                          className="cursor-pointer hover:bg-muted/50"
-                          onDoubleClick={() => handleTaskClick(task.id)}
-                        >
-                          <TableCell>{task.title}</TableCell>
-                          <TableCell>
-                            {renderStatusBadge(task.status || 'Unknown')}
-                          </TableCell>
-                          <TableCell>
-  {/* Log the assignee object for debugging */}
-  {(() => {
-    console.log("[ProjectDetail] Rendering assignee for task:", task.id, task.assignee);
-    if (task.assignee) {
-      const firstName = task.assignee.firstName || "";
-      const lastName = task.assignee.lastName || "";
-      const email = task.assignee.email || "";
-      const fullName = `${firstName} ${lastName}`.trim();
-      console.log("[ProjectDetail] Computed fullName:", fullName);
-      if (fullName && fullName !== "") {
-        return fullName;
-      } else if (email) {
-        return email;
-      } else {
-        return "-";
-      }
-    }
-    return "Unassigned";
-  })()}
-</TableCell>
-<TableCell>
-  {/* Log the due date for debugging */}
-  {(() => {
-    console.log("[ProjectDetail] Rendering due date for task:", task.id, task.dueDate);
-    if (task.dueDate) {
-      return format(new Date(task.dueDate), "MMM d, yyyy");
-    }
-    return "Not set";
-  })()}
-</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No tasks found for this project.</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setSelectedTask("new")}
-                  >
-                    Create your first task
-                  </Button>
-                </div>
-              )}
+              {/* Using the centralized TasksContainer component */}
+              <TasksContainer
+                context="project"
+                parentId={projectId}
+                initialTasks={projectTasks as Task[]}
+                autoLoad={!projectTasks} // Only load if we don't already have tasks
+                displayOptions={{
+                  showHeader: false, // Header is already shown in the Card
+                  showAddButton: true,
+                  compact: true,
+                  title: "Project Tasks"
+                }}
+                hierarchyOptions={{
+                  maxDepth: 1, // Show only direct subtasks (1 level deep)
+                  showAllSubtasks: false // Don't show deeper nested subtasks
+                }}
+                onDataChange={(tasks) => {
+                  console.log("[ProjectDetail] Tasks data changed, refreshing");
+                  handleTaskChange();
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>

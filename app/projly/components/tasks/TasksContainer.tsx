@@ -36,6 +36,8 @@ export interface TaskWithDepth extends Task {
   children?: TaskWithDepth[];
   // Ensure parentTask is fully compatible with Task type
   parentTask?: Task;
+  // Flag to track if nested subtasks have been loaded
+  nestedSubtasksLoaded?: boolean;
 }
 
 export interface TasksContainerProps {
@@ -60,6 +62,9 @@ export interface TasksContainerProps {
   hierarchyOptions?: TaskHierarchyOptions;
   // Callback when data changes
   onDataChange?: (tasks: ProjlyTask[]) => void;
+  // Whether to recursively load subtasks
+  recursiveSubtasks?: boolean;
+  tableParentTaskId?: string; // Forwards to TasksTable as parentTaskId
 }
 
 export function TasksContainer({
@@ -78,7 +83,9 @@ export function TasksContainer({
     maxDepth: 1,
     showAllSubtasks: false
   },
-  onDataChange
+  onDataChange,
+  recursiveSubtasks = false,
+  tableParentTaskId
 }: TasksContainerProps) {
   // State for tasks and loading
   const [rawTasks, setRawTasks] = useState<ProjlyTask[]>(initialTasks || []);
@@ -145,8 +152,41 @@ export function TasksContainer({
           if (!parentId) {
             throw new Error('Task ID is required for task context');
           }
-          // Load all tasks and filter by parent task ID in the hierarchy hook
-          tasks = await tasksService.getUserTasks(effectiveFilters);
+          // If we want to load subtasks recursively, fetch the task and its subtasks directly
+          if (recursiveSubtasks) {
+            log('Loading task with recursive subtasks', parentId);
+            const parentTask = await tasksService.getTask(parentId);
+            if (parentTask && parentTask.subTasks) {
+              log(`Loaded parent task with ${parentTask.subTasks.length} direct subtasks`);
+              tasks = [parentTask, ...parentTask.subTasks];
+              
+              // If recursive loading is enabled, fetch nested subtasks for each direct subtask
+              if (recursiveSubtasks && parentTask.subTasks.length > 0) {
+                const nestedSubtasks = await Promise.all(
+                  parentTask.subTasks.map(async (subtask) => {
+                    try {
+                      log(`Loading nested subtasks for subtask ${subtask.id}`);
+                      const fullSubtask = await tasksService.getTask(subtask.id);
+                      return fullSubtask?.subTasks || [];
+                    } catch (error) {
+                      log(`Error loading nested subtasks for ${subtask.id}`, error);
+                      return [];
+                    }
+                  })
+                );
+                
+                // Flatten nested subtasks and add to tasks array
+                const flattenedNestedSubtasks = nestedSubtasks.flat();
+                log(`Loaded ${flattenedNestedSubtasks.length} nested subtasks across all direct subtasks`);
+                tasks = [...tasks, ...flattenedNestedSubtasks];
+              }
+            } else {
+              log('Parent task not found or has no subtasks');
+            }
+          } else {
+            // Original implementation - load all tasks and filter by parent task ID in the hierarchy hook
+            tasks = await tasksService.getUserTasks(effectiveFilters);
+          }
           break;
         default:
           tasks = await tasksService.getUserTasks(effectiveFilters);
@@ -273,6 +313,8 @@ export function TasksContainer({
             onOperationComplete={handleOperationComplete}
             compact={displayOptions.compact}
             context={context}
+            parentTaskId={tableParentTaskId}
+            hideParentRow={context === 'task'}
           />
         )}
         
