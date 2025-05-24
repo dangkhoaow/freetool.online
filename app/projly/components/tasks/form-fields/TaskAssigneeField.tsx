@@ -81,7 +81,10 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
         <FormItem>
           <FormLabel>Assignee</FormLabel>
           <Select
-            onValueChange={(value) => field.onChange(value === "unassigned" ? undefined : value)}
+            onValueChange={(value) => {
+              console.log('[TaskAssigneeField] Value selected:', value);
+              field.onChange(value === "unassigned" ? "unassigned" : value);
+            }}
             defaultValue={field.value || "unassigned"}
             value={field.value || "unassigned"}
           >
@@ -115,9 +118,11 @@ export function TaskAssigneeField({ profiles, isLoading }: TaskAssigneeFieldProp
                 let displayName = 'Unknown User';
                 
                 if (user.firstName && user.lastName) {
-                  displayName = `${user.firstName} ${user.lastName}`;
+                  displayName = `${user.firstName} ${user.lastName} - ${user.email}`;
+                } else if (user.name) {
+                  displayName = `${user.name} - ${user.email}`;
                 } else if (user.email) {
-                  displayName = user.email;
+                  displayName = `${user.email}`;
                 }
                   
                 // Extract the correct user ID, which is what the database constraint requires

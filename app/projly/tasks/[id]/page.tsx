@@ -204,6 +204,18 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         
         log('Fetching task data');
         const taskData = await projlyTasksService.getTask(taskId);
+        log('Fetched task data', taskData);
+        // Explicitly log timestamp fields for debugging
+        if (taskData) {
+          // Use type assertion to access potential timestamp fields that might not be in Task type
+          const taskWithDates = taskData as any;
+          log('Task timestamp fields', {
+            createdAt: taskWithDates.createdAt,
+            updatedAt: taskWithDates.updatedAt,
+            createdAtType: taskWithDates.createdAt ? typeof taskWithDates.createdAt : 'undefined',
+            updatedAtType: taskWithDates.updatedAt ? typeof taskWithDates.updatedAt : 'undefined'
+          });
+        }
         
         if (!taskData) {
           log('Task not found');
@@ -228,28 +240,52 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         await refreshSubTasks();
         log('[PROJLY:TASK_DETAILS] Called refreshSubTasks on initial load');
         
-        const formattedTask = {
-          id: taskData.id,
-          title: taskData.title || '',
-          description: taskData.description || '',
-          projectId: taskData.projectId || '',
-          status: taskData.status || 'Not Started',
-          assignedTo: taskData.assignedTo || 'none',
-          startDate: taskData.startDate ? new Date(taskData.startDate) : null,
-          dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-          // For displaying purposes
-          project: taskData.project || null,
-          assignee: taskData.assignee || null,
-          parentTaskId: taskData.parentTaskId || null
+        // Use type assertion to access all fields that might be present in the API response
+        const taskWithAllFields = taskData as unknown as {
+          id: string;
+          title: string;
+          description?: string;
+          projectId: string;
+          status?: string;
+          priority?: string;
+          assigneeId?: string;
+          assignedTo?: string;
+          startDate?: string | Date;
+          dueDate?: string | Date;
+          createdAt?: string | Date;
+          updatedAt?: string | Date;
+          project?: any;
+          assignee?: any;
         };
         
-        // Log assignee information for debugging
-        console.log('[PROJLY:TASK_DETAILS] Formatted task assignee:', formattedTask.assignee);
-        console.log('[PROJLY:TASK_DETAILS] Formatted task assignedTo:', formattedTask.assignedTo);
+        const formData = {
+          id: taskWithAllFields.id,
+          title: taskWithAllFields.title,
+          description: taskWithAllFields.description || '',
+          projectId: taskWithAllFields.projectId,
+          status: taskWithAllFields.status || 'Not Started',
+          priority: taskWithAllFields.priority || 'Medium',
+          assignedTo: taskWithAllFields.assigneeId || taskWithAllFields.assignedTo || 'none',
+          startDate: taskWithAllFields.startDate ? new Date(taskWithAllFields.startDate) : null,
+          dueDate: taskWithAllFields.dueDate ? new Date(taskWithAllFields.dueDate) : null,
+          createdAt: taskWithAllFields.createdAt ? new Date(taskWithAllFields.createdAt) : new Date(),
+          updatedAt: taskWithAllFields.updatedAt ? new Date(taskWithAllFields.updatedAt) : new Date(),
+          project: taskWithAllFields.project,
+          assignee: taskWithAllFields.assignee
+        };
+        
+        // Log the form data with dates
+        log('Task form data with processed dates', {
+          createdAt: formData.createdAt,
+          updatedAt: formData.updatedAt,
+          createdAtValid: formData.createdAt instanceof Date && !isNaN(formData.createdAt.getTime()),
+          updatedAtValid: formData.updatedAt instanceof Date && !isNaN(formData.updatedAt.getTime())
+        });
+        console.log('[PROJLY:TASK_DETAILS] Formatted task assignedTo:', formData.assignedTo);
         console.log('[PROJLY:TASK_DETAILS] Raw taskData for type inspection:', taskData);
         
-        console.log('[PROJLY:TASK_DETAILS] Formatted task for form:', formattedTask);
-        setTaskForm(formattedTask as any);
+        console.log('[PROJLY:TASK_DETAILS] Formatted task for form:', formData);
+        setTaskForm(formData);
         
         // Get projects for dropdown
         const projectsData = await projlyProjectsService.getProjects();
@@ -265,8 +301,8 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         setUsers(teamMembers);
         
         // If the task has a project, load the project members to ensure we can display the assignee correctly
-        if (formattedTask.projectId) {
-          log('Loading project members for project:', formattedTask.projectId);
+        if (formData.projectId) {
+          log('Loading project members for project:', formData.projectId);
           try {
             // This will trigger the useProjectMembers hook to load the members
             // The hook is already being used with taskForm.projectId
@@ -328,7 +364,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
       log('Updating task:', taskForm);
       
       // Format dates for API
-      const formattedTask = {
+      const updatedFormData = {
         ...taskForm,
         startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
         dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined
@@ -336,7 +372,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
       
       // Use object destructuring to format the task data for the API correctly
       // and avoid duplicate id field
-      const { project, assignee, assignedTo, startDate, dueDate, ...taskBasicData } = formattedTask;
+      const { project, assignee, assignedTo, startDate, dueDate, ...taskBasicData } = updatedFormData;
       
       // Add detailed logging for debugging
       console.log('[PROJLY:TASK_DETAILS] Preparing task data for update:', {
@@ -617,7 +653,10 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
           </Button>
         </div>
         
-        <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="details" value={activeTab} onValueChange={(value) => {
+          console.log(`[PROJLY:TASK_DETAILS:${taskId}] Tab changed to:`, value);
+          setActiveTab(value);
+        }}>
           <TabsList className="mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="subtasks">Sub-Tasks {(() => {
@@ -802,7 +841,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                   })()
                 )}
                 {subTasks.length === 0 && !isRefreshingSubTasks && (
-                  <div className="text-center text-muted-foreground">
+                  <div className="text-center text-muted-foreground pt-4">
                     <Button 
                       variant="outline" 
                       onClick={() => setIsCreateSubTaskOpen(true)}
