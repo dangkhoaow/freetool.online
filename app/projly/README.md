@@ -116,6 +116,10 @@ app/projly/
 - `TasksList`: Lists tasks with filtering options
 - `TaskDetails`: Detailed task information
 - `TaskForm`: Task creation and editing
+- `navigation-utils.ts`: Utilities for intelligent navigation between tasks
+  - Prevents navigation loops between task views and edit pages
+  - Handles parent-child task navigation scenarios
+  - Maintains navigation history in session storage
 
 ### Teams
 - `TeamsList`: Shows available teams
@@ -124,7 +128,17 @@ app/projly/
 
 ## Recent Updates
 
-### Latest Updates (2025-05-21)
+### Latest Updates (2025-05-24)
+
+Enhanced task navigation system:
+- Added new navigation utilities to improve user experience
+  - Created centralized intelligent back navigation handling to prevent navigation loops
+  - Implemented session storage-based navigation history tracking
+  - Added parent-child task relationship detection in navigation
+  - Extracted common navigation logic into reusable utility functions
+- For details, see [Navigation Utils Documentation](/app/projly/utils/README.md)
+
+### Previous Updates (2025-05-21)
 
 Enhanced team member management:
 - Added email-based team member invitation system
@@ -210,6 +224,7 @@ For details, see [User Status Documentation](/freetool.online/app/projly/user-st
 - [Layout Components Documentation](/app/projly/components/layout/README.md) - Layout structure and user role issues (Updated 2025-05-18)
 - [Hooks Documentation](/freetool.online/hooks/projly/README.md) - Custom React hooks implementation
 - [Utils Documentation](/freetool.online/lib/utils/projly/README.md) - Utility functions and helpers
+- [Navigation Utils Documentation](/app/projly/utils/README.md) - Navigation utilities for preventing loops and tracking history (Updated 2025-05-24)
 
 ### Frontend Services
 - [Frontend Services Documentation](/lib/services/projly/README.md) - Frontend service implementations

@@ -1,6 +1,6 @@
 # Projly Tasks Page
 
-> **Updated:** 2025-05-24 (Full Hierarchical Task Display Implementation)
+> **Updated:** 2025-05-24 (Navigation Utilities Implementation and Full Hierarchical Task Display)
 
 ## Overview
 
@@ -30,6 +30,85 @@ The Tasks page provides a comprehensive interface for managing tasks across all 
 │   └── page.tsx
 └── README.md          - This documentation file
 ```
+
+## Task Navigation System (Added 2025-05-24)
+
+A new navigation utility system has been implemented to enhance user experience when navigating between tasks, especially in complex scenarios involving task hierarchies and edit flows.
+
+### Navigation Utilities
+
+The utilities are located in `/app/projly/utils/navigation-utils.ts` and provide the following features:
+
+1. **Intelligent Back Navigation**: The `handleIntelligentBackNavigation` function prevents navigation loops and provides a smooth user experience:
+
+```typescript
+function handleIntelligentBackNavigation(
+  router: MinimalRouter, 
+  taskId: string, 
+  log: LogFunction = console.log
+): void
+```
+
+- Prevents infinite loops between task detail and edit pages
+- Detects parent-child task navigation patterns to avoid circular navigation
+- Falls back to the tasks list when no safe navigation target is found
+- Maintains navigation history for smarter decision-making
+
+2. **Navigation History Management**: The `updateNavigationHistory` function maintains a history of page visits in session storage:
+
+```typescript
+function updateNavigationHistory(
+  path: string,
+  maxHistoryLength: number = 10,
+  log: LogFunction = console.log
+): void
+```
+
+- Stores navigation paths in session storage
+- Prevents duplicate consecutive entries
+- Limits history size to prevent memory issues
+
+### Implementation
+
+The navigation utilities have been integrated into both the Task Detail and Task Edit pages:
+
+```typescript
+// Task detail page back button
+<Button
+  onClick={() => handleIntelligentBackNavigation(router, task.id)}
+  variant="ghost"
+  className="mr-2"
+>
+  <ArrowLeft className="mr-2 h-4 w-4" />
+  Back
+</Button>
+
+// Task edit page back button
+<Button
+  onClick={() => handleIntelligentBackNavigation(router, taskId)}
+  variant="ghost"
+  className="mr-2"
+>
+  <ArrowLeft className="mr-2 h-4 w-4" />
+  Back
+</Button>
+```
+
+In addition, both pages use the `updateNavigationHistory` function in a `useEffect` hook to track page visits:
+
+```typescript
+useEffect(() => {
+  const currentPath = `/projly/tasks/${taskId}`;
+  updateNavigationHistory(currentPath);
+}, [taskId]);
+```
+
+### Benefits
+
+- **Improved UX**: Users can navigate confidently without getting stuck in navigation loops
+- **Consistent Behavior**: Navigation works the same way across all task-related pages
+- **Easier Maintenance**: Navigation logic is centralized for easier updates
+- **Better Debugging**: Detailed logs help diagnose navigation issues
 
 ## Full Hierarchical Task Display System (Updated 2025-05-24)
 
