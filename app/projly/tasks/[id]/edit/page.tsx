@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { Loader2, ArrowLeft, Save } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +87,13 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       console.log(`[PROJLY:TASK_EDIT:${taskId}] ${message}`);
     }
   };
+  
+  // Track navigation history in session storage using our utility function
+  useEffect(() => {
+    // Add current path to navigation history
+    const currentPath = `/projly/tasks/${taskId}/edit`;
+    updateNavigationHistory(currentPath, 10, log);
+  }, [taskId]);
   
   // Check authentication and load task and related data
   useEffect(() => {
@@ -301,7 +309,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/projly/tasks/${taskId}`)}
+            onClick={() => handleIntelligentBackNavigation(router, taskId, log)}
             className="mr-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

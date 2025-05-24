@@ -1,10 +1,10 @@
 # Projly Tasks Page
 
-> **Updated:** 2025-05-24 (Centralized Task Management Implementation)
+> **Updated:** 2025-05-24 (Full Hierarchical Task Display Implementation)
 
 ## Overview
 
-The Tasks page provides a comprehensive interface for managing tasks across all projects in the Projly application. It has been refactored to use a centralized task management system that ensures consistent functionality across the main tasks page, task detail page, and project detail page. The system supports hierarchical task organization, filtering, sorting, and CRUD operations for tasks.
+The Tasks page provides a comprehensive interface for managing tasks across all projects in the Projly application. It has been refactored to use a centralized task management system that ensures consistent functionality across the main tasks page, task detail page, and project detail page. The system now supports full hierarchical task organization with unlimited nesting depth, displaying n+2 level subtasks directly under their respective parent tasks with proper visual hierarchy indicators.
 
 ## Implementation Details
 
@@ -31,9 +31,9 @@ The Tasks page provides a comprehensive interface for managing tasks across all 
 └── README.md          - This documentation file
 ```
 
-## Centralized Task Management System (Updated 2025-05-24)
+## Full Hierarchical Task Display System (Updated 2025-05-24)
 
-The Tasks page now implements a centralized approach to task management using the `TasksContainer` component and `useTaskHierarchy` hook. This ensures consistency across different views while simplifying the page implementation:
+The Tasks page now implements a comprehensive approach to task management using the enhanced `TasksContainer` component and `organizeTasksHierarchy` function. This ensures that tasks at any nesting level (n+1, n+2, n+3, etc.) are displayed with proper hierarchical relationships while maintaining a clean and intuitive user interface:
 
 ```tsx
 export default function TasksPage() {
@@ -44,11 +44,11 @@ export default function TasksPage() {
         <p className="text-sm text-gray-500">Manage your tasks across all projects</p>
       </div>
 
-      {/* Use the centralized TasksContainer with appropriate options */}
+      {/* Use the enhanced TasksContainer with full hierarchy support */}
       <TasksContainer 
         context="main"
         hierarchyOptions={{
-          maxDepth: 1,
+          maxDepth: Infinity, // Support unlimited nesting depth
           showAllSubtasks: false
         }}
       />
@@ -126,7 +126,7 @@ const filterNestedTasks = (allTasks: any[]) => {
 - **Recursive Depth Calculation**: Accurately determines the exact nesting level of each task by traversing the complete parent chain
 - **Circular Reference Detection**: Prevents infinite recursion in case of cyclic task relationships
 - **Memoization**: Caches calculated depths to avoid redundant calculations
-- **Two-Level Display**: Shows only top-level tasks and their direct children in the main list view
+- **Unlimited Nesting Display**: Shows tasks at any nesting level (n+1, n+2, n+3, etc.) directly under their respective parent tasks
 - **Error Handling**: Gracefully handles missing tasks or broken references
 
 ## API Integration

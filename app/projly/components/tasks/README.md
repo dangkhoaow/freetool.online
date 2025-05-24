@@ -1,9 +1,9 @@
 # Task Components Documentation
 
-> **Updated:** 2025-05-24 (Centralized Task Management Implementation)
+> **Updated:** 2025-05-24 (Full Hierarchical Task Display Implementation)
 
 ## Overview
-The task components provide the UI for managing tasks in the Projly application, with a centralized approach to task hierarchy and filtering. The system maintains consistent functionality across different views (main tasks page, project tasks, and subtasks) through reusable components and hooks. The UI features visual indicators for sub-tasks, preserves parent-child relationships during filtering/sorting, and offers flexible task hierarchy display options.
+The task components provide the UI for managing tasks in the Projly application, with a centralized approach to task hierarchy and filtering. The system maintains consistent functionality across different views (main tasks page, project tasks, and subtasks) through reusable components and hooks. The UI features comprehensive visual indicators for multi-level sub-tasks, preserves parent-child relationships during filtering/sorting, and offers flexible task hierarchy display options with unlimited nesting depth.
 
 ## Components
 
@@ -119,9 +119,10 @@ Features:
 ## Sub-task UI Features
 
 ### Task Hierarchy Display
-- Indentation for sub-tasks with left blue border
-- Tree-style connector lines (└─) for visual parent-child relationship
-- Consistent hierarchy visualization across all views
+- Multi-level indentation for sub-tasks with dynamically colored left borders based on nesting level
+- Tree-style connector lines (└─) with increasing indentation for deeper levels
+- Full hierarchical visualization for n+2, n+3, etc. subtasks directly under their parent tasks
+- Adaptive visual styling with increasing indentation proportional to task depth
 - Progress indicators for parent tasks reflecting sub-task status
 - Badge indicator showing the number of subtasks for parent tasks
 
@@ -171,15 +172,16 @@ export function TasksContainer({
 ```
 
 This container centralizes:
-- Task loading and filtering logic
+- Task loading and filtering logic with recursive subtask fetching
 - Error handling and loading states
 - Filter management and persistence
-- Task hierarchy visualization
+- Comprehensive task hierarchy visualization for tasks at any nesting level
 - Add task dialog integration
+- Support for unlimited nesting depth of subtasks
 
 ### Integration with useTaskHierarchy Hook
 
-The `TasksContainer` uses the `useTaskHierarchy` hook to maintain consistent hierarchy management:
+The `TasksContainer` uses the `useTaskHierarchy` hook to maintain consistent hierarchy management for tasks at any nesting level:
 
 ```typescript
 // Determine effective hierarchy options based on context
@@ -202,92 +204,213 @@ const {
 } = useTaskHierarchy(rawTasks, effectiveHierarchyOptions);
 ```
 
-## Task Hierarchy Implementation
+## Technical Implementation Details
 
-### Recursive Task Level Calculation
+### Full Hierarchical Task Organization
 
-The task hierarchy is managed using a recursive approach that accurately identifies the nesting level of each task:
+The task hierarchy is now managed through a comprehensive approach that supports unlimited nesting depth in `TasksTable.tsx`:
 
 ```typescript
-// Recursive function to calculate task depth
-const calculateTaskDepth = (taskId: string, visited: Set<string> = new Set()): number => {
-  // Base case: If we've already visited this task, there's a circular reference
-  if (visited.has(taskId)) {
-    return 0; // Break the circular reference by treating it as a top-level task
-  }
+// Helper function to organize tasks into a complete hierarchy showing ALL nested levels
+export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; direction: "asc" | "desc" }): Task[] => {
+  console.log('[TASKS TABLE] Organizing tasks into full hierarchy with ALL nested levels');
   
-  // Base case: If we've already calculated this task's depth, return it
-  if (taskLevels.has(taskId)) {
-    return taskLevels.get(taskId) || 0;
-  }
+  // Create a map for tracking parent-child relationships
+  const parentTaskMap = new Map<string, Task[]>();
+  const taskLevels = new Map<string, number>(); // Track nesting level for each task
   
-  // Get the task object
-  const task = taskMap.get(taskId);
-  if (!task) return 0;
+  // First pass - identify all tasks and determine their level
+  tasks.forEach(task => {
+    // Initialize all tasks as level 0 (top level)
+    if (!taskLevels.has(task.id)) {
+      taskLevels.set(task.id, 0);
+    }
+    
+    // If task has a parent, set its level and add to parent's children
+    if (task.parentTaskId) {
+      // This is a child task
+      if (!parentTaskMap.has(task.parentTaskId)) {
+        parentTaskMap.set(task.parentTaskId, []);
+      }
+      
+      // Add to parent's children list
+      parentTaskMap.get(task.parentTaskId)?.push(task);
+      
+      // Find the parent's level and set this task's level to parent+1
+      const parentLevel = taskLevels.get(task.parentTaskId) || 0;
+      taskLevels.set(task.id, parentLevel + 1);
+    }
+  });
   
-  // If it's a top-level task (no parent), its depth is 0
-  if (!task.parentTaskId) {
-    taskLevels.set(taskId, 0);
-    return 0;
-  }
+  // Recursive function to add a task and all its descendants in hierarchical order
+  const addTaskWithDescendants = (task: Task, parentLevel: number) => {
+    // Add the task itself
+    organizedTasks.push(task);
+    taskLevels.set(task.id, parentLevel);
+    
+    // Get all children of this task
+    const children = parentTaskMap.get(task.id) || [];
+    if (children.length > 0) {
+      // Recursively add each child and its descendants
+      children.forEach(child => {
+        addTaskWithDescendants(child, parentLevel + 1);
+      });
+    }
+  };
   
-  // Mark this task as visited to detect circular references
-  const newVisited = new Set(visited);
-  newVisited.add(taskId);
+  // Process each top-level task and all its descendants recursively
+  topLevelTasks.forEach(task => {
+    addTaskWithDescendants(task, 0);
+  });
   
-  // Recursively calculate the parent's depth and add 1 for this task's depth
-  const parentDepth = calculateTaskDepth(task.parentTaskId, newVisited);
-  const thisDepth = parentDepth + 1;
+  // Store the calculated levels for easier access during rendering
+  organizedTasks.forEach(task => {
+    if (!task._meta) task._meta = {};
+    task._meta.level = taskLevels.get(task.id) || 0;
+  });
   
-  // Store and return the calculated depth
-  taskLevels.set(taskId, thisDepth);
-  return thisDepth;
+  return organizedTasks;
 };
+```
+
+### Enhanced Task Interface
+
+The Task interface was enhanced to store metadata about its position in the hierarchy:
+
+```typescript
+export interface Task {
+  // Existing properties...
+  
+  // New metadata field for hierarchy information
+  _meta?: {
+    level?: number;  // Store the task nesting level for UI purposes
+    [key: string]: any;
+  };
+}
+```
+
+### Task Data Flow with Recursive Loading
+
+The process for fetching and displaying tasks now includes recursive loading of n+2 level subtasks:
+
+1. `TasksContainer` initiates the data flow with the new `recursiveSubtasks` option
+
+2. In the task details page, a recursive function loads all levels of subtasks:
+
+```typescript
+// Recursive function to load subtasks for each task
+const loadSubTasksRecursive = async (parentTask: ProjlyTaskData) => {
+  try {
+    const subTasks = await projlyTasksService.getTask(parentTask.id);
+    if (subTasks?.subTasks && subTasks.subTasks.length > 0) {
+      // Process each subtask recursively
+      for (const subTask of subTasks.subTasks) {
+        await loadSubTasksRecursive(subTask as ProjlyTaskData);
+      }
+    }
+  } catch (error) {
+    console.error(`Error loading subtasks for task ${parentTask.id}:`, error);
+  }
+};
+```
+
+3. The `refreshSubTasks` function in task detail page now supports recursive loading:
+
+```typescript
+const refreshSubTasks = async () => {
+  try {
+    setIsLoading(true);
+    const subTasksData = await projlyTasksService.getTask(taskId);
+    
+    if (subTasksData?.subTasks && Array.isArray(subTasksData.subTasks)) {
+      // Create a copy to avoid modifying the original data
+      const subTasksList = [...subTasksData.subTasks] as ProjlyTaskData[];
+      
+      // If recursive loading is enabled, load nested subtasks
+      if (recursiveSubtasks) {
+        for (const subTask of subTasksList) {
+          await loadSubTasksRecursive(subTask);
+        }
+      }
+      
+      setSubTasks(subTasksList);
+    }
+  } catch (error) {
+    console.error('Error refreshing subtasks:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### Dynamic Hierarchical Rendering
+
+The `TasksTable` component now displays tasks with adaptive styling based on their nesting level:
+
+```tsx
+<TableCell className="font-medium">
+  <div className={`flex items-center ${task._meta?.level && task._meta.level > 0 ? 
+    `pl-${Math.min(task._meta.level * 6, 12)} border-l-4 border-blue-${Math.min(task._meta.level * 100, 400)}` : ''}`}>
+    {task._meta?.level && task._meta.level > 0 && (
+      <span className="text-gray-400 mr-2">
+        {task._meta.level === 1 ? '└─' : '└─'.padStart(task._meta.level + 1, '─')}
+      </span>
+    )}
+    {task.title}
+    {task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow && (
+      <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
+        {taskRelationships.get(task.id)?.length || 0} subtasks
+      </Badge>
+    )}
+  </div>
+</TableCell>
 ```
 
 ### Key Features
 
-- **Accurate Depth Calculation**: Recursively traces the entire parent chain to determine exact nesting level
+- **Full Hierarchical Display**: Shows all levels of subtasks (n+1, n+2, n+3, etc.) directly under their respective parent tasks
+- **Dynamic Visual Styling**: Indentation and styling adapt based on the task's nesting level
+- **Recursive Data Loading**: Automatically loads all subtasks at any nesting depth
+- **Adaptive Tree Connectors**: Visually shows the hierarchical relationship between tasks
 - **Circular Reference Detection**: Prevents infinite recursion in case of cyclic task references
-- **Task Level Filtering**: Only shows top-level tasks (level 0) and direct children (level 1) in the main task list
-- **Filter Implementation**: Tasks with depth > 1 are filtered out of the main list view
-- **Caching**: Stores calculated depths to avoid redundant calculations
-
-### Task Page Implementation
-
-The task page (`/app/projly/tasks/page.tsx`) filters tasks before rendering:
-
-```typescript
-// Filter out deeply nested subtasks before setting state
-const filteredTasks = filterNestedTasks(userTasks);
-```
-
-This ensures that deeply nested tasks (level 2+) don't appear in the main task list view, keeping the UI clean and focused on the most important tasks.
+- **Metadata Storage**: Caches calculated levels to optimize rendering
+- **Dynamic Border Colors**: Uses color gradients based on nesting depth for better visualization
 - Distinct users dropdown for filtering by specific assignees
 
 ## Usage Examples
 
-### Using TasksContainer
+### Using TasksContainer with Full Hierarchy Support
 ```tsx
-// For the main tasks page
+// For the main tasks page with unlimited nesting depth
 <TasksContainer 
   context="main"
   initialFilters={{ status: 'In Progress' }}
-  hierarchyOptions={{ maxDepth: 2 }}
+  hierarchyOptions={{ 
+    maxDepth: Infinity,  // Support unlimited nesting depth
+    showAllSubtasks: true
+  }}
 />
 
-// For a project's tasks tab
+// For a project's tasks tab with complete hierarchy
 <TasksContainer 
   context="project"
   parentId={projectId}
   displayOptions={{ compact: true, title: 'Project Tasks' }}
+  hierarchyOptions={{ 
+    maxDepth: Infinity,  // Support unlimited nesting depth
+    showAllSubtasks: true
+  }}
 />
 
-// For a task's subtasks
+// For a task's subtasks with recursive loading
 <TasksContainer 
   context="task"
   parentId={taskId}
-  hierarchyOptions={{ showAllSubtasks: true }}
+  recursiveSubtasks={true}  // Enable loading of n+2, n+3, etc. levels
+  hierarchyOptions={{ 
+    maxDepth: Infinity,  // Support unlimited nesting depth
+    showAllSubtasks: true
+  }}
   displayOptions={{ title: 'Subtasks' }}
 />
 ```
@@ -333,6 +456,8 @@ This ensures that deeply nested tasks (level 2+) don't appear in the main task l
 - Empty state handling
 
 ## Recent Updates
+- 2025-05-24: Implemented full hierarchical task display for n+2 level subtasks
+- 2025-05-24: Enhanced task organization algorithm to support unlimited nesting depth
 - 2024-03-21: Added sub-task UI components
 - 2024-03-20: Enhanced task filtering
 - 2024-03-19: Added progress indicators
