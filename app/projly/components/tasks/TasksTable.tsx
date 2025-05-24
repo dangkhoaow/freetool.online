@@ -54,6 +54,8 @@ export interface TasksTableProps {
   tasks: Task[];
   onOperationComplete?: (filters?: any) => void; // Callback to refresh data after operations with current filters
   initialFilters?: any; // Initial filters passed from parent
+  compact?: boolean; // Whether to use compact mode (less padding, smaller text)
+  context?: 'main' | 'project' | 'task'; // The context this table is being used in
 }
 import { CreateTaskForm } from "./CreateTaskForm";
 import { EditTaskForm } from "./EditTaskForm";

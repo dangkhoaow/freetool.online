@@ -1,9 +1,49 @@
 # Task Components Documentation
 
+> **Updated:** 2025-05-24 (Centralized Task Management Implementation)
+
 ## Overview
-The task components provide the UI for managing tasks in the Projly application, including support for hierarchical task organization through parent-child relationships. The UI features visual indicators for sub-tasks, preserves parent-child relationships during filtering/sorting, and offers flexible task hierarchy display options.
+The task components provide the UI for managing tasks in the Projly application, with a centralized approach to task hierarchy and filtering. The system maintains consistent functionality across different views (main tasks page, project tasks, and subtasks) through reusable components and hooks. The UI features visual indicators for sub-tasks, preserves parent-child relationships during filtering/sorting, and offers flexible task hierarchy display options.
 
 ## Components
+
+### TasksContainer
+**New centralized container component added 2025-05-24**
+
+A reusable container for displaying tasks in different contexts:
+```typescript
+interface TasksContainerProps {
+  // Context type determines behavior and UI
+  context: 'main' | 'project' | 'task';
+  // ID of the parent entity (project ID for project context, task ID for task context)
+  parentId?: string;
+  // Initial task data (passed from parent)
+  initialTasks?: ProjlyTask[];
+  // Whether to load tasks automatically (default: true)
+  autoLoad?: boolean;
+  // Optional initial filters
+  initialFilters?: TaskFilters;
+  // Display options
+  displayOptions?: {
+    showHeader?: boolean;
+    showAddButton?: boolean;
+    compact?: boolean;
+    title?: string;
+  };
+  // Optional hierarchy options
+  hierarchyOptions?: TaskHierarchyOptions;
+  // Callback when data changes
+  onDataChange?: (tasks: ProjlyTask[]) => void;
+}
+```
+
+Features:
+- Context-aware behavior (main tasks, project tasks, subtasks)
+- Consistent filtering and loading across contexts
+- Automatic parent-child relationship preservation
+- Loading and error states management
+- Task creation dialog integration
+- Compatible with the useTaskHierarchy hook
 
 ### TasksTable
 Main component for displaying tasks in a table format:
@@ -101,9 +141,70 @@ Features:
   - Sub-tasks remain visible when their parent matches filters
 - Intelligent sorting that keeps sub-tasks grouped with their parents
 
+## Centralized Task Management (Updated 2025-05-24)
+
+### TasksContainer Implementation
+
+The `TasksContainer` component serves as a reusable solution that centralizes task display logic across different contexts:
+
+```typescript
+export function TasksContainer({
+  context = 'main',
+  parentId,
+  initialTasks,
+  autoLoad = true,
+  initialFilters = {},
+  displayOptions = {
+    showHeader: true,
+    showAddButton: true,
+    compact: false,
+    title: 'Tasks'
+  },
+  hierarchyOptions = {
+    maxDepth: 1,
+    showAllSubtasks: false
+  },
+  onDataChange
+}: TasksContainerProps) {
+  // Component implementation with filtering and hierarchy management
+}
+```
+
+This container centralizes:
+- Task loading and filtering logic
+- Error handling and loading states
+- Filter management and persistence
+- Task hierarchy visualization
+- Add task dialog integration
+
+### Integration with useTaskHierarchy Hook
+
+The `TasksContainer` uses the `useTaskHierarchy` hook to maintain consistent hierarchy management:
+
+```typescript
+// Determine effective hierarchy options based on context
+const effectiveHierarchyOptions: TaskHierarchyOptions = {
+  ...hierarchyOptions,
+  // For project context, filter by project ID
+  projectId: context === 'project' ? parentId : null,
+  // For task context, filter by parent task ID
+  parentTaskId: context === 'task' ? parentId : null,
+  // For task context, always show all subtasks
+  showAllSubtasks: context === 'task' ? true : hierarchyOptions.showAllSubtasks
+};
+
+// Use the task hierarchy hook
+const {
+  tasks: filteredTasks,
+  getTaskDepth,
+  isParentTask,
+  getSubtaskCount
+} = useTaskHierarchy(rawTasks, effectiveHierarchyOptions);
+```
+
 ## Task Hierarchy Implementation
 
-### Recursive Task Level Calculation (Updated 2025-05-24)
+### Recursive Task Level Calculation
 
 The task hierarchy is managed using a recursive approach that accurately identifies the nesting level of each task:
 
@@ -165,6 +266,31 @@ This ensures that deeply nested tasks (level 2+) don't appear in the main task l
 - Distinct users dropdown for filtering by specific assignees
 
 ## Usage Examples
+
+### Using TasksContainer
+```tsx
+// For the main tasks page
+<TasksContainer 
+  context="main"
+  initialFilters={{ status: 'In Progress' }}
+  hierarchyOptions={{ maxDepth: 2 }}
+/>
+
+// For a project's tasks tab
+<TasksContainer 
+  context="project"
+  parentId={projectId}
+  displayOptions={{ compact: true, title: 'Project Tasks' }}
+/>
+
+// For a task's subtasks
+<TasksContainer 
+  context="task"
+  parentId={taskId}
+  hierarchyOptions={{ showAllSubtasks: true }}
+  displayOptions={{ title: 'Subtasks' }}
+/>
+```
 
 ### Basic Task List
 ```tsx

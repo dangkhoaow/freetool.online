@@ -236,12 +236,13 @@ class TasksService {
 
   /**
    * Get all user tasks
+   * @param filters Optional filters to apply to the task list
    * @returns Promise resolving to an array of tasks
    */
-  async getUserTasks(): Promise<Task[]> {
+  async getUserTasks(filters?: TaskFilters): Promise<Task[]> {
     try {
-      console.log(`${LOG_PREFIX} Fetching all user tasks`);
-      return this.getTasks();
+      console.log(`${LOG_PREFIX} Fetching all user tasks with filters:`, filters);
+      return this.getTasks(filters);
     } catch (error) {
       console.error(`${LOG_PREFIX} Error fetching user tasks:`, error);
       throw error;
@@ -251,12 +252,14 @@ class TasksService {
   /**
    * Get tasks for a specific project
    * @param projectId Project ID to get tasks for
+   * @param filters Optional additional filters to apply to the task list
    * @returns Promise resolving to an array of tasks
    */
-  async getProjectTasks(projectId: string): Promise<Task[]> {
+  async getProjectTasks(projectId: string, filters?: TaskFilters): Promise<Task[]> {
     try {
-      console.log(`${LOG_PREFIX} Fetching tasks for project:`, projectId);
-      return this.getTasks({ projectId });
+      console.log(`${LOG_PREFIX} Fetching tasks for project:`, projectId, 'with filters:', filters);
+      const combinedFilters: TaskFilters = { ...filters, projectId };
+      return this.getTasks(combinedFilters);
     } catch (error) {
       console.error(`${LOG_PREFIX} Error fetching project tasks:`, error);
       throw error;

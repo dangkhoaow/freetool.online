@@ -1,6 +1,6 @@
 # Projly Task Service
 
-> **Updated:** 2025-05-24
+> **Updated:** 2025-05-24 (Task Hierarchy System Implementation)
 
 ## Overview
 
@@ -13,6 +13,7 @@ This service consolidates the previous implementations (`task-service.ts` and `p
 ### Files Structure
 
 - `/lib/services/projly/tasks/tasks-service.ts` - Main service implementation
+- `/lib/services/projly/tasks/use-task-hierarchy.ts` - Task hierarchy management hook
 - `/lib/services/projly/use-tasks.ts` - React hooks for task operations
 
 ### Service Exports
@@ -98,7 +99,101 @@ The service implements consistent error handling with detailed logging:
 
 All errors are logged with the `[TasksService]` prefix for easy filtering in logs.
 
+## Task Hierarchy Management
+
+### useTaskHierarchy Hook
+
+The `useTaskHierarchy` hook provides a centralized solution for managing task hierarchies across different contexts:
+
+```typescript
+import { useTaskHierarchy, TaskHierarchyOptions } from '@/lib/services/projly/tasks/use-task-hierarchy';
+
+// Define hierarchy options
+const hierarchyOptions: TaskHierarchyOptions = {
+  maxDepth: 2,            // Maximum depth of tasks to show
+  showAllSubtasks: true,  // Whether to show all subtasks
+  projectId: 'project-1', // Optional filter by project
+  parentTaskId: null      // Optional filter by parent task
+};
+
+// Use the hook
+const {
+  tasks: filteredTasks,   // Tasks filtered and organized by hierarchy
+  getTaskDepth,           // Get depth of a specific task
+  isParentTask,           // Check if a task is a parent
+  getSubtaskCount         // Get number of subtasks for a task
+} = useTaskHierarchy(rawTasks, hierarchyOptions);
+```
+
+### Key Features
+
+- **Depth Calculation**: Accurately determines nesting level for each task
+- **Filtering**: Filters tasks based on hierarchy options (maxDepth, projectId, etc.)
+- **Parent-Child Tracking**: Maintains relationships even during filtering
+- **Helper Functions**: Provides utility functions for task relationship analysis
+- **Consistent Hierarchy**: Ensures consistent task organization across UI components
+
 ## Integration Points
+
+### With Task Hierarchy Hook
+
+The `useTaskHierarchy` hook can be used in any component that needs to display tasks:
+
+```typescript
+// In a component
+import { useTaskHierarchy } from '@/lib/services/projly/tasks/use-task-hierarchy';
+
+const MyTaskComponent = ({ rawTasks }) => {
+  // Configure hierarchy options based on context
+  const hierarchyOptions = {
+    maxDepth: 2,
+    showAllSubtasks: false
+  };
+  
+  // Apply hierarchy filtering
+  const { tasks, getTaskDepth } = useTaskHierarchy(rawTasks, hierarchyOptions);
+  
+  return (
+    <div>
+      {tasks.map(task => (
+        <div style={{ marginLeft: `${getTaskDepth(task.id) * 20}px` }}>
+          {task.title}
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+### With TasksContainer Component
+
+The `TasksContainer` component in `/app/projly/components/tasks/TasksContainer.tsx` uses the task service and hierarchy hook together:
+
+```typescript
+import { TasksContainer } from '@/app/projly/components/tasks/TasksContainer';
+
+// For main tasks page
+<TasksContainer 
+  context="main"
+  autoLoad={true}
+  initialFilters={{ status: 'In Progress' }}
+  hierarchyOptions={{ maxDepth: 2, showAllSubtasks: false }}
+/>
+
+// For project tasks
+<TasksContainer 
+  context="project"
+  parentId={projectId}
+  compact={true}
+/>
+
+// For subtasks
+<TasksContainer 
+  context="task"
+  parentId={taskId}
+  hierarchyOptions={{ showAllSubtasks: true }}
+/>
+```
 
 ### With React Hooks
 
@@ -148,11 +243,18 @@ const onSubmit = async (data) => {
 
 ## Recent Updates (2025-05-24)
 
+### Task Service Improvements
 - Consolidated duplicate task service implementations into a single service
 - Fixed response handling to correctly process API responses
 - Added robust error handling with detailed logging
 - Improved type safety with TypeScript interfaces
 - Added backward compatibility for existing code references
+
+### Task Hierarchy System
+- Added `useTaskHierarchy` custom hook for consistent task hierarchy management
+- Implemented proper filter handling with TaskFilters parameter in all API methods
+- Optimized task loading to prevent infinite loops when applying filters
+- Added depth calculation and parent-child relationship tracking for consistent UI
 
 ## Security & Best Practices
 

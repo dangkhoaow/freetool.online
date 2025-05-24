@@ -1,0 +1,293 @@
+/**
+ * TasksContainer Component
+ * 
+ * A reusable container component for displaying tasks in different contexts:
+ * - Main tasks page
+ * - Project detail page (Tasks tab)
+ * - Task detail page (Subtasks tab)
+ * 
+ * Uses the useTaskHierarchy hook for consistent task filtering and organization.
+ * 
+ * @created 2025-05-24
+ */
+
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TasksTable } from './TasksTable';
+import { TaskDialog } from '@/components/projects/TaskDialog';
+import { Task as ProjlyTask, TaskFilters } from '@/lib/services/projly/types';
+import { Task } from './TasksTable'; // Import the Task type from TasksTable for compatibility
+import { useTaskHierarchy, TaskHierarchyOptions } from '@/lib/services/projly/tasks/use-task-hierarchy';
+import { tasksService } from '@/lib/services/projly/tasks/tasks-service';
+import { useToast } from '@/components/ui/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PlusCircle } from 'lucide-react';
+
+// Create a detailed log function for debugging
+const log = (...args: any[]) => console.log('[TasksContainer]', ...args);
+
+export interface TaskWithDepth extends Task {
+  depth?: number;
+  children?: TaskWithDepth[];
+  // Ensure parentTask is fully compatible with Task type
+  parentTask?: Task;
+}
+
+export interface TasksContainerProps {
+  // Context type determines behavior and UI
+  context: 'main' | 'project' | 'task';
+  // ID of the parent entity (project ID for project context, task ID for task context)
+  parentId?: string;
+  // Initial task data (passed from parent)
+  initialTasks?: ProjlyTask[];
+  // Whether to load tasks automatically (default: true)
+  autoLoad?: boolean;
+  // Optional initial filters
+  initialFilters?: TaskFilters;
+  // Display options
+  displayOptions?: {
+    showHeader?: boolean;
+    showAddButton?: boolean;
+    compact?: boolean;
+    title?: string;
+  };
+  // Optional hierarchy options
+  hierarchyOptions?: TaskHierarchyOptions;
+  // Callback when data changes
+  onDataChange?: (tasks: ProjlyTask[]) => void;
+}
+
+export function TasksContainer({
+  context = 'main',
+  parentId,
+  initialTasks,
+  autoLoad = true,
+  initialFilters = {},
+  displayOptions = {
+    showHeader: true,
+    showAddButton: true,
+    compact: false,
+    title: 'Tasks'
+  },
+  hierarchyOptions = {
+    maxDepth: 1,
+    showAllSubtasks: false
+  },
+  onDataChange
+}: TasksContainerProps) {
+  // State for tasks and loading
+  const [rawTasks, setRawTasks] = useState<ProjlyTask[]>(initialTasks || []);
+  const [loading, setLoading] = useState<boolean>(autoLoad && !initialTasks);
+  const [error, setError] = useState<string | null>(null);
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState<boolean>(false);
+  const [currentFilters, setCurrentFilters] = useState<TaskFilters>(initialFilters);
+  
+  // React Query client for cache invalidation
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  // Determine effective hierarchy options based on context
+  const effectiveHierarchyOptions: TaskHierarchyOptions = {
+    ...hierarchyOptions,
+    // For project context, filter by project ID
+    projectId: context === 'project' ? parentId : null,
+    // For task context, filter by parent task ID
+    parentTaskId: context === 'task' ? parentId : null,
+    // For task context, always show all subtasks
+    showAllSubtasks: context === 'task' ? true : hierarchyOptions.showAllSubtasks
+  };
+  
+  // Use the task hierarchy hook
+  const {
+    tasks: filteredTasks,
+    getTaskDepth,
+    isParentTask,
+    getSubtaskCount
+  } = useTaskHierarchy(rawTasks, effectiveHierarchyOptions);
+  
+  // Context-specific title
+  const getContextTitle = () => {
+    switch (context) {
+      case 'project':
+        return displayOptions.title || 'Project Tasks';
+      case 'task':
+        return displayOptions.title || 'Subtasks';
+      default:
+        return displayOptions.title || 'Tasks';
+    }
+  };
+  
+  // Context-specific loading function
+  const loadTasks = async (filters?: TaskFilters) => {
+    if (!autoLoad) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      log(`Loading tasks for context: ${context}, parentId: ${parentId}, filters:`, filters);
+      
+      let tasks: ProjlyTask[] = [];
+      const effectiveFilters = filters || currentFilters;
+      
+      switch (context) {
+        case 'project':
+          if (!parentId) {
+            throw new Error('Project ID is required for project context');
+          }
+          tasks = await tasksService.getProjectTasks(parentId, effectiveFilters);
+          break;
+        case 'task':
+          if (!parentId) {
+            throw new Error('Task ID is required for task context');
+          }
+          // Load all tasks and filter by parent task ID in the hierarchy hook
+          tasks = await tasksService.getUserTasks(effectiveFilters);
+          break;
+        default:
+          tasks = await tasksService.getUserTasks(effectiveFilters);
+      }
+      
+      log(`Loaded ${tasks.length} tasks`);
+      setRawTasks(tasks);
+      
+      // Notify parent of data change
+      if (onDataChange) {
+        onDataChange(tasks);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load tasks';
+      log('Error loading tasks:', errorMessage);
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load tasks on mount if autoLoad is true
+  useEffect(() => {
+    if (initialTasks) {
+      log('Using initial tasks:', initialTasks.length);
+      setRawTasks(initialTasks);
+    } else if (autoLoad) {
+      log('Auto-loading tasks with initial filters:', initialFilters);
+      // Update current filters with initial filters
+      setCurrentFilters(initialFilters);
+      loadTasks(initialFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoad, parentId, context, initialTasks]); // Removed initialFilters from dependency array to prevent infinite loops
+  
+  // Refresh data after operations
+  const handleOperationComplete = (updatedFilters?: TaskFilters) => {
+    log('Operation completed, refreshing data with filters:', updatedFilters);
+    // Invalidate queries to trigger refetch
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    if (context === 'project' && parentId) {
+      queryClient.invalidateQueries({ queryKey: ['project', parentId] });
+    }
+    if (context === 'task' && parentId) {
+      queryClient.invalidateQueries({ queryKey: ['task', parentId] });
+    }
+    
+    // Only update filters if they've actually changed to prevent render loops
+    if (updatedFilters) {
+      const hasFilterChanges = JSON.stringify(updatedFilters) !== JSON.stringify(currentFilters);
+      if (hasFilterChanges) {
+        log('Filters have changed, updating and reloading tasks');
+        setCurrentFilters(updatedFilters);
+        // Reload tasks with updated filters
+        loadTasks(updatedFilters);
+      } else {
+        log('No filter changes detected, reloading with current filters');
+        loadTasks(currentFilters);
+      }
+    } else {
+      log('No filters provided, reloading with current filters');
+      loadTasks(currentFilters);
+    }
+  };
+  
+  // Router for navigation
+  const router = useRouter();
+  
+  // Handle adding a new task (either navigate or open dialog based on context)
+  const handleAddTask = () => {
+    // For main tasks list, navigate to the dedicated new task page
+    if (context === 'main') {
+      log('Navigating to new task page');
+      router.push('/projly/tasks/new');
+    } else {
+      // For project detail or task detail (subtasks), open the dialog
+      log(`Opening add task dialog for ${context} context`);
+      setIsAddTaskOpen(true);
+    }
+  };
+  
+  return (
+    <Card className={`w-full ${displayOptions.compact ? 'shadow-none border-0' : ''}`}>
+      {displayOptions.showHeader && (
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{getContextTitle()}</CardTitle>
+          {displayOptions.showAddButton && (
+            <Button onClick={handleAddTask} size="sm">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {context === 'task' ? 'Add Subtask' : 'Add Task'}
+            </Button>
+          )}
+        </CardHeader>
+      )}
+      
+      <CardContent>
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : error ? (
+          <div className="p-4 text-center text-red-500">
+            {error}
+            <Button 
+              variant="outline" 
+              className="mt-2" 
+              onClick={() => loadTasks()}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <TasksTable
+            tasks={filteredTasks as Task[]}
+            initialFilters={currentFilters}
+            onOperationComplete={handleOperationComplete}
+            compact={displayOptions.compact}
+            context={context}
+          />
+        )}
+        
+        {isAddTaskOpen && (
+          <TaskDialog
+            open={isAddTaskOpen}
+            onOpenChange={setIsAddTaskOpen}
+            projectId={context === 'project' && parentId ? parentId : ''}
+            taskId={context === 'task' ? parentId : undefined}
+            onTaskChange={async () => handleOperationComplete()}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default TasksContainer;

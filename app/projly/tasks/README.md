@@ -1,15 +1,19 @@
 # Projly Tasks Page
 
+> **Updated:** 2025-05-24 (Centralized Task Management Implementation)
+
 ## Overview
 
-The Tasks page provides a comprehensive interface for managing tasks across all projects in the Projly application. It supports hierarchical task organization, filtering, sorting, and CRUD operations for tasks.
+The Tasks page provides a comprehensive interface for managing tasks across all projects in the Projly application. It has been refactored to use a centralized task management system that ensures consistent functionality across the main tasks page, task detail page, and project detail page. The system supports hierarchical task organization, filtering, sorting, and CRUD operations for tasks.
 
 ## Implementation Details
 
 ### Key Components
 
-- **TasksPage**: Main page component that fetches and displays tasks
+- **TasksPage**: Main page component that now uses the centralized TasksContainer
+- **TasksContainer**: Reusable container component that manages task loading, filtering, and display
 - **TasksTable**: Component for displaying tasks in a sortable, filterable table
+- **useTaskHierarchy**: Custom hook for managing task hierarchies across the application
 - **TaskForm**: Form component for creating and editing tasks
 - **CreateTaskForm**: Reusable form component for task creation/editing
 
@@ -27,9 +31,42 @@ The Tasks page provides a comprehensive interface for managing tasks across all 
 └── README.md          - This documentation file
 ```
 
+## Centralized Task Management System (Updated 2025-05-24)
+
+The Tasks page now implements a centralized approach to task management using the `TasksContainer` component and `useTaskHierarchy` hook. This ensures consistency across different views while simplifying the page implementation:
+
+```tsx
+export default function TasksPage() {
+  return (
+    <div className="container mx-auto py-6">
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold">Tasks</h1>
+        <p className="text-sm text-gray-500">Manage your tasks across all projects</p>
+      </div>
+
+      {/* Use the centralized TasksContainer with appropriate options */}
+      <TasksContainer 
+        context="main"
+        hierarchyOptions={{
+          maxDepth: 1,
+          showAllSubtasks: false
+        }}
+      />
+    </div>
+  );
+}
+```
+
+This refactored implementation provides several benefits:
+
+1. **Code Reusability**: The same container component is used across different task views
+2. **Consistent Behavior**: Filtering, sorting, and hierarchy management work the same way everywhere
+3. **Simplified Maintenance**: Changes to task display logic only need to be made in one place
+4. **Improved Error Handling**: Centralized error states and loading indicators
+
 ## Task Hierarchy Management
 
-### Recursive Depth Calculation (Updated 2025-05-24)
+### Recursive Depth Calculation
 
 The Tasks page implements a recursive algorithm to properly manage task hierarchies and filter out deeply nested subtasks. This ensures that only top-level tasks and their direct children (level 1) appear in the main task list.
 
@@ -107,6 +144,14 @@ The Tasks page uses the following services and endpoints:
 - **Filtering and Sorting**: Maintains parent-child relationships during filtering operations
 
 ## Recent Updates
+
+### 2025-05-24: Centralized Task Management Implementation
+- Refactored the Tasks page to use the new TasksContainer component
+- Implemented useTaskHierarchy hook for consistent task hierarchy management
+- Fixed filtering issues to properly maintain filters between component refreshes
+- Added optimization to prevent infinite request loops when applying filters
+- Implemented robust error handling and loading states
+- Improved task data loading with proper context awareness
 
 ### 2025-05-24: Improved Task Hierarchy Management
 - Implemented recursive depth calculation for accurate task hierarchy tracking
