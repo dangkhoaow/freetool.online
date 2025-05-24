@@ -83,6 +83,7 @@ Features:
 - Tree-style connector lines (└─) for visual parent-child relationship
 - Consistent hierarchy visualization across all views
 - Progress indicators for parent tasks reflecting sub-task status
+- Badge indicator showing the number of subtasks for parent tasks
 
 ### Parent Task Selection
 - Dropdown with project tasks (excludes current task and descendants)
@@ -99,6 +100,68 @@ Features:
   - Parent tasks remain visible when any of their sub-tasks match filters
   - Sub-tasks remain visible when their parent matches filters
 - Intelligent sorting that keeps sub-tasks grouped with their parents
+
+## Task Hierarchy Implementation
+
+### Recursive Task Level Calculation (Updated 2025-05-24)
+
+The task hierarchy is managed using a recursive approach that accurately identifies the nesting level of each task:
+
+```typescript
+// Recursive function to calculate task depth
+const calculateTaskDepth = (taskId: string, visited: Set<string> = new Set()): number => {
+  // Base case: If we've already visited this task, there's a circular reference
+  if (visited.has(taskId)) {
+    return 0; // Break the circular reference by treating it as a top-level task
+  }
+  
+  // Base case: If we've already calculated this task's depth, return it
+  if (taskLevels.has(taskId)) {
+    return taskLevels.get(taskId) || 0;
+  }
+  
+  // Get the task object
+  const task = taskMap.get(taskId);
+  if (!task) return 0;
+  
+  // If it's a top-level task (no parent), its depth is 0
+  if (!task.parentTaskId) {
+    taskLevels.set(taskId, 0);
+    return 0;
+  }
+  
+  // Mark this task as visited to detect circular references
+  const newVisited = new Set(visited);
+  newVisited.add(taskId);
+  
+  // Recursively calculate the parent's depth and add 1 for this task's depth
+  const parentDepth = calculateTaskDepth(task.parentTaskId, newVisited);
+  const thisDepth = parentDepth + 1;
+  
+  // Store and return the calculated depth
+  taskLevels.set(taskId, thisDepth);
+  return thisDepth;
+};
+```
+
+### Key Features
+
+- **Accurate Depth Calculation**: Recursively traces the entire parent chain to determine exact nesting level
+- **Circular Reference Detection**: Prevents infinite recursion in case of cyclic task references
+- **Task Level Filtering**: Only shows top-level tasks (level 0) and direct children (level 1) in the main task list
+- **Filter Implementation**: Tasks with depth > 1 are filtered out of the main list view
+- **Caching**: Stores calculated depths to avoid redundant calculations
+
+### Task Page Implementation
+
+The task page (`/app/projly/tasks/page.tsx`) filters tasks before rendering:
+
+```typescript
+// Filter out deeply nested subtasks before setting state
+const filteredTasks = filterNestedTasks(userTasks);
+```
+
+This ensures that deeply nested tasks (level 2+) don't appear in the main task list view, keeping the UI clean and focused on the most important tasks.
 - Distinct users dropdown for filtering by specific assignees
 
 ## Usage Examples

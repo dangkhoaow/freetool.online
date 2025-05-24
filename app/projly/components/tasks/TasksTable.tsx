@@ -384,21 +384,38 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
   console.log("[TasksTable] Filtered tasks:", filteredTasks.length);
   console.log("[TasksTable] Sub-tasks count:", filteredTasks.filter(task => task.parentTaskId).length);
 
-  // Helper function to organize tasks into a hierarchy
+  // Helper function to organize tasks into a hierarchy showing only level 1 children
   const organizeTasksHierarchy = (tasks: Task[]): Task[] => {
-    console.log('[TASKS TABLE] Organizing tasks into hierarchy');
+    console.log('[TASKS TABLE] Organizing tasks into hierarchy with direct children only');
     
-    // Create a map of parent tasks and their children
+    // Create a map for tracking parent-child relationships
     const parentTaskMap = new Map<string, Task[]>();
+    const taskLevels = new Map<string, number>(); // Track nesting level for each task
     
-    // First pass - identify all parent tasks and collect children
+    // First pass - identify all tasks and determine their level
     tasks.forEach(task => {
+      // Initialize all tasks as level 0 (top level)
+      if (!taskLevels.has(task.id)) {
+        taskLevels.set(task.id, 0);
+      }
+      
+      // If task has a parent, set its level and add to parent's children
       if (task.parentTaskId) {
         // This is a child task
         if (!parentTaskMap.has(task.parentTaskId)) {
           parentTaskMap.set(task.parentTaskId, []);
         }
+        
+        // Add to parent's children list
         parentTaskMap.get(task.parentTaskId)?.push(task);
+        
+        // Find the parent's level and set this task's level to parent+1
+        const parentLevel = taskLevels.get(task.parentTaskId) || 0;
+        taskLevels.set(task.id, parentLevel + 1);
+        
+        console.log(`[TASKS TABLE] Task ${task.id} is level ${parentLevel + 1} (child of ${task.parentTaskId})`);
+      } else {
+        console.log(`[TASKS TABLE] Task ${task.id} is level 0 (top level)`);
       }
     });
     
@@ -423,12 +440,11 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
       });
     });
     
-    // Create final organized list with parent tasks followed by their children
+    // Create organized list with parent tasks followed by their DIRECT children only
     const organizedTasks: Task[] = [];
     
-    // Get parent tasks (those without a parentTaskId) and orphaned tasks
-    // (those with a parentTaskId that's not in our filtered set)
-    const parentTasks = tasks.filter(task => {
+    // Get top-level tasks (those without a parentTaskId) and orphaned tasks
+    const topLevelTasks = tasks.filter(task => {
       // Include tasks without a parent
       if (!task.parentTaskId) return true;
       
@@ -441,8 +457,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
       return false;
     });
     
-    // Sort parent tasks
-    parentTasks.sort((a, b) => {
+    // Sort top-level tasks
+    topLevelTasks.sort((a, b) => {
       if (sortBy.field === "dueDate") {
         if (!a.dueDate) return sortBy.direction === "asc" ? 1 : -1;
         if (!b.dueDate) return sortBy.direction === "asc" ? -1 : 1;
@@ -473,24 +489,43 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
       return 0;
     });
     
-    // Add each parent followed by its children
-    parentTasks.forEach(parent => {
+    // Process each top-level task
+    topLevelTasks.forEach(parent => {
+      // Add the parent task
       organizedTasks.push(parent);
       
-      // Add children if they exist
-      const children = parentTaskMap.get(parent.id) || [];
-      organizedTasks.push(...children);
+      // Add ONLY direct children (level 1)
+      const allChildren = parentTaskMap.get(parent.id) || [];
+      
+      // Filter to only include direct children (level 1), not grandchildren
+      const directChildren = allChildren.filter(child => {
+        // Check if this is a direct child (level 1) of the parent
+        const level = taskLevels.get(child.id) || 0;
+        const isDirectChild = level === 1;
+        
+        if (isDirectChild) {
+          console.log(`[TASKS TABLE] Including direct child: ${child.id} under parent: ${parent.id}`);
+        } else {
+          console.log(`[TASKS TABLE] Skipping deeper nested child: ${child.id} (level ${level}) under parent: ${parent.id}`);
+        }
+        
+        return isDirectChild;
+      });
+      
+      // Add the direct children after their parent
+      organizedTasks.push(...directChildren);
     });
     
     // Add any remaining tasks that might have been orphaned
     // (their parent wasn't in the filtered set)
     tasks.forEach(task => {
-      if (task.parentTaskId && !organizedTasks.includes(task)) {
+      if (!organizedTasks.includes(task)) {
+        console.log(`[TASKS TABLE] Adding orphaned task: ${task.id}`);
         organizedTasks.push(task);
       }
     });
     
-    console.log(`[TASKS TABLE] Organized ${organizedTasks.length} tasks with hierarchy preserved`);
+    console.log(`[TASKS TABLE] Organized ${organizedTasks.length} tasks with direct children only`);
     return organizedTasks;
   };
   
@@ -879,6 +914,11 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {} }: 
                       <span className="text-gray-400 mr-2">└─</span>
                     )}
                     {task.title}
+                    {!task.parentTaskId && taskRelationships.has(task.id) && (
+                      <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        {taskRelationships.get(task.id)?.length || 0} subtasks
+                      </Badge>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>{task.project?.name || "-"}</TableCell>
