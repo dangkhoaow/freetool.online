@@ -7,11 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Loader2, Lock, CheckCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { projlyAuthService } from '@/lib/services/projly';
 import { useResetPassword } from '@/lib/services/projly/use-reset-password';
+
+// Password validation interface
+interface PasswordValidation {
+  isLengthValid: boolean;
+  hasUpperCase: boolean;
+  hasNumber: boolean;
+  hasSpecialChar: boolean;
+  passwordsMatch: boolean;
+}
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -19,6 +28,15 @@ export default function ResetPasswordPage() {
   const [token, setToken] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [validation, setValidation] = useState<PasswordValidation>({
+    isLengthValid: false,
+    hasUpperCase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    passwordsMatch: false
+  });
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,14 +98,71 @@ export default function ResetPasswordPage() {
     }
   }, [success, router]);
   
-  const validatePasswords = () => {
-    if (password.length < 8) {
-      setValidationError('Password must be at least 8 characters long');
-      return false;
-    }
+  // Validate password as user types
+  const validatePassword = (newPassword: string, confirmPwd: string) => {
+    log('Validating password');
     
-    if (password !== confirmPassword) {
-      setValidationError('Passwords do not match');
+    const isLengthValid = newPassword.length >= 8;
+    log('Password length valid:', isLengthValid);
+    
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    log('Password has uppercase:', hasUpperCase);
+    
+    const hasNumber = /\d/.test(newPassword);
+    log('Password has number:', hasNumber);
+    
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+    log('Password has special char:', hasSpecialChar);
+    
+    const passwordsMatch = newPassword === confirmPwd && newPassword !== '';
+    log('Passwords match:', passwordsMatch);
+    
+    setValidation({
+      isLengthValid,
+      hasUpperCase,
+      hasNumber,
+      hasSpecialChar,
+      passwordsMatch
+    });
+  };
+  
+  // Get validation status class for styling
+  const getValidationStatusClass = (isValid: boolean) => {
+    return isValid 
+      ? "text-green-500" 
+      : password.length > 0 
+        ? "text-red-500" 
+        : "text-gray-400";
+  };
+  
+  // Check if all password requirements are met
+  const isPasswordValid = () => {
+    return validation.isLengthValid && 
+           validation.hasUpperCase && 
+           validation.hasNumber && 
+           validation.hasSpecialChar &&
+           validation.passwordsMatch;
+  };
+  
+  // Update password and validate
+  const handlePasswordChange = (value: string) => {
+    log('Password changed');
+    setPassword(value);
+    validatePassword(value, confirmPassword);
+  };
+  
+  // Update confirm password and validate
+  const handleConfirmPasswordChange = (value: string) => {
+    log('Confirm password changed');
+    setConfirmPassword(value);
+    validatePassword(password, value);
+  };
+  
+  // Legacy validation function - now uses the new validation system
+  const validatePasswords = () => {
+    if (!isPasswordValid()) {
+      // Set a general validation error message
+      setValidationError('Please ensure your password meets all requirements');
       return false;
     }
     
@@ -217,34 +292,91 @@ export default function ResetPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="password">New Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    placeholder="Enter your new password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    required 
-                    disabled={isLoading}
-                    minLength={8}
-                  />
-                  <p className="text-xs text-gray-500">Password must be at least 8 characters long</p>
+                  <div className="relative">
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="Enter your new password" 
+                      value={password} 
+                      onChange={(e) => handlePasswordChange(e.target.value)} 
+                      required 
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        log("Toggle password visibility:", !showPassword);
+                        setShowPassword(!showPassword);
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      disabled={isLoading}
+                    >
+                      {showPassword ? (
+                        <Eye className="h-5 w-5" />
+                      ) : (
+                        <EyeOff className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input 
-                    id="confirmPassword" 
-                    type="password" 
-                    placeholder="Confirm your new password" 
-                    value={confirmPassword} 
-                    onChange={(e) => setConfirmPassword(e.target.value)} 
-                    required 
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <Input 
+                      id="confirmPassword" 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      placeholder="Confirm your new password" 
+                      value={confirmPassword} 
+                      onChange={(e) => handleConfirmPasswordChange(e.target.value)} 
+                      required 
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        log("Toggle confirm password visibility:", !showConfirmPassword);
+                        setShowConfirmPassword(!showConfirmPassword);
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      disabled={isLoading}
+                    >
+                      {showConfirmPassword ? (
+                        <Eye className="h-5 w-5" />
+                      ) : (
+                        <EyeOff className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Password Requirements */}
+                <div className="mt-2">
+                  <p className="text-xs font-medium mb-1">Password Requirements:</p>
+                  <ul className="space-y-1 text-xs">
+                    <li className={getValidationStatusClass(validation.isLengthValid)}>
+                      • At least 8 characters long
+                    </li>
+                    <li className={getValidationStatusClass(validation.hasUpperCase)}>
+                      • At least one uppercase letter
+                    </li>
+                    <li className={getValidationStatusClass(validation.hasNumber)}>
+                      • At least one number
+                    </li>
+                    <li className={getValidationStatusClass(validation.hasSpecialChar)}>
+                      • At least one special character (!@#$%^&*(),.?":{})
+                    </li>
+                    <li className={getValidationStatusClass(validation.passwordsMatch)}>
+                      • Passwords match
+                    </li>
+                  </ul>
                 </div>
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={isLoading}
+                  disabled={isLoading || !isPasswordValid()}
                 >
                   {isLoading ? (
                     <div className="flex items-center">
