@@ -1,6 +1,8 @@
 # Projly Tasks Page
 
-> **Updated:** 2025-05-24 (Navigation Utilities Implementation and Full Hierarchical Task Display)
+> **Updated:** 2025-05-26 (Subtask Deletion Fix and UI Refresh Enhancement)
+> **Previous Update:** 2025-05-25 (Task Details Page Code Cleanup and Enhanced Component Separation)
+> **Earlier Update:** 2025-05-24 (Navigation Utilities Implementation and Full Hierarchical Task Display)
 
 ## Overview
 
@@ -30,6 +32,85 @@ The Tasks page provides a comprehensive interface for managing tasks across all 
 │   └── page.tsx
 └── README.md          - This documentation file
 ```
+
+## Task Details Page Code Cleanup (Added 2025-05-25)
+
+The Task Details page (`/app/projly/tasks/[id]/page.tsx`) has been refactored to improve code quality and maintainability by removing unused functions and variables while preserving all functionality and UI elements.
+
+### Key Improvements
+
+1. **Separation of Concerns**: 
+   - Removed edit functionality that was duplicated from the dedicated edit page
+   - Established clear boundaries between viewing (detail page) and editing (edit page) responsibilities
+
+2. **Code Cleanup**:
+   - Removed unused functions: `handleDeleteSubTask`, `fetchSubTasksRecursive`, `renderStatusBadge`, `handleChange`, `handleSubmit`
+   - Removed unused variables like `idToTask` in the `getTaskSubtree` function
+   - Preserved all UI functionality and component structure
+
+3. **Architecture Benefits**:
+   - Reduced file size and complexity
+
+## Subtask Deletion and UI Refresh Fix (Added 2025-05-26)
+
+A critical issue was identified and fixed where the subtask list in the task details page wasn't automatically refreshing after a subtask was deleted. The solution implements a robust two-phase state update pattern that ensures consistent UI updates.
+
+### Implementation Details
+
+1. **Enhanced `refreshSubTasks` Function**:
+   - Implemented a two-phase state update pattern to force proper UI re-rendering
+   - First clears the subtask list to ensure immediate visual feedback
+   - Uses a deferred update with a short timeout to ensure React's state batching doesn't interfere
+   - Adds deep cloning of task data to ensure React detects the change as new data
+   - Includes error handling with fallback mechanisms
+
+2. **Connection to Task Container**:
+   - Proper connection of the `onDataChange` callback to ensure the `refreshSubTasks` function is called after any subtask operations
+   - Ensures consistent behavior between task deletion in task detail pages and project detail pages
+
+3. **Technical Implementation**:
+   ```typescript
+   // Two-phase state update pattern for reliable UI refresh
+   setSubTasks([]); // First clear the state
+   
+   // Then set the new state after a short delay
+   setTimeout(() => {
+     // Deep clone to ensure React treats this as new data
+     const subtreeCopy = JSON.parse(JSON.stringify(subtree));
+     setSubTasks(subtreeCopy as ProjlyTaskData[]);
+   }, 50);
+   ```
+
+4. **Error Handling**:
+   - Added additional error handling for the JSON parsing operations
+   - Implemented a fallback mechanism using array spread operator if JSON operations fail
+   - Improved readability and maintainability
+   - Better adherence to the single responsibility principle
+   - Clearer separation between task detail viewing and editing workflows
+
+### Implementation Details
+
+The Task Details page now focuses solely on displaying task information and managing sub-tasks through the centralized `TasksTable` component, while delegating editing functionality to the dedicated edit page:
+
+```typescript
+// Navigation to edit page (simplified):
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => {
+    router.push(`/projly/tasks/${taskId}/edit`);
+  }}
+>
+  <Edit className="h-4 w-4 mr-2" />
+  Edit
+</Button>
+```
+
+This clean separation ensures that:
+- The detail page focuses exclusively on displaying information
+- The edit page handles all form state and submission logic
+- No duplication of edit functionality across multiple files
+- Clear user workflow with distinct viewing and editing modes
 
 ## Task Navigation System (Added 2025-05-24)
 

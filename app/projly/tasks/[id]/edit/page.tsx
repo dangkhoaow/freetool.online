@@ -311,12 +311,13 @@ export default function TaskEditPage({}: TaskEditPageProps) {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Task
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Edit Task</h1>
-            <p className="text-muted-foreground">Update task details</p>
-          </div>
         </div>
         
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Task</h1>
+          <p className="text-muted-foreground">Update task details</p>
+        </div>
+
         <form onSubmit={handleSubmit}>
           <Card>
             <CardHeader>

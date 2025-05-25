@@ -128,7 +128,24 @@ app/projly/
 
 ## Recent Updates
 
-### Latest Updates (2025-05-24)
+### Latest Updates (2025-05-26)
+
+Task management enhancements:
+- Fixed critical issue with subtask list not refreshing after subtask deletion
+- Implemented robust two-phase state update pattern for reliable UI refreshes
+- Enhanced error handling with fallback mechanisms for state updates
+- Ensured consistent behavior between task detail pages and project detail pages
+- For full implementation details, see [Tasks Documentation](/app/projly/tasks/README.md)
+
+### Previous Updates (2025-05-25)
+
+Task component architecture improvements:
+- Implemented task details page code cleanup for better separation of concerns
+- Removed duplicated task editing functionality to improve maintainability
+- Streamlined component responsibility boundaries between detail and edit views
+- Reduced file complexity while preserving all UI elements and functionality
+
+### Previous Updates (2025-05-24)
 
 Enhanced task navigation system:
 - Added new navigation utilities to improve user experience

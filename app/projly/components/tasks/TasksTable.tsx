@@ -68,6 +68,7 @@ export interface TasksTableProps {
 import { CreateTaskForm } from "./CreateTaskForm";
 import { EditTaskForm } from "./EditTaskForm";
 import { TaskDetailView } from "./TaskDetailView";
+import { TaskTitleCell } from "./TaskTitleCell";
 
 import {
   Table,
@@ -750,20 +751,23 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
     <div>
       <div className="bg-card rounded-md space-y-4">
         {/* Filter toggle button */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center flex-1 min-w-0 gap-2">
             <Input 
               placeholder="Search tasks..." 
-              className="w-[300px]"
+              className="max-w-[300px] w-full"
               value={filters.search || ""}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              onChange={(e) => {
+                console.log('[TASKS TABLE] Search filter changed:', e.target.value);
+                setFilters({ ...filters, search: e.target.value });
+              }}
             />
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={toggleFilters}
-            className="flex items-center gap-1"
+            className="flex items-center justify-end gap-1 flex-shrink-0"
           >
             <Filter className="h-4 w-4" />
             Filters
@@ -971,34 +975,30 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
                 className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''}`}
                 onClick={() => handleViewTaskDetails(task)}
               >
-                <TableCell className="font-medium">
-                  <div className={`flex items-center ${task._meta?.level && task._meta.level > 0 ? `pl-${Math.min(task._meta.level * 6, 12)} border-l-4 border-blue-${Math.min(task._meta.level * 100, 400)}` : ''}`}>
-                    {task._meta?.level && task._meta.level > 0 && (
-                      <span className="text-gray-400 mr-2">{task._meta.level === 1 ? '└─' : '└─'.padStart(task._meta.level + 1, '─')}</span>
-                    )}
-                    {task.title}
-                    {task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow && (
-                      <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        {taskRelationships.get(task.id)?.length || 0} subtasks
-                      </Badge>
-                    )}
-                  </div>
+                <TableCell className="font-medium whitespace-nowrap" title={task.description || "-"}>
+                  {/* Use the dedicated TaskTitleCell component to prevent unwanted characters */}
+                  <TaskTitleCell
+                    task={task}
+                    level={task._meta?.level}
+                    hasSubtasks={task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow}
+                    subtaskCount={taskRelationships.get(task.id)?.length || 0}
+                  />
                 </TableCell>
-                <TableCell>{task.project?.name || "-"}</TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap" title={task.project?.name || "-"}>{task.project?.name || "-"}</TableCell>
+                <TableCell className="whitespace-nowrap" title={formatDateForDisplay(task.startDate)}>
                   {(() => {
                     console.log(`[TASKS TABLE] Formatting startDate for task ${task.id}: ${task.startDate || 'not set'}`);
                     return formatDateForDisplay(task.startDate);
                   })()}
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap" title={formatDateForDisplay(task.dueDate)}>
                   {(() => {
                     console.log(`[TASKS TABLE] Formatting dueDate for task ${task.id}: ${task.dueDate || 'not set'}`);
                     return formatDateForDisplay(task.dueDate);
                   })()}
                 </TableCell>
-                <TableCell>{renderStatusBadge(task.status)}</TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap" title={task.status}>{renderStatusBadge(task.status)}</TableCell>
+                <TableCell className="whitespace-nowrap" title={task.assignee ? (task.assignee.firstName && task.assignee.lastName ? `${task.assignee.firstName} ${task.assignee.lastName}` : task.assignee.name || task.assignee.email) : "-"}>
                   {(() => {
                     console.log("[TasksTable] Rendering assignee for task:", task.id, task.assignee);
                     if (task.assignee) {

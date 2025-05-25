@@ -72,25 +72,10 @@ interface TaskDetailsPageProps {
   // Props are no longer needed here since we'll use useParams
 }
 
-// Utility function to recursively fetch subtasks up to a certain depth
-async function fetchSubTasksRecursive(taskId: string, depth: number = 2, log: (msg: string, data?: any) => void): Promise<ProjlyTaskData[]> {
-  if (depth <= 0) return [];
-  const taskData = await projlyTasksService.getTask(taskId);
-  log('Fetched task for recursive subtasks', taskData);
-  if (!taskData || !Array.isArray(taskData.subTasks)) return [];
-  let allSubtasks: ProjlyTaskData[] = [...taskData.subTasks];
-  for (const subtask of taskData.subTasks) {
-    const nested = await fetchSubTasksRecursive(subtask.id, depth - 1, log);
-    allSubtasks.push(...nested);
-  }
-  log('All subtasks after recursion', allSubtasks);
-  return allSubtasks;
-}
 
 // Utility function to get all descendant tasks for a given parent taskId
 function getTaskSubtree(tasks: ProjlyTaskData[], parentId: string, log: (msg: string, data?: any) => void): ProjlyTaskData[] {
   const subtree: ProjlyTaskData[] = [];
-  const idToTask = Object.fromEntries(tasks.map(t => [t.id, t]));
   function collect(currentId: string) {
     const children = tasks.filter(t => t.parentTaskId === currentId);
     for (const child of children) {
@@ -327,144 +312,48 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     initPage();
   }, [taskId, router, toast]);
   
-  // Handle form input changes
-  const handleChange = (field: string, value: any) => {
-    log(`Updating form field: ${field} with value:`, value);
-    setTaskForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      log('Validating form submission');
-      if (!taskForm.title.trim()) {
-        toast({
-          title: 'Validation Error',
-          description: 'Task title is required',
-          variant: 'destructive'
-        });
-        return;
-      }
-      
-      if (!taskForm.projectId) {
-        toast({
-          title: 'Validation Error',
-          description: 'Please select a project',
-          variant: 'destructive'
-        });
-        return;
-      }
-      
-      setIsSubmitting(true);
-      log('Updating task:', taskForm);
-      
-      // Format dates for API
-      const updatedFormData = {
-        ...taskForm,
-        startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
-        dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined
-      };
-      
-      // Use object destructuring to format the task data for the API correctly
-      // and avoid duplicate id field
-      const { project, assignee, assignedTo, startDate, dueDate, ...taskBasicData } = updatedFormData;
-      
-      // Add detailed logging for debugging
-      console.log('[PROJLY:TASK_DETAILS] Preparing task data for update:', {
-        assignedTo,
-        startDate,
-        dueDate,
-        ...taskBasicData
-      });
-      
-      // Create an update payload that matches the TaskUpdateInput interface
-      // startDate is intentionally omitted as it's not part of the API interface
-      // taskBasicData already contains the id, so we don't need to include it again
-      // We need to check if dueDate is a Date object or a string
-      // Convert 'none' to null for the API
-      const assigneeIdForApi = assignedTo === 'none' ? null : assignedTo;
-      console.log('[PROJLY:TASK_DETAILS] Assignee ID for API:', assigneeIdForApi);
-      
-      // Cast the update data to any to bypass type checking since the API and UI use different Task types
-      await projlyTasksService.updateTask(taskId, {
-        ...taskBasicData,
-        assigneeId: assigneeIdForApi,
-        dueDate: dueDate && typeof dueDate === 'object' && dueDate !== null ? (dueDate as Date).toISOString() : dueDate
-      } as any);
-      log('Task updated successfully');
-      
-      toast({
-        title: 'Success',
-        description: 'Task updated successfully'
-      });
-      
-      // Refresh the task data
-      const updatedTask = await projlyTasksService.getTask(taskId);
-      
-      if (updatedTask) {
-        // Convert API task model to form state model
-        // Add detailed logging for debugging
-        console.log('[PROJLY:TASK_DETAILS] Updating task form with API response:', updatedTask);
-        
-        // Use type assertion to avoid type errors
-        const taskUpdate: any = {
-          id: updatedTask.id,
-          title: updatedTask.title || '',
-          description: updatedTask.description || '',
-          projectId: updatedTask.projectId || '',
-          status: updatedTask.status || 'Not Started',
-          assignedTo: updatedTask.assignedTo || 'none',
-          startDate: updatedTask.startDate ? new Date(updatedTask.startDate) : null,
-          dueDate: updatedTask.dueDate ? new Date(updatedTask.dueDate) : null,
-          // For displaying purposes
-          project: updatedTask.project || null,
-          assignee: updatedTask.assignee || null,
-          parentTaskId: updatedTask.parentTaskId || null
-        };
-        
-        setTaskForm(taskUpdate);
-        
-        console.log('[PROJLY:TASK_DETAILS] Task refreshed successfully');
-      } else {
-        console.error('[PROJLY:TASK_DETAILS] Failed to refresh task data');
-      }
-      
-    } catch (error) {
-      console.error(`[PROJLY:TASK_DETAILS:${taskId}] Error updating task:`, error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update task. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
   
   // Refactored: Fetch all tasks and filter for the current task and its subtree
   const refreshSubTasks = async () => {
     try {
       setIsRefreshingSubTasks(true);
       log('Refreshing sub-tasks using main task list API');
+      
+      // First, we'll clear the subtasks to ensure the UI updates immediately
+      setSubTasks([]);
+      
+      // Fetch fresh data from the API
       const allTasks = await projlyTasksService.getTasks();
-      log('Fetched all tasks', allTasks);
+      log('Fetched all tasks for subtask refresh', allTasks);
+      
       // Find the current task
       const parentTask = allTasks.find(t => t.id === taskId);
       if (!parentTask) {
         log('Parent task not found in all tasks', { taskId });
-          setSubTasks([]);
-        return;
+        return; // We already cleared the subtasks above
       }
+      
       // Get all descendants (n+1, n+2, ...)
       const subtree = getTaskSubtree(allTasks, taskId, log);
       log('Filtered subtree for current task', subtree);
-      setSubTasks(subtree as ProjlyTaskData[]);
-      log('SubTasks updated with filtered subtree');
+      
+      // Implementation of a reliable React state update pattern:
+      // 1. First set empty array (already done above)
+      // 2. Use a small timeout to ensure the UI has rendered the empty state
+      // 3. Set the new state with a deep copy to ensure React detects changes
+      setTimeout(() => {
+        try {
+          // Create a deep copy of the subtree to ensure React treats it as new data
+          // This is important to force a re-render when tasks are deleted
+          const subtreeCopy = JSON.parse(JSON.stringify(subtree));
+          log('Setting subtasks with deep-copied data to force UI refresh', { count: subtreeCopy.length });
+          setSubTasks(subtreeCopy as ProjlyTaskData[]);
+        } catch (innerError) {
+          console.error('[PROJLY:TASK_DETAILS] Error in deferred subtask update:', innerError);
+          // Fallback in case the JSON operations fail
+          setSubTasks([...subtree] as ProjlyTaskData[]);
+        }
+      }, 50); // Short delay to ensure the UI updates properly
     } catch (error) {
       console.error(`[PROJLY:TASK_DETAILS] Error refreshing sub-tasks:`, error);
       toast({
@@ -506,68 +395,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     }
   };
   
-  // Handle sub-task deletion
-  const handleDeleteSubTask = async (subTaskId: string) => {
-    try {
-      log(`Deleting sub-task: ${subTaskId}`);
-      await projlyTasksService.deleteTask(subTaskId);
-      log('Sub-task deleted successfully');
-      
-      toast({
-        title: 'Success',
-        description: 'Sub-task deleted successfully'
-      });
-      
-      // Refresh sub-tasks
-      await refreshSubTasks();
-      
-    } catch (error) {
-      console.error(`[PROJLY:TASK_DETAILS] Error deleting sub-task ${subTaskId}:`, error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete sub-task. Please try again.',
-        variant: 'destructive'
-      });
-    }
-  };
   
-  // Render status badge
-  const renderStatusBadge = (status: string) => {
-    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
-    let customClass = "";
-    
-    switch (status) {
-      case "Completed":
-        variant = "default";
-        customClass = "bg-green-600 text-white hover:bg-green-700 border-green-600";
-        break;
-      case "In Progress":
-        variant = "secondary";
-        customClass = "bg-blue-600 text-white hover:bg-blue-700 border-blue-600";
-        break;
-      case "In Review":
-        variant = "outline";
-        customClass = "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
-        break;
-      case "Not Started":
-        variant = "outline";
-        customClass = "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
-        break;
-      case "On Hold":
-        variant = "outline";
-        customClass = "bg-orange-500 text-white hover:bg-orange-600 border-orange-500";
-        break;
-      case "Pending":
-        variant = "destructive";
-        customClass = "bg-amber-500 text-white hover:bg-amber-600 border-amber-500";
-        break;
-      default:
-        variant = "outline";
-        customClass = "bg-gray-400 text-white hover:bg-gray-500 border-gray-400";
-    }
-    
-    return <Badge variant={variant} className={customClass}>{status}</Badge>;
-  };
   
   // Handle task deletion
   const handleDelete = async () => {
@@ -612,45 +440,56 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
-        <div className="flex items-center mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // Use our extracted utility function for intelligent back navigation
-              handleIntelligentBackNavigation(router, taskId, log);
-            }}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">{taskForm.title}</h1>
-            <p className="text-muted-foreground">
-              Task ID: {taskId}
-            </p>
+        <div className="flex items-center justify-between mb-6 w-full">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                console.log('[TASK_DETAILS] Back button clicked');
+                handleIntelligentBackNavigation(router, taskId, log);
+              }}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/projly/tasks/${taskId}/edit`)}
-            className="ml-2"
-            disabled={isSubmitting}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setIsDeleteDialogOpen(true)}
-            className="ml-2"
-            disabled={isSubmitting}
-          >
-            <Trash className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                console.log('[TASK_DETAILS] Edit button clicked');
+                router.push(`/projly/tasks/${taskId}/edit`);
+              }}
+              className="ml-2"
+              disabled={isSubmitting}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                console.log('[TASK_DETAILS] Delete button clicked');
+                setIsDeleteDialogOpen(true);
+              }}
+              className="ml-2"
+              disabled={isSubmitting}
+            >
+              <Trash className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+        </div>
+
+        <div className="container mx-auto pb-4">
+          <h1 className="text-3xl font-bold tracking-tight">{taskForm.title}</h1>
+          <p className="text-muted-foreground">
+            Task ID: {taskId}
+          </p>
         </div>
         
         <Tabs defaultValue="details" value={activeTab} onValueChange={(value) => {
@@ -822,6 +661,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                     log('Custom grouped displayTasks (n+1 and n+2 grouped)', displayTasks);
                     return (
                       <TasksContainer
+                        key={`task-container-${subTasks.length}-${new Date().getTime()}`} // Force re-render on subtasks changes
                         context="task"
                         initialTasks={displayTasks}
                         autoLoad={false}
@@ -836,6 +676,12 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                           showAllSubtasks: false
                         }}
                         tableParentTaskId={taskId}
+                        onDataChange={async () => {
+                          log('Subtask data changed (created/updated/deleted), refreshing subtasks list');
+                          // Force a clean reload by clearing subtasks first
+                          setSubTasks([]);
+                          await refreshSubTasks();
+                        }}
                       />
                     );
                   })()

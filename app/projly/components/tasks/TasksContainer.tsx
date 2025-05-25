@@ -241,6 +241,15 @@ export function TasksContainer({
       queryClient.invalidateQueries({ queryKey: ['task', parentId] });
     }
     
+    // First, notify parent component of data change before reloading
+    // This is crucial for parent components to prepare for the reload
+    if (onDataChange) {
+      log('Calling onDataChange callback to notify parent component');
+      // We pass an empty array to indicate data is about to change
+      // The parent can use this to reset its state before the new data arrives
+      onDataChange([]);
+    }
+    
     // Only update filters if they've actually changed to prevent render loops
     if (updatedFilters) {
       const hasFilterChanges = JSON.stringify(updatedFilters) !== JSON.stringify(currentFilters);
