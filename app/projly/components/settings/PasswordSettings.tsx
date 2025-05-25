@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -13,21 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Lock, Eye, EyeOff, AlertTriangle, AlertCircle } from "lucide-react";
+import { Loader2, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { PasswordValidationComponent } from "@/app/projly/components/ui/PasswordValidation";
 
 // Types
 interface PasswordFormData {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-}
-
-interface PasswordValidation {
-  isLengthValid: boolean;
-  hasUpperCase: boolean;
-  hasNumber: boolean;
-  hasSpecialChar: boolean;
-  passwordsMatch: boolean;
 }
 
 interface PasswordSettingsProps {
@@ -46,15 +39,7 @@ export function PasswordSettings({
   error 
 }: PasswordSettingsProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [validation, setValidation] = useState<PasswordValidation>({
-    isLengthValid: false,
-    hasUpperCase: false,
-    hasNumber: false,
-    hasSpecialChar: false,
-    passwordsMatch: false
-  });
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -65,56 +50,22 @@ export function PasswordSettings({
     }
   };
   
-  // Validate password as user types
-  const validatePassword = (password: string, confirmPassword: string) => {
-    log('Validating password');
-    
-    const isLengthValid = password.length >= 8;
-    log('Password length valid:', isLengthValid);
-    
-    const hasUpperCase = /[A-Z]/.test(password);
-    log('Password has uppercase:', hasUpperCase);
-    
-    const hasNumber = /\d/.test(password);
-    log('Password has number:', hasNumber);
-    
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    log('Password has special char:', hasSpecialChar);
-    
-    const passwordsMatch = password === confirmPassword && password !== '';
-    log('Passwords match:', passwordsMatch);
-    
-    setValidation({
-      isLengthValid,
-      hasUpperCase,
-      hasNumber,
-      hasSpecialChar,
-      passwordsMatch
-    });
+  // Handle current password change
+  const handleCurrentPasswordChange = (value: string) => {
+    log('Current password changed');
+    onPasswordChange('currentPassword', value);
   };
   
-  // Handle password change with validation
-  const handlePasswordInputChange = (field: string, value: string) => {
-    log(`Password field changed: ${field}`);
-    
-    // Update form state
-    onPasswordChange(field, value);
-    
-    // Validate if new password or confirm password fields change
-    if (field === 'newPassword') {
-      validatePassword(value, passwordForm.confirmPassword);
-    } else if (field === 'confirmPassword') {
-      validatePassword(passwordForm.newPassword, value);
-    }
+  // Handle new password change
+  const handleNewPasswordChange = (value: string) => {
+    log('New password changed');
+    onPasswordChange('newPassword', value);
   };
   
-  // Get validation status icon class
-  const getValidationStatusClass = (isValid: boolean) => {
-    return isValid 
-      ? "text-green-500" 
-      : passwordForm.newPassword.length > 0 
-        ? "text-red-500" 
-        : "text-gray-300";
+  // Handle confirm password change
+  const handleConfirmPasswordChange = (value: string) => {
+    log('Confirm password changed');
+    onPasswordChange('confirmPassword', value);
   };
   
   // Check if form is valid
@@ -123,16 +74,33 @@ export function PasswordSettings({
       return false;
     }
     
-    if (!validation.isLengthValid || 
-        !validation.hasUpperCase || 
-        !validation.hasNumber || 
-        !validation.hasSpecialChar ||
-        !validation.passwordsMatch) {
-      return false;
-    }
-    
-    return true;
+    return isPasswordValid;
   };
+  
+  // Update isPasswordValid when the PasswordValidationComponent updates
+  useEffect(() => {
+    // This will be called when the password validation component updates its state
+    // and the passwordForm is updated
+    const { newPassword, confirmPassword } = passwordForm;
+    
+    // Basic validation checks
+    const isLengthValid = newPassword.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+    const passwordsMatch = newPassword === confirmPassword && newPassword !== '';
+    
+    // Set the overall validation state
+    setIsPasswordValid(
+      isLengthValid && 
+      hasUpperCase && 
+      hasNumber && 
+      hasSpecialChar && 
+      passwordsMatch
+    );
+    
+    log('Password validation updated:', { isPasswordValid });
+  }, [passwordForm.newPassword, passwordForm.confirmPassword]);
   
   return (
     <form onSubmit={onSubmit}>
@@ -160,7 +128,7 @@ export function PasswordSettings({
                 id="currentPassword"
                 type={showCurrentPassword ? "text" : "password"}
                 value={passwordForm.currentPassword}
-                onChange={(e) => onPasswordChange('currentPassword', e.target.value)}
+                onChange={(e) => handleCurrentPasswordChange(e.target.value)}
                 required
                 disabled={isSaving}
               />
@@ -184,87 +152,23 @@ export function PasswordSettings({
             </div>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-4">
             <Label htmlFor="newPassword">New Password</Label>
-            <div className="relative">
-              <Input 
-                id="newPassword"
-                type={showNewPassword ? "text" : "password"}
-                value={passwordForm.newPassword}
-                onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
-                required
-                disabled={isSaving}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => {
-                  setShowNewPassword(!showNewPassword);
-                  log('Toggled new password visibility:', !showNewPassword);
-                }}
-                disabled={isSaving}
-              >
-                {showNewPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <div className="relative">
-              <Input 
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                value={passwordForm.confirmPassword}
-                onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
-                required
-                disabled={isSaving}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => {
-                  setShowConfirmPassword(!showConfirmPassword);
-                  log('Toggled confirm password visibility:', !showConfirmPassword);
-                }}
-                disabled={isSaving}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-          
-          <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium">Password Requirements:</p>
-            <ul className="space-y-1 text-sm">
-              <li className={getValidationStatusClass(validation.isLengthValid)}>
-                • At least 8 characters long
-              </li>
-              <li className={getValidationStatusClass(validation.hasUpperCase)}>
-                • At least one uppercase letter
-              </li>
-              <li className={getValidationStatusClass(validation.hasNumber)}>
-                • At least one number
-              </li>
-              <li className={getValidationStatusClass(validation.hasSpecialChar)}>
-                • At least one special character (!@#$%^&*(),.?":{})
-              </li>
-              <li className={getValidationStatusClass(validation.passwordsMatch)}>
-                • Passwords match
-              </li>
-            </ul>
+            <PasswordValidationComponent
+              password={passwordForm.newPassword}
+              confirmPassword={passwordForm.confirmPassword}
+              onPasswordChange={handleNewPasswordChange}
+              onConfirmPasswordChange={handleConfirmPasswordChange}
+              disabled={isSaving}
+              id={{
+                password: "newPassword",
+                confirmPassword: "confirmPassword"
+              }}
+              placeholder={{
+                password: "Enter new password",
+                confirmPassword: "Confirm new password"
+              }}
+            />
           </div>
         </CardContent>
         <CardFooter className="flex justify-end p-6">
