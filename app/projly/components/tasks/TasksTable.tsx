@@ -285,14 +285,37 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   
   // State for filters and sorting - initialize from props if available
   const [filters, setFilters] = useState<UIFilters>(initialFilters || {});
-  // State for filter visibility
-  const [showFilters, setShowFilters] = useState<boolean>(false);
+  // State for filter visibility with localStorage persistence
+  const [showFilters, setShowFilters] = useState<boolean>(() => {
+    // Try to get stored value from localStorage
+    if (typeof window !== 'undefined') {
+      const storedValue = localStorage.getItem('projly_tasks_show_filters');
+      return storedValue === 'true';
+    }
+    return false;
+  });
   
   // Function to toggle filter visibility
   const toggleFilters = () => {
-    console.log('[TASKS TABLE] Toggling filter visibility:', !showFilters);
-    setShowFilters(!showFilters);
+    const newState = !showFilters;
+    console.log('[TASKS TABLE] Toggling filter visibility:', newState);
+    setShowFilters(newState);
+    
+    // Store in localStorage for persistence
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('projly_tasks_show_filters', String(newState));
+    }
   };
+  
+  // Ensure filter visibility state is preserved when filters change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedValue = localStorage.getItem('projly_tasks_show_filters');
+      if (storedValue === 'true' && !showFilters) {
+        setShowFilters(true);
+      }
+    }
+  }, [filters, showFilters]);
   
   // Helper function to convert UI filters to API filters
   const toApiFilters = (uiFilters: UIFilters): APIFilters => {
