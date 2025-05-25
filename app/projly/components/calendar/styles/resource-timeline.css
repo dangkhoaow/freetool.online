@@ -84,21 +84,26 @@
   font-weight: 500;
 }
 
+.fc .fc-scrollgrid-section-body .fc-timeline-slot {
+  background-color: #ffffff !important;
+}
+
+
 /* Add different styling for weekends */
-.fc .fc-day-sat,
-.fc .fc-day-sun {
-  background-color: rgba(248, 250, 252, 0.5);
+.fc .fc-scrollgrid-section-body .fc-day-sat,
+.fc .fc-scrollgrid-section-body .fc-day-sun {
+  background-color: #f3dc001a !important;
 }
 
 /* Today highlight - make it more prominent */
 .fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-today .fc-timeline-slot-label-frame {
-  background-color: #9b87f5; /* Primary purple for today highlight */
-  color: white;
-  font-weight: bold;
+  background-color: #9b87f5 !important; /* Primary purple for today highlight */
+  color: white !important;
+  font-weight: bold !important;
 }
 
 .fc .fc-timeline-slots .fc-timeline-slot-lane.fc-day-today {
-  background-color: rgba(155, 135, 245, 0.15); /* Lighter version of the primary purple */
+  background-color: rgba(155, 135, 245, 0.15) !important; /* Lighter version of the primary purple */
 }
 
 /* Week grouping indicators */
