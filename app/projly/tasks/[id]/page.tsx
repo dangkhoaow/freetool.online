@@ -128,6 +128,7 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("details");
   const [subTasks, setSubTasks] = useState<ProjlyTaskData[]>([]);
   const [isCreateSubTaskOpen, setIsCreateSubTaskOpen] = useState(false);
@@ -279,6 +280,9 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
         
         // Get current user and team members
         const currentUser = await projlyAuthService.getCurrentUser();
+        console.log('[TASK_DETAILS] Current user:', currentUser);
+        setCurrentUser(currentUser);
+        
         // Get team members for assignee selection
         // This would typically come from a teams service
         // For now we'll use a placeholder
@@ -397,8 +401,85 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   
   
   
+  // Check if user has permission to delete the task
+  const canDeleteTask = (): boolean => {
+    if (!currentUser || !taskForm) {
+      console.log("[TASK_DETAILS] Cannot check delete permission: missing user or task data");
+      return false;
+    }
+    
+    console.log('[TASK_DETAILS] Current user for permission check:', currentUser);
+    console.log('[TASK_DETAILS] Task form for permission check:', taskForm);
+    
+    // Check if user has site_owner role or admin permissions, which always gets delete permission
+    // Look for the role in different possible locations in the user object
+    const userRole = currentUser.role || currentUser.userRole;
+    const isSiteOwner = userRole === 'site_owner' || userRole === 'admin';
+    
+    // Log the role check for debugging
+    console.log(`[TASK_DETAILS] User role check: role=${userRole}, isSiteOwner=${isSiteOwner}`);
+    
+    if (isSiteOwner) {
+      console.log('[TASK_DETAILS] User is site_owner/admin, granting delete permission');
+      return true;
+    }
+    
+    // Handle the case where assignedTo is 'none' (meaning not assigned)
+    if (taskForm.assignedTo === 'none' || taskForm.assignedTo === null || taskForm.assignedTo === undefined) {
+      // If task is not assigned to anyone, check if user is project owner or has admin privileges
+      // Check for project owner status in different possible fields
+      const isProjectOwner = 
+        !!currentUser.projectOwner || 
+        !!currentUser.isProjectOwner || 
+        userRole === 'site_owner' || 
+        userRole === 'admin';
+      
+      console.log(`[TASK_DETAILS] Task is not assigned to anyone. User project owner status: ${isProjectOwner}`);
+      
+      if (isProjectOwner) {
+        console.log('[TASK_DETAILS] User is project owner, granting delete permission for unassigned task');
+        return true;
+      }
+      
+      console.log('[TASK_DETAILS] Task not assigned and user is not project owner, denying permission');
+      return false;
+    }
+    
+    // Convert IDs to strings for safer comparison
+    const userId = String(currentUser.id || '');
+    const currentUserIdAlternative = String(currentUser.userId || ''); // Some places use userId instead of id
+    
+    // The task might store assignedTo differently than the user ID format
+    const assignedToId = String(taskForm.assignedTo || '');
+    const assigneeId = taskForm.assignee ? String(taskForm.assignee.id || '') : '';
+    
+    // Debug output of the values we're comparing
+    console.log(`[TASK_DETAILS] Comparing userIds=${userId},${currentUserIdAlternative} with assignedToId=${assignedToId} and assigneeId=${assigneeId}`);
+    
+    // Check various ID formats since the application might use different ID formats in different places
+    const isAssigned = 
+      userId === assignedToId || 
+      userId === assigneeId ||
+      currentUserIdAlternative === assignedToId ||
+      currentUserIdAlternative === assigneeId;
+    
+    console.log(`[TASK_DETAILS] Task ${taskForm.id} delete permission check: isAssigned=${isAssigned}`);
+    
+    return isAssigned;
+  };
+
   // Handle task deletion
   const handleDelete = async () => {
+    if (!canDeleteTask()) {
+      console.log("[TASK_DETAILS] User does not have permission to delete the task");
+      toast({
+        title: 'Error',
+        description: 'You do not have permission to delete this task.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     try {
       log('Deleting task');
       setIsSubmitting(true);
@@ -469,19 +550,22 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                console.log('[TASK_DETAILS] Delete button clicked');
-                setIsDeleteDialogOpen(true);
-              }}
-              className="ml-2"
-              disabled={isSubmitting}
-            >
-              <Trash className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+            {/* Only show Delete button if user has permission */}
+            {canDeleteTask() && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  console.log('[TASK_DETAILS] Delete button clicked');
+                  setIsDeleteDialogOpen(true);
+                }}
+                className="ml-2"
+                disabled={isSubmitting}
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 

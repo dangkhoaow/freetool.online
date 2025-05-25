@@ -45,6 +45,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
+  const [parentTasks, setParentTasks] = useState<any[]>([]);
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -57,6 +58,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
     assignedTo: 'none', // Using 'none' instead of empty string for the Select component
     startDate: null as Date | null,
     dueDate: null as Date | null,
+    parentTaskId: 'none', // Add parent task ID field with 'none' as default
     // For displaying only
     project: null as any,
     assignee: null as any
@@ -79,6 +81,36 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       console.log(`[PROJLY:EDIT_TASK] No accessible members found for project ${taskForm.projectId}`);
     }
   }, [taskForm.projectId, projectMembers, isLoadingMembers]);
+  
+  // Load parent tasks when project changes
+  useEffect(() => {
+    const loadParentTasks = async () => {
+      if (!taskForm.projectId) return;
+      
+      try {
+        log('Loading parent tasks for project:', taskForm.projectId);
+        const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
+        
+        // Filter out tasks that already have a parent (they can't be parent tasks)
+        // Also filter out the current task itself (can't be its own parent)
+        const availableParentTasks = tasks.filter((task: any) => 
+          !task.parentTaskId && task.id !== taskId
+        );
+        
+        setParentTasks(availableParentTasks);
+        log('Loaded parent tasks:', availableParentTasks.length);
+      } catch (error) {
+        console.error(`[PROJLY:TASK_EDIT:${taskId}] Error loading parent tasks:`, error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load parent tasks. Please try again.',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    loadParentTasks();
+  }, [taskForm.projectId, taskId, toast]);
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -150,6 +182,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
           status: taskData.status || 'Not Started',
           priority: taskData.priority || 'Medium',
           assignedTo: taskData.assigneeId || 'none',
+          parentTaskId: taskData.parentTaskId || 'none', // Include parentTaskId, default to 'none' if not present
           startDate: startDate,
           dueDate: dueDate,
           // For displaying purposes
@@ -243,16 +276,19 @@ export default function TaskEditPage({}: TaskEditPageProps) {
         ...taskForm,
         // Convert 'none' to null or undefined for the API
         assignedTo: taskForm.assignedTo === 'none' ? null : taskForm.assignedTo,
+        // For parentTaskId, convert 'none' to undefined (not null) as the API expects
+        parentTaskId: taskForm.parentTaskId === 'none' ? undefined : taskForm.parentTaskId, 
         startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
         dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined
       };
       
       // Use object destructuring to format the task data for the API correctly
-      const { project, assignee, assignedTo, startDate, dueDate, ...taskBasicData } = formattedTask;
+      const { project, assignee, assignedTo, parentTaskId, startDate, dueDate, ...taskBasicData } = formattedTask;
       
       // Add detailed logging for debugging
       log('Preparing task data for update:', {
         assignedTo,
+        parentTaskId,
         startDate,
         dueDate,
         ...taskBasicData
@@ -262,6 +298,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       const updatePayload = {
         ...taskBasicData,
         assigneeId: assignedTo,  // This is the key field the backend expects
+        parentTaskId: parentTaskId, // Include the parentTaskId in the update
         startDate: startDate,
         dueDate: dueDate
       };
@@ -404,6 +441,27 @@ export default function TaskEditPage({}: TaskEditPageProps) {
                         No team members found for this project
                       </div>
                     )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Parent Task Selection */}
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="parentTaskId">Parent Task (Optional)</Label>
+                <Select
+                  value={taskForm.parentTaskId}
+                  onValueChange={(value) => handleChange('parentTaskId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a parent task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Parent Task</SelectItem>
+                    {parentTasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
