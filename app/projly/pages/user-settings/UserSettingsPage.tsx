@@ -447,9 +447,15 @@ function UserSettingsPage() {
   };
   
   const handlePasswordReset = async (password: string) => {
-    if (!selectedUserId) return;
+    console.log("[PROJLY:USER_SETTINGS] Handling password reset for user ID:", selectedUserId);
+    
+    if (!selectedUserId) {
+      console.log("[PROJLY:USER_SETTINGS] No user selected for password reset");
+      return;
+    }
     
     if (!isSiteOwner && !isAdmin) {
+      console.log("[PROJLY:USER_SETTINGS] Permission denied: user is not site owner or admin");
       toast({
         title: "Permission denied",
         description: "Only Site Owners and Admins can reset passwords.",
@@ -458,14 +464,8 @@ function UserSettingsPage() {
       return;
     }
     
-    if (!password || password.length < 6) {
-      toast({
-        title: "Invalid password",
-        description: "Password must be at least 6 characters.",
-        variant: "destructive"
-      });
-      return;
-    }
+    // Password validation is now handled in the PasswordResetDialog component
+    // The dialog will only call this function if the password meets all requirements
     
     setIsUpdating(selectedUserId);
     try {
