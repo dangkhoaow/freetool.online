@@ -18,7 +18,8 @@ import {
   Video,
   Camera,
   Pen,
-  Layout
+  Layout,
+  Briefcase
 } from "lucide-react";
 import React from "react";
 
@@ -46,6 +47,17 @@ export const categories = [
 
 // Define all tools with their categories
 export const tools: ToolConfig[] = [
+  {
+    id: "projly",
+    title: "Projly",
+    description: "Comprehensive project management platform that helps teams organize tasks, collaborate effectively, and track progress in real-time.",
+    icon: <Briefcase className="h-16 w-16" stroke="#3b82f6" />,
+    color: "bg-blue-600/10",
+    textColor: "text-blue-600",
+    category: "utility",
+    href: "/projly",
+    isNew: true,
+  },
   {
     id: "private-ai-chat",
     title: "Private AI Chat",
