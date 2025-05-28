@@ -65,7 +65,20 @@ export const setAuthToken = (token: string): void => {
     localStorage.setItem('projly_token', token);
     
     // Also set in cookie as backup (for server-side requests)
-    document.cookie = `projly_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+    // Determine if we're in production by checking the hostname
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    console.log('[PROJLY:AUTH] Environment detected:', isProduction ? 'production' : 'development');
+    
+    // Set cookie with appropriate attributes for the environment
+    if (isProduction) {
+      // In production, use SameSite=None and Secure for cross-domain cookies
+      document.cookie = `projly_token=${token}; path=/; max-age=86400; SameSite=None; Secure; Domain=.freetool.online`;
+      console.log('[PROJLY:AUTH] Set production cookie with cross-domain attributes');
+    } else {
+      // In development, use standard cookie settings
+      document.cookie = `projly_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+      console.log('[PROJLY:AUTH] Set development cookie');
+    }
     
     // Remove any mock tokens
     const mockTokenPattern = 'mock-token';
@@ -90,7 +103,18 @@ export const clearAuthToken = (): void => {
   
   try {
     // Clear from cookies
-    document.cookie = 'projly_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    // Determine if we're in production by checking the hostname
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
+    if (isProduction) {
+      // In production, clear with cross-domain attributes
+      document.cookie = 'projly_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=None; Secure; Domain=.freetool.online';
+      console.log('[PROJLY:AUTH] Cleared production cookie with cross-domain attributes');
+    } else {
+      // In development, use standard cookie clearing
+      document.cookie = 'projly_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+      console.log('[PROJLY:AUTH] Cleared development cookie');
+    }
     document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax'; // For backward compatibility
     
     // Clear from localStorage
