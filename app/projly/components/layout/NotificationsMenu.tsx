@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -14,87 +14,10 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-// Mock notifications hook since the original is not available
-function useNotifications() {
-  // Function to handle logging
-  const log = (message: string, data?: any) => {
-    if (data) {
-      console.log(`[PROJLY:NOTIFICATIONS] ${message}`, data);
-    } else {
-      console.log(`[PROJLY:NOTIFICATIONS] ${message}`);
-    }
-  };
-  
-  const [notifications, setNotifications] = useState<Array<{
-    id: string;
-    title: string;
-    message: string;
-    path: string;
-    timeAgo: string;
-    isRead: boolean;
-  }>>([]);
-  
-  const [unreadCount, setUnreadCount] = useState(0);
-  
-  // Initialize with mock data on component mount
-  useEffect(() => {
-    log('Initializing mock notifications');
-    const mockNotifications = [
-      {
-        id: '1',
-        title: 'Task Assignment',
-        message: 'You have been assigned a new task: "Update documentation"',
-        path: '/projly/tasks/1',
-        timeAgo: '5 min ago',
-        isRead: false
-      },
-      {
-        id: '2',
-        title: 'Project Update',
-        message: 'Project "Website Redesign" status changed to "In Progress"',
-        path: '/projly/projects/1',
-        timeAgo: '2 hours ago',
-        isRead: false
-      },
-      {
-        id: '3',
-        title: 'Deadline Reminder',
-        message: 'Task "Update API Documentation" is due tomorrow',
-        path: '/projly/tasks/3',
-        timeAgo: '1 day ago',
-        isRead: true
-      }
-    ];
-    
-    setNotifications(mockNotifications);
-    setUnreadCount(mockNotifications.filter(n => !n.isRead).length);
-  }, []);
-  
-  // Mark a notification as read
-  const markAsRead = (id: string) => {
-    log('Marking notification as read:', id);
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id ? { ...notification, isRead: true } : notification
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  };
-  
-  // Mark all notifications as read
-  const markAllAsRead = () => {
-    log('Marking all notifications as read');
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, isRead: true }))
-    );
-    setUnreadCount(0);
-  };
-  
-  return { notifications, unreadCount, markAsRead, markAllAsRead };
-}
+import { useNotifications } from '@/lib/services/projly/use-notifications';
 
 export const NotificationsMenu = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, refetch } = useNotifications();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   
@@ -116,8 +39,17 @@ export const NotificationsMenu = () => {
     router.push(path);
   };
   
+  // Refetch notifications when the dropdown is opened
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      log('Dropdown opened, refetching notifications');
+      refetch();
+    }
+  };
+  
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -142,7 +74,11 @@ export const NotificationsMenu = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {notifications.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-4 text-muted-foreground">
+            Loading notifications...
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
             No notifications at this time.
           </div>

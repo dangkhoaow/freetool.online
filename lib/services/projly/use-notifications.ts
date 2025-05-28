@@ -1,168 +1,215 @@
 
 import { useEffect, useState, useCallback } from 'react';
-// Use the correct AuthContext import with the useAuth hook
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
-// Use local imports for our project services
-import { useProjects } from './use-projects';
-import { useTasks } from './use-tasks';
-import { formatDistanceToNow } from 'date-fns';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatDistanceToNow, parseISO } from 'date-fns';
+
+// Define the base API URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+/**
+ * Enhanced fetch function for Projly API calls
+ * @param endpoint - API endpoint path (without the base URL)
+ * @param options - Fetch options
+ * @returns Promise with the fetch response
+ */
+async function projlyFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  // Function to handle logging
+  const log = (message: string, data?: any) => {
+    if (data) {
+      console.log(`[PROJLY:FETCH] ${message}`, data);
+    } else {
+      console.log(`[PROJLY:FETCH] ${message}`);
+    }
+  };
+
+  // Construct the full URL
+  const url = `${API_BASE_URL}${endpoint}`;
+  log(`Making ${options.method || 'GET'} request to: ${url}`);
+
+  // Set default headers if not provided
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Add credentials to include cookies in the request
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+    credentials: 'include',
+  };
+
+  try {
+    const response = await fetch(url, fetchOptions);
+    
+    // Log the response status
+    log(`Response status: ${response.status}`);
+    
+    return response;
+  } catch (error) {
+    log(`Error in fetch: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
+}
 
 // Add debugging logs to track initialization
 console.log('[NOTIFICATIONS] Loading notifications hook');
 
 export interface Notification {
   id: string;
-  type: 'project' | 'task';
+  type: string;
+  entityId: string;
   title: string;
   message: string;
-  date: string;
-  timeAgo: string;
   path: string;
   isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+  timeAgo?: string; // Calculated field on the frontend
 }
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const { user } = useAuth(); // Using user instead of profile from the AuthContext
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   // Add detailed logging to show user authentication state
-  console.log('[NOTIFICATIONS] Auth user data:', user ? `User ID: ${user.id}` : 'Not authenticated');
+  console.log('[NOTIFICATIONS] Auth user data:', user ? `User ID: ${user?.id}` : 'Not authenticated');
   
-  const { data: projects = [] } = useProjects();
-  const { data: tasks = [] } = useTasks({ assignedTo: user?.id });
+  // Fetch notifications from the backend
+  const { data: fetchedNotifications = [], isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      console.log('[NOTIFICATIONS] Fetching notifications from backend');
+      
+      if (!user) {
+        console.log('[NOTIFICATIONS] No user, returning empty array');
+        return [];
+      }
+      
+      try {
+        const response = await projlyFetch('/api/projly/notifications');
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[NOTIFICATIONS] Error fetching notifications:', errorData);
+          throw new Error(errorData.error || 'Failed to fetch notifications');
+        }
+        
+        const data = await response.json();
+        console.log(`[NOTIFICATIONS] Successfully fetched ${data.length} notifications`);
+        return data;
+      } catch (error) {
+        console.error('[NOTIFICATIONS] Error in notifications fetch:', error);
+        throw error;
+      }
+    },
+    // Refetch periodically and on window focus to ensure we have latest data
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000, // Refetch every minute
+    enabled: !!user // Only run query if user is authenticated
+  });
   
-  // Use useCallback for these functions to prevent unnecessary re-renders
+  // Process notifications to add calculated fields
+  const notifications: Notification[] = fetchedNotifications.map((notification: Notification) => ({
+    ...notification,
+    timeAgo: formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })
+  }));
+  
+  // Calculate unread count
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+  console.log(`[NOTIFICATIONS] Processed ${notifications.length} notifications, ${unreadCount} unread`);
+  
+  // Mark a single notification as read
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      console.log('[NOTIFICATIONS] Marking notification as read:', id);
+      try {
+        const response = await projlyFetch(`/api/projly/notifications/${id}/read`, {
+          method: 'PUT'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[NOTIFICATIONS] Error marking notification as read:', errorData);
+          throw new Error(errorData.error || 'Failed to mark notification as read');
+        }
+        
+        const data = await response.json();
+        console.log('[NOTIFICATIONS] Successfully marked notification as read:', id);
+        return data;
+      } catch (error) {
+        console.error('[NOTIFICATIONS] Error in mark as read:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      // Invalidate notifications query to refetch
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    }
+  });
+  
+  // Mark all notifications as read
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      console.log('[NOTIFICATIONS] Marking all notifications as read');
+      try {
+        const response = await projlyFetch('/api/projly/notifications/read', {
+          method: 'PUT'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[NOTIFICATIONS] Error marking all notifications as read:', errorData);
+          throw new Error(errorData.error || 'Failed to mark all notifications as read');
+        }
+        
+        const data = await response.json();
+        console.log(`[NOTIFICATIONS] Successfully marked ${data.count} notifications as read`);
+        return data;
+      } catch (error) {
+        console.error('[NOTIFICATIONS] Error in mark all as read:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      // Invalidate notifications query to refetch
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    }
+  });
+  
+  // Use callbacks for the mark as read functions to prevent unnecessary re-renders
   const markAsRead = useCallback((id: string) => {
-    console.log("useNotifications: Marking notification as read:", id);
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id 
-          ? { ...notification, isRead: true } 
-          : notification
-      )
-    );
-    
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  }, []);
+    markAsReadMutation.mutate(id);
+  }, [markAsReadMutation]);
   
   const markAllAsRead = useCallback(() => {
-    console.log("useNotifications: Marking all notifications as read");
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, isRead: true }))
-    );
-    
-    setUnreadCount(0);
-  }, []);
+    markAllAsReadMutation.mutate();
+  }, [markAllAsReadMutation]);
   
-  // Generate notifications based on projects and tasks
+  // Refetch notifications when navigating between pages
   useEffect(() => {
-    if (!user) return;
-    console.log("useNotifications: Generating notifications based on projects and tasks");
-
-    const newNotifications: Notification[] = [];
-    const now = new Date();
-    const THREE_DAYS = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+    const handleRouteChange = () => {
+      console.log('[NOTIFICATIONS] Route changed, refetching notifications');
+      refetch();
+    };
     
-    // Define Task interface to resolve type errors
-    interface Task {
-      id: string;
-      title: string;
-      due_date?: string;
-    }
+    // Add event listener for navigation events
+    window.addEventListener('popstate', handleRouteChange);
     
-    // Define Project interface to resolve type errors
-    interface Project {
-      id: string;
-      name: string;
-      end_date?: string;
-    }
-    
-    // Check for tasks assigned to user that are due soon or overdue
-    tasks.forEach((task: Task) => {
-      if (task.due_date) {
-        const dueDate = new Date(task.due_date);
-        const timeRemaining = dueDate.getTime() - now.getTime();
-        
-        // Task is overdue
-        if (timeRemaining < 0) {
-          newNotifications.push({
-            id: `task-overdue-${task.id}`,
-            type: 'task',
-            title: 'Overdue Task',
-            message: `Task "${task.title}" is overdue.`,
-            date: dueDate.toISOString(),
-            timeAgo: formatDistanceToNow(dueDate, { addSuffix: true }),
-            path: `/tasks/${task.id}`,
-            isRead: false
-          });
-        } 
-        // Task is due soon (within 3 days)
-        else if (timeRemaining < THREE_DAYS) {
-          newNotifications.push({
-            id: `task-soon-${task.id}`,
-            type: 'task',
-            title: 'Task Due Soon',
-            message: `Task "${task.title}" is due soon.`,
-            date: dueDate.toISOString(),
-            timeAgo: formatDistanceToNow(dueDate, { addSuffix: true }),
-            path: `/tasks/${task.id}`,
-            isRead: false
-          });
-        }
-      }
-    });
-    
-    // Check for projects with end dates that are coming up or overdue
-    projects.forEach((project: Project) => {
-      if (project.end_date) {
-        const endDate = new Date(project.end_date);
-        const timeRemaining = endDate.getTime() - now.getTime();
-        
-        // Project is overdue
-        if (timeRemaining < 0) {
-          newNotifications.push({
-            id: `project-overdue-${project.id}`,
-            type: 'project',
-            title: 'Overdue Project',
-            message: `Project "${project.name}" is past its end date.`,
-            date: endDate.toISOString(),
-            timeAgo: formatDistanceToNow(endDate, { addSuffix: true }),
-            path: `/projects/${project.id}`,
-            isRead: false
-          });
-        } 
-        // Project is ending soon (within 3 days)
-        else if (timeRemaining < THREE_DAYS) {
-          newNotifications.push({
-            id: `project-soon-${project.id}`,
-            type: 'project',
-            title: 'Project Ending Soon',
-            message: `Project "${project.name}" is ending soon.`,
-            date: endDate.toISOString(),
-            timeAgo: formatDistanceToNow(endDate, { addSuffix: true }),
-            path: `/projects/${project.id}`,
-            isRead: false
-          });
-        }
-      }
-    });
-    
-    // Sort notifications by date (newest first)
-    newNotifications.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    setNotifications(newNotifications);
-    setUnreadCount(newNotifications.filter(n => !n.isRead).length);
-    
-    // Log the number of notifications generated for debugging
-    console.log(`[NOTIFICATIONS] Generated ${newNotifications.length} notifications, ${unreadCount} unread`);
-    
-  }, [user?.id, tasks, projects]);
+    // Clean up event listener on unmount
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [refetch]);
   
   return {
     notifications,
     unreadCount,
+    isLoading,
+    isError,
+    error,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    refetch
   };
 }

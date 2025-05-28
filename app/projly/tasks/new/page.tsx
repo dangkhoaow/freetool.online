@@ -279,16 +279,17 @@ export default function NewTaskPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Tasks
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">New Task</h1>
-            <p className="text-muted-foreground">Create a new task for your project</p>
-          </div>
+        </div>
+
+        <div className="container mx-auto pb-6">
+          <h1 className="text-3xl font-bold tracking-tight">New Task</h1>
+          <p className="text-muted-foreground">Create a new task for your project</p>
         </div>
         
         <form onSubmit={handleSubmit}>
           <Card>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-4 pt-4">
                 <div>
                   <Label htmlFor="title">Title *</Label>
                   <Input

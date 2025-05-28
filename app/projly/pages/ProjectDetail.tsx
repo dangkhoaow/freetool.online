@@ -284,7 +284,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
                 initialTasks={projectTasks as Task[]}
                 autoLoad={!projectTasks} // Only load if we don't already have tasks
                 displayOptions={{
-                  showHeader: false, // Header is already shown in the Card
+                  showHeader: true, // Header is already shown in the Card
                   showAddButton: true,
                   compact: true,
                   title: "Project Tasks"
