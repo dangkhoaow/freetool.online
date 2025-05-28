@@ -271,7 +271,7 @@ export default function NewTaskPage() {
       <div className="container mx-auto py-6">
         <div className="flex items-center mb-6">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => router.push('/projly/tasks')}
             className="mr-4"

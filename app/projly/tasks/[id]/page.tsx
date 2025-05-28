@@ -67,6 +67,7 @@ type ProjlyTaskData = {
 import { Task } from "@/app/projly/components/tasks/TasksTable";
 import { CreateTaskForm } from "@/app/projly/components/tasks/CreateTaskForm";
 import { TasksContainer } from "@/app/projly/components/tasks/TasksContainer";
+import { TaskNotFoundUI } from "@/app/projly/components/tasks/TaskNotFoundUI";
 
 interface TaskDetailsPageProps {
   // Props are no longer needed here since we'll use useParams
@@ -133,6 +134,9 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   const [subTasks, setSubTasks] = useState<ProjlyTaskData[]>([]);
   const [isCreateSubTaskOpen, setIsCreateSubTaskOpen] = useState(false);
   const [isRefreshingSubTasks, setIsRefreshingSubTasks] = useState(false);
+  // Add state for task not found error
+  const [taskNotFound, setTaskNotFound] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -188,12 +192,22 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
           return;
         }
         
-        log('Fetching task data');
-        const taskData = await projlyTasksService.getTask(taskId);
-        log('Fetched task data', taskData);
-        // Explicitly log timestamp fields for debugging
-        if (taskData) {
-          // Use type assertion to access potential timestamp fields that might not be in Task type
+        let taskData;
+        try {
+          log('Fetching task data');
+          taskData = await projlyTasksService.getTask(taskId);
+          log('Fetched task data', taskData);
+          
+          if (!taskData) {
+            log('Task not found - null response');
+            // Set task not found state instead of redirecting
+            setTaskNotFound(true);
+            setTaskError('Task not found or you do not have permission to view it');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Explicitly log timestamp fields for debugging
           const taskWithDates = taskData as any;
           log('Task timestamp fields', {
             createdAt: taskWithDates.createdAt,
@@ -201,16 +215,12 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
             createdAtType: taskWithDates.createdAt ? typeof taskWithDates.createdAt : 'undefined',
             updatedAtType: taskWithDates.updatedAt ? typeof taskWithDates.updatedAt : 'undefined'
           });
-        }
-        
-        if (!taskData) {
-          log('Task not found');
-          toast({
-            title: 'Error',
-            description: 'Task not found or you do not have permission to view it',
-            variant: 'destructive'
-          });
-          router.push('/projly/tasks');
+        } catch (error) {
+          log('Error fetching task data', error);
+          // Set task not found state for any API errors
+          setTaskNotFound(true);
+          setTaskError('Task not found or you do not have permission to view it');
+          setIsLoading(false);
           return;
         }
         
@@ -518,13 +528,23 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     return <PageLoading logContext="PROJLY:TASK_DETAILS" />;
   }
   
+  // Show task not found UI if the task doesn't exist
+  if (taskNotFound) {
+    log('Showing task not found UI');
+    return (
+      <DashboardLayout>
+        <TaskNotFoundUI errorMessage={taskError || undefined} />
+      </DashboardLayout>
+    );
+  }
+  
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
         <div className="flex items-center justify-between mb-6 w-full">
           <div className="flex items-center">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => {
                 console.log('[TASK_DETAILS] Back button clicked');

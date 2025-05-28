@@ -340,7 +340,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       <div className="container mx-auto py-6">
         <div className="flex items-center mb-6">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => handleIntelligentBackNavigation(router, taskId, log)}
             className="mr-4"

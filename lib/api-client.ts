@@ -15,6 +15,7 @@ export interface ApiResponse<T = any> {
   data: T;
   error?: string;
   success: boolean;
+  status?: number; // HTTP status code
 }
 
 // Helper to get the auth token from cookies (similar to getAuthToken in other modules)
@@ -53,46 +54,60 @@ console.log('[API_CLIENT] API Base URL:', API_BASE_URL);
  * Generic function to handle API responses and errors
  */
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
-  console.log(`[API_CLIENT] Received response with status: ${response.status}`);
+  const statusCode = response.status;
+  console.log(`[API_CLIENT] Received response with status: ${statusCode}`);
   
   try {
     const responseText = await response.text();
     let jsonData: any;
     
+    // Handle empty response case
+    if (!responseText) {
+      console.warn('[API_CLIENT] Empty response body');
+      return {
+        data: {} as T,
+        success: response.ok,
+        error: response.ok ? undefined : 'Empty response from server',
+        status: statusCode
+      };
+    }
+    
     // Try to parse the response as JSON if it's not empty
-    if (responseText) {
-      try {
-        jsonData = JSON.parse(responseText);
-      } catch (e) {
-        console.error('[API_CLIENT] Error parsing JSON response:', e);
-        return {
-          data: {} as T,
-          error: 'Invalid response from server',
-          success: false
-        };
-      }
+    try {
+      jsonData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('[API_CLIENT] Error parsing JSON response:', e);
+      return {
+        data: {} as T,
+        error: 'Invalid response from server',
+        success: false,
+        status: statusCode
+      };
     }
     
     if (!response.ok) {
-      console.error(`[API_CLIENT] Error response ${response.status}:`, jsonData || responseText);
+      console.error(`[API_CLIENT] HTTP error ${statusCode}:`, jsonData);
       return {
         data: {} as T,
-        error: jsonData?.message || jsonData?.error || `HTTP error ${response.status}`,
-        success: false
+        error: jsonData?.message || jsonData?.error || `HTTP error ${statusCode}`,
+        success: false,
+        status: statusCode
       };
     }
     
     console.log('[API_CLIENT] Successfully processed response');
     return {
       data: jsonData?.data !== undefined ? jsonData.data : jsonData,
-      success: true
+      success: true,
+      status: statusCode
     };
   } catch (e) {
     console.error('[API_CLIENT] Error handling response:', e);
     return {
       data: {} as T,
       error: e instanceof Error ? e.message : 'An unknown error occurred',
-      success: false
+      success: false,
+      status: statusCode || 500 // Use the status code or default to 500 for unexpected errors
     };
   }
 };

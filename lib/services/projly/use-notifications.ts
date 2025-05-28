@@ -110,10 +110,28 @@ export function useNotifications() {
   });
   
   // Process notifications to add calculated fields
-  const notifications: Notification[] = fetchedNotifications.map((notification: Notification) => ({
-    ...notification,
-    timeAgo: formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })
-  }));
+  const notifications: Notification[] = fetchedNotifications.map((notification: Notification) => {
+    // The server is storing UTC time, but the timestamp actually represents local time
+    // We need to adjust for this discrepancy
+    
+    // First, parse the ISO string which has the Z suffix (indicating UTC)
+    const utcDate = parseISO(notification.createdAt);
+    
+    // Create a corrected date by adjusting for the timezone offset
+    // This effectively converts "16:50 UTC wrongly recorded" to "16:50 local time correctly interpreted"
+    const correctedDate = new Date(utcDate);
+    correctedDate.setHours(correctedDate.getHours() - 7); // Subtract 7 hours to fix the timezone issue
+    
+    console.log('[NOTIFICATIONS] Original date from server:', notification.createdAt, 
+      '→ UTC interpreted date:', utcDate.toLocaleString(), 
+      '→ Corrected local date:', correctedDate.toLocaleString(),
+      '→ Current time:', new Date().toLocaleString());
+    
+    return {
+      ...notification,
+      timeAgo: formatDistanceToNow(correctedDate, { addSuffix: true })
+    };
+  });
   
   // Calculate unread count
   const unreadCount = notifications.filter(n => !n.isRead).length;

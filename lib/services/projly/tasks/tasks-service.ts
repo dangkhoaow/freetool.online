@@ -54,6 +54,24 @@ class TasksService {
   }
 
   /**
+   * Check if a task exists without retrieving the full task data
+   * @param id Task ID to check
+   * @returns Promise resolving to a boolean indicating if the task exists
+   */
+  async checkTaskExists(id: string): Promise<boolean> {
+    try {
+      console.log(`${LOG_PREFIX} Checking if task exists:`, id);
+      
+      // Try to get the task and return true if it exists
+      const task = await this.getTaskById(id);
+      return !!task;
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error checking if task exists:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Get a specific task by ID
    * @param id Task ID to retrieve
    * @returns Promise resolving to a task or null if not found
@@ -78,6 +96,13 @@ class TasksService {
       // Handle API response structure
       if (response.error) {
         console.error(`${LOG_PREFIX} API returned an error:`, response.error);
+        
+        // Check if this is a 404/400 error indicating task not found
+        if (response.status === 404 || response.status === 400) {
+          console.warn(`${LOG_PREFIX} Task not found (${response.status}):`, id);
+          return null; // Return null instead of throwing for not found
+        }
+        
         throw new Error(response.error || `Failed to fetch task ${id}`);
       }
       

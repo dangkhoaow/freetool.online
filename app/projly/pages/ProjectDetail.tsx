@@ -220,7 +220,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center space-x-4 mb-2">
-            <Button variant="ghost" size="sm" onClick={handleBackClick}>
+            <Button variant="outline" size="sm" onClick={handleBackClick}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
