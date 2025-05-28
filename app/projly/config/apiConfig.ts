@@ -7,29 +7,33 @@
 // Determine if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
-// Get the current host/origin for production use
+// Get the base URL for API calls
 function getBaseUrl(): string {
+  // First, try to use the environment variable in all environments
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    console.debug('[API CONFIG] Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
   if (isBrowser) {
-    // In browser environment, use the current window location
-    const protocol = window.location.protocol;
+    // In browser environment without env var, use the current window location for local dev
     const hostname = window.location.hostname;
     
     // For local development, use the hardcoded port
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      console.debug('[API CONFIG] Using localhost:3001 for development');
       return 'http://localhost:3001';
     }
     
-    // For production (EB), use the same host as the frontend, but with potential port difference
-    // If frontend is on port 80/443, API might be on a different port
-    const apiPort = process.env.API_PORT || '3001'; // Read from env if available
-    
-    // In production, API is typically on the same domain, just a different path or port
-    // We'll use the same domain to avoid CORS issues
-    return `${protocol}//${hostname}`;
+    // For production without env var (should not happen), log a warning
+    console.warn('[API CONFIG] NEXT_PUBLIC_API_URL not set in production environment!');
+    console.warn('[API CONFIG] Falling back to service.freetool.online');
+    return 'https://service.freetool.online';
   }
   
   // Fallback for SSR or non-browser environments
-  return process.env.API_URL || 'http://localhost:3001';
+  console.debug('[API CONFIG] Using fallback URL: http://localhost:3001');
+  return 'http://localhost:3001';
 }
 
 // Server and API base URL configuration

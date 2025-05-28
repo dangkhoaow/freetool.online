@@ -37,7 +37,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     queryFn: async () => {
       console.log('[AUTH_CONTEXT] Fetching current user data');
       try {
-        const response = await fetch('http://localhost:3001/api/projly/auth/me', { credentials: 'include' });
+        console.log('[AUTH_CONTEXT] Fetching from:', API_ENDPOINTS.AUTH.ME);
+        const response = await fetch(API_ENDPOINTS.AUTH.ME, { credentials: 'include' });
         console.log('[AUTH_CONTEXT] Raw response from auth/me:', response);
         
         if (response.ok) {

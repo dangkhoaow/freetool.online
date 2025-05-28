@@ -88,7 +88,7 @@ export default function UsageGuide() {
               <div className="text-center p-6">
                 <div className="w-full h-[320px] relative">
                   <Image 
-                    src="/images/projly-dashboard-preview.jpg" 
+                    src="/images/projly-og.jpg" 
                     alt="Projly Dashboard Preview" 
                     className="object-cover rounded-lg"
                     fill

@@ -1,5 +1,5 @@
 // Auto-generated file. DO NOT EDIT.
-// Generated on 2025-05-28T10:37:22.504Z
+// Generated on 2025-05-28T12:40:15.482Z
 
 export const STATIC_RESOURCES = [
   "/404.html",
@@ -29,6 +29,7 @@ export const STATIC_RESOURCES = [
   "/images/ai-data-visualization-og.jpg",
   "/images/ai-heic-converter-og.jpg",
   "/images/private-ai-chat-og.jpg",
+  "/images/projly-og.jpg",
   "/modern-resume-layout.png",
   "/paypal.svg",
   "/placeholder-logo.png",
@@ -78,6 +79,7 @@ export const RESERVED_PATHS = [
   "/images/ai-data-visualization-og.jpg",
   "/images/ai-heic-converter-og.jpg",
   "/images/private-ai-chat-og.jpg",
+  "/images/projly-og.jpg",
   "/modern-resume-layout.png",
   "/paypal.svg",
   "/placeholder-logo.png",
