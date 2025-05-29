@@ -7,8 +7,10 @@
  * - Task detail page (Subtasks tab)
  * 
  * Uses the useTaskHierarchy hook for consistent task filtering and organization.
+ * Supports both list and board views for task visualization.
  * 
  * @created 2025-05-24
+ * @updated 2025-05-29 - Added board view support
  */
 
 "use client";
@@ -18,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TasksTable } from './TasksTable';
+import { TasksBoard } from './TasksBoard';
 import { TaskDialog } from '@/components/projects/TaskDialog';
 import { Task as ProjlyTask, TaskFilters } from '@/lib/services/projly/types';
 import { Task } from './TasksTable'; // Import the Task type from TasksTable for compatibility
@@ -27,7 +30,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, List, LayoutGrid } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 // Create a detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksContainer]', ...args);
@@ -94,6 +98,29 @@ export function TasksContainer({
   const [error, setError] = useState<string | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState<boolean>(false);
   const [currentFilters, setCurrentFilters] = useState<TaskFilters>(initialFilters);
+  
+  // View mode state (list or board)
+  const [viewMode, setViewMode] = useState<'list' | 'board'>(() => {
+    // Try to get stored value from localStorage
+    if (typeof window !== 'undefined') {
+      const storedValue = localStorage.getItem('projly_tasks_view_mode');
+      return (storedValue === 'board') ? 'board' : 'list';
+    }
+    return 'list'; // Default to list view
+  });
+  
+  // Handle view mode change
+  const handleViewModeChange = (value: string) => {
+    if (value === 'list' || value === 'board') {
+      log(`Changing view mode to: ${value}`);
+      setViewMode(value);
+      
+      // Store in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('projly_tasks_view_mode', value);
+      }
+    }
+  };
   
   // React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -288,7 +315,22 @@ export function TasksContainer({
     <Card className={`w-full ${displayOptions.compact ? 'shadow-none border-0' : 'p-6'}`}>
       {displayOptions.showHeader && (
         <CardHeader className="flex p-0 flex-row items-center justify-between">
-          <CardTitle>{getContextTitle()}</CardTitle>
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <CardTitle>{getContextTitle()}</CardTitle>
+            
+            {/* View mode toggle */}
+            <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange} className="ml-0 md:ml-4">
+              <ToggleGroupItem value="list" aria-label="List view">
+                <List className="h-4 w-4" />
+                <span className="sr-only md:not-sr-only md:ml-2">List</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="board" aria-label="Board view">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="sr-only md:not-sr-only md:ml-2">Board</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          
           {displayOptions.showAddButton && (
             <Button onClick={handleAddTask} size="sm">
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -316,7 +358,7 @@ export function TasksContainer({
               Retry
             </Button>
           </div>
-        ) : (
+        ) : viewMode === 'list' ? (
           <TasksTable
             tasks={filteredTasks as Task[]}
             initialFilters={currentFilters}
@@ -325,6 +367,14 @@ export function TasksContainer({
             context={context}
             parentTaskId={tableParentTaskId}
             hideParentRow={context === 'task'}
+          />
+        ) : (
+          <TasksBoard
+            tasks={filteredTasks as Task[]}
+            initialFilters={currentFilters}
+            onOperationComplete={handleOperationComplete}
+            compact={displayOptions.compact}
+            context={context}
           />
         )}
         

@@ -1,12 +1,16 @@
 # Projly Tasks Page
 
-> **Updated:** 2025-05-26 (Subtask Deletion Fix and UI Refresh Enhancement)
-> **Previous Update:** 2025-05-25 (Task Details Page Code Cleanup and Enhanced Component Separation)
-> **Earlier Update:** 2025-05-24 (Navigation Utilities Implementation and Full Hierarchical Task Display)
+> **Updated:** 2025-05-29 (Board View Implementation with Drag-and-Drop Functionality)
+> **Previous Update:** 2025-05-26 (Subtask Deletion Fix and UI Refresh Enhancement)
+> **Earlier Update:** 2025-05-25 (Task Details Page Code Cleanup and Enhanced Component Separation)
 
 ## Overview
 
 The Tasks page provides a comprehensive interface for managing tasks across all projects in the Projly application. It has been refactored to use a centralized task management system that ensures consistent functionality across the main tasks page, task detail page, and project detail page. The system now supports full hierarchical task organization with unlimited nesting depth, displaying n+2 level subtasks directly under their respective parent tasks with proper visual hierarchy indicators.
+
+The Tasks page now offers two view modes:
+1. **List View**: Traditional table-based view with sorting and filtering capabilities
+2. **Board View**: Kanban-style board with status columns and drag-and-drop functionality for task status updates
 
 ## Implementation Details
 
@@ -15,6 +19,8 @@ The Tasks page provides a comprehensive interface for managing tasks across all 
 - **TasksPage**: Main page component that now uses the centralized TasksContainer
 - **TasksContainer**: Reusable container component that manages task loading, filtering, and display
 - **TasksTable**: Component for displaying tasks in a sortable, filterable table
+- **TasksBoard**: Component for displaying tasks in a Kanban-style board with status columns
+- **TaskCard**: Card component for displaying individual tasks in the board view
 - **useTaskHierarchy**: Custom hook for managing task hierarchies across the application
 - **TaskForm**: Form component for creating and editing tasks
 - **CreateTaskForm**: Reusable form component for task creation/editing
@@ -50,6 +56,91 @@ The Task Details page (`/app/projly/tasks/[id]/page.tsx`) has been refactored to
 
 3. **Architecture Benefits**:
    - Reduced file size and complexity
+
+## Board View Implementation (Added 2025-05-29)
+
+A new Kanban-style board view has been implemented for the Tasks page, providing users with a visual way to manage tasks and update their status through drag-and-drop interactions.
+
+### Key Features
+
+1. **View Mode Toggle**:
+   - Users can switch between list and board views using a toggle in the page header
+   - View preference is persisted in localStorage for a consistent user experience
+
+2. **Status Columns**:
+   - Tasks are organized into columns by status (Not Started, In Progress, In Review, etc.)
+   - Each column shows a count of tasks with that status
+   - Visual indicators for empty columns
+
+3. **Drag-and-Drop Functionality**:
+   - Tasks can be dragged between status columns to update their status
+   - Visual feedback during drag operations
+   - Immediate status updates in the backend
+
+4. **Task Cards**:
+   - Compact visual representation of tasks
+   - Shows key information: title, assignee, due date, project
+   - Visual indicators for subtasks
+   - Consistent status color coding
+
+### Implementation Details
+
+1. **Component Structure**:
+   ```
+   TasksContainer
+   ├── View Mode Toggle
+   └── TasksBoard
+       └── StatusColumn (for each status)
+           └── TaskCard (for each task)
+   ```
+
+2. **Drag-and-Drop Implementation**:
+   - Uses React DnD (react-dnd) for drag-and-drop functionality
+   - Implements drag sources (task cards) and drop targets (status columns)
+   - Updates task status via the tasksService when a task is dropped in a new column
+
+3. **Code Example**:
+   ```typescript
+   // In TasksBoard.tsx - Status column drop target
+   const [{ isOver }, drop] = useDrop({
+     accept: ItemTypes.TASK,
+     drop: (item: { id: string }) => {
+       onTaskDrop(item.id, status);
+     },
+     collect: (monitor) => ({
+       isOver: !!monitor.isOver(),
+     }),
+   });
+
+   // In TaskCard.tsx - Task drag source
+   const [{ isDragging }, drag] = useDrag({
+     type: ItemTypes.TASK,
+     item: { id: task.id },
+     collect: (monitor) => ({
+       isDragging: !!monitor.isDragging(),
+     }),
+   });
+   ```
+
+4. **Status Update Logic**:
+   ```typescript
+   const handleTaskDrop = async (taskId: string, newStatus: string) => {
+     try {
+       await tasksService.updateTask(taskId, { status: newStatus });
+       // Refresh task list
+       onOperationComplete();
+     } catch (error) {
+       console.error('Error updating task status:', error);
+     }
+   };
+   ```
+
+### Benefits
+
+- **Improved Visualization**: Users can see task distribution across different statuses at a glance
+- **Efficient Status Updates**: Drag-and-drop provides a more intuitive way to update task status
+- **Consistent Experience**: Board view maintains the same filtering capabilities as the list view
+- **Enhanced Productivity**: Kanban-style workflow supports agile project management methodologies
 
 ## Subtask Deletion and UI Refresh Fix (Added 2025-05-26)
 
