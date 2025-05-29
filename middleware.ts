@@ -25,7 +25,8 @@ export async function middleware(request: NextRequest) {
   }
   
   // Always skip Next.js internal routes, API routes, and other special paths
-  if (RESERVED_PATHS.some((reservedPath: string) => path === reservedPath || path.startsWith(reservedPath + '/'))) {
+  if (RESERVED_PATHS.some((reservedPath: string) => path === reservedPath || path.startsWith(reservedPath + '/')) || path === '/sitemap.xml') {
+    console.log(`Reserved path or sitemap.xml allowed: ${path}`);
     return response;
   }
   

@@ -22,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     'privacy-media-recorder',
     'client-site-builder',
     'browser-design-studio',
+    'projly'
   ]
 
   // Main pages
