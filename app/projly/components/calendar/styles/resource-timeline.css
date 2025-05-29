@@ -13,6 +13,12 @@
   overflow: hidden;
 }
 
+/* Dark mode calendar container */
+.dark .calendar-container {
+  background-color: #121826 !important;
+  border: 1px solid #2d3748 !important;
+}
+
 /* Ensure FullCalendar maintains height */
 .fc {
   height: 100% !important;
@@ -70,6 +76,31 @@
   border-color: #e5e7eb;
 }
 
+/* Dark mode timeline header */
+.dark .fc .fc-timeline-header {
+  background-color: #1e293b !important;
+}
+
+.dark .fc .fc-timeline-slot-minor {
+  border-color: #2d3748 !important;
+}
+
+/* Dark mode resource timeline body */
+.dark .fc .fc-timeline-body {
+  background-color: #121826 !important;
+}
+
+.dark .fc .fc-timeline-lane-frame {
+  border-color: #2d3748 !important;
+}
+
+/* Dark mode text colors */
+.dark .fc .fc-timeline-slot-label-cushion,
+.dark .fc .fc-datagrid-cell-main,
+.dark .fc .fc-resource-timeline .fc-resource-area th {
+  color: #e2e8f0 !important;
+}
+
 /* Improve date header display */
 .fc .fc-timeline-slot-label {
   font-size: 0.85rem;
@@ -88,11 +119,70 @@
   background-color: #ffffff !important;
 }
 
+/* Dark mode date header styles */
+.dark .fc .fc-scrollgrid-section-body .fc-timeline-slot {
+  background-color: #121826 !important;
+}
+
+.dark .fc .fc-timeline-slot-label-frame {
+  background-color: #1e293b !important;
+}
+
+/* Dark mode resource area styling */
+.dark .fc .fc-resource-area,
+.dark .fc .fc-resource-area td,
+.dark .fc .fc-resource-area th,
+.dark .fc .fc-resource-area .fc-datagrid-cell-frame,
+.dark .fc .fc-resource-area .fc-datagrid-header-cell-frame {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #2d3748 !important;
+}
+
+/* Dark mode grid lines */
+.dark .fc .fc-scrollgrid,
+.dark .fc .fc-scrollgrid-section,
+.dark .fc .fc-scrollgrid-section > td,
+.dark .fc .fc-scrollgrid-section > th,
+.dark .fc .fc-scrollgrid-section-liquid > td,
+.dark .fc .fc-scrollgrid-section-header,
+.dark .fc .fc-scrollgrid-section-body,
+.dark .fc .fc-scrollgrid-section-footer {
+  border-color: #2d3748 !important;
+}
+
 
 /* Add different styling for weekends */
 .fc .fc-scrollgrid-section-body .fc-day-sat,
 .fc .fc-scrollgrid-section-body .fc-day-sun {
   background-color: #f3dc001a !important;
+}
+
+/* Dark mode weekend styling */
+.dark .fc .fc-scrollgrid-section-body .fc-day-sat,
+.dark .fc .fc-scrollgrid-section-body .fc-day-sun {
+  background-color: rgba(243, 220, 0, 0.05) !important;
+}
+
+/* Dark mode column header styling */
+.dark .fc .fc-col-header,
+.dark .fc .fc-col-header-cell {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #2d3748 !important;
+}
+
+/* Dark mode cell styling */
+.dark .fc td,
+.dark .fc th {
+  border-color: #2d3748 !important;
+}
+
+/* Dark mode timeline slots */
+.dark .fc .fc-timeline-slot,
+.dark .fc .fc-timeline-slot-lane {
+  background-color: #121826 !important;
+  border-color: #2d3748 !important;
 }
 
 /* Today highlight - make it more prominent */
@@ -106,6 +196,16 @@
   background-color: rgba(155, 135, 245, 0.15) !important; /* Lighter version of the primary purple */
 }
 
+/* Dark mode today highlight */
+.dark .fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-today .fc-timeline-slot-label-frame {
+  background-color: #7c64e8 !important; /* Slightly darker purple for dark mode */
+  color: white !important;
+}
+
+.dark .fc .fc-timeline-slots .fc-timeline-slot-lane.fc-day-today {
+  background-color: rgba(124, 100, 232, 0.25) !important; /* Adjusted opacity for dark mode */
+}
+
 /* Week grouping indicators */
 .fc .fc-timeline-header-container {
   position: relative;
@@ -116,6 +216,12 @@
 .fc .fc-timeline-slot-lane.fc-day-mon {
   border-left: 2px solid #1A1F2C; /* Dark purple for week borders */
   position: relative;
+}
+
+/* Dark mode week separator lines */
+.dark .fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-mon,
+.dark .fc .fc-timeline-slot-lane.fc-day-mon {
+  border-left: 2px solid #4a5568; /* Lighter color for better visibility in dark mode */
 }
 
 /* Zebra striping for alternating weeks */
@@ -132,6 +238,32 @@
   z-index: -1;
 }
 
+/* Dark mode zebra striping */
+.dark .fc .fc-timeline-slot.fc-timeline-slot-label.fc-day-sun::before,
+.dark .fc .fc-timeline-slot-lane.fc-day-sun::before {
+  background-color: #2d3748 !important; /* Darker background for week grouping in dark mode */
+  opacity: 0.4;
+}
+
+/* Dark mode project column */
+.dark .fc .fc-datagrid-cell.fc-resource {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* Dark mode 'Projects' header */
+.dark .fc .fc-datagrid-header {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #2d3748 !important;
+}
+
+/* Dark mode date column headers */
+.dark .fc .fc-timeline-slot-label-cushion {
+  color: #e2e8f0 !important;
+  font-weight: 500;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .calendar-container {
@@ -143,8 +275,60 @@
   }
 }
 
+/* Dark mode project header styling */
+.dark .fc .fc-resource-area .fc-datagrid-cell-cushion,
+.dark .fc .fc-resource-area .fc-datagrid-header-cell-cushion {
+  color: #e2e8f0 !important;
+}
+
+/* Dark mode project labels */
+.dark .fc .fc-resource-area .fc-datagrid-cell:first-child,
+.dark .fc .fc-resource-area .fc-datagrid-header-cell:first-child {
+  background-color: #1e293b !important;
+}
+
+/* Dark mode scrollbars */
+.dark .fc-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark .fc-scroller::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark .fc-scroller::-webkit-scrollbar-thumb {
+  background-color: #4a5568;
+  border-radius: 4px;
+}
+
+.dark .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background-color: #718096;
+}
+
 .text-foreground {
   color: #fff !important;
+}
+
+/* Dark mode event styling */
+.dark .fc-event {
+  background-color: #2d3748 !important;
+  border-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .fc-event:hover {
+  background-color: #3a4a5f !important;
+}
+
+/* Dark mode event content */
+.dark .fc-event-title,
+.dark .event-title {
+  color: #e2e8f0 !important;
+}
+
+.dark .event-details {
+  color: #cbd5e0 !important;
 }
 
 .fc-h-event {
