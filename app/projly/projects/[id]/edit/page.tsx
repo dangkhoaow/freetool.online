@@ -22,6 +22,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { useSession } from '@/lib/services/projly/jwt-auth-adapter';
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
+import { projlyAuthService } from '@/lib/services/projly';
 import { use } from 'react';
 
 type ProjectFormValues = {
@@ -64,6 +66,10 @@ interface User {
   email: string;
 }
 
+// Define constant log prefix for consistent logging
+const LOG_PREFIX = "[PROJLY:EDIT_PROJECT_PAGE]";
+const log = (...args: any[]) => console.log(LOG_PREFIX, ...args);
+
 export default function EditProjectPage({ params }: { params: { id: string } | Promise<{ id: string }> }) {
   // Unwrap params using React.use() to handle it as a Promise
   const unwrappedParams = use(params as Promise<{ id: string }>);
@@ -72,6 +78,7 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   
@@ -84,6 +91,21 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
   // Get the update project mutation
   const updateProjectMutation = useUpdateProject();
   
+  // Check if user is authenticated and redirect if not
+  const checkAuth = async () => {
+    const isAuthenticated = await projlyAuthService.isAuthenticated();
+    if (!isAuthenticated) {
+      router.push("/projly/auth/login");
+    }
+  };
+
+  // Initialize on component mount
+  useEffect(() => {
+    log("Initializing project edit page");
+    checkAuth();
+    setIsPageLoading(false);
+  }, []);
+  
   // Transform the profile data for the dropdown
   // Use userId as the id field for proper project owner assignment
   const users = profiles.map((profile: Profile) => ({
@@ -95,9 +117,9 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
     email: profile.user.email || 'No email'
   }));
   
-  console.log('[PROJLY:EDIT_PROJECT] Available users for owner selection:', users);
-  console.log('[PROJLY:EDIT_PROJECT] Current user ID:', currentUserId);
-  console.log('[PROJLY:EDIT_PROJECT] Project data:', project);
+  log("Available users for owner selection:", users);
+  log("Current user ID:", currentUserId);
+  log("Project data:", project);
   
   // Initialize form with default values
   const form = useForm<ProjectFormValues>({
@@ -115,7 +137,7 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
   // Update form values when project data is loaded
   useEffect(() => {
     if (project) {
-      console.log('[PROJLY:EDIT_PROJECT] Setting form values from project data:', project);
+      log("Setting form values from project data:", project);
       
       // Format dates for the input fields
       const startDate = project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '';
@@ -195,18 +217,12 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
     }
   };
 
-  // Show loading state when checking auth and fetching data
-  if (loadingProject || loadingUsers) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-          <span className="ml-2">Loading...</span>
-        </div>
-      </DashboardLayout>
-    );
+  // Show loading state using the enhanced PageLoading component
+  if (isPageLoading || loadingProject || loadingUsers) {
+    log("Showing loading state");
+    return <PageLoading logContext="PROJLY:EDIT_PROJECT" />;
   }
-  
+
   // Show error if project not found
   if (!project) {
     return (

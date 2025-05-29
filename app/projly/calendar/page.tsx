@@ -37,7 +37,8 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterProject, setFilterProject] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
-  const [taskViewMode, setTaskViewMode] = useState<"myTasks" | "allTasks">("myTasks");
+  // Use string type to support both predefined modes and user IDs
+  const [taskViewMode, setTaskViewMode] = useState<string>("myTasks");
   
   // Event state
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -82,12 +83,32 @@ export default function CalendarPage() {
         
         // Load tasks which will be converted to calendar events based on view mode
         let tasksData: any[] = [];
+        
         if (taskViewMode === 'myTasks') {
+          // My Tasks: Load tasks assigned to current user
           log('Loading tasks assigned to current user');
           tasksData = await projlyTasksService.getMyTasks();
-        } else {
+        } else if (taskViewMode === 'allTasks') {
+          // All Tasks: Load all tasks regardless of assignee
           log('Loading tasks for all users');
           tasksData = await projlyTasksService.getUserTasks();
+        } else {
+          // Specific User: taskViewMode contains the user ID
+          log(`Loading tasks for specific user: ${taskViewMode}`);
+          
+          // Debug the user ID format to ensure it's correctly passed
+          console.log(`[PROJLY:CALENDAR] User ID for filtering:`, {
+            userId: taskViewMode,
+            type: typeof taskViewMode
+          });
+          
+          // Extract user ID - taskViewMode should already be the ID string
+          // from the SelectItem value in ResourceTimelineView
+          const userId = taskViewMode;
+          
+          // Use the getUserTasks method with the assignedTo filter
+          log(`Fetching tasks with assignedTo filter: ${userId}`);
+          tasksData = await projlyTasksService.getUserTasks({ assignedTo: userId });
         }
         log('Tasks loaded:', tasksData.length);
         
@@ -140,7 +161,7 @@ export default function CalendarPage() {
             taskId: task.id,
             project: taskProject,
             // Add assignee information if available
-            assignee: task.assignee?.firstName ? `${task.assignee.firstName} ${task.assignee.lastName || ''}` : ''
+            assignee: task.assignee ?? task.assignedTo ?? ''
           };
         });
         

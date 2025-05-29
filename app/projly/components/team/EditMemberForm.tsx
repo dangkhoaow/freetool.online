@@ -6,6 +6,7 @@ import { Save } from "lucide-react";
 import { useUpdateMember, TeamMemberWithUser } from "@/lib/services/projly/use-members";
 import type { Team } from "@/lib/services/projly/use-team";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
+import { TEAM_ROLES } from "@/app/projly/config/team-roles";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,7 +121,8 @@ export function EditMemberForm({ member, teams, onSuccess }: EditMemberFormProps
     );
   }
 
-  const roles = ["Member", "Lead", "Manager", "Admin"];
+  // Use the centralized team roles configuration
+  console.log('[EditMemberForm] Using centralized team roles configuration');
 
   return (
     <Form {...form}>
@@ -178,9 +180,9 @@ export function EditMemberForm({ member, teams, onSuccess }: EditMemberFormProps
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
+                  {TEAM_ROLES.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

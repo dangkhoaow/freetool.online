@@ -860,10 +860,10 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
                       onValueChange={handleAssigneeFilterChange}
                     >
                       <SelectTrigger id="assigned-filter">
-                        <SelectValue placeholder="All Users" />
+                        <SelectValue placeholder="All Members" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Users</SelectItem>
+                        <SelectItem value="all">All Members</SelectItem>
                         <SelectItem value="current">My Tasks</SelectItem>
                         {uniqueUsers.length > 0 && (
                           <>

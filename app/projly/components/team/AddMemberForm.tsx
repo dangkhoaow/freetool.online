@@ -1,11 +1,13 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UserPlus } from "lucide-react";
 import { useCreateMember, useInviteMember } from "@/lib/services/projly/use-members";
 import { TeamWithProject } from "@/lib/services/projly/use-team";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+// Import centralized team roles configuration
+import { TEAM_ROLES } from "@/app/projly/config/team-roles";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -200,10 +202,11 @@ export function AddMemberForm({ teams, onSuccess }: AddMemberFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Member">Member</SelectItem>
-                  <SelectItem value="Leader">Leader</SelectItem>
-                  <SelectItem value="Manager">Manager</SelectItem>
-                  <SelectItem value="Director">Director</SelectItem>
+                  {TEAM_ROLES.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

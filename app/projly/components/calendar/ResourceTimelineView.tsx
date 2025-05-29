@@ -1,19 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
+import { useTasks } from "@/lib/services/projly/use-tasks";
 
 // Import styles
 import "./styles/resource-timeline.css";
@@ -31,21 +28,34 @@ export interface TimelineEvent {
   end?: Date;
   status?: string;
   projectId: string;
-  assignee?: string;
+  assignee?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    name?: string;
+    email?: string;
+  } | string; // Allow string format for backward compatibility
   description?: string;
   taskId?: string;
+}
+
+// Define the user interface for the dropdown
+interface TimelineUser {
+  id: string;
+  name: string;
 }
 
 // Define the component props interface
 export interface ResourceTimelineViewProps {
   events: TimelineEvent[];
   projects: any[];
-  taskViewMode?: "myTasks" | "allTasks";
-  onTaskViewModeChange?: (mode: "myTasks" | "allTasks") => void;
+  taskViewMode?: string; // Changed from "myTasks" | "allTasks" to support user IDs
+  onTaskViewModeChange?: (mode: string) => void;
   isLoading?: boolean;
   onEventClick?: (event: TimelineEvent) => void;
   onDateClick?: (date: Date) => void;
   onAddEvent?: () => void;
+  currentUserId?: string; // Added to identify current user tasks
 }
 
 // FullCalendar wrapper with dynamic import
@@ -55,7 +65,7 @@ const FullCalendarWithNoSSR = dynamic(
 );
 
 // Resource Timeline View Component
-const ResourceTimelineView = ({
+function ResourceTimelineView({
   events,
   projects,
   taskViewMode = "myTasks",
@@ -63,8 +73,79 @@ const ResourceTimelineView = ({
   isLoading = false,
   onEventClick,
   onDateClick,
-  onAddEvent
-}: ResourceTimelineViewProps): React.ReactElement => {
+  onAddEvent,
+  currentUserId
+}: ResourceTimelineViewProps) {
+  
+  // Fetch tasks data from API
+  const { data: session } = useSession();
+  // Use session userId if currentUserId is not provided in props
+  const userId = currentUserId || session?.user?.id;
+  
+  // Log user information for debugging
+  console.log(`[TIMELINE VIEW] Current user ID: ${userId} (from ${currentUserId ? 'props' : 'session'})`, { userId, sessionUserId: session?.user?.id });
+  console.log(`[TIMELINE VIEW] Current task view mode: ${taskViewMode}`);
+  
+  // Log the user information for debugging
+  console.log(`[TIMELINE VIEW] Current user ID: ${userId} (from ${currentUserId ? 'props' : 'session'})`, { userId, sessionUserId: session?.user?.id });
+
+  // Now we rely on the users prop for dropdown filtering
+  // The events prop already contains the necessary information
+  
+  // Extract all unique users from tasks to populate the assignee filter dropdown
+  const uniqueUsers = useMemo<TimelineUser[]>(() => {
+    const userMap = new Map<string, TimelineUser>(); 
+    
+    // Process events to extract unique users with proper names
+    events.forEach(event => {
+      if (event.assignee) {
+        // Extract user ID and name based on assignee format
+        let userId: string;
+        let userName: string;
+        
+        if (typeof event.assignee === 'object') {
+          // Object format: use id and formatted name
+          userId = event.assignee.id;
+          userName = event.assignee.firstName && event.assignee.lastName 
+            ? `${event.assignee.firstName} ${event.assignee.lastName}`
+            : event.assignee.name || event.assignee.email || 'Unknown';
+        } else {
+          // String format: might be just the ID, need to look up in users list
+          userId = event.assignee;
+          // If we can't determine name, we'll continue and check for this user
+          // in other events where it might have an object format
+          userName = '';
+        }
+        
+        // Only add if we have a valid ID and either this is a new entry or the current
+        // entry doesn't have a name but this one does
+        if (userId && (!userMap.has(userId) || (userName && !userMap.get(userId)?.name))) {
+          userMap.set(userId, { id: userId, name: userName || userId });
+        }
+      }
+    });
+    
+    // Remove entries with empty names and give final chance to use ID as name
+    const finalUsers = Array.from(userMap.values()).map(user => {
+      return {
+        id: user.id,
+        name: user.name || user.id // Fallback to ID if no name is available
+      };
+    });
+    
+    // Log for debugging
+    console.log('[TIMELINE VIEW] Extracted users:', finalUsers);
+    
+    return finalUsers;
+  }, [events]);
+
+  
+  // Log unique users for debugging
+  console.log(`[TIMELINE VIEW] Found ${uniqueUsers.length} unique users for dropdown`);
+  uniqueUsers.forEach(user => {
+    console.log(`[TIMELINE VIEW] Unique user: ${user.id} - ${user.name}`);
+  });
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentViewTitle, setCurrentViewTitle] = useState(format(new Date(), 'MMMM yyyy'));
   const [selectedProject, setSelectedProject] = useState<string>('all');
@@ -101,10 +182,36 @@ const ResourceTimelineView = ({
     return colors;
   };
 
-  // Filter events by selected project
-  const filteredEvents = events.filter(event => 
-    selectedProject === 'all' || event.projectId === selectedProject
-  );
+  // Add basic debugging for events
+  useEffect(() => {
+    if (events.length > 0) {
+      console.log(`[TIMELINE VIEW] Loaded ${events.length} events`);
+      if (typeof events[0].assignee === 'object') {
+        console.log(`[TIMELINE VIEW] Sample assignee:`, events[0].assignee);
+      } else if (typeof events[0].assignee === 'string') {
+        console.log(`[TIMELINE VIEW] Sample assignee (string):`, events[0].assignee);
+      }
+    }
+  }, [events]);
+  
+  // Filter events by selected project (user filtering is handled at API level)
+  const filteredEvents = useMemo(() => {
+    // Debug the filtering parameters
+    console.log(`[TIMELINE VIEW] Filtering with:`, {
+      taskViewMode,
+      selectedProject,
+      eventsCount: events.length
+    });
+    
+    // Filter only by project since user filtering happens at API level
+    return events.filter(event => {
+      return selectedProject === 'all' || event.projectId === selectedProject;
+    });
+  }, [events, selectedProject, taskViewMode]);
+  
+  // Log filtered events for debugging
+  console.log(`[TIMELINE VIEW] Filtered events: ${filteredEvents.length} of ${events.length} total events`);
+  console.log(`[TIMELINE VIEW] Current filters:`, { project: selectedProject, userMode: taskViewMode });
   
   // Effect to update calendar size when filtered events change
   useEffect(() => {
@@ -264,14 +371,35 @@ const ResourceTimelineView = ({
           <div className="flex items-center gap-2">
             <Select 
               value={taskViewMode} 
-              onValueChange={(value) => onTaskViewModeChange?.(value as "myTasks" | "allTasks")}
+              onValueChange={(value) => {
+                // Debug the value being selected
+                console.log(`[TIMELINE VIEW] Selected user value:`, {
+                  value,
+                  type: typeof value,
+                  matchingUser: uniqueUsers.find(u => u.id === value)
+                });
+                onTaskViewModeChange?.(value);
+              }}
+              disabled={isLoading || uniqueUsers.length === 0}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select Tasks View" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="allTasks">All Members</SelectItem>
                 <SelectItem value="myTasks">My Tasks</SelectItem>
-                <SelectItem value="allTasks">All Tasks</SelectItem>
+                {uniqueUsers.length > 0 && (
+                  <>
+                    <SelectItem value="divider" disabled>
+                      <Separator className="my-1" />
+                    </SelectItem>
+                    {uniqueUsers.map(assignee => (
+                      <SelectItem key={assignee.id} value={assignee.id}>
+                        {assignee.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
             {isLoading && (
@@ -354,7 +482,12 @@ const ResourceTimelineView = ({
             stickyHeaderDates={true}
             eventContent={(arg) => {
               const status = arg.event.extendedProps.status || 'Not Started';
-              const assignee = arg.event.extendedProps.assignee || 'Unassigned';
+              const rawAssignee = arg.event.extendedProps.assignee;
+              const assignee = typeof rawAssignee === 'object'
+                ? rawAssignee.name || (rawAssignee.firstName && rawAssignee.lastName
+                  ? `${rawAssignee.firstName} ${rawAssignee.lastName}`
+                  : rawAssignee.id)
+                : (rawAssignee || 'Unassigned');
               
               return (
                 <div className="event-content-wrapper p-1">

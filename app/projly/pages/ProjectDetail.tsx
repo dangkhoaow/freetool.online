@@ -11,13 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
 import { ArrowLeft, CalendarIcon, UserCircle } from "lucide-react";
 import { TaskDialog } from "@/components/projects/TaskDialog";
 import { ResourceDialog } from "@/components/projects/ResourceDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { TasksContainer } from "../components/tasks/TasksContainer";
+import { PageLoading } from "../components/ui/PageLoading";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -187,14 +187,10 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
     return <Badge style={style} className={className}>{status || 'Unknown'}</Badge>;
   };
 
+  // Show loading state using the enhanced PageLoading component
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Spinner className="h-10 w-10" />
-        </div>
-      </DashboardLayout>
-    );
+    console.log("[ProjectDetail] Showing loading state using PageLoading");
+    return <PageLoading logContext="PROJLY:PROJECT_DETAIL" />;
   }
 
   if (!project) {
