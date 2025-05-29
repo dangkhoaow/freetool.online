@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { HeaderWrapper } from './HeaderWrapper';
-import { Menu } from 'lucide-react';
+import { Menu, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const Header = ({ toggleSidebar, sidebarOpen }: { toggleSidebar: () => void; sidebarOpen: boolean }) => {
