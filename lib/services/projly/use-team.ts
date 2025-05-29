@@ -56,6 +56,7 @@ export type Team = {
   name: string;
   description?: string;
   ownerId?: string;
+  allowSendAllRemindEmail?: boolean; // Toggle for sending email reminders to all team members
   createdAt?: Date;
   updatedAt?: Date;
   owner?: {
@@ -279,7 +280,12 @@ export const useCreateTeam = () => {
   const { data: session } = useSession();
 
   return useMutation({
-    mutationFn: async (team: { name: string; description?: string; projectId?: string }) => {
+    mutationFn: async (team: { 
+      name: string; 
+      description?: string; 
+      projectId?: string;
+      allowSendAllRemindEmail?: boolean; // Added new field for email notification toggle
+    }) => {
       console.log("[HOOK:TEAMS] Creating team:", team);
       if (!session?.user?.id) {
         console.error("[HOOK:TEAMS] No user session found in useCreateTeam");
@@ -322,23 +328,31 @@ export const useUpdateTeam = () => {
   const { data: session } = useSession();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { name?: string; description?: string; projectId?: string } }) => {
-      console.log("[HOOK:TEAMS] Updating team with ID:", id, "Updates:", data);
-      
+    mutationFn: async ({ id, data }: { 
+      id: string; 
+      data: { 
+        name?: string; 
+        description?: string; 
+        projectId?: string;
+        allowSendAllRemindEmail?: boolean; // Added new field for email notification toggle
+      } 
+    }) => {
+      console.log(`[HOOK:TEAMS] Updating team ${id} with data:`, data);
       if (!session?.user?.id) {
         console.error("[HOOK:TEAMS] No user session found in useUpdateTeam");
         throw new Error("You must be logged in to update a team");
       }
       
-      // Format the data correctly for the API
+      // Format the data correctly for the API, including the allowSendAllRemindEmail field
       const teamData = {
         name: data.name,
         description: data.description,
-        projectId: data.projectId
+        projectId: data.projectId,
+        allowSendAllRemindEmail: data.allowSendAllRemindEmail
       };
       
-      // Call API endpoint instead of service directly
-      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`, teamData);
+      // Log the complete data being sent to ensure allowSendAllRemindEmail is included
+      console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`, JSON.stringify(teamData));
       const response = await apiClient.put(`/api/projly/teams/${id}`, teamData);
       console.log("[HOOK:TEAMS] API response received for team update:", response.error ? 'Error' : 'Success');
       

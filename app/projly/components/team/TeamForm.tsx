@@ -31,6 +31,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   description: z.string().optional(),
   projectId: z.string().optional(),
+  allowSendAllRemindEmail: z.boolean().default(false),
 });
 
 // Type from the schema
@@ -66,6 +67,7 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
       name: team?.name || "",
       description: team?.description || "",
       projectId: connectedProjectId,
+      allowSendAllRemindEmail: team?.allowSendAllRemindEmail || false,
     },
   });
 
@@ -74,9 +76,17 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
     console.log("Submitting team form with data:", data);
     
     if (team) {
-      // Update existing team
+      // Update existing team - explicitly include all fields
       updateTeam(
-        { id: team.id, data },
+        { 
+          id: team.id, 
+          data: {
+            name: data.name,
+            description: data.description,
+            projectId: data.projectId,
+            allowSendAllRemindEmail: data.allowSendAllRemindEmail
+          } 
+        },
         {
           onSuccess: () => {
             if (onSuccess) onSuccess();
@@ -84,12 +94,13 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
         }
       );
     } else {
-      // Create new team - ensure name is provided
+      // Create new team - ensure name is always provided
       createTeam(
         {
-          name: data.name, // This ensures name is always provided
+          name: data.name,
           description: data.description,
-          projectId: data.projectId
+          projectId: data.projectId,
+          allowSendAllRemindEmail: data.allowSendAllRemindEmail
         }, 
         {
           onSuccess: () => {
@@ -161,6 +172,39 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="allowSendAllRemindEmail"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="allowSendAllRemindEmail"
+                    checked={field.value}
+                    onChange={(e) => {
+                      // Explicitly set the boolean value
+                      console.log('Checkbox changed:', e.target.checked);
+                      field.onChange(e.target.checked);
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <FormLabel htmlFor="allowSendAllRemindEmail" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Send Email Reminders to All Team Members
+                    </FormLabel>
+                    <p className="text-sm text-gray-500">
+                      When enabled, overdue task reminders will be sent to all active team members, not just the task assignee.
+                    </p>
+                  </div>
+                </div>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

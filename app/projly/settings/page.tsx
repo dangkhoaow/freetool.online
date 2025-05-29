@@ -16,7 +16,6 @@ import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
 import { 
   ProfileSettings, 
   PasswordSettings, 
-  NotificationSettings 
 } from "@/app/projly/components/settings";
 
 export default function SettingsPage() {
@@ -349,7 +348,6 @@ export default function SettingsPage() {
           <TabsList className="mb-8">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
-            <TabsTrigger disabled={true} value="notifications">Notifications</TabsTrigger>
           </TabsList>
           
           <TabsContent value="profile">
@@ -368,15 +366,6 @@ export default function SettingsPage() {
               onSubmit={handlePasswordSubmit}
               isSaving={isSaving}
               error={passwordError}
-            />
-          </TabsContent>
-          
-          <TabsContent value="notifications">
-            <NotificationSettings
-              settings={notificationSettings}
-              onSettingChange={handleNotificationChange}
-              onSubmit={handleNotificationSubmit}
-              isSaving={isSaving}
             />
           </TabsContent>
         </Tabs>
