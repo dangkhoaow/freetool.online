@@ -64,6 +64,7 @@ export interface TasksTableProps {
   context?: 'main' | 'project' | 'task'; // The context this table is being used in
   parentTaskId?: string; // The parent task id for context (for detail view)
   hideParentRow?: boolean; // If true, hide the parent row (for sub-task tab)
+  hideFilterUI?: boolean; // If true, hide the filter UI (for use with container-level filter)
 }
 import { CreateTaskForm } from "./CreateTaskForm";
 import { EditTaskForm } from "./EditTaskForm";
@@ -260,7 +261,16 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
   return organizedTasks;
 };
 
-export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, parentTaskId, hideParentRow }: TasksTableProps) {
+export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, compact, context, parentTaskId, hideParentRow, hideFilterUI }: TasksTableProps) {
+  // Function to handle logging
+  const log = (message: string, data?: any) => {
+    if (data !== undefined) {
+      console.log(`[TASKS TABLE] ${message}`, data);
+    } else {
+      console.log(`[TASKS TABLE] ${message}`);
+    }
+  };
+  
   // Initialize router for navigation
   const router = useRouter();
   // Get current user from AuthContext
@@ -268,74 +278,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   
   console.log("[TASKS TABLE] Current user:", user?.id);
   
-  // Define interface for UI filters
-  interface UIFilters {
-    projectId?: string;
-    assignedTo?: string;
-    status?: string;
-    search?: string;
-    taskHierarchy?: string; // New filter for parent tasks only or include sub-tasks
-  }
+  // Use the filters directly from props
+  const filters = initialFilters || {};
   
-  // Define interface for API filters that includes backend parameters
-  interface APIFilters extends UIFilters {
-    parentOnly?: string;
-    includeSubTasks?: string;
-  }
+  console.log('[TASKS TABLE] Using filters from props:', filters);
   
-  // State for filters and sorting - initialize from props if available
-  const [filters, setFilters] = useState<UIFilters>(initialFilters || {});
-  // State for filter visibility with localStorage persistence
-  const [showFilters, setShowFilters] = useState<boolean>(() => {
-    // Try to get stored value from localStorage
-    if (typeof window !== 'undefined') {
-      const storedValue = localStorage.getItem('projly_tasks_show_filters');
-      return storedValue === 'true';
-    }
-    return false;
-  });
-  
-  // Function to toggle filter visibility
-  const toggleFilters = () => {
-    const newState = !showFilters;
-    console.log('[TASKS TABLE] Toggling filter visibility:', newState);
-    setShowFilters(newState);
-    
-    // Store in localStorage for persistence
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('projly_tasks_show_filters', String(newState));
-    }
-  };
-  
-  // Ensure filter visibility state is preserved when filters change
+  // Helper for debugging
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedValue = localStorage.getItem('projly_tasks_show_filters');
-      if (storedValue === 'true' && !showFilters) {
-        setShowFilters(true);
-      }
-    }
-  }, [filters, showFilters]);
-  
-  // Helper function to convert UI filters to API filters
-  const toApiFilters = (uiFilters: UIFilters): APIFilters => {
-    const apiFilters: APIFilters = { ...uiFilters };
-    
-    // Add backend-specific parameters based on task hierarchy selection
-    if (uiFilters.taskHierarchy === 'parent_only') {
-      apiFilters.parentOnly = 'true';
-      apiFilters.includeSubTasks = 'false';
-    } else if (uiFilters.taskHierarchy === 'include_subtasks') {
-      apiFilters.parentOnly = 'false';
-      apiFilters.includeSubTasks = 'true';
-    }
-    
-    return apiFilters;
-  };
-  
-  // Log filters for debugging
-  useEffect(() => {
-    console.log('[TASKS TABLE] Current filters:', filters);
+    log('Current filters:', filters);
   }, [filters]);
   const [sortBy, setSortBy] = useState<{ field: string; direction: "asc" | "desc" }>({
     field: "dueDate",
@@ -348,53 +298,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
-  // State for loading and projects
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
-  const [projects, setProjects] = useState<{id: string; name: string}[]>([]);
-  
-  // Get unique statuses from tasks for the dropdown
-  const uniqueStatuses = useMemo(() => {
-    const statusSet = new Set<string>();
-    
-    // Collect all unique statuses from tasks
-    tasks.forEach(task => {
-      if (task.status) {
-        statusSet.add(task.status);
-      }
-    });
-    
-    // Convert to array and sort alphabetically
-    return Array.from(statusSet).sort();
-  }, [tasks]);
-  
-  // Function to handle logging
-  const log = (message: string, data?: any) => {
-    if (data) {
-      console.log(`[PROJLY:TASKS_TABLE] ${message}`, data);
-    } else {
-      console.log(`[PROJLY:TASKS_TABLE] ${message}`);
-    }
-  };
-  
-  // Load projects for filtering
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setIsLoadingProjects(true);
-        log('Fetching projects for task table');
-        const projectsData = await projlyProjectsService.getProjects();
-        setProjects(projectsData);
-        log('Projects loaded:', projectsData.length);
-      } catch (error) {
-        console.error('[PROJLY:TASKS_TABLE] Error fetching projects:', error);
-      } finally {
-        setIsLoadingProjects(false);
-      }
-    };
-    
-    fetchProjects();
-  }, []);
-  
+  // Log table rendering
   log('Rendering TasksTable with tasks:', tasks.length);
 
   // First extract parent tasks IDs and their sub-tasks before filtering
@@ -419,7 +323,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   console.log(`[TASKS TABLE] Built relationship maps: ${taskRelationships.size} parents, ${subTaskParents.size} sub-tasks`);
   
   // Helper to check if any sub-task of a parent matches the filters
-  const hasMatchingSubTask = (parentId: string, checkFilters: UIFilters, allTasks: Task[]): boolean => {
+  const hasMatchingSubTask = (parentId: string, checkFilters: any, allTasks: Task[]): boolean => {
     const subTaskIds = taskRelationships.get(parentId) || [];
     return subTaskIds.some(subTaskId => {
       const subTask = allTasks.find(t => t.id === subTaskId);
@@ -448,7 +352,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   };
   
   // Helper to check if the parent of a sub-task matches filters
-  const hasMatchingParent = (subTaskId: string, checkFilters: UIFilters, allTasks: Task[]): boolean => {
+  const hasMatchingParent = (subTaskId: string, checkFilters: any, allTasks: Task[]): boolean => {
     const parentId = subTaskParents.get(subTaskId);
     if (!parentId) return false;
     
@@ -537,13 +441,26 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
     
     // Apply assignee filter - check both assignedTo and assignee.id
     if (filters.assignedTo) {
-      if (task.assignedTo !== filters.assignedTo && task.assignee?.id !== filters.assignedTo) {
-        console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
-        console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
-        console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
-        matchesBasicFilters = false;
+      // Special handling for 'current' value - filter to current user's tasks
+      if (filters.assignedTo === 'current') {
+        if (!user?.id || (task.assignedTo !== user.id && task.assignee?.id !== user.id)) {
+          console.log(`[TASKS TABLE] Task ${task.id} doesn't match current user filter. User ID: ${user?.id}`);
+          console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+          console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+          matchesBasicFilters = false;
+        } else {
+          console.log(`[TASKS TABLE] Task ${task.id} MATCHES current user filter. User ID: ${user?.id}`);
+        }
       } else {
-        console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
+        // Normal assignee filtering
+        if (task.assignedTo !== filters.assignedTo && task.assignee?.id !== filters.assignedTo) {
+          console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
+          console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+          console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+          matchesBasicFilters = false;
+        } else {
+          console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
+        }
       }
     }
     
@@ -568,8 +485,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
     return false;
   });
   
-  console.log("[TasksTable] Filtered tasks:", filteredTasks.length);
-  console.log("[TasksTable] Sub-tasks count:", filteredTasks.filter(task => task.parentTaskId).length);
+  console.log("[TASKS TABLE] Filtered tasks:", filteredTasks.length);
+  console.log("[TASKS TABLE] Sub-tasks count:", filteredTasks.filter(task => task.parentTaskId).length);
   
   // Sort tasks while preserving parent-child relationships
   const sortedTasks = organizeTasksHierarchy(filteredTasks, sortBy);
@@ -599,21 +516,21 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
   // Handle delete task
   const confirmDelete = async (id: string) => {
     try {
-      log(`Deleting task with ID: ${id}`);
+      console.log(`[TASKS TABLE] Deleting task with ID: ${id}`);
       await projlyTasksService.deleteTask(id);
-      log('Task deleted successfully');
+      console.log('[TASKS TABLE] Task deleted successfully');
       
       // Reset state and refresh data
       setDeleteTaskId(null);
       
       // Call callback to refresh tasks list if provided
       if (onOperationComplete) {
-        log('Calling onOperationComplete callback to refresh tasks with current filters');
-        log('Current filters:', filters);
+        console.log('Calling onOperationComplete callback to refresh tasks with current filters');
+        console.log('Current filters:', filters);
         onOperationComplete(filters);
       }
     } catch (error) {
-      console.error('[PROJLY:TASKS_TABLE] Error deleting task:', error);
+      console.log('[TASKS TABLE] Error deleting task:', error);
     }
   };
 
@@ -647,7 +564,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
 
   // Handle view task details - navigate to task detail page
   const handleViewTaskDetails = (task: Task) => {
-    console.log("Navigating to task detail page:", task.id);
+    console.log("[TASKS TABLE] Navigating to task detail page:", task.id);
     router.push(`/projly/tasks/${task.id}`);
   };
 
@@ -657,8 +574,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
     
     // Call callback to refresh tasks list if provided
     if (onOperationComplete) {
-      log('Calling onOperationComplete callback to refresh tasks after create with current filters');
-      log('Current filters:', filters);
+      console.log('Calling onOperationComplete callback to refresh tasks after create with current filters');
+      console.log('Current filters:', filters);
       onOperationComplete(filters);
     }
   };
@@ -707,229 +624,12 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, pa
     return <Badge variant={variant} className={customClass}>{status}</Badge>;
   };
 
-  // Function to handle filter changes
-  const handleProjectFilterChange = (value: string) => {
-    const newFilters = { ...filters };
-    if (value === "all") {
-      delete newFilters.projectId;
-    } else {
-      newFilters.projectId = value;
-    }
-    setFilters(newFilters);
-    
-    // If callback provided, notify parent component
-    if (onOperationComplete) {
-      // Use the helper function to convert UI filters to API parameters
-      const apiFilters = toApiFilters(newFilters);
-      onOperationComplete(apiFilters);
-    }
-  };
-
-  const handleStatusFilterChange = (value: string) => {
-    const newFilters = { ...filters };
-    if (value === "all") {
-      delete newFilters.status;
-    } else {
-      newFilters.status = value;
-    }
-    setFilters(newFilters);
-    
-    // If callback provided, notify parent component
-    if (onOperationComplete) {
-      // Use the helper function to convert UI filters to API parameters
-      const apiFilters = toApiFilters(newFilters);
-      onOperationComplete(apiFilters);
-    }
-  };
-
-  const handleAssigneeFilterChange = (value: string) => {
-    const newFilters = { ...filters };
-    if (value === "all") {
-      delete newFilters.assignedTo;
-    } else if (value === "current" && user?.id) {
-      // Make sure we're using the actual user ID and log it for debugging
-      newFilters.assignedTo = user.id;
-      console.log(`[TASKS TABLE] Setting 'My Tasks' filter with user ID: ${user.id}`);
-      console.log(`[TASKS TABLE] User email for reference: ${user.email || 'unknown'}`);
-    } else {
-      newFilters.assignedTo = value;
-    }
-    setFilters(newFilters);
-    
-    // If callback provided, notify parent component
-    if (onOperationComplete) {
-      // Use the helper function to convert UI filters to API parameters
-      const apiFilters = toApiFilters(newFilters);
-      onOperationComplete(apiFilters);
-    }
-  };
-
-  // Show loading state for projects only
-  if (isLoadingProjects) {
-    console.log('[PROJLY:TASKS:TABLE] Loading projects data');
-    return <PageLoading standalone={true} logContext="PROJLY:TASKS:TABLE" height="20vh" />;
-  }
+  // Render the table
 
   return (
     <div>
       <div className="bg-card rounded-md space-y-4">
-        {/* Filter toggle button */}
-        <div className="flex flex-row items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center flex-1 min-w-0 gap-2">
-            <Input 
-              placeholder="Search tasks..." 
-              className="max-w-[300px] w-full"
-              value={filters.search || ""}
-              onChange={(e) => {
-                console.log('[TASKS TABLE] Search filter changed:', e.target.value);
-                setFilters({ ...filters, search: e.target.value });
-              }}
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleFilters}
-            className="flex items-center justify-end gap-1 flex-shrink-0"
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-          </Button>
-        </div>
-
-        {/* Expandable filters section */}
-        {showFilters && (
-          <Card className="mt-4 mb-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-md">Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Project Filter */}
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="project-filter" className="text-sm font-medium">
-                      Project
-                    </label>
-                    <Select 
-                      value={filters.projectId || "all"}
-                      onValueChange={handleProjectFilterChange}
-                    >
-                      <SelectTrigger id="project-filter">
-                        <SelectValue placeholder="All Projects" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Projects</SelectItem>
-                        {Array.isArray(projects) && projects.map(project => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Status Filter */}
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="status-filter" className="text-sm font-medium">
-                      Status
-                    </label>
-                    <Select
-                      value={filters.status || "all"}
-                      onValueChange={handleStatusFilterChange}
-                    >
-                      <SelectTrigger id="status-filter">
-                        <SelectValue placeholder="All Statuses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        {uniqueStatuses.map((status) => (
-                          <SelectItem key={status} value={status}>{status}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Assigned To Filter */}
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="assigned-filter" className="text-sm font-medium">
-                      Assigned To
-                    </label>
-                    <Select
-                      value={filters.assignedTo || "all"}
-                      onValueChange={handleAssigneeFilterChange}
-                    >
-                      <SelectTrigger id="assigned-filter">
-                        <SelectValue placeholder="All Members" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Members</SelectItem>
-                        <SelectItem value="current">My Tasks</SelectItem>
-                        {uniqueUsers.length > 0 && (
-                          <>
-                            <SelectItem value="divider" disabled>
-                              <Separator className="my-1" />
-                            </SelectItem>
-                            {uniqueUsers.map(assignee => (
-                              <SelectItem key={assignee.id} value={assignee.id}>
-                                {assignee.name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {/* Task Hierarchy Filter */}
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="hierarchy-filter" className="text-sm font-medium">
-                      Task Hierarchy
-                    </label>
-                    <Select
-                      value={filters.taskHierarchy || "all"}
-                      onValueChange={(value) => {
-                        console.log('[TASK TABLE] Setting task hierarchy filter to:', value);
-                        setFilters({ ...filters, taskHierarchy: value });
-                        
-                        // If callback provided, notify parent component to fetch with updated filters
-                        if (onOperationComplete) {
-                          const newFilters = { ...filters, taskHierarchy: value };
-                          const apiFilters = toApiFilters(newFilters);
-                          onOperationComplete(apiFilters);
-                        }
-                      }}
-                    >
-                      <SelectTrigger id="hierarchy-filter">
-                        <SelectValue placeholder="All Tasks" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Tasks</SelectItem>
-                        <SelectItem value="parent_only">Parent Tasks Only</SelectItem>
-                        <SelectItem value="include_subtasks">Include Sub-Tasks</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Clear Filters Button */}
-                <div className="flex justify-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setFilters({});
-                      // Clear filters should also notify parent component with empty filters
-                      if (onOperationComplete) {
-                        onOperationComplete(toApiFilters({}));
-                      }
-                    }}
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* All filter UI removed - now handled by container */}
         
         <Separator />
         
