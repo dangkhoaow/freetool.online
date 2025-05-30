@@ -185,11 +185,11 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
           ) : (
             paginatedResources.map((resource) => (
               <TableRow key={resource.id}>
-                <TableCell className="font-medium">{resource.name}</TableCell>
-                <TableCell>{resource.fileType}</TableCell>
-                <TableCell>{resource.quantity}</TableCell>
-                <TableCell>{formatDateForDisplay(resource.createdAt)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="font-medium whitespace-nowrap">{resource.name}</TableCell>
+                <TableCell className="whitespace-nowrap">{resource.fileType}</TableCell>
+                <TableCell className="whitespace-nowrap">{resource.quantity}</TableCell>
+                <TableCell className="whitespace-nowrap">{formatDateForDisplay(resource.createdAt)}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="ghost"

@@ -39,7 +39,10 @@ export default function TeamPage() {
     <DashboardLayout>
       <div className="container mx-auto py-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
+            <p className="text-muted-foreground">Manage your teams and members</p>
+          </div>
         </div>
         
         <Tabs defaultValue="teams" value={activeTab} onValueChange={handleTabChange}>

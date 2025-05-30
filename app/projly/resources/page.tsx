@@ -39,22 +39,25 @@ export default function Resources() {
   return (
     <DashboardLayout>
       <div className="container flex flex-col space-y-4 py-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
+        <div>
           <h1 className="text-3xl font-bold tracking-tight">Resources</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleFilters}
-              className="flex items-center gap-1"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-            </Button>
-            <CreateResourceButton />
-          </div>
+          <p className="text-muted-foreground">Manage your resources</p>
+        </div>
         </div>
 
+        <div className="flex justify-end items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleFilters}
+            className="flex items-center gap-1"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+          </Button>
+          <CreateResourceButton />
+        </div>
         {showFilters && (
           <Card className="mb-4">
             <CardHeader className="pb-2">

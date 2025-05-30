@@ -364,7 +364,7 @@ export default function Dashboard() {
                       <p className="text-sm text-muted-foreground truncate">{task.description}</p>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center">
-                          <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium">
+                          <span className="inline-flex items-center rounded-full py-1 text-xs font-medium">
                             Project: {task.project?.name}
                           </span>
                         </div>

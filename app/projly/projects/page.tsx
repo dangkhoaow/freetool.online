@@ -214,24 +214,27 @@ export default function Projects() {
             <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
             <p className="text-muted-foreground">Manage your projects and their tasks</p>
           </div>
+        </div>
+        <div className="flex justify-end items-center gap-2 mb-4">
           <Button onClick={() => router.push('/projly/projects/new')}>
             <PlusCircle className="mr-2 h-4 w-4" />
             New Project
           </Button>
         </div>
-        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>All Projects</CardTitle>
-            <div className="w-[200px]">
-              <Input
-                placeholder="Search projects..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
           </CardHeader>
           <CardContent>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-[200px]">
+                <Input
+                  placeholder="Search projects..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -279,20 +282,20 @@ export default function Projects() {
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
                     onClick={() => handleProjectClick(project.id)}
                   >
-                    <TableCell className="font-medium">{project.name}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
+                    <TableCell className="font-medium whitespace-nowrap">{project.name}</TableCell>
+                    <TableCell className="max-w-[200px] whitespace-nowrap truncate">
                       {project.description || '-'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {renderStatusBadge(project.status || 'Unknown')}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {project.createdAt 
                         ? format(new Date(project.createdAt), 'MMM d, yyyy') 
                         : '-'
                       }
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
                       {archivingId === project.id ? (
                         <Loader2 className="h-4 w-4 animate-spin ml-auto" />
                       ) : (

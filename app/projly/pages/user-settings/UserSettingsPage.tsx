@@ -642,19 +642,21 @@ function UserSettingsPage() {
               <CardTitle>User Management</CardTitle>
               <CardDescription>Manage users, their roles, and access permissions</CardDescription>
             </div>
-            <div className="flex gap-2">
-              {isSiteOwner && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={openAddUserDialog}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
-              )}
-            </div>
           </CardHeader>
+          
+          {isSiteOwner && (
+            <div className="flex gap-2 m-6 justify-end">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={openAddUserDialog}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
+            </div>
+          )}
+          
           <CardContent>
             <div className="space-y-4">
               {/* Role information cards */}
