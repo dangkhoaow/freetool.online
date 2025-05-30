@@ -15,6 +15,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -99,17 +100,26 @@ export default function AnalyticsDashboard() {
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6 space-y-4">
+        <div className="flex items-center mb-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              router.push('/projly/dashboard')
+            }}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </div>
+
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
             <p className="text-muted-foreground">
               View insights and metrics for your projects and tasks
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push('/projly/dashboard')}>
-              Back to Dashboard
-            </Button>
           </div>
         </div>
 

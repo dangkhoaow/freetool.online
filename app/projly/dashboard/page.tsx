@@ -238,6 +238,8 @@ export default function Dashboard() {
               Welcome back, {userProfile?.firstName || userProfile?.first_name || 'User'}! Here's an overview of your projects and tasks.
             </p>
           </div>
+        </div>
+        <div className="flex justify-end items-center mb-4">
           <div className="flex gap-2">
             <Button variant="default" size="sm" onClick={() => router.push('/projly/tasks/new')}>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -250,7 +252,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div style={{ marginTop: '1rem' }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Recent Projects */}
           <Card className="col-span-full lg:col-span-2">
             <CardHeader>
@@ -316,7 +318,7 @@ export default function Dashboard() {
             </CardContent>
             {projects && projects.length > 0 && (
               <CardFooter>
-                <Button variant="outline" className="w-full" asChild>
+                <Button variant="outline" className="w-full m-6 mt-0" asChild>
                   <Link href="/projly/projects">View All Projects</Link>
                 </Button>
               </CardFooter>
@@ -352,10 +354,6 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/projly/tasks/new')}>
-                <PlusCircle className="h-4 w-4 mr-1" />
-                New
-              </Button>
             </CardHeader>
             <CardContent>
               {userTasks && userTasks.length > 0 ? (
@@ -388,7 +386,7 @@ export default function Dashboard() {
             </CardContent>
             {userTasks && userTasks.length > 0 && (
               <CardFooter>
-                <Button variant="outline" className="w-full" asChild>
+                <Button variant="outline" className="w-full m-6 mt-0" asChild>
                   <Link href="/projly/tasks">View All Tasks</Link>
                 </Button>
               </CardFooter>
