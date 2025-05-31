@@ -131,6 +131,26 @@ export function TasksBoard({
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
+  // Apply search filter to tasks
+  const filteredTasks = useMemo(() => {
+    // If no search filter, return all tasks
+    if (!initialFilters?.search) {
+      return tasks;
+    }
+
+    const searchTerm = (initialFilters.search as string).toLowerCase();
+    log(`Applying search filter: "${searchTerm}" to ${tasks.length} tasks in board view`);
+    
+    // Filter tasks by search term (match title, description, ID)
+    return tasks.filter(task => {
+      return (
+        (task.title?.toLowerCase().includes(searchTerm)) ||
+        (task.description?.toLowerCase().includes(searchTerm)) ||
+        (task.id?.toLowerCase().includes(searchTerm))
+      );
+    });
+  }, [tasks, initialFilters?.search]);
+
   // Group tasks by status
   const tasksByStatus = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
@@ -140,8 +160,8 @@ export function TasksBoard({
       grouped[status] = [];
     });
     
-    // Group tasks by status
-    tasks.forEach(task => {
+    // Group filtered tasks by status
+    filteredTasks.forEach(task => {
       const status = task.status || 'Not Started';
       if (grouped[status]) {
         grouped[status].push(task);
@@ -152,7 +172,7 @@ export function TasksBoard({
     });
     
     return grouped;
-  }, [tasks]);
+  }, [filteredTasks]);
 
   // Handle task drop (status change)
   const handleTaskDrop = async (taskId: string, newStatus: string) => {

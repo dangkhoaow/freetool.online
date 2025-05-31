@@ -16,6 +16,13 @@
 
 "use client";
 
+// Declare global interface for window to add searchTimeout property
+declare global {
+  interface Window {
+    searchTimeout?: NodeJS.Timeout;
+  }
+}
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -117,13 +124,17 @@ export function TasksContainer({
   const { user } = useAuth();
   log("Current user:", user?.id);
   
-  // State for tasks and loading
+  // State for tasks data
   const [rawTasks, setRawTasks] = useState<ProjlyTask[]>(initialTasks || []);
   const [loading, setLoading] = useState<boolean>(autoLoad && !initialTasks);
   const [error, setError] = useState<string | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState<boolean>(false);
   const [currentFilters, setCurrentFilters] = useState<UIFilters>(initialFilters);
   
+  // State for client-side filtering
+  const [clientSideFilters, setClientSideFilters] = useState<UIFilters>({});
+  const [lastNavigationTime, setLastNavigationTime] = useState<number>(Date.now());
+
   // State for filter visibility with localStorage persistence
   const [showFilters, setShowFilters] = useState<boolean>(() => {
     // Try to get stored value from localStorage
@@ -202,6 +213,22 @@ export function TasksContainer({
     // Start with a copy of the UI filters
     const apiFilters: any = { ...uiFilters };
     
+    // Deliberately exclude search from API filters - search is always handled client-side
+    if (apiFilters.search) {
+      delete apiFilters.search;
+    }
+    
+    // Handle special case for 'current' assignee - replace with actual user ID
+    if (apiFilters.assignedTo === 'current') {
+      if (user?.id) {
+        log(`[TASKS CONTAINER] Replacing 'current' assignee with actual user ID: ${user.id}`);
+        apiFilters.assignedTo = user.id;
+      } else {
+        log(`[TASKS CONTAINER] Warning: 'current' assignee specified but no user ID available`);
+        delete apiFilters.assignedTo; // Remove if we can't resolve the user ID
+      }
+    }
+    
     // Convert task hierarchy filter to boolean values
     if (uiFilters.taskHierarchy) {
       if (uiFilters.taskHierarchy === 'parent_only') {
@@ -215,7 +242,7 @@ export function TasksContainer({
       delete apiFilters.taskHierarchy;
     }
     
-    log('[TASKS CONTAINER] Converted UI filters to API filters:', apiFilters);
+    log('[TASKS CONTAINER] Converted UI filters to API filters (excluding search):', apiFilters);
     return apiFilters as TaskFilters;
   };
   
@@ -244,18 +271,8 @@ export function TasksContainer({
     loadTasks(toApiFilters(updatedFilters));
   };
   
-  const handleAssigneeFilterChange = (value: string) => {
+  const handleAssigneeChange = (value: string) => {
     log('[TASKS CONTAINER] Assignee filter changed:', value);
-    
-    // If 'current' is selected, use the actual user ID for the API filter
-    // but keep 'current' in the UI filter for the dropdown selection
-    let apiValue = value === 'all' ? undefined : value;
-    
-    // For API calls, replace 'current' with the actual user ID
-    if (value === 'current' && user?.id) {
-      log('[TASKS CONTAINER] Using current user ID for filtering:', user.id);
-      apiValue = user.id;
-    }
     
     // Update UI filters (this keeps 'current' as the value for the dropdown)
     const updatedFilters = { 
@@ -264,11 +281,8 @@ export function TasksContainer({
     };
     setCurrentFilters(updatedFilters);
     
-    // Create API filters with the resolved user ID
-    const apiFilters = toApiFilters({
-      ...updatedFilters,
-      assignedTo: apiValue
-    });
+    // Let toApiFilters handle the 'current' user conversion
+    const apiFilters = toApiFilters(updatedFilters);
     
     log('[TASKS CONTAINER] Applying API filters:', apiFilters);
     // Apply filters immediately
@@ -288,13 +302,53 @@ export function TasksContainer({
   };
   
   // Handle search filter changes
+  // Use a local state for search to prevent loading animation
+  const [searchValue, setSearchValue] = useState<string>((currentFilters as any).search || '');
+
+  // Initialize searchValue from currentFilters when they change
+  useEffect(() => {
+    setSearchValue((currentFilters as any).search || '');
+  }, [currentFilters]);
+
+  // Track page navigation using router events
+  useEffect(() => {
+    // Update last navigation time when component mounts
+    setLastNavigationTime(Date.now());
+    
+    // Force reload of tasks when component mounts if it's been more than 2 seconds since last navigation
+    // This ensures fresh data when navigating between pages
+    if (autoLoad && Date.now() - lastNavigationTime > 2000) {
+      log('[TASKS CONTAINER] Loading fresh data after navigation');
+      loadTasks();
+    }
+  }, []);
+
+  // Debounced search handler with pure client-side filtering
   const handleSearchChange = (value: string) => {
     log('[TASKS CONTAINER] Search filter changed:', value);
-    const updatedFilters = { ...currentFilters, search: value };
-    setCurrentFilters(updatedFilters);
+    // Update the local search value immediately for UI responsiveness
+    setSearchValue(value);
     
-    // Apply filters immediately
-    loadTasks(toApiFilters(updatedFilters));
+    // Use setTimeout to debounce the filter application
+    if (window.searchTimeout) {
+      clearTimeout(window.searchTimeout);
+    }
+    
+    window.searchTimeout = setTimeout(() => {
+      // Update client-side filters for local filtering
+      setClientSideFilters(prev => ({
+        ...prev,
+        search: value
+      } as UIFilters));
+      
+      // For search, we NEVER make an API call - always filter client-side
+      // However, we still update the currentFilters state for consistency
+      const updatedFilters = { ...currentFilters, search: value };
+      setCurrentFilters(updatedFilters);
+      
+      // Log for debugging
+      log(`[TASKS CONTAINER] Applied client-side search filter: "${value}" to ${rawTasks.length} tasks`);
+    }, 300); // 300ms debounce
   };
   
   // React Query client for cache invalidation
@@ -312,13 +366,31 @@ export function TasksContainer({
     showAllSubtasks: context === 'task' ? true : hierarchyOptions.showAllSubtasks
   };
   
-  // Use the task hierarchy hook
+  // Apply client-side filtering before using the task hierarchy hook
+  const clientSideFilteredTasks = useMemo(() => {
+    if (!(clientSideFilters as any).search) {
+      return rawTasks;
+    }
+    
+    const searchTerm = ((clientSideFilters as any).search as string).toLowerCase();
+    log(`[TASKS CONTAINER] Applying client-side search filter: "${searchTerm}" to ${rawTasks.length} tasks`);
+    
+    return rawTasks.filter(task => {
+      return (
+        (task.title?.toLowerCase().includes(searchTerm)) ||
+        (task.description?.toLowerCase().includes(searchTerm)) ||
+        (task.id?.toLowerCase().includes(searchTerm))
+      );
+    });
+  }, [rawTasks, (clientSideFilters as any).search]);
+
+  // Use the task hierarchy hook with client-side filtered tasks
   const {
     tasks: filteredTasks,
     getTaskDepth,
     isParentTask,
     getSubtaskCount
-  } = useTaskHierarchy(rawTasks, effectiveHierarchyOptions);
+  } = useTaskHierarchy(clientSideFilteredTasks, effectiveHierarchyOptions);
   
   // Context-specific title
   const getContextTitle = () => {
@@ -339,10 +411,18 @@ export function TasksContainer({
     try {
       setLoading(true);
       setError(null);
-      log(`Loading tasks for context: ${context}, parentId: ${parentId}, filters:`, filters);
+      
+      // Remove search from API filters - search is always handled client-side
+      const apiFilters = { ...filters } as any;
+      if (apiFilters && 'search' in apiFilters) {
+        delete apiFilters.search;
+        log(`[TASKS CONTAINER] Removed search filter from API call, will filter client-side instead`);
+      }
+      
+      log(`Loading tasks for context: ${context}, parentId: ${parentId}, filters:`, apiFilters);
       
       let tasks: ProjlyTask[] = [];
-      const effectiveFilters = filters || currentFilters;
+      const effectiveFilters = apiFilters || currentFilters;
       
       switch (context) {
         case 'project':
@@ -548,7 +628,7 @@ export function TasksContainer({
                   <Input 
                     placeholder="Search tasks..." 
                     className="max-w-[300px] w-full"
-                    value={(currentFilters as any).search || ""}
+                    value={searchValue}
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
@@ -636,7 +716,7 @@ export function TasksContainer({
                           </label>
                           <Select
                             value={currentFilters.assignedTo || "all"}
-                            onValueChange={handleAssigneeFilterChange}
+                            onValueChange={handleAssigneeChange}
                           >
                             <SelectTrigger id="assigned-filter">
                               <SelectValue placeholder="All Members" />
