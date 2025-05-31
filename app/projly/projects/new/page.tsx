@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { projlyProjectsService } from '@/lib/services/projly';
 import { useSession } from '@/lib/services/projly/jwt-auth-adapter';
 
@@ -171,14 +172,7 @@ export default function CreateProjectPage() {
 
   // Show loading state when checking auth and fetching data
   if (loadingUsers) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-          <span className="ml-2">Loading...</span>
-        </div>
-      </DashboardLayout>
-    );
+    return <PageLoading logContext="PROJLY:NEW_PROJECT" />;
   }
 
   return (

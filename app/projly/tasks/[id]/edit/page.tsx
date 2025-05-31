@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "../../../components/ui/date-picker";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
@@ -46,6 +47,8 @@ export default function TaskEditPage({}: TaskEditPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [parentTasks, setParentTasks] = useState<any[]>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]); // Store all tasks before filtering
+  const [showAllTasks, setShowAllTasks] = useState(false); // Toggle for showing all tasks vs only non-parent tasks
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -91,13 +94,22 @@ export default function TaskEditPage({}: TaskEditPageProps) {
         log('Loading parent tasks for project:', taskForm.projectId);
         const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
         
-        // Also filter out the current task itself (can't be its own parent)
-        const availableParentTasks = tasks.filter((task: any) => 
-          task.id !== taskId
-        );
+        // Filter out the current task itself (can't be its own parent)
+        const availableTasks = tasks.filter((task: any) => task.id !== taskId);
         
-        setParentTasks(availableParentTasks);
-        log('Loaded parent tasks:', availableParentTasks.length);
+        // Store all available tasks
+        setAllTasks(availableTasks);
+        
+        // Apply filter based on toggle state
+        if (showAllTasks) {
+          setParentTasks(availableTasks);
+          log('Loaded all tasks as potential parents:', availableTasks.length);
+        } else {
+          // Only show tasks without parents
+          const nonParentTasks = availableTasks.filter((task: any) => !task.parentTaskId);
+          setParentTasks(nonParentTasks);
+          log('Loaded non-parent tasks as potential parents:', nonParentTasks.length);
+        }
       } catch (error) {
         console.error(`[PROJLY:TASK_EDIT:${taskId}] Error loading parent tasks:`, error);
         toast({
@@ -109,7 +121,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
     };
 
     loadParentTasks();
-  }, [taskForm.projectId, taskId, toast]);
+  }, [taskForm.projectId, taskId, toast, showAllTasks]);
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -448,7 +460,22 @@ export default function TaskEditPage({}: TaskEditPageProps) {
               
               {/* Parent Task Selection */}
               <div className="grid w-full items-center gap-1.5">
-                <Label htmlFor="parentTaskId">Parent Task (Optional)</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="parentTaskId">Parent Task (Optional)</Label>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="show-all-tasks" className="text-xs text-muted-foreground cursor-pointer">
+                      {showAllTasks ? "Showing all tasks" : "Showing only top-level tasks"}
+                    </Label>
+                    <Switch
+                      id="show-all-tasks"
+                      checked={showAllTasks}
+                      onCheckedChange={(checked: boolean) => {
+                        setShowAllTasks(checked);
+                        console.log(`[PROJLY:TASK_EDIT] Toggle show all tasks: ${checked}`);
+                      }}
+                    />
+                  </div>
+                </div>
                 <Select
                   value={taskForm.parentTaskId}
                   onValueChange={(value) => handleChange('parentTaskId', value)}

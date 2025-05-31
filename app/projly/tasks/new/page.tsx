@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
+import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -257,13 +258,7 @@ export default function NewTaskPage() {
   
   // Show loading state
   if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
+    return <PageLoading logContext="PROJLY:NEW_TASK" />;
   }
   
   return (

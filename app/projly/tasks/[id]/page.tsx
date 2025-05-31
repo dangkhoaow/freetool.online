@@ -663,7 +663,21 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
                 <div className="space-y-1">
                   <h3 className="text-sm font-medium text-muted-foreground">Project</h3>
                   <p className="text-base">
-                    {projects.find(p => p.id === taskForm.projectId)?.name || 'Unknown project'}
+                    {(() => {
+                      const project = projects.find(p => p.id === taskForm.projectId);
+                      if (project) {
+                        return (
+                          <Button 
+                            variant="link" 
+                            className="p-0 h-auto font-normal" 
+                            onClick={() => router.push(`/projly/projects/${project.id}`)}
+                          >
+                            {project.name}
+                          </Button>
+                        );
+                      }
+                      return 'Unknown project';
+                    })()}
                   </p>
                 </div>
                 
