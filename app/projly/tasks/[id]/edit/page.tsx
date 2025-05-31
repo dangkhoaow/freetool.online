@@ -91,10 +91,9 @@ export default function TaskEditPage({}: TaskEditPageProps) {
         log('Loading parent tasks for project:', taskForm.projectId);
         const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
         
-        // Filter out tasks that already have a parent (they can't be parent tasks)
         // Also filter out the current task itself (can't be its own parent)
         const availableParentTasks = tasks.filter((task: any) => 
-          !task.parentTaskId && task.id !== taskId
+          task.id !== taskId
         );
         
         setParentTasks(availableParentTasks);
@@ -283,12 +282,13 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       };
       
       // Use object destructuring to format the task data for the API correctly
-      const { project, assignee, assignedTo, parentTaskId, startDate, dueDate, ...taskBasicData } = formattedTask;
+      const { project, assignee, assignedTo, parentTaskId, startDate, dueDate, projectId, ...taskBasicData } = formattedTask;
       
       // Add detailed logging for debugging
       log('Preparing task data for update:', {
         assignedTo,
         parentTaskId,
+        projectId,
         startDate,
         dueDate,
         ...taskBasicData
@@ -297,7 +297,8 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       // Create an update payload that matches the TaskUpdateInput interface
       const updatePayload = {
         ...taskBasicData,
-        assigneeId: assignedTo,  // This is the key field the backend expects
+        projectId: projectId,     // Explicitly include projectId in the update
+        assigneeId: assignedTo,   // This is the key field the backend expects
         parentTaskId: parentTaskId, // Include the parentTaskId in the update
         startDate: startDate,
         dueDate: dueDate

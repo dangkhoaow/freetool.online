@@ -176,19 +176,24 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
         }
       }
       
+      // Ensure empty strings are properly converted to null for date fields
+      const processedData = {
+        ...data,
+        startDate: data.startDate && data.startDate.trim() !== '' ? new Date(data.startDate) : null,
+        endDate: data.endDate && data.endDate.trim() !== '' ? new Date(data.endDate) : null
+      };
+      
       console.log('[PROJLY:EDIT_PROJECT] Updating project with data:', {
         id: projectId,
-        ...data,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null
+        ...processedData,
+        startDateRaw: data.startDate, // Log raw value for debugging
+        endDateRaw: data.endDate // Log raw value for debugging
       });
       
       // Call the update project mutation
       await updateProjectMutation.mutateAsync({
         id: projectId,
-        ...data,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null
+        ...processedData
       });
       
       console.log('[PROJLY:EDIT_PROJECT] Project updated successfully');
@@ -314,10 +319,25 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date"
-                          {...field}
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="date"
+                            {...field}
+                          />
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                form.setValue('startDate', '');
+                                console.log('[PROJLY:EDIT_PROJECT] Cleared start date');
+                              }}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -331,10 +351,25 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
                     <FormItem>
                       <FormLabel>End Date</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date"
-                          {...field}
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="date"
+                            {...field}
+                          />
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                form.setValue('endDate', '');
+                                console.log('[PROJLY:EDIT_PROJECT] Cleared end date');
+                              }}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

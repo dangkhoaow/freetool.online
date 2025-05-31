@@ -509,18 +509,6 @@ export function TasksContainer({
         <CardHeader className="flex p-0 flex-row items-center justify-between">
           <div className="flex flex-col md:flex-row md:items-center gap-2">
             <CardTitle>{getContextTitle()}</CardTitle>
-            
-            {/* View mode toggle */}
-            <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange} className="ml-0 md:ml-4">
-              <ToggleGroupItem value="list" aria-label="List view">
-                <List className="h-4 w-4" />
-                <span className="sr-only md:not-sr-only md:ml-2">List</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="board" aria-label="Board view">
-                <LayoutGrid className="h-4 w-4" />
-                <span className="sr-only md:not-sr-only md:ml-2">Board</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
           </div>
           
           {displayOptions.showAddButton && (
@@ -564,15 +552,28 @@ export function TasksContainer({
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleFilters}
-                  className="flex items-center justify-end gap-1 flex-shrink-0"
-                >
-                  <Filter className="h-4 w-4" />
-                  Filters
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* View mode toggle */}
+                  <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
+                    <ToggleGroupItem value="list" aria-label="List view">
+                      <List className="h-4 w-4" />
+                      <span className="sr-only md:not-sr-only md:ml-2">List</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="board" aria-label="Board view">
+                      <LayoutGrid className="h-4 w-4" />
+                      <span className="sr-only md:not-sr-only md:ml-2">Board</span>
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleFilters}
+                    className="flex items-center justify-end gap-1 flex-shrink-0"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Filters
+                  </Button>
+                </div>
               </div>
               
               {/* Expandable filters section */}
