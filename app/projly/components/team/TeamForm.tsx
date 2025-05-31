@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useCreateTeam, useUpdateTeam, Team } from "@/lib/services/projly/use-team";
 import { useProjects } from "@/lib/services/projly/use-projects";
+import { X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 import {
   Form,
@@ -30,7 +32,8 @@ import {
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   description: z.string().optional(),
-  projectId: z.string().optional(),
+  projectId: z.string().optional(), // Keep for backward compatibility
+  projectIds: z.array(z.string()).optional(), // New field for multiple project selection
   allowSendAllRemindEmail: z.boolean().default(false),
 });
 
@@ -52,13 +55,17 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
   console.log("TeamForm - Current team:", team);
   console.log("TeamForm - Available projects:", projects);
 
-  // Get the connected project ID if it exists
-  const connectedProjectId = team?.projects && team.projects.length > 0 
-    ? team.projects[0].projectId 
-    : undefined;
+  // Get the connected project IDs if they exist
+  const connectedProjectIds = team?.projects && team.projects.length > 0 
+    ? team.projects.map((p: any) => p.projectId || p.project?.id) 
+    : [];
+  
+  // For backward compatibility, also get the first project ID
+  const connectedProjectId = connectedProjectIds.length > 0 ? connectedProjectIds[0] : undefined;
 
   console.log("TeamForm - Team projects:", team?.projects);
-  console.log("TeamForm - Connected project ID:", connectedProjectId);
+  console.log("TeamForm - Connected project IDs:", connectedProjectIds);
+  console.log("TeamForm - First connected project ID (for backward compatibility):", connectedProjectId);
 
   // Initialize the form with react-hook-form and zod validation
   const form = useForm<FormValues>({
@@ -66,7 +73,8 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
     defaultValues: {
       name: team?.name || "",
       description: team?.description || "",
-      projectId: connectedProjectId,
+      projectId: connectedProjectId, // Keep for backward compatibility
+      projectIds: connectedProjectIds.filter(Boolean), // Filter out any null/undefined values
       allowSendAllRemindEmail: team?.allowSendAllRemindEmail || false,
     },
   });
@@ -74,6 +82,17 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
   // Handle form submission
   const onSubmit = (data: FormValues) => {
     console.log("Submitting team form with data:", data);
+    
+    // Determine which project ID to send
+    // If projectIds array is available and has items, use the first one for backward compatibility
+    // Otherwise fall back to the single projectId field
+    const projectIdToSend = data.projectIds && data.projectIds.length > 0 
+      ? data.projectIds[0] 
+      : data.projectId;
+    
+    // Log the projects being submitted
+    console.log("Team form - Selected project IDs:", data.projectIds);
+    console.log("Team form - Using primary project ID for API:", projectIdToSend);
     
     if (team) {
       // Update existing team - explicitly include all fields
@@ -83,7 +102,8 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
           data: {
             name: data.name,
             description: data.description,
-            projectId: data.projectId,
+            projectId: projectIdToSend, // Send the primary project ID
+            projectIds: data.projectIds, // Send all project IDs for future API support
             allowSendAllRemindEmail: data.allowSendAllRemindEmail
           } 
         },
@@ -99,7 +119,8 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
         {
           name: data.name,
           description: data.description,
-          projectId: data.projectId,
+          projectId: projectIdToSend, // Send the primary project ID
+          projectIds: data.projectIds, // Send all project IDs for future API support
           allowSendAllRemindEmail: data.allowSendAllRemindEmail
         }, 
         {
@@ -149,29 +170,85 @@ export function TeamForm({ team, onSuccess }: TeamFormProps) {
         
         <FormField
           control={form.control}
-          name="projectId"
+          name="projectIds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Associated Project</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-                disabled={projectsLoading}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a project (optional)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {projects?.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>Associated Projects</FormLabel>
+              <div className="relative">
+                <Select
+                  onValueChange={(value) => {
+                    // Handle "none" selection to clear all selections
+                    if (value === "none") {
+                      field.onChange([]);
+                      return;
+                    }
+                    
+                    // If value already exists in array, remove it (toggle behavior)
+                    // Otherwise add it to the array
+                    const currentValues = Array.isArray(field.value) ? field.value : [];
+                    // Ensure value is a string before checking includes
+                    const valueStr = String(value);
+                    const newValues = currentValues.includes(valueStr)
+                      ? currentValues.filter(v => v !== valueStr)
+                      : [...currentValues, valueStr];
+                    
+                    console.log("Selected project IDs:", newValues);
+                    field.onChange(newValues);
+                  }}
+                  value={Array.isArray(field.value) && field.value.length > 0 ? field.value[0] : "none"}
+                  disabled={projectsLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue 
+                        placeholder={field.value && field.value.length > 0 
+                          ? `${field.value.length} project(s) selected` 
+                          : "Select projects (optional)"} 
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">Clear selection</SelectItem>
+                    {projects?.map((project) => (
+                      <SelectItem 
+                        key={project.id} 
+                        value={project.id}
+                        className={field.value && field.value.includes(project.id) ? "bg-accent" : ""}
+                      >
+                        <div className="flex items-center gap-2">
+                          {field.value && field.value.includes(project.id) && (
+                            <span className="h-2 w-2 rounded-full bg-primary mr-2"></span>
+                          )}
+                          {project.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {/* Show selected projects as tags */}
+                {Array.isArray(field.value) && field.value.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {field.value.map((projectId) => {
+                      const project = projects?.find(p => p.id === projectId);
+                      return (
+                        <Badge key={projectId} variant="secondary" className="flex items-center gap-1">
+                          {project?.name || projectId}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => {
+                              // Ensure field.value is an array before filtering
+                              const currentValues = Array.isArray(field.value) ? field.value : [];
+                              const newValues = currentValues.filter(v => v !== projectId);
+                              field.onChange(newValues);
+                            }}
+                          />
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <FormMessage />
             </FormItem>
           )}

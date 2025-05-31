@@ -284,6 +284,7 @@ export const useCreateTeam = () => {
       name: string; 
       description?: string; 
       projectId?: string;
+      projectIds?: string[];
       allowSendAllRemindEmail?: boolean; // Added new field for email notification toggle
     }) => {
       console.log("[HOOK:TEAMS] Creating team:", team);
@@ -334,6 +335,7 @@ export const useUpdateTeam = () => {
         name?: string; 
         description?: string; 
         projectId?: string;
+        projectIds?: string[];
         allowSendAllRemindEmail?: boolean; // Added new field for email notification toggle
       } 
     }) => {
@@ -348,8 +350,11 @@ export const useUpdateTeam = () => {
         name: data.name,
         description: data.description,
         projectId: data.projectId,
+        projectIds: data.projectIds,
         allowSendAllRemindEmail: data.allowSendAllRemindEmail
       };
+      
+      console.log(`[HOOK:TEAMS] Sending project IDs:`, data.projectIds);
       
       // Log the complete data being sent to ensure allowSendAllRemindEmail is included
       console.log(`[HOOK:TEAMS] Using API endpoint: /api/projly/teams/${id}`, JSON.stringify(teamData));

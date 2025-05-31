@@ -651,15 +651,17 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   {renderSortIndicator("title")}
                 </div>
               </TableHead>
-              <TableHead 
-                className="cursor-pointer"
-                onClick={() => toggleSort("project")}
-              >
-                <div className="flex items-center">
-                  Project
-                  {renderSortIndicator("project")}
-                </div>
-              </TableHead>
+              {context !== 'project' && (
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => toggleSort("project")}
+                >
+                  <div className="flex items-center">
+                    Project
+                    {renderSortIndicator("project")}
+                  </div>
+                </TableHead>
+              )}
               <TableHead 
                 className="cursor-pointer"
                 onClick={() => toggleSort("startDate")}
@@ -707,19 +709,21 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                     subtaskCount={taskRelationships.get(task.id)?.length || 0}
                   />
                 </TableCell>
-                <TableCell className="whitespace-nowrap" title={task.project?.name || "-"}>
-                  {task.project?.id ? (
-                    <Button 
-                      variant="link" 
-                      className="p-0 h-auto font-normal" 
-                      onClick={() => window.location.href = `/projly/projects/${task.project?.id}`}
-                    >
-                      {task.project?.name || "-"}
-                    </Button>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
+                {context !== 'project' && (
+                  <TableCell className="whitespace-nowrap" title={task.project?.name || "-"}>
+                    {task.project?.id ? (
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto font-normal" 
+                        onClick={() => window.location.href = `/projly/projects/${task.project?.id}`}
+                      >
+                        {task.project?.name || "-"}
+                      </Button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                )}
                 <TableCell className="whitespace-nowrap" title={formatDateForDisplay(task.startDate)}>
                   {(() => {
                     console.log(`[TASKS TABLE] Formatting startDate for task ${task.id}: ${task.startDate || 'not set'}`);
