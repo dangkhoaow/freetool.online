@@ -282,20 +282,20 @@ export default function Projects() {
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
                     onClick={() => handleProjectClick(project.id)}
                   >
-                    <TableCell className="font-medium whitespace-nowrap">{project.name}</TableCell>
-                    <TableCell className="max-w-[200px] whitespace-nowrap truncate">
+                    <TableCell title={project.name} className="font-medium whitespace-nowrap">{project.name}</TableCell>
+                    <TableCell title={project.description} className="max-w-[200px] whitespace-nowrap truncate">
                       {project.description || '-'}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell title={project.status} className="whitespace-nowrap">
                       {renderStatusBadge(project.status || 'Unknown')}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell title={project.createdAt} className="whitespace-nowrap">
                       {project.createdAt 
                         ? format(new Date(project.createdAt), 'MMM d, yyyy') 
                         : '-'
                       }
                     </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell title="Actions" className="text-right whitespace-nowrap">
                       {archivingId === project.id ? (
                         <Loader2 className="h-4 w-4 animate-spin ml-auto" />
                       ) : (

@@ -378,14 +378,14 @@ export function MembersTable() {
                 
                 return (
                   <TableRow key={member.id}>
-                    <TableCell className="font-medium whitespace-nowrap">
+                    <TableCell title={member.user?.firstName || ""} className="font-medium whitespace-nowrap">
                       {(() => {console.log('Rendering member:', member); return null;})()}
                       {(member.user?.firstName || "")} {(member.user?.lastName || "")}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{member.user?.email}</TableCell>
-                    <TableCell className="whitespace-nowrap">{member.department || "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">{member.role}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell title={member.user?.email || ""} className="whitespace-nowrap">{member.user?.email}</TableCell>
+                    <TableCell title={member.department || "—"} className="whitespace-nowrap">{member.department || "—"}</TableCell>
+                    <TableCell title={member.role || "—"} className="whitespace-nowrap">{member.role}</TableCell>
+                    <TableCell title="Actions" className="text-right whitespace-nowrap">
                       <div className="flex justify-end gap-2">
                         {/* Determine if current user can edit this specific member */}
                         {(() => {

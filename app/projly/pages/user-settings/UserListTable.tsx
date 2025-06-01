@@ -119,14 +119,14 @@ const UserListTable: React.FC<UserListTableProps> = ({
               
               return (
                 <TableRow key={userRole.id}>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell title={userName || ""} className="whitespace-nowrap">
                     {userName}
                     {isCurrentUser && (
                       <Badge variant="outline" className="ml-2">You</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{userEmail}</TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell title={userEmail || ""} className="whitespace-nowrap">{userEmail}</TableCell>
+                  <TableCell title={userRole.role || ""} className="whitespace-nowrap">
                     {(() => {
                       // Get the role directly from the user object, ensuring it's not null/undefined
                       const roleValue = userRole.role || 'regular_user';
@@ -141,10 +141,10 @@ const UserListTable: React.FC<UserListTableProps> = ({
                       return getRoleBadge(String(roleValue));
                     })()}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell title={userRole.status || ""} className="whitespace-nowrap">
                     {getActivationBadge(userRole.status || 'Unverified')}
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
+                  <TableCell title="Actions" className="text-right whitespace-nowrap">
                     {isUpdating === userRole.id ? (
                       <Spinner size="sm" />
                     ) : (
