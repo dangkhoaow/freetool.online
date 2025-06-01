@@ -12,10 +12,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { projlyAuthService } from '@/lib/services/projly';
 import { PasswordValidationComponent, usePasswordValidation } from "@/app/projly/components/ui/PasswordValidation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [timezone, setTimezone] = useState<number>(7); // Default to GMT+7
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -93,11 +95,15 @@ export default function RegisterPage() {
       const [firstName, ...lastNameParts] = name.split(' ');
       const lastName = lastNameParts.join(' ');
       
+      // Log timezone being sent
+      log('Sending timezone:', timezone);
+      
       const result = await projlyAuthService.register({ 
         email, 
         password, 
         firstName, 
-        lastName: lastName || firstName // Fallback if no last name provided
+        lastName: lastName || firstName, // Fallback if no last name provided
+        timezone // Include the user's selected timezone
       });
       log('Registration result:', result.success);
       
@@ -187,6 +193,53 @@ export default function RegisterPage() {
                   required 
                   disabled={isSubmitting}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="timezone">Timezone</Label>
+                <Select 
+                  defaultValue={timezone.toString()} 
+                  onValueChange={(value) => {
+                    const tzValue = parseInt(value, 10);
+                    log('Timezone selected:', tzValue);
+                    setTimezone(tzValue);
+                  }}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="timezone">
+                    <SelectValue placeholder="Select your timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Common timezones, focusing on Asia/Pacific region */}
+                    <SelectItem value="-12">GMT-12:00</SelectItem>
+                    <SelectItem value="-11">GMT-11:00</SelectItem>
+                    <SelectItem value="-10">GMT-10:00 (Hawaii)</SelectItem>
+                    <SelectItem value="-9">GMT-09:00 (Alaska)</SelectItem>
+                    <SelectItem value="-8">GMT-08:00 (Pacific Time)</SelectItem>
+                    <SelectItem value="-7">GMT-07:00 (Mountain Time)</SelectItem>
+                    <SelectItem value="-6">GMT-06:00 (Central Time)</SelectItem>
+                    <SelectItem value="-5">GMT-05:00 (Eastern Time)</SelectItem>
+                    <SelectItem value="-4">GMT-04:00 (Atlantic Time)</SelectItem>
+                    <SelectItem value="-3">GMT-03:00 (Brazil, Argentina)</SelectItem>
+                    <SelectItem value="-2">GMT-02:00</SelectItem>
+                    <SelectItem value="-1">GMT-01:00 (Azores)</SelectItem>
+                    <SelectItem value="0">GMT+00:00 (London, Dublin)</SelectItem>
+                    <SelectItem value="1">GMT+01:00 (Paris, Berlin)</SelectItem>
+                    <SelectItem value="2">GMT+02:00 (Cairo, Athens)</SelectItem>
+                    <SelectItem value="3">GMT+03:00 (Moscow, Istanbul)</SelectItem>
+                    <SelectItem value="4">GMT+04:00 (Dubai, Baku)</SelectItem>
+                    <SelectItem value="5">GMT+05:00 (Karachi, Tashkent)</SelectItem>
+                    <SelectItem value="5.5">GMT+05:30 (New Delhi, Mumbai)</SelectItem>
+                    <SelectItem value="6">GMT+06:00 (Dhaka, Almaty)</SelectItem>
+                    <SelectItem value="7">GMT+07:00 (Bangkok, Jakarta)</SelectItem>
+                    <SelectItem value="8">GMT+08:00 (Singapore, Beijing)</SelectItem>
+                    <SelectItem value="9">GMT+09:00 (Tokyo, Seoul)</SelectItem>
+                    <SelectItem value="9.5">GMT+09:30 (Adelaide)</SelectItem>
+                    <SelectItem value="10">GMT+10:00 (Sydney, Melbourne)</SelectItem>
+                    <SelectItem value="11">GMT+11:00 (Solomon Islands)</SelectItem>
+                    <SelectItem value="12">GMT+12:00 (Auckland, Fiji)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">Select your local timezone for correct date display</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>

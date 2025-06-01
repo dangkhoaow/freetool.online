@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Project, Task, Resource } from "@/types";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/lib/services/projly/use-projects";
@@ -58,6 +58,62 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       console.error("[ProjectDetail] Error refreshing tasks data:", error);
     }
   };
+  
+  // Use a more direct approach to always refresh tasks when component mounts
+  useEffect(() => {
+    console.log("[ProjectDetail] Component mounted, forcing task refresh");
+    
+    // Force a refresh of tasks when the component mounts
+    const refreshTasks = async () => {
+      console.log("[ProjectDetail] Refreshing tasks on mount");
+      await handleTaskChange();
+    };
+    
+    // Always refresh on mount
+    refreshTasks();
+    
+    // Set up a visibility change listener to detect when user returns to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[ProjectDetail] Tab became visible, refreshing tasks");
+        refreshTasks();
+      }
+    };
+    
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Set up a storage event listener to detect changes from other tabs/windows
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'projly_task_edited' && event.newValue) {
+        console.log("[ProjectDetail] Task edit detected from storage event");
+        refreshTasks();
+        // Clear the flag
+        localStorage.removeItem('projly_task_edited');
+      }
+    };
+    
+    // Add storage event listener
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Set a flag in localStorage to force refresh on next mount
+    localStorage.setItem('projly_task_edited', 'true');
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [projectId]);
+  
+  // Add another effect to handle direct navigation back to this page
+  useEffect(() => {
+    // This will run after the component has rendered
+    setTimeout(() => {
+      console.log("[ProjectDetail] Delayed task refresh to catch navigation events");
+      handleTaskChange();
+    }, 500); // Short delay to ensure it runs after navigation completes
+  }, []);
   
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);

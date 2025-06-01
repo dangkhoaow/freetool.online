@@ -310,17 +310,79 @@ export function TasksContainer({
     setSearchValue((currentFilters as any).search || '');
   }, [currentFilters]);
 
-  // Track page navigation using router events
+  // Enhanced navigation detection and task refresh mechanism
   useEffect(() => {
-    // Update last navigation time when component mounts
-    setLastNavigationTime(Date.now());
+    // Always force a refresh when component mounts
+    log('[TASKS CONTAINER] Component mounted, checking for task edits');
     
-    // Force reload of tasks when component mounts if it's been more than 2 seconds since last navigation
-    // This ensures fresh data when navigating between pages
-    if (autoLoad && Date.now() - lastNavigationTime > 2000) {
-      log('[TASKS CONTAINER] Loading fresh data after navigation');
+    // Check if a task was edited
+    const taskEdited = localStorage.getItem('projly_task_edited') === 'true';
+    const lastEditedTask = localStorage.getItem('projly_last_edited_task');
+    const editTimestamp = localStorage.getItem('projly_edit_timestamp');
+    
+    if (taskEdited) {
+      log(`[TASKS CONTAINER] Task edit detected! Last edited task: ${lastEditedTask}, timestamp: ${editTimestamp}`);
+      
+      // Force a refresh of the tasks
+      log('[TASKS CONTAINER] Forcing data refresh after task edit');
       loadTasks();
+      
+      // Don't clear the flag here - let the ProjectDetail component handle it
+      // This ensures all instances of TasksContainer refresh their data
+    } else {
+      // Even without a task edit, refresh if we have initialTasks to ensure fresh data
+      if (initialTasks && initialTasks.length > 0) {
+        log('[TASKS CONTAINER] Has initialTasks, refreshing data to ensure freshness');
+        loadTasks();
+      } else if (autoLoad) {
+        // If no initialTasks but autoLoad is true, load tasks
+        log('[TASKS CONTAINER] No initialTasks but autoLoad is true, loading tasks');
+        loadTasks();
+      }
     }
+  }, []);
+  
+  // Add a listener for visibility changes to detect when the user returns to the tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        log('[TASKS CONTAINER] Tab became visible, checking for task edits');
+        
+        // Check if a task was edited
+        const taskEdited = localStorage.getItem('projly_task_edited') === 'true';
+        
+        if (taskEdited) {
+          log('[TASKS CONTAINER] Task edit detected on visibility change, refreshing data');
+          loadTasks();
+        }
+      }
+    };
+    
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
+  // Add a listener for storage events to detect changes from other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'projly_task_edited' && event.newValue === 'true') {
+        log('[TASKS CONTAINER] Task edit detected from storage event, refreshing data');
+        loadTasks();
+      }
+    };
+    
+    // Add storage event listener
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Debounced search handler with pure client-side filtering

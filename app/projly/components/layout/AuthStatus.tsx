@@ -91,23 +91,6 @@ export const AuthStatus = () => {
     router.push('/projly/settings');
   };
 
-  const handleProfile = () => {
-    log('Navigating to profile');
-    router.push('/projly/profile');
-  };
-
-  // Check if user is authenticated
-  if (!user) {
-    return (
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={() => router.push('/projly/login')}>
-          Login
-        </Button>
-        <Button onClick={() => router.push('/projly/register')}>Sign Up</Button>
-      </div>
-    );
-  }
-
   // Prepare user display name from user object
   const firstName = user?.firstName || '';
   const lastName = user?.lastName || '';

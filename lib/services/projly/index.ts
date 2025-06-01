@@ -20,6 +20,15 @@ interface Project {
   updatedAt: string;
 }
 
+// Define registration data interface
+interface RegistrationData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  timezone?: number; // Optional timezone offset in hours from UTC, defaults to 7 (GMT+7) on the backend
+}
+
 // Export hooks
 export * from './use-analytics';
 export * from './use-members';
@@ -129,10 +138,10 @@ export const projlyAuthService = {
 
   /**
    * Register a new user
-   * @param userData User registration data
+   * @param userData User registration data including email, password, firstName, lastName, and optional timezone
    * @returns Promise resolving to registration result
    */
-  async register(userData: any): Promise<{ success: boolean; error?: string }> {
+  async register(userData: RegistrationData): Promise<{ success: boolean; error?: string }> {
     console.log('[PROJLY:AUTH] Attempting to register new user:', userData.email);
     try {
       console.log('[PROJLY:AUTH] Using register endpoint:', API_ENDPOINTS.AUTH.REGISTER);

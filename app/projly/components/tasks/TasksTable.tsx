@@ -559,6 +559,16 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // Handle edit task click - navigate to edit page
   const handleEditTask = (task: Task) => {
     console.log("[TASKS TABLE] Navigating to edit page for task:", task.id);
+    
+    // Set a flag in localStorage to indicate a task is being edited
+    // This will be used to trigger a refresh when returning to the project detail page
+    localStorage.setItem('projly_task_edited', 'true');
+    localStorage.setItem('projly_last_edited_task', task.id);
+    localStorage.setItem('projly_edit_timestamp', Date.now().toString());
+    
+    console.log("[TASKS TABLE] Set edit flags in localStorage");
+    
+    // Navigate to the edit page
     router.push(`/projly/tasks/${task.id}/edit`);
   };
 
