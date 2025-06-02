@@ -308,9 +308,12 @@ const ResourceTimelineView = ({
     setCalendarApi(calendar);
     log('Calendar ready', calendar);
     
-    // Set a specific height for the calendar to ensure consistency
+    // Set calendar to auto-height to adapt to content
     if (calendar) {
-      calendar.setOption('height', 600);
+      log('Setting calendar to auto height mode');
+      calendar.setOption('height', 'auto');
+      // Enable sticky header rows
+      calendar.setOption('stickyHeaderDates', true);
     }
   };
 
@@ -370,7 +373,7 @@ const ResourceTimelineView = ({
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <div className="text-lg font-semibold ml-2 flex items-center">
+              <div className="text-sm font-semibold ml-2 flex items-center">
                 <CalendarIcon className="mr-2 h-5 w-5" />
                 {currentViewTitle}
               </div>
@@ -539,4 +542,5 @@ const ResourceTimelineView = ({
   );
 };
 
+// Export as default for importing in other components
 export default ResourceTimelineView;

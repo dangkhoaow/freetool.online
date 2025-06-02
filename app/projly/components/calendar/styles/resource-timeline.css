@@ -5,12 +5,11 @@
 
 /* Calendar Container */
 .calendar-container {
-  height: 600px;
-  min-height: 600px;
-  max-height: 600px;
+  min-height: 400px; /* Minimum height for usability */
+  height: auto;
   background-color: white;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to allow content to expand */
 }
 
 /* Dark mode calendar container */
@@ -19,10 +18,10 @@
   border: 1px solid #2d3748 !important;
 }
 
-/* Ensure FullCalendar maintains height */
+/* Ensure FullCalendar has flexible height */
 .fc {
-  height: 100% !important;
-  min-height: 500px !important;
+  height: auto !important;
+  min-height: 400px !important;
 }
 
 /* Fix resource area height */
