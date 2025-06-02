@@ -16,7 +16,13 @@ import { EditResourceDialog } from "./EditResourceDialog";
 import { DeleteResourceDialog } from "./DeleteResourceDialog";
 import { Spinner } from "../../components/ui/spinner";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
-import { ArrowDown, ArrowUp, Edit, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../components/ui/dropdown-menu";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
 
 type SortField = "name" | "fileType" | "quantity" | "createdAt";
@@ -141,7 +147,7 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead 
-              className="w-[300px] cursor-pointer"
+              className="w-[300px] cursor-pointer whitespace-nowrap"
               onClick={() => handleSort("name")}
             >
               <div className="flex items-center">
@@ -149,7 +155,7 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
               </div>
             </TableHead>
             <TableHead 
-              className="cursor-pointer"
+              className="cursor-pointer whitespace-nowrap"
               onClick={() => handleSort("fileType")}
             >
               <div className="flex items-center">
@@ -157,7 +163,7 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
               </div>
             </TableHead>
             <TableHead 
-              className="cursor-pointer"
+              className="cursor-pointer whitespace-nowrap"
               onClick={() => handleSort("quantity")}
             >
               <div className="flex items-center">
@@ -165,7 +171,7 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
               </div>
             </TableHead>
             <TableHead 
-              className="cursor-pointer"
+              className="cursor-pointer whitespace-nowrap"
               onClick={() => handleSort("createdAt")}
             >
               <div className="flex items-center">
@@ -190,23 +196,34 @@ export function ResourcesTable({ filters }: ResourcesTableProps) {
                 <TableCell title={resource.quantity || ""} className="whitespace-nowrap">{resource.quantity}</TableCell>
                 <TableCell title={formatDateForDisplay(resource.createdAt) || ""} className="whitespace-nowrap">{formatDateForDisplay(resource.createdAt)}</TableCell>
                 <TableCell title="Actions" className="text-right whitespace-nowrap">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setResourceToEdit(resource)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setResourceToDelete(resource)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={e => e.stopPropagation()} aria-label="Actions">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          console.log(`[RESOURCES_TABLE] Edit action triggered for resource:`, resource);
+                          setResourceToEdit(resource);
+                        }}
+                      >
+                        <Edit className="mr-2 h-4 w-4" /> Edit Resource
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          console.log(`[RESOURCES_TABLE] Delete action triggered for resource:`, resource);
+                          setResourceToDelete(resource);
+                        }}
+                        className="text-red-500 focus:text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Resource
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))

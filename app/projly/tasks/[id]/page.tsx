@@ -70,7 +70,12 @@ import { TasksContainer } from "@/app/projly/components/tasks/TasksContainer";
 import { TaskNotFoundUI } from "@/app/projly/components/tasks/TaskNotFoundUI";
 
 interface TaskDetailsPageProps {
-  // Props are no longer needed here since we'll use useParams
+  // Optional id for direct usage in dialog mode
+  id?: string;
+  // Flag to indicate if component is being used in dialog mode
+  inDialogMode?: boolean;
+  // Optional callback for when dialog is closed
+  onDialogClose?: () => void;
 }
 
 
@@ -117,10 +122,13 @@ const mapToTask = (t: ProjlyTaskData & Partial<{ _depth: number }>): Task => ({
   subTasks: t.subTasks ? t.subTasks.map(mapToTask) : undefined,
 });
 
-export default function TaskDetailsPage({}: TaskDetailsPageProps) {
-  // Use useParams to get the route parameters
+export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose }: TaskDetailsPageProps) {
+  // Use useParams to get the route parameters if not in dialog mode
   const params = useParams();
-  const taskId = params?.id as string;
+  const taskId = id || (params?.id as string);
+  
+  // Log component initialization
+  console.log(`[PROJLY:TASK_DETAILS_PAGE] Initializing with taskId: ${taskId}, inDialogMode: ${inDialogMode}`);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -137,6 +145,18 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
   // Add state for task not found error
   const [taskNotFound, setTaskNotFound] = useState(false);
   const [taskError, setTaskError] = useState<string | null>(null);
+  
+  // Function to handle back navigation or dialog close
+  const handleBackClick = () => {
+    console.log(`[PROJLY:TASK_DETAILS_PAGE] Back/Close button clicked, inDialogMode: ${inDialogMode}`);
+    if (inDialogMode && onDialogClose) {
+      console.log(`[PROJLY:TASK_DETAILS_PAGE] Closing dialog via back button`);
+      onDialogClose();
+    } else {
+      console.log(`[PROJLY:TASK_DETAILS_PAGE] Navigating back`);
+      handleIntelligentBackNavigation(router, taskId, (msg) => console.log(`[PROJLY:TASK_DETAILS_PAGE] ${msg}`));
+    }
+  };
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -538,22 +558,19 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
     );
   }
   
-  return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
+  // Conditional rendering based on dialog mode
+  const renderContent = () => (
+    <div className={inDialogMode ? "" : "container mx-auto py-6"}>
         <div className="flex items-center justify-between mb-6 w-full">
           <div className="flex items-center">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                console.log('[TASK_DETAILS] Back button clicked');
-                handleIntelligentBackNavigation(router, taskId, log);
-              }}
+              onClick={handleBackClick}
               className="mr-2"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {inDialogMode ? "Close" : "Back"}
             </Button>
           </div>
           <div className="flex items-center">
@@ -898,6 +915,12 @@ export default function TaskDetailsPage({}: TaskDetailsPageProps) {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+  );
+  
+  // Return the content wrapped in DashboardLayout if not in dialog mode
+  return inDialogMode ? renderContent() : (
+    <DashboardLayout>
+      {renderContent()}
     </DashboardLayout>
   );
 }

@@ -59,7 +59,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#2563eb !important' 
         };
-        className = "bg-blue-600 text-white border-blue-600 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-blue-600 text-white border-blue-600 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
         break;
       case "Completed":
         style = { 
@@ -67,7 +67,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#16a34a !important' 
         };
-        className = "bg-green-600 text-white border-green-600 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-green-600 text-white border-green-600 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
         break;
       case "In Review":
         style = { 
@@ -75,7 +75,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#a855f7 !important' 
         };
-        className = "bg-purple-500 text-white border-purple-500 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-purple-500 text-white border-purple-500 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
         break;
       case "Not Started":
         style = { 
@@ -83,7 +83,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#6b7280 !important' 
         };
-        className = "bg-gray-500 text-white border-gray-500 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-gray-500 text-white border-gray-500 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
         break;
       case "On Hold":
         style = { 
@@ -91,7 +91,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#f97316 !important' 
         };
-        className = "bg-orange-500 text-white border-orange-500 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-orange-500 text-white border-orange-500 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
         break;
       case "Pending":
         style = { 
@@ -99,7 +99,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#f59e0b !important' 
         };
-        className = "bg-amber-500 text-white border-amber-500 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-amber-500 text-white border-amber-500 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
         break;
       default:
         style = { 
@@ -107,7 +107,7 @@ export default function Dashboard() {
           color: 'white !important', 
           borderColor: '#9ca3af !important' 
         };
-        className = "bg-gray-400 text-white border-gray-400 rounded-full px-2 py-1 text-xs font-medium";
+        className = "bg-gray-400 text-white border-gray-400 rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap";
     }
     
     return <span style={style} className={className}>{status}</span>;
