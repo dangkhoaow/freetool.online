@@ -653,7 +653,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
           <TableHeader>
             <TableRow>
               <TableHead 
-                className="cursor-pointer w-[300px]"
+                className="cursor-pointer w-[300px] whitespace-nowrap"
                 onClick={() => toggleSort("title")}
               >
                 <div className="flex items-center">
@@ -663,7 +663,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
               </TableHead>
               {context !== 'project' && (
                 <TableHead 
-                  className="cursor-pointer"
+                  className="cursor-pointer whitespace-nowrap"
                   onClick={() => toggleSort("project")}
                 >
                   <div className="flex items-center">
@@ -673,7 +673,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 </TableHead>
               )}
               <TableHead 
-                className="cursor-pointer"
+                className="cursor-pointer whitespace-nowrap"
                 onClick={() => toggleSort("startDate")}
               >
                 <div className="flex items-center">
@@ -682,7 +682,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer"
+                className="cursor-pointer whitespace-nowrap"
                 onClick={() => toggleSort("dueDate")}
               >
                 <div className="flex items-center">
@@ -691,7 +691,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer"
+                className="cursor-pointer whitespace-nowrap"
                 onClick={() => toggleSort("status")}
               >
                 <div className="flex items-center">
@@ -699,8 +699,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   {renderSortIndicator("status")}
                 </div>
               </TableHead>
-              <TableHead>Assignee</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="whitespace-nowrap">Assignee</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -209,25 +209,25 @@ function TeamMemberCard({
 
   return (
     <Card key={team.id}>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
+      <CardHeader className="pb-2 relative">
+        <div className="flex items-start">
           <CardTitle className="text-xl">{team.name}</CardTitle>
-          <div className="flex space-x-1">
-            {isOwner && <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(team)}
-            >
-              <Trash className="h-4 w-4" />
-            </Button>}
-            {isOwner && <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(team)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>}
-          </div>
+        </div>
+        <div className="absolute right-4 top-2 flex space-x-1">
+          {isOwner && <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDelete(team)}
+          >
+            <Trash className="h-4 w-4" />
+          </Button>}
+          {isOwner && <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(team)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>}
         </div>
         {team.project && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
@@ -248,7 +248,7 @@ function TeamMemberCard({
         )}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1">
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4" />
             <Badge variant="outline">
               {isCountLoading ? (
                 <Spinner className="h-3 w-3 mr-1" />
