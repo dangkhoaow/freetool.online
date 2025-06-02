@@ -7,6 +7,7 @@ import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout"
 import { CalendarGrid } from "@/app/projly/components/calendar/CalendarGrid";
 import ResourceTimelineView from "../components/calendar/ResourceTimelineView";
 import { EventDetailsDialog, CalendarEvent } from "@/app/projly/components/calendar/EventDetailsDialog";
+import { TaskDetailDialog } from "@/app/projly/components/tasks/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { 
   Tabs, 
@@ -47,6 +48,10 @@ export default function CalendarPage() {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
+  
+  // Task detail dialog state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   
   // Date state for new event
   const [newEventDate, setNewEventDate] = useState<Date | null>(null);
@@ -210,9 +215,18 @@ export default function CalendarPage() {
   // Handle event click
   const handleEventClick = (event: CalendarEvent) => {
     log('Event clicked:', event);
-    setSelectedEvent(event);
-    setIsEventDialogOpen(true);
-    setIsEditing(false);
+    
+    // Check if this is a task event (has taskId)
+    if (event.taskId) {
+      log('Opening task detail dialog for taskId:', event.taskId);
+      setSelectedTaskId(event.taskId);
+      setIsTaskDetailOpen(true);
+    } else {
+      // Handle regular calendar events
+      setSelectedEvent(event);
+      setIsEventDialogOpen(true);
+      setIsEditing(false);
+    }
   };
   
   // Handle date click
@@ -513,6 +527,17 @@ export default function CalendarPage() {
           onEditToggle={handleEditToggle}
           projects={projects}
         />}
+        
+        {/* Task Detail Dialog - Centralized for both Calendar and Timeline views */}
+        <TaskDetailDialog
+          taskId={selectedTaskId || ""}
+          isOpen={isTaskDetailOpen && !!selectedTaskId}
+          onClose={() => {
+            log('Closing task detail dialog');
+            setIsTaskDetailOpen(false);
+            setSelectedTaskId(null);
+          }}
+        />
         
         {/* New Event Dialog */}
         {false && isNewEventDialogOpen && (

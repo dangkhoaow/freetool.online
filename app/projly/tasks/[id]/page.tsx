@@ -142,6 +142,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   const [subTasks, setSubTasks] = useState<ProjlyTaskData[]>([]);
   const [isCreateSubTaskOpen, setIsCreateSubTaskOpen] = useState(false);
   const [isRefreshingSubTasks, setIsRefreshingSubTasks] = useState(false);
+  const [parentTask, setParentTask] = useState<ProjlyTaskData | null>(null);
   // Add state for task not found error
   const [taskNotFound, setTaskNotFound] = useState(false);
   const [taskError, setTaskError] = useState<string | null>(null);
@@ -159,21 +160,36 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   };
   
   // Task form state
-  const [taskForm, setTaskForm] = useState({
+  const [taskForm, setTaskForm] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    projectId: string;
+    status: string;
+    priority: string;
+    assignedTo: string;
+    startDate: Date | null;
+    dueDate: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    project: any;
+    assignee: any;
+    parentTaskId?: string | null;
+  }>({
     id: '',
     title: '',
     description: '',
     projectId: '',
     status: 'Not Started',
     priority: 'Medium',
-    assignedTo: 'none', // Using 'none' instead of empty string for the Select component
-    startDate: null as Date | null,
-    dueDate: null as Date | null,
+    assignedTo: 'none',
+    startDate: null,
+    dueDate: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    // For displaying only
-    project: null as any,
-    assignee: null as any
+    project: null,
+    assignee: null,
+    parentTaskId: null
   });
   
   // Use the useProjectMembers hook to get members for the selected project
@@ -272,6 +288,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
           updatedAt?: string | Date;
           project?: any;
           assignee?: any;
+          parentTaskId?: string | null;
         };
         
         const formData = {
@@ -287,7 +304,8 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
           createdAt: taskWithAllFields.createdAt ? new Date(taskWithAllFields.createdAt) : new Date(),
           updatedAt: taskWithAllFields.updatedAt ? new Date(taskWithAllFields.updatedAt) : new Date(),
           project: taskWithAllFields.project,
-          assignee: taskWithAllFields.assignee
+          assignee: taskWithAllFields.assignee,
+          parentTaskId: taskWithAllFields.parentTaskId || null
         };
         
         // Log the form data with dates
@@ -302,6 +320,21 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
         
         console.log('[PROJLY:TASK_DETAILS] Formatted task for form:', formData);
         setTaskForm(formData);
+        log('Set taskForm with parentTaskId', { parentTaskId: formData.parentTaskId });
+        
+        // If there's a parentTaskId, fetch the parent task details
+        if (formData.parentTaskId) {
+          try {
+            log('Fetching parent task details', { parentTaskId: formData.parentTaskId });
+            const parentTaskData = await projlyTasksService.getTask(formData.parentTaskId);
+            if (parentTaskData) {
+              log('Parent task found', parentTaskData);
+              setParentTask(parentTaskData);
+            }
+          } catch (error) {
+            console.error('[PROJLY:TASK_DETAILS] Error fetching parent task:', error);
+          }
+        }
         
         // Get projects for dropdown
         const projectsData = await projlyProjectsService.getProjects();
@@ -696,6 +729,27 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
                       return 'Unknown project';
                     })()}
                   </p>
+                  {taskForm.parentTaskId && (
+                    <div className="mt-1">
+                      {(() => {
+                        console.log(`[TASK_DETAILS] Rendering parent task link for parentTaskId:`, taskForm.parentTaskId);
+                        console.log(`[TASK_DETAILS] Parent task data:`, parentTask);
+                        return (
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto font-normal text-xs text-blue-600 hover:underline"
+                            onClick={() => {
+                              console.log(`[TASK_DETAILS] Parent task link clicked:`, taskForm.parentTaskId);
+                              router.push(`/projly/tasks/${taskForm.parentTaskId}`);
+                            }}
+                          >
+                            Parent Task: {parentTask?.title || 'Loading...'} 
+                            <span className="text-xs text-slate-500 ml-1">({taskForm.parentTaskId})</span>
+                          </Button>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Assignee */}

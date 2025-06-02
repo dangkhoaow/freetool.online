@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { useTasks } from "@/lib/services/projly/use-tasks";
-import { TaskDetailDialog } from "../tasks/TaskDetailDialog";
 
 // Import styles
 import "./styles/resource-timeline.css";
@@ -152,17 +151,6 @@ const ResourceTimelineView = ({
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [calendarApi, setCalendarApi] = useState<any>(null);
   
-  // State for task detail dialog
-  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  
-  // Function to handle closing the task detail dialog
-  const handleTaskDetailClose = () => {
-    log('Closing task detail dialog');
-    setIsTaskDetailOpen(false);
-    setSelectedTaskId(null);
-  };
-  
   // Log function for debugging
   const log = (message: string, data?: any) => {
     if (data) {
@@ -287,13 +275,9 @@ const ResourceTimelineView = ({
     
     // Get the task ID from the event
     const taskId = info.event.extendedProps.taskId || info.event.id;
-    log('Opening task detail dialog for task ID:', taskId);
+    log('Event click with task ID:', taskId);
     
-    // Set the selected task ID and open the dialog
-    setSelectedTaskId(taskId);
-    setIsTaskDetailOpen(true);
-    
-    // Also call the onEventClick prop if provided
+    // Always call the onEventClick prop to let parent component handle the event
     if (onEventClick) {
       const eventData: TimelineEvent = {
         id: info.event.id,
@@ -306,6 +290,7 @@ const ResourceTimelineView = ({
         description: info.event.extendedProps.description,
         taskId: taskId
       };
+      log('Passing event to parent component:', eventData);
       onEventClick(eventData);
     }
   };
@@ -549,12 +534,7 @@ const ResourceTimelineView = ({
         </CardContent>
       </Card>
 
-      {/* Task Detail Dialog */}
-      <TaskDetailDialog
-        taskId={selectedTaskId}
-        isOpen={isTaskDetailOpen}
-        onClose={handleTaskDetailClose}
-      />
+      {/* Task Detail Dialog removed - now handled by parent component */}
     </>
   );
 };
