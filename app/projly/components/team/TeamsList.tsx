@@ -249,7 +249,7 @@ function TeamMemberCard({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1">
             <Users className="h-4 w-4" />
-            <Badge variant="outline">
+            <Badge variant="outline" className="text-muted-foreground">
               {isCountLoading ? (
                 <Spinner className="h-3 w-3 mr-1" />
               ) : (

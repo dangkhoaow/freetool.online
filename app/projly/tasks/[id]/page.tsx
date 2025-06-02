@@ -5,15 +5,10 @@ import { useRouter, useParams } from "next/navigation";
 import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
-import { Loader2, ArrowLeft, Save, Trash, Clock, Calendar, Edit, Plus } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, ArrowLeft, Trash, Clock, Calendar, Edit, Plus } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "../../components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -24,23 +19,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import { format } from 'date-fns';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
-import { organizeTasksHierarchy } from "@/app/projly/components/tasks/TasksTable";
 // Define a custom task type that includes all the properties we need to work with
 // This helps bypass the type conflicts between different Task interfaces in the codebase
 type ProjlyTaskData = {
@@ -731,19 +715,20 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
                   </p>
                   {taskForm.parentTaskId && (
                     <div className="mt-1">
+                      <h3 className="text-sm font-medium text-muted-foreground">Parent Task</h3>
                       {(() => {
                         console.log(`[TASK_DETAILS] Rendering parent task link for parentTaskId:`, taskForm.parentTaskId);
                         console.log(`[TASK_DETAILS] Parent task data:`, parentTask);
                         return (
                           <Button
                             variant="link"
-                            className="p-0 h-auto font-normal text-xs text-blue-600 hover:underline"
+                            className="p-0 h-auto font-normal"
                             onClick={() => {
                               console.log(`[TASK_DETAILS] Parent task link clicked:`, taskForm.parentTaskId);
                               router.push(`/projly/tasks/${taskForm.parentTaskId}`);
                             }}
                           >
-                            Parent Task: {parentTask?.title || 'Loading...'} 
+                            {parentTask?.title || 'Loading...'} 
                             <span className="text-xs text-slate-500 ml-1">({taskForm.parentTaskId})</span>
                           </Button>
                         );
