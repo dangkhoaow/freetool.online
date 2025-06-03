@@ -72,7 +72,14 @@ export const projlyAuthService = {
         return false;
       }
 
-      // Validate token by making a call to the backend
+      // Check session storage cache first
+      const cachedAuth = this.getAuthCache();
+      if (cachedAuth !== null) {
+        console.log('[PROJLY:AUTH] Using cached authentication status:', cachedAuth);
+        return cachedAuth;
+      }
+
+      // No valid cache found, validate token by making a call to the backend
       console.debug('[PROJLY:AUTH] Using profile endpoint:', API_ENDPOINTS.AUTH.ME);
       const response = await fetch(API_ENDPOINTS.AUTH.ME, {
         method: 'GET',
@@ -85,10 +92,63 @@ export const projlyAuthService = {
 
       const isAuthenticated = response.ok;
       console.log(`[PROJLY:AUTH] Authentication check result: ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`);
+      
+      // Cache the authentication result
+      this.setAuthCache(isAuthenticated);
+      
       return isAuthenticated;
     } catch (error) {
       console.error('[PROJLY:AUTH] Error checking authentication:', error);
       return false;
+    }
+  },
+
+  /**
+   * Get cached authentication status from session storage
+   * @returns Boolean indicating authentication status or null if no valid cache exists
+   */
+  getAuthCache(): boolean | null {
+    try {
+      const cachedData = sessionStorage.getItem('projly_auth_cache');
+      if (!cachedData) return null;
+      
+      const { value, expiry } = JSON.parse(cachedData);
+      
+      // Check if cache is expired
+      if (expiry < Date.now()) {
+        console.log('[PROJLY:AUTH] Cache expired, removing');
+        sessionStorage.removeItem('projly_auth_cache');
+        return null;
+      }
+      
+      return value;
+    } catch (error) {
+      console.error('[PROJLY:AUTH] Error reading auth cache:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Set authentication status in session storage cache with expiration
+   * @param value Boolean authentication status to cache
+   * @param expiryMinutes Minutes until cache expires (uses USER_CACHE_EXPIRY_MINUTES env var or defaults to 5)
+   */
+  setAuthCache(value: boolean, expiryMinutes?: number): void {
+    try {
+      // Use environment variable if available, otherwise use provided value or default to 5
+      const envExpiryMinutes = typeof window !== 'undefined' && window.process?.env?.USER_CACHE_EXPIRY_MINUTES ? 
+        parseInt(window.process.env.USER_CACHE_EXPIRY_MINUTES, 10) : 
+        (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES ? 
+          parseInt(process.env.NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES, 10) : 
+          (expiryMinutes || 5));
+      
+      const expiry = Date.now() + (envExpiryMinutes * 60 * 1000);
+      const cacheData = JSON.stringify({ value, expiry });
+      
+      sessionStorage.setItem('projly_auth_cache', cacheData);
+      console.log(`[PROJLY:AUTH] Cached authentication status for ${envExpiryMinutes} minutes (from env: ${typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES ? 'yes' : 'no'})`);
+    } catch (error) {
+      console.error('[PROJLY:AUTH] Error setting auth cache:', error);
     }
   },
 
@@ -255,19 +315,78 @@ export const projlyAuthService = {
   },
 
   /**
+   * Get cached user data from session storage
+   * @returns User data object or null if no valid cache exists
+   */
+  getUserCache(): any | null {
+    try {
+      const cachedData = sessionStorage.getItem('projly_user_cache');
+      if (!cachedData) return null;
+      
+      const { value, expiry } = JSON.parse(cachedData);
+      
+      // Check if cache is expired
+      if (expiry < Date.now()) {
+        console.log('[PROJLY:AUTH] User cache expired, removing');
+        sessionStorage.removeItem('projly_user_cache');
+        return null;
+      }
+      
+      console.log('[PROJLY:AUTH] Using cached user data');
+      return value;
+    } catch (error) {
+      console.error('[PROJLY:AUTH] Error reading user cache:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Set user data in session storage cache with expiration
+   * @param value User data object to cache
+   * @param expiryMinutes Minutes until cache expires (uses USER_CACHE_EXPIRY_MINUTES env var or defaults to 5)
+   */
+  setUserCache(value: any, expiryMinutes?: number): void {
+    try {
+      // Use environment variable if available, otherwise use provided value or default to 5
+      const envExpiryMinutes = typeof window !== 'undefined' && window.process?.env?.USER_CACHE_EXPIRY_MINUTES ? 
+        parseInt(window.process.env.USER_CACHE_EXPIRY_MINUTES, 10) : 
+        (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES ? 
+          parseInt(process.env.NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES, 10) : 
+          (expiryMinutes || 5));
+      
+      const expiry = Date.now() + (envExpiryMinutes * 60 * 1000);
+      const cacheData = JSON.stringify({ value, expiry });
+      
+      sessionStorage.setItem('projly_user_cache', cacheData);
+      console.log(`[PROJLY:AUTH] Cached user data for ${envExpiryMinutes} minutes (from env: ${typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES ? 'yes' : 'no'})`);
+    } catch (error) {
+      console.error('[PROJLY:AUTH] Error setting user cache:', error);
+    }
+  },
+
+  /**
    * Get the current user data
    * @returns Promise resolving to user data
    */
   async getCurrentUser(): Promise<any> {
     console.log('[PROJLY:AUTH] Getting current user data');
     try {
+      // Check for token
       const token = getAuthToken();
       if (!token) {
         console.log('[PROJLY:AUTH] No token found when getting current user');
         return null;
       }
 
-      console.log('[PROJLY:AUTH] Using profile endpoint:', API_ENDPOINTS.AUTH.PROFILE);
+      // Check cache first
+      const cachedUser = this.getUserCache();
+      if (cachedUser) {
+        console.log('[PROJLY:AUTH] Using cached user data instead of API call');
+        return cachedUser;
+      }
+
+      // No valid cache, make API call
+      console.log('[PROJLY:AUTH] No valid cache found, using profile endpoint:', API_ENDPOINTS.AUTH.PROFILE);
       const response = await fetch(API_ENDPOINTS.AUTH.PROFILE, {
         method: 'GET',
         headers: {
@@ -283,13 +402,18 @@ export const projlyAuthService = {
       }
 
       const userData = await response.json();
+      const userDataResult = userData.data;
       console.log('[PROJLY:AUTH] Current user data retrieved successfully');
-      return userData.data;
+      
+      // Cache the user data
+      this.setUserCache(userDataResult);
+      
+      return userDataResult;
     } catch (error) {
       console.error('[PROJLY:AUTH] Error getting current user:', error);
       return null;
     }
-  }
+  },
 };
 
 /**

@@ -303,7 +303,6 @@ export function MembersTable() {
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center w-full sm:w-auto">
-          <Search className="mr-2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Search members..."
             value={search}

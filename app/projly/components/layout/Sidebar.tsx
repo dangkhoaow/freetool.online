@@ -77,6 +77,78 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
       console.log(`[PROJLY:SIDEBAR] ${message}`);
     }
   };
+
+  // Helper functions for user role cache
+  const getUserRoleCache = () => {
+    try {
+      // Check if running in browser environment
+      if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+        log('Not in browser environment, skipping cache check');
+        return null;
+      }
+
+      const cachedData = sessionStorage.getItem('projly_user_role_cache');
+      if (!cachedData) {
+        log('No user role cache found');
+        return null;
+      }
+      
+      const { value, expiry } = JSON.parse(cachedData);
+      const expiryDate = new Date(expiry);
+      const timeUntilExpiry = Math.round((expiry - Date.now()) / 1000);
+      
+      log(`Found user role cache (${value}), expires at: ${expiryDate.toISOString()} (in ${timeUntilExpiry} seconds)`);
+      
+      // Check if cache is expired (configurable via env var, default 1 minute)
+      if (expiry < Date.now()) {
+        log(`User role cache expired at ${expiryDate.toISOString()}, removing`);
+        sessionStorage.removeItem('projly_user_role_cache');
+        return null;
+      }
+      
+      log(`Using cached user role: ${value}, valid for ${timeUntilExpiry} more seconds`);
+      return value;
+    } catch (error) {
+      log('Error reading user role cache:', error);
+      return null;
+    }
+  };
+  
+  const setUserRoleCache = (value: string) => {
+    try {
+      // Check if running in browser environment
+      if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+        log('Not in browser environment, skipping cache setting');
+        return;
+      }
+
+      // Get cache expiry from environment variable (default 1 minute)
+      let envExpiryMinutes: number;
+      
+      // In Next.js, client-side environment variables are injected at build time
+      // and are accessible directly via process.env if they start with NEXT_PUBLIC_
+      if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_USER_ROLE_CACHE_EXPIRY_MINUTES) {
+        envExpiryMinutes = parseInt(process.env.NEXT_PUBLIC_USER_ROLE_CACHE_EXPIRY_MINUTES, 10);
+        log(`Using NEXT_PUBLIC_USER_ROLE_CACHE_EXPIRY_MINUTES: ${envExpiryMinutes} minutes`);
+      }
+      // Fallback to default
+      else {
+        envExpiryMinutes = 1; // Default to 1 minute
+        log(`Using default expiry: ${envExpiryMinutes} minute`);
+      }
+      
+      const expiryMs = envExpiryMinutes * 60 * 1000;
+      const expiry = Date.now() + expiryMs;
+      const expiryDate = new Date(expiry);
+      const cacheData = JSON.stringify({ value, expiry });
+      
+      log(`Setting user role cache for '${value}', expires at: ${expiryDate.toISOString()}`);
+      sessionStorage.setItem('projly_user_role_cache', cacheData);
+      log(`Successfully cached user role '${value}' for ${envExpiryMinutes} minute(s)`);
+    } catch (error) {
+      log('Error setting user role cache:', error);
+    }
+  };
   
   // Load user data when component mounts
   useEffect(() => {
@@ -93,25 +165,49 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
         log('User data loaded:', userData);
         setUser(userData);
         
-        // Fetch user role from the API
-        log('Fetching user role from API...');
-        try {
-          const roleResponse = await apiClient.get('/api/projly/user-roles/current');
-          const userRoleFromApi = roleResponse.error ? 'user' : roleResponse.data;
-          
-          log('API response for user role:', {
-            status: roleResponse.error ? 'error' : 'success',
-            data: roleResponse.data,
-            error: roleResponse.error,
-            userRole: userRoleFromApi
-          });
-          
-          setUserRole(userRoleFromApi);
-          log('User role set from API:', userRoleFromApi);
-        } catch (roleError) {
-          console.error('[PROJLY:SIDEBAR] Error fetching user role:', roleError);
-          // Fallback to basic role if API fails
-          setUserRole('user');
+        // Check for cached user role first
+        const cachedUserRole = getUserRoleCache();
+        if (cachedUserRole) {
+          log('Using cached user role instead of API call:', cachedUserRole);
+          setUserRole(cachedUserRole);
+        } else {
+          // No valid cache, fetch user role from the API
+          log('No valid cache found, fetching user role from API...');
+          try {
+            const apiUrl = '/api/projly/user-roles/current';
+            log(`Making API call to: ${apiUrl}`);
+            
+            const roleResponse = await apiClient.get(apiUrl);
+            
+            if (roleResponse.error) {
+              log('API error when fetching user role:', roleResponse.error);
+              const userRoleFromApi = 'user'; // Default to regular user on error
+              setUserRole(userRoleFromApi);
+              log(`Setting default user role due to API error: ${userRoleFromApi}`);
+              
+              // Still cache the default role to prevent repeated API calls on error
+              setUserRoleCache(userRoleFromApi);
+            } else {
+              const userRoleFromApi = roleResponse.data;
+              log(`Successfully fetched user role from API: ${userRoleFromApi}`);
+              
+              // Cache the user role for future use
+              setUserRoleCache(userRoleFromApi);
+              
+              setUserRole(userRoleFromApi);
+              log(`User role set from API: ${userRoleFromApi}`);
+            }
+          } catch (roleError) {
+            console.error('[PROJLY:SIDEBAR] Error fetching user role:', roleError);
+            log('Setting default user role due to exception');
+            
+            // Set default role on error
+            const defaultRole = 'user';
+            setUserRole(defaultRole);
+            
+            // Cache the default role to prevent repeated API calls on error
+            setUserRoleCache(defaultRole);
+          }
         }
         
         // Separately fetch project ownership status
