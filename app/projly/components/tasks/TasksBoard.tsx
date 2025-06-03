@@ -214,9 +214,22 @@ export function TasksBoard({
       // Update task status with the properly formatted payload
       await tasksService.updateTask(taskId, updatePayload);
       
-      // Notify parent of operation completion
+      // Process the initialFilters to handle 'current' user ID before passing to onOperationComplete
+      // This ensures that when the TasksContainer refreshes, it uses the correct user ID
       if (onOperationComplete) {
-        onOperationComplete();
+        // Create a copy of the initialFilters
+        const processedFilters = { ...initialFilters };
+        
+        // Handle the 'current' user ID in assignedTo filter
+        if (processedFilters.assignedTo === 'current' && user?.id) {
+          log(`[TasksBoard] Replacing 'current' assignee with actual user ID: ${user.id} for refresh`);
+          // We don't modify the original initialFilters, just the copy we're passing
+          // This preserves the UI state while ensuring the API call uses the correct ID
+          processedFilters.assignedTo = user.id;
+        }
+        
+        log('[TasksBoard] Calling onOperationComplete with processed filters:', processedFilters);
+        onOperationComplete(processedFilters);
       }
       
       // Show success toast
