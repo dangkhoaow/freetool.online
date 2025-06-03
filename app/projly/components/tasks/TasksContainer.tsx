@@ -35,7 +35,7 @@ import { Task } from './TasksTable'; // Import the Task type from TasksTable for
 import { useTaskHierarchy, TaskHierarchyOptions } from '@/lib/services/projly/tasks/use-task-hierarchy';
 import { tasksService } from '@/lib/services/projly/tasks/tasks-service';
 import { useToast } from '@/components/ui/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
 import { PlusCircle, List, LayoutGrid, Filter } from 'lucide-react';
@@ -146,7 +146,23 @@ export function TasksContainer({
   });
   
   // State for projects list used in filters
-  const [projects, setProjects] = useState<any[]>([]);
+  // Use React Query for projects data with 5-minute staleTime to prevent unnecessary API calls
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'], // Match the existing invalidation key in handleOperationComplete
+    queryFn: async () => {
+      log('Loading projects for filter dropdown via React Query');
+      try {
+        const projectsList = await projlyProjectsService.getProjects();
+        log(`Loaded ${projectsList.length} projects for filter`);
+        return projectsList;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
+        log('Error loading projects:', errorMessage);
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - data won't refetch until stale
+  });
   
   // Get unique statuses from tasks for status filter
   const uniqueStatuses = useMemo(() => {
@@ -558,24 +574,10 @@ export function TasksContainer({
     }
   };
   
-  // Load projects for filter dropdown
-  const loadProjects = async () => {
-    try {
-      log('Loading projects for filter dropdown');
-      const projectsList = await projlyProjectsService.getProjects();
-      log(`Loaded ${projectsList.length} projects for filter`);
-      setProjects(projectsList);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
-      log('Error loading projects:', errorMessage);
-    }
-  };
+  // Projects are now loaded via React Query with caching
   
-  // Load tasks and projects on mount
+  // Load tasks on mount (projects are now loaded via React Query with caching)
   useEffect(() => {
-    // Load projects for filter dropdown
-    loadProjects();
-    
     // Load tasks
     if (initialTasks) {
       log('Using initial tasks:', initialTasks.length);

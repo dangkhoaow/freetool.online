@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
@@ -200,7 +200,10 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   }, [taskId]);
   
   // Check authentication and load task and related data
+  const initCalled = useRef(false);
   useEffect(() => {
+    if (initCalled.current) return;
+    initCalled.current = true;
     const initPage = async () => {
       try {
         log('Checking authentication');

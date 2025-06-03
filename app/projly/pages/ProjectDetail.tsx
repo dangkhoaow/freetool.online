@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Project, Task, Resource } from "@/types";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/lib/services/projly/use-projects";
@@ -107,12 +107,16 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   }, [projectId]);
   
   // Add another effect to handle direct navigation back to this page
+  const navEffectCalled = useRef(false);
   useEffect(() => {
-    // This will run after the component has rendered
-    setTimeout(() => {
+    // This will run after the component has rendered, but only once
+    if (navEffectCalled.current) return;
+    navEffectCalled.current = true;
+    const timer = setTimeout(() => {
       console.log("[ProjectDetail] Delayed task refresh to catch navigation events");
       handleTaskChange();
     }, 500); // Short delay to ensure it runs after navigation completes
+    return () => clearTimeout(timer);
   }, []);
   
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
