@@ -63,7 +63,7 @@ export const NotificationsMenu = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[350px]">
+      <DropdownMenuContent align="end" className="w-[350px] max-h-[80vh] overflow-hidden flex flex-col">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
           {unreadCount > 0 && (
@@ -74,33 +74,35 @@ export const NotificationsMenu = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {isLoading ? (
-          <div className="text-center py-4 text-muted-foreground">
-            Loading notifications...
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="text-center py-4 text-muted-foreground">
-            No notifications at this time.
-          </div>
-        ) : (
-          <>
-            {notifications.map((notification) => (
-              <DropdownMenuItem 
-                key={notification.id}
-                className={`cursor-pointer flex flex-col items-start py-2 px-4 ${!notification.isRead ? 'bg-muted/50' : ''}`}
-                onClick={() => handleNotificationClick(notification.path, notification.id)}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="font-semibold">{notification.title}</span>
-                  <span className="text-xs text-muted-foreground">{notification.timeAgo}</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1 whitespace-normal">
-                  {notification.message}
-                </p>
-              </DropdownMenuItem>
-            ))}
-          </>
-        )}
+        <div className="overflow-y-auto max-h-[calc(80vh-100px)]" role="menu">
+          {isLoading ? (
+            <div className="text-center py-4 text-muted-foreground">
+              Loading notifications...
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground">
+              No notifications at this time.
+            </div>
+          ) : (
+            <>
+              {notifications.map((notification) => (
+                <DropdownMenuItem 
+                  key={notification.id}
+                  className={`cursor-pointer flex flex-col items-start py-2 px-4 ${!notification.isRead ? 'bg-muted/50' : ''}`}
+                  onClick={() => handleNotificationClick(notification.path, notification.id)}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-semibold">{notification.title}</span>
+                    <span className="text-xs text-muted-foreground">{notification.timeAgo}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1 whitespace-normal">
+                    {notification.message}
+                  </p>
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+        </div>
         
         <div className="text-xs text-center text-muted-foreground p-2 border-t">
           Showing notifications for projects and tasks
