@@ -1,3 +1,10 @@
+const dotenv = require('dotenv');
+const dotenvExpand = require('dotenv-expand');
+
+// Load and expand environment variables
+const env = dotenv.config();
+dotenvExpand.expand(env);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config, { isServer }) => {
