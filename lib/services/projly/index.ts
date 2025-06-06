@@ -417,6 +417,57 @@ export const projlyAuthService = {
 };
 
 /**
+ * Helper functions for project caching
+ */
+// Get cached projects data from session storage
+const getProjectsCache = () => {
+  try {
+    if (typeof window === 'undefined') return null;
+    
+    const cachedData = sessionStorage.getItem('projly_projects_cache');
+    if (!cachedData) {
+      console.log('[CACHE:PROJECTS] No cached projects found');
+      return null;
+    }
+    
+    const { data, expiry } = JSON.parse(cachedData);
+    const now = new Date().getTime();
+    
+    if (now > expiry) {
+      console.log('[CACHE:PROJECTS] Cache expired, will fetch fresh data');
+      sessionStorage.removeItem('projly_projects_cache');
+      return null;
+    }
+    
+    console.log(`[CACHE:PROJECTS] Using cached projects data (${data.length} projects)`);
+    return data;
+  } catch (error) {
+    console.error('[CACHE:PROJECTS] Error reading cache:', error);
+    return null;
+  }
+};
+
+// Set projects data in session storage cache with expiration
+const setProjectsCache = (data: Project[]) => {
+  try {
+    if (typeof window === 'undefined') return;
+    
+    // Get expiry time from env var or default to 1 minute
+    const expiryMinutes = process.env.NEXT_PUBLIC_PROJECT_LIST_CACHE_EXPIRY_MINUTES 
+      ? parseInt(process.env.NEXT_PUBLIC_PROJECT_LIST_CACHE_EXPIRY_MINUTES) 
+      : 1;
+    
+    const now = new Date().getTime();
+    const expiry = now + (expiryMinutes * 60 * 1000);
+    
+    sessionStorage.setItem('projly_projects_cache', JSON.stringify({ data, expiry }));
+    console.log(`[CACHE:PROJECTS] Cached ${data.length} projects with ${expiryMinutes} minute expiry`);
+  } catch (error) {
+    console.error('[CACHE:PROJECTS] Error setting cache:', error);
+  }
+};
+
+/**
  * Projects Service
  * Provides operations for managing projects in the Projly application
  */
@@ -428,6 +479,14 @@ export const projlyProjectsService = {
   async getProjects(): Promise<Project[]> {
     console.log('[PROJLY:PROJECTS] Getting all projects for current user');
     try {
+      // Check cache first
+      const cachedProjects = getProjectsCache();
+      if (cachedProjects) {
+        console.log(`[PROJLY:PROJECTS] Using ${cachedProjects.length} projects from cache`);
+        return cachedProjects;
+      }
+
+      // No cache or expired, fetch from API
       const token = getAuthToken();
       if (!token) {
         console.log('[PROJLY:PROJECTS] No token found when getting projects');
@@ -452,6 +511,10 @@ export const projlyProjectsService = {
 
       const projects = Array.isArray(response.data) ? response.data : [];
       console.log(`[PROJLY:PROJECTS] Successfully retrieved ${projects.length} projects`);
+      
+      // Cache the successful response
+      setProjectsCache(projects);
+      
       return projects;
     } catch (error) {
       console.error('[PROJLY:PROJECTS] Error in getProjects:', error);

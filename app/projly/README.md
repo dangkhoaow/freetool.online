@@ -350,7 +350,112 @@ npm run dev
 - Code splitting
 - Lazy loading
 - Image optimization
-- Caching strategies
+
+## Caching Strategies
+
+### Overview
+The Projly application implements multiple caching mechanisms to improve performance and reduce redundant API calls. Caching is implemented at different levels with configurable expiration times via environment variables.
+
+### Environment Configuration
+Cache expiration times are configured in the `.env` file:
+
+```
+# Cache configuration
+NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES=5
+NEXT_PUBLIC_USER_ROLE_CACHE_EXPIRY_MINUTES=5
+NEXT_PUBLIC_PROJECT_LIST_CACHE_EXPIRY_MINUTES=1
+```
+
+### Implemented Caching Mechanisms
+
+#### 1. Session Storage Caching
+Session storage is used to cache frequently accessed data with configurable expiration times:
+
+| Cache Type | Key | Expiration | Environment Variable |
+|------------|-----|-----------|----------------------|
+| User Data | `projly_user_cache` | 5 minutes | `NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES` |
+| User Role | `projly_user_role_cache` | 5 minutes | `NEXT_PUBLIC_USER_ROLE_CACHE_EXPIRY_MINUTES` |
+| Projects List | `projly_projects_cache` | 1 minute | `NEXT_PUBLIC_PROJECT_LIST_CACHE_EXPIRY_MINUTES` |
+| Authentication Status | `projly_auth_cache` | 5 minutes | `NEXT_PUBLIC_USER_CACHE_EXPIRY_MINUTES` |
+
+#### 2. React Query Caching
+React Query is used for more sophisticated caching with automatic invalidation:
+
+| Query Key | Component | Stale Time | Refetch Behavior |
+|-----------|-----------|------------|------------------|
+| `['projects']` | `ProjectActivityTracker`, `TasksContainer` | 5 minutes | On mount, window focus |
+| `['project-ownership', userId]` | `useProjectOwnership` hook | Default | On mount, window focus |
+| `['tasks']` | Task components | Default | On mount, window focus |
+
+### Cache Implementation Details
+
+#### Session Storage Cache Structure
+All session storage caches follow a consistent structure:
+```typescript
+{
+  data: any, // The cached data
+  expiry: number // Timestamp when the cache expires
+}
+```
+
+#### Cache Helper Functions
+Standardized helper functions are used across the application:
+
+1. **Get Cache**:
+   ```typescript
+   const getCacheData = () => {
+     try {
+       if (typeof window === 'undefined') return null;
+       const cachedData = sessionStorage.getItem('cache_key');
+       if (!cachedData) return null;
+       const { data, expiry } = JSON.parse(cachedData);
+       if (new Date().getTime() > expiry) {
+         sessionStorage.removeItem('cache_key');
+         return null;
+       }
+       return data;
+     } catch (error) {
+       console.error('Error reading cache:', error);
+       return null;
+     }
+   };
+   ```
+
+2. **Set Cache**:
+   ```typescript
+   const setCacheData = (data: any) => {
+     try {
+       if (typeof window === 'undefined') return;
+       const expiryMinutes = process.env.CACHE_EXPIRY_ENV_VAR ? 
+         parseInt(process.env.CACHE_EXPIRY_ENV_VAR) : 5;
+       const expiry = new Date().getTime() + (expiryMinutes * 60 * 1000);
+       sessionStorage.setItem('cache_key', JSON.stringify({ data, expiry }));
+     } catch (error) {
+       console.error('Error setting cache:', error);
+     }
+   };
+   ```
+
+### Cache Invalidation Strategies
+
+1. **Automatic Expiration**: All caches automatically expire after their configured time
+2. **Manual Invalidation**: Caches are manually invalidated on specific actions:
+   - Project caches are invalidated when projects are created, updated, or deleted
+   - User caches are invalidated on login, logout, or profile updates
+   - React Query cache invalidation is triggered by the `queryClient.invalidateQueries()` method
+
+### Logging
+All cache operations include detailed logging for debugging:
+- Cache hits and misses
+- Cache expiration events
+- Cache invalidation events
+- Error handling during cache operations
+
+### Recent Updates (2025-06-06)
+- Added session storage caching for project API calls
+- Implemented configurable cache expiration via environment variables
+- Enhanced logging for all cache operations
+- Standardized cache implementation patterns across the application
 
 ## Testing
 - Unit tests for components

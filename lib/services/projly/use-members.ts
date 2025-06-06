@@ -32,6 +32,45 @@ export type TeamMemberWithUser = {
 // Log initialization of hook for debugging
 console.log('[HOOK] use-members hook initialized');
 
+// Helper function to merge duplicate members by user ID
+const mergeDuplicateMembers = (members: any[]): any[] => {
+  console.log('[HOOK:MEMBERS] Merging duplicate members by user ID');
+  
+  if (!members || !Array.isArray(members) || members.length === 0) {
+    console.log('[HOOK:MEMBERS] No members to merge');
+    return [];
+  }
+  
+  // Use a Map to keep track of unique user IDs and their first occurrence
+  const uniqueMembers = new Map();
+  
+  members.forEach(member => {
+    // Check if member has user object with id
+    if (!member || !member.user || !member.user.id) {
+      console.warn('[HOOK:MEMBERS] Found member without user ID:', member);
+      // Still add the member if it has its own ID
+      if (member && member.id) {
+        uniqueMembers.set(member.id, member);
+      }
+      return;
+    }
+    
+    const userId = member.user.id;
+    
+    // If this user ID hasn't been seen before, add it to our map
+    if (!uniqueMembers.has(userId)) {
+      console.log(`[HOOK:MEMBERS] Adding unique member with user ID: ${userId}`);
+      uniqueMembers.set(userId, member);
+    } else {
+      console.log(`[HOOK:MEMBERS] Duplicate member found with user ID: ${userId}, keeping first occurrence`);
+    }
+  });
+  
+  const result = Array.from(uniqueMembers.values());
+  console.log(`[HOOK:MEMBERS] After merging: ${members.length} members reduced to ${result.length} unique members`);
+  return result;
+};
+
 export const useAccessibleMembers = () => {
   const { data: session } = useSession();
   
@@ -109,14 +148,22 @@ export const useAccessibleProjectMembers = (projectId: string | undefined) => {
           });
           return [];
         }
-        return response.data || [];
+        
+        // Get members from the response and handle potential duplicates
+        const members = response.data || [];
+        console.log(`[HOOK:MEMBERS] Received ${members.length} members, checking for duplicates`);
+        return mergeDuplicateMembers(members);
       } catch (error) {
         console.error('[HOOK:MEMBERS] Error in useAccessibleProjectMembers:', error);
         // Fall back to project members if there's an error
         try {
           console.log(`[HOOK:MEMBERS] Falling back to direct project members fetch for project: ${projectId}`);
           const fallbackResponse = await apiClient.get(`api/projly/projects/${projectId}/members`);
-          return fallbackResponse.data || [];
+          
+          // Handle potential duplicates in fallback response as well
+          const fallbackMembers = fallbackResponse.data || [];
+          console.log(`[HOOK:MEMBERS] Received ${fallbackMembers.length} members from fallback, checking for duplicates`);
+          return mergeDuplicateMembers(fallbackMembers);
         } catch (fallbackError) {
           console.error('[HOOK:MEMBERS] Fallback also failed:', fallbackError);
           return [];
