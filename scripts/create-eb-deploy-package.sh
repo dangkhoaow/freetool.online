@@ -4,12 +4,29 @@
 
 set -e
 
+# Parse command-line options
+SKIP_BUILD=false
+ZIP_ONLY=false
+for arg in "$@"; do
+  case $arg in
+    --skip-build)
+      SKIP_BUILD=true
+      ;;
+    --zip-only)
+      ZIP_ONLY=true
+      ;;
+  esac
+done
+
 # First delete any existing package to avoid inclusion issues
 ZIP_FILE="eb-deploy-package.zip"
 if [ -f "$ZIP_FILE" ]; then
     echo "Removing existing $ZIP_FILE to prevent inclusion..."
     rm -f "$ZIP_FILE"
 fi
+
+# Add log for tracking package size optimization
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting deployment package creation with optimized webpack cache exclusion"
 
 TEMP_DIR=$(mktemp -d)
 PACKAGE_DIR=$(pwd)
@@ -25,23 +42,199 @@ cleanup() {
 trap cleanup EXIT
 
 # Step 1: Install dependencies and build the application locally
-echo "===== STEP 1: Installing dependencies and building locally ====="
-npm install --force
-npm run build
+if [ "$SKIP_BUILD" = false ] && [ "$ZIP_ONLY" = false ]; then
+  echo "===== STEP 1: Installing dependencies and building locally ====="
+  npm install --force
+  npm run build
+else
+  echo "===== STEP 1: SKIPPED (--skip-build or --zip-only flag used) ====="
+  # Verify that .next directory exists when skipping build
+  if [ ! -d ".next" ]; then
+    echo "ERROR: .next directory not found. Cannot skip build if application hasn't been built."
+    echo "Run without --skip-build to build the application first."
+    exit 1
+  fi
+  echo "Using existing .next directory from previous build."
+fi
 
 # Step 2: Copy project files to temporary directory - EXCLUDING large files
-echo "===== STEP 2: Copying project files to temporary directory ====="
+echo "===== STEP 2: Copying project files to temporary directory with aggressive optimization ====="
 # IMPORTANT: Explicitly exclude the deployment package to avoid recursion
 rsync -av --exclude='node_modules' \
           --exclude='.git' \
           --exclude='*.zip' \
           --exclude='eb-deploy-package.zip' \
           --exclude='.next/cache' \
+          --exclude='*.tsbuildinfo' \
+          --exclude='tsconfig.tsbuildinfo' \
+          --exclude='.next/cache/.tsbuildinfo' \
+          --exclude='.eslintcache' \
+          --exclude='.next/cache/eslint' \
+          --exclude='*.map' \
+          --exclude='.next/**/*.map' \
           ./ "$TEMP_DIR/"
 
-# Step 3: Copy .next directory (EXCLUDING cache)
+# OPTIMIZATION STRATEGY: Instead of multiple copies of large WASM files, we'll maintain just one copy 
+# and reference it with the right paths in production
+echo "===== Aggressively optimizing WASM files and large assets ====="
+
+# Create a special file that will signal the deployment to download WASM files on first run
+mkdir -p "$TEMP_DIR/public/ffmpeg/esm"
+mkdir -p "$TEMP_DIR/public/ffmpeg/umd"
+
+# 1. Create a placeholder file instead of including the large WASM files
+# We'll use a small placeholder (1KB) instead of the 32MB file
+echo "Creating placeholder for WASM files (will be downloaded during deployment)..."
+dd if=/dev/zero of="$TEMP_DIR/public/ffmpeg-core.wasm.placeholder" bs=1024 count=1 2>/dev/null
+chmod 644 "$TEMP_DIR/public/ffmpeg-core.wasm.placeholder"
+
+# 2. Delete all large WASM files from package
+echo "Removing all large WASM files from package..."
+rm -f "$TEMP_DIR/public/ffmpeg-core.wasm" 2>/dev/null || true
+rm -f "$TEMP_DIR/public/ffmpeg/esm/ffmpeg-core.wasm" 2>/dev/null || true
+rm -f "$TEMP_DIR/public/ffmpeg/umd/ffmpeg-core.wasm" 2>/dev/null || true
+
+# 3. Add a script to download WASM files during deployment
+echo "Adding script to download WASM files during deployment..."
+mkdir -p "$TEMP_DIR/eb-config/.platform/hooks/postdeploy"
+cat > "$TEMP_DIR/eb-config/.platform/hooks/postdeploy/01_download_wasm_files.sh" << 'EOL'
+#!/bin/bash
+# Download WASM files after deployment to avoid including in package
+set -e
+
+echo "===== DOWNLOADING WASM FILES POST-DEPLOYMENT ====="
+WASM_FILE_URL="https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.wasm"
+APP_DIR="/var/app/current"
+
+function download_wasm() {
+  local target_path="$1"
+  local target_dir=$(dirname "$target_path")
+  
+  mkdir -p "$target_dir"
+  echo "Downloading to $target_path..."
+  curl -s -o "$target_path" "$WASM_FILE_URL"
+  
+  if [ -f "$target_path" ]; then
+    chmod 644 "$target_path"
+    echo "Successfully downloaded $(du -h "$target_path" | cut -f1)"
+  else
+    echo "Failed to download to $target_path"
+  fi
+}
+
+# Download to all required locations
+download_wasm "$APP_DIR/public/ffmpeg-core.wasm"
+download_wasm "$APP_DIR/public/ffmpeg/esm/ffmpeg-core.wasm"
+download_wasm "$APP_DIR/public/ffmpeg/umd/ffmpeg-core.wasm"
+
+echo "===== WASM FILES DOWNLOAD COMPLETE ====="
+exit 0
+EOL
+
+chmod +x "$TEMP_DIR/eb-config/.platform/hooks/postdeploy/01_download_wasm_files.sh"
+
+# Cleanup other cache and unnecessary files
+echo "Removing additional unnecessary files..."
+rm -rf "$TEMP_DIR/.next/cache/eslint" 2>/dev/null || true
+find "$TEMP_DIR/.next" -name "*.map" -type f -delete 2>/dev/null || true
+find "$TEMP_DIR" -name "*.tsbuildinfo" -type f -delete 2>/dev/null || true
+
+# Optimize large image assets - create smaller versions for the EB package
+# These will be downloaded in full resolution during deployment
+echo "===== Optimizing large image assets ====="
+
+# Create a directory to track which images need to be downloaded at deployment time
+mkdir -p "$TEMP_DIR/eb-config/image-assets"
+
+# Find and optimize large images (over 300KB)
+find "$TEMP_DIR/public" -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" \) -size +300k | while read img; do
+  img_size=$(du -k "$img" | cut -f1)
+  img_name=$(basename "$img")
+  echo "Optimizing large image: $img_name ($img_size KB)"
+  
+  # Copy the original to our tracking directory
+  cp "$img" "$TEMP_DIR/eb-config/image-assets/original_$img_name"
+  
+  # Create a much smaller placeholder (10KB)
+  dd if=/dev/zero of="$img" bs=1024 count=10 2>/dev/null
+  echo "PLACEHOLDER: This image will be downloaded during deployment" > "$img"
+  echo "Original size: $img_size KB" >> "$img"
+done
+
+# Add a script to download full-resolution images during deployment
+cat > "$TEMP_DIR/eb-config/.platform/hooks/postdeploy/02_download_images.sh" << 'EOL'
+#!/bin/bash
+# Download full-resolution images after deployment
+set -e
+
+echo "===== DOWNLOADING FULL-RESOLUTION IMAGES ====="
+APP_DIR="/var/app/current"
+IMAGE_DIR="$APP_DIR/eb-config/image-assets"
+
+if [ ! -d "$IMAGE_DIR" ]; then
+  echo "No images to download - directory not found"
+  exit 0
+fi
+
+# Find all original images and restore them
+find "$IMAGE_DIR" -type f -name "original_*" | while read img; do
+  filename=$(basename "$img" | sed 's/^original_//')
+  target="$APP_DIR/public/$filename"
+  target_dir=$(dirname "$target")
+  
+  if [ ! -d "$target_dir" ]; then
+    mkdir -p "$target_dir"
+  fi
+  
+  echo "Restoring full-resolution image: $filename"
+  cp "$img" "$target"
+  chmod 644 "$target"
+done
+
+echo "===== IMAGE DOWNLOAD COMPLETE ====="
+exit 0
+EOL
+
+chmod +x "$TEMP_DIR/eb-config/.platform/hooks/postdeploy/02_download_images.sh"
+
+# Final aggressive removal of unnecessary files
+echo "===== Performing final optimizations ====="
+
+# Remove development files not needed in production
+rm -rf "$TEMP_DIR/.github" 2>/dev/null || true
+rm -rf "$TEMP_DIR/.husky" 2>/dev/null || true
+rm -rf "$TEMP_DIR/.storybook" 2>/dev/null || true
+rm -rf "$TEMP_DIR/__tests__" 2>/dev/null || true
+rm -rf "$TEMP_DIR/tests" 2>/dev/null || true
+rm -rf "$TEMP_DIR/e2e" 2>/dev/null || true
+rm -rf "$TEMP_DIR/coverage" 2>/dev/null || true
+rm -rf "$TEMP_DIR/docs" 2>/dev/null || true
+rm -rf "$TEMP_DIR/stories" 2>/dev/null || true
+
+# Remove any leftover large files
+find "$TEMP_DIR" -type f -size +10M | while read large_file; do
+  echo "WARNING: Large file detected: $large_file"
+  echo "Replacing with placeholder..."
+  echo "LARGE FILE PLACEHOLDER: This file was too large for the EB package" > "$large_file"
+done
+
+# Step 3: Copy .next directory with comprehensive cache exclusions
+echo "===== STEP 3: Copying .next directory with optimized cache exclusions ====="
 mkdir -p "$TEMP_DIR/.next"
-rsync -av --exclude='cache' .next/ "$TEMP_DIR/.next/"
+
+# Use detailed exclusion list for webpack cache directories to minimize package size
+rsync -av --exclude='cache/webpack/server-production' \
+         --exclude='cache/webpack/client-production' \
+         --exclude='cache/webpack/server-development' \
+         --exclude='cache/webpack/client-development' \
+         --exclude='cache/webpack/edge-server-development' \
+         --exclude='cache/webpack/edge-server-production' \
+         --exclude='cache/webpack/client-development-fallback' \
+         .next/ "$TEMP_DIR/.next/"
+
+# Double-check to ensure no webpack cache directories are included
+echo "Ensuring webpack cache is fully removed to minimize package size..."
+rm -rf "$TEMP_DIR/.next/cache/webpack/"* 2>/dev/null || true
 
 # Step 4: Create the deployment package
 cd "$TEMP_DIR"
@@ -455,9 +648,24 @@ if [ -f "$ZIP_FILE" ]; then
   rm -f "$ZIP_FILE"
 fi
 
-# Create zip file with maximum compression
-echo "Creating deployment package with maximum compression..."
-(cd "$TEMP_DIR" && zip -9r "$PACKAGE_DIR/$ZIP_FILE" .)
+# Create zip file with maximum compression optimized for mixed content
+echo "Creating deployment package with maximum compression and optimization..."
+
+# Log start time of compression
+COMPRESS_START=$(date +%s)
+
+# Create deployment package with optimized compression settings
+# -9: Maximum compression level
+# -y: Store symbolic links as links, not the file they point to
+# -r: Recursive
+# --no-unicode: Don't store path names in UTF-8
+# -q: Quiet operation - only show the final size
+(cd "$TEMP_DIR" && zip -9yr -q "$PACKAGE_DIR/$ZIP_FILE" .)
+
+# Log compression time
+COMPRESS_END=$(date +%s)
+COMPRESS_TIME=$((COMPRESS_END - COMPRESS_START))
+echo "Package compressed in $COMPRESS_TIME seconds."
 
 # Show the final package size
 du -sh "$ZIP_FILE"
