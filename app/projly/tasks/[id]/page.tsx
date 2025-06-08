@@ -5,26 +5,25 @@ import { useRouter, useParams } from "next/navigation";
 import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
-import { Loader2, ArrowLeft, Trash, Clock, Calendar, Edit, Plus } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
+
+// Import reusable components for task details
+import {
+  TaskActionButtons,
+  TaskHeader,
+  TaskDetailsContent,
+  ActivityContent,
+  SubTasksContent,
+  TaskDeleteDialog
+} from "@/app/projly/components/tasks/details";
+
 // Define a custom task type that includes all the properties we need to work with
 // This helps bypass the type conflicts between different Task interfaces in the codebase
 type ProjlyTaskData = {
@@ -62,49 +61,61 @@ interface TaskDetailsPageProps {
   onDialogClose?: () => void;
 }
 
-
 // Utility function to get all descendant tasks for a given parent taskId
 function getTaskSubtree(tasks: ProjlyTaskData[], parentId: string, log: (msg: string, data?: any) => void): ProjlyTaskData[] {
   const subtree: ProjlyTaskData[] = [];
-  function collect(currentId: string) {
-    const children = tasks.filter(t => t.parentTaskId === currentId);
-    for (const child of children) {
-      subtree.push(child);
-      log('Collected subtask', child);
-      collect(child.id);
-    }
-  }
-  collect(parentId);
+  log(`Getting subtree for parentId: ${parentId}`);
+  
+  // Find direct children
+  const children = tasks.filter(task => task.parentTaskId === parentId);
+  log(`Found ${children.length} direct children for parentId: ${parentId}`);
+  
+  // Add each child and recursively get their children
+  children.forEach(child => {
+    subtree.push(child);
+    log(`Added child task to subtree: ${child.id}`);
+    const grandChildren = getTaskSubtree(tasks, child.id, log);
+    log(`Found ${grandChildren.length} descendants for child: ${child.id}`);
+    subtree.push(...grandChildren);
+  });
+  
+  log(`Returning subtree with ${subtree.length} total tasks for parentId: ${parentId}`);
   return subtree;
 }
 
-// Utility to get all descendants up to n+2
-function getSubTasksUpToDepth(
-  tasks: ProjlyTaskData[],
-  parentId: string,
-  maxDepth: number = 2
-): (ProjlyTaskData & { _depth: number })[] {
-  const result: (ProjlyTaskData & { _depth: number })[] = [];
-  function collect(currentId: string, depth: number) {
-    if (depth > maxDepth) return;
-    const children = tasks.filter((t: ProjlyTaskData) => t.parentTaskId === currentId);
-    for (const child of children) {
-      result.push({ ...child, _depth: depth });
-      collect(child.id, depth + 1);
-    }
-  }
-  collect(parentId, 1);
-  return result;
+// Utility function to get subtasks up to a certain depth
+function getSubTasksUpToDepth(tasks: ProjlyTaskData[], parentId: string, maxDepth: number, currentDepth: number = 0): ProjlyTaskData[] {
+  const filteredTasks: ProjlyTaskData[] = [];
+  if (currentDepth >= maxDepth) return filteredTasks;
+  
+  // Find direct children
+  const children = tasks.filter(task => task.parentTaskId === parentId);
+  
+  // Add each child and recursively get their children up to maxDepth
+  children.forEach(child => {
+    filteredTasks.push(child);
+    const grandChildren = getSubTasksUpToDepth(tasks, child.id, maxDepth, currentDepth + 1);
+    filteredTasks.push(...grandChildren);
+  });
+  
+  return filteredTasks;
 }
 
-// Map to Task type for compatibility
-const mapToTask = (t: ProjlyTaskData & Partial<{ _depth: number }>): Task => ({
-  ...t,
-  startDate: t.startDate ? (typeof t.startDate === 'string' ? t.startDate : (t.startDate instanceof Date ? t.startDate.toISOString() : undefined)) : undefined,
-  dueDate: t.dueDate ? (typeof t.dueDate === 'string' ? t.dueDate : (t.dueDate instanceof Date ? t.dueDate.toISOString() : undefined)) : undefined,
-  parentTaskId: t.parentTaskId ?? undefined,
-  subTasks: t.subTasks ? t.subTasks.map(mapToTask) : undefined,
-});
+// Utility to map ProjlyTaskData to Task type to satisfy type requirements
+function mapToTask(taskData: ProjlyTaskData): Task {
+  return {
+    id: taskData.id,
+    title: taskData.title,
+    description: taskData.description || '',
+    status: taskData.status || 'To Do',
+    startDate: taskData.startDate ? taskData.startDate.toString() : undefined,
+    dueDate: taskData.dueDate ? taskData.dueDate.toString() : undefined,
+    projectId: taskData.projectId,
+    parentTaskId: taskData.parentTaskId || undefined,
+    assignedTo: taskData.assignedTo,
+    assignee: taskData.assignee
+  };
+}
 
 export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose }: TaskDetailsPageProps) {
   // Use useParams to get the route parameters if not in dialog mode
@@ -581,382 +592,111 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   // Conditional rendering based on dialog mode
   const renderContent = () => (
     <div className={inDialogMode ? "" : "container mx-auto py-6"}>
-        <div className="flex items-center justify-between mb-6 w-full">
-          <div className="flex items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackClick}
-              className="mr-2"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {inDialogMode ? "Close" : "Back"}
-            </Button>
-          </div>
-          <div className="flex items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('[TASK_DETAILS] Edit button clicked');
-                router.push(`/projly/tasks/${taskId}/edit`);
-              }}
-              className="ml-2"
-              disabled={isSubmitting}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            {/* Only show Delete button if user has permission */}
-            {canDeleteTask() && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  console.log('[TASK_DETAILS] Delete button clicked');
-                  setIsDeleteDialogOpen(true);
-                }}
-                className="ml-2"
-                disabled={isSubmitting}
-              >
-                <Trash className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            )}
-          </div>
-        </div>
+      <TaskActionButtons 
+        onBackClick={handleBackClick}
+        onEditClick={() => {
+          console.log('[TASK_DETAILS] Edit button clicked');
+          router.push(`/projly/tasks/${taskId}/edit`);
+        }}
+        onDeleteClick={() => {
+          console.log('[TASK_DETAILS] Delete button clicked');
+          setIsDeleteDialogOpen(true);
+        }}
+        isDialogMode={inDialogMode}
+        canDelete={canDeleteTask()}
+        isSubmitting={isSubmitting}
+      />
 
-        <div className="container mx-auto pb-4">
-          <h1 className="text-3xl font-bold tracking-tight">{taskForm.title}</h1>
-          <p className="text-muted-foreground">
-            Task ID: {taskId}
-          </p>
-        </div>
+      <TaskHeader title={taskForm.title} taskId={taskId} />
+      
+      <Tabs defaultValue="details" value={activeTab} onValueChange={(value) => {
+        console.log(`[PROJLY:TASK_DETAILS:${taskId}] Tab changed to:`, value);
+        setActiveTab(value);
+      }}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="subtasks">Sub-Tasks {(() => {
+            const filteredSubTasks = getSubTasksUpToDepth(subTasks, taskId, 2);
+            return filteredSubTasks.length > 0 ? `(${filteredSubTasks.length})` : '';
+          })()}</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
         
-        <Tabs defaultValue="details" value={activeTab} onValueChange={(value) => {
-          console.log(`[PROJLY:TASK_DETAILS:${taskId}] Tab changed to:`, value);
-          setActiveTab(value);
-        }}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="subtasks">Sub-Tasks {(() => {
-              const filteredSubTasks = getSubTasksUpToDepth(subTasks, taskId, 2);
-              return filteredSubTasks.length > 0 ? `(${filteredSubTasks.length})` : '';
-            })()}</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="details">
-            <Card>
-              <CardHeader>
-                <CardTitle>Task Details</CardTitle>
-                <CardDescription>View task information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Title */}
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-muted-foreground">Title</h3>
-                  <p className="text-base">{taskForm.title}</p>
-                </div>
-                
-                {/* Description */}
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-                  <div className="rounded-md bg-muted/30 p-3">
-                    <p className="whitespace-pre-wrap">{taskForm.description || 'No description provided'}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {taskForm.dueDate ? `Due ${taskForm.dueDate.toLocaleDateString()}` : 'No due date'}
-                    </span>
-                  </div>
-                  {taskForm.startDate && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        Starts {taskForm.startDate.toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {taskForm.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Priority:</span>
-                    <Badge variant={taskForm.priority === 'High' ? 'destructive' : 'default'}>
-                      {taskForm.priority}
-                    </Badge>
-                  </div>
-                </div>
-                
-                {/* Project */}
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-muted-foreground">Project</h3>
-                  <p className="text-base">
-                    {(() => {
-                      const project = projects.find(p => p.id === taskForm.projectId);
-                      if (project) {
-                        return (
-                          <Button 
-                            variant="link" 
-                            className="p-0 h-auto font-normal" 
-                            onClick={() => router.push(`/projly/projects/${project.id}`)}
-                          >
-                            {project.name}
-                          </Button>
-                        );
-                      }
-                      return 'Unknown project';
-                    })()}
-                  </p>
-                  {taskForm.parentTaskId && (
-                    <div className="mt-1">
-                      <h3 className="text-sm font-medium text-muted-foreground">Parent Task</h3>
-                      {(() => {
-                        console.log(`[TASK_DETAILS] Rendering parent task link for parentTaskId:`, taskForm.parentTaskId);
-                        console.log(`[TASK_DETAILS] Parent task data:`, parentTask);
-                        return (
-                          <Button
-                            variant="link"
-                            className="p-0 h-auto font-normal"
-                            onClick={() => {
-                              console.log(`[TASK_DETAILS] Parent task link clicked:`, taskForm.parentTaskId);
-                              router.push(`/projly/tasks/${taskForm.parentTaskId}`);
-                            }}
-                          >
-                            {parentTask?.title || 'Loading...'} 
-                            <span className="text-xs text-slate-500 ml-1">({taskForm.parentTaskId})</span>
-                          </Button>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Assignee */}
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-muted-foreground">Assignee</h3>
-                  <p className="text-base">
-                    {(() => {
-                      if (taskForm.assignedTo === 'none') return 'None';
-                      
-                      if (isLoadingMembers) {
-                        return (
-                          <span className="flex items-center">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Loading...
-                          </span>
-                        );
-                      }
-                      
-                      console.log('[PROJLY:TASK_DETAILS] Assignee lookup - taskForm.assignedTo:', taskForm.assignedTo);
-                      console.log('[PROJLY:TASK_DETAILS] Assignee lookup - projectMembers:', projectMembers);
-                      console.log('[PROJLY:TASK_DETAILS] Assignee lookup - taskForm.assignee:', taskForm.assignee);
-                      
-                      // First try to use the assignee object directly from taskForm if it exists
-                      if (taskForm.assignee) {
-                        console.log('[PROJLY:TASK_DETAILS] Using assignee from taskForm:', taskForm.assignee);
-                        return taskForm.assignee.firstName && taskForm.assignee.lastName
-                          ? `${taskForm.assignee.firstName} ${taskForm.assignee.lastName} - ${taskForm.assignee.email}`
-                          : taskForm.assignee.email || 'Unknown user';
-                      }
-                      
-                      // If no assignee in taskForm, try to find in project members
-                      const assignee = projectMembers.find(m => m.userId === taskForm.assignedTo);
-                      if (assignee?.user) {
-                        console.log('[PROJLY:TASK_DETAILS] Found assignee in project members:', assignee.user);
-                        return assignee.user.firstName && assignee.user.lastName
-                          ? `${assignee.user.firstName} ${assignee.user.lastName} - ${assignee.user.email}`
-                          : assignee.user.email || 'Unknown user';
-                      }
-                      
-                      console.log('[PROJLY:TASK_DETAILS] No assignee found for ID:', taskForm.assignedTo);
-                      return 'Unknown user';
-                    })()}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="subtasks">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Sub-Tasks</CardTitle>
-                  <Dialog open={isCreateSubTaskOpen} onOpenChange={setIsCreateSubTaskOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Sub-Task
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
-                      <DialogHeader>
-                        <DialogTitle>Create Sub-Task</DialogTitle>
-                        <DialogDescription>
-                          Add a new sub-task to "{taskForm.title}"
-                        </DialogDescription>
-                      </DialogHeader>
-                      <CreateTaskForm
-                        initialData={{
-                          projectId: taskForm.projectId,
-                          parentTaskId: taskId // Set current task as parent
-                        }}
-                        onSuccess={handleSubTaskCreated}
-                        onCancel={() => setIsCreateSubTaskOpen(false)}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <CardDescription>Tasks that are part of this task</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isRefreshingSubTasks ? (
-                  <div className="flex justify-center p-8">
-                    <Loader2 className="h-10 w-10 animate-spin" />
-                  </div>
-                ) : (
-                  (() => {
-                    // Custom grouping/order: n+1, then n+2 under each n+1
-                    const n1Tasks = subTasks.filter(t => t.parentTaskId === taskId);
-                    const n2Tasks = subTasks.filter(t => n1Tasks.some(n1 => n1.id === t.parentTaskId));
-                    const displayTasks: Task[] = [];
-                    n1Tasks.forEach(n1 => {
-                      displayTasks.push(mapToTask(n1));
-                      n2Tasks.filter(n2 => n2.parentTaskId === n1.id).forEach(n2 => {
-                        displayTasks.push(mapToTask(n2));
-                      });
-                    });
-                    log('Custom grouped displayTasks (n+1 and n+2 grouped)', displayTasks);
-                    return (
-                      <TasksContainer
-                        key={`task-container-${subTasks.length}-${new Date().getTime()}`} // Force re-render on subtasks changes
-                        context="task"
-                        initialTasks={displayTasks}
-                        autoLoad={false}
-                        displayOptions={{
-                          showHeader: false,
-                          showAddButton: true,
-                          compact: true,
-                          title: "Subtasks"
-                        }}
-                        hierarchyOptions={{
-                          maxDepth: 2,
-                          showAllSubtasks: false
-                        }}
-                        tableParentTaskId={taskId}
-                        onDataChange={async () => {
-                          log('Subtask data changed (created/updated/deleted), refreshing subtasks list');
-                          // Force a clean reload by clearing subtasks first
-                          setSubTasks([]);
-                          await refreshSubTasks();
-                        }}
-                      />
-                    );
-                  })()
-                )}
-                {subTasks.length === 0 && !isRefreshingSubTasks && (
-                  <div className="text-center text-muted-foreground pt-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsCreateSubTaskOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Sub-Task
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="activity">
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity Log</CardTitle>
-                <CardDescription>Recent activity for this task</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* This would be populated from an activity log API */}
-                  {taskForm.updatedAt && (
-                    <div className="flex items-start gap-2 border-b pb-4">
-                      <Clock className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium">Status updated to: {taskForm.status}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(taskForm.updatedAt).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {taskForm.createdAt && (
-                    <div className="flex items-start gap-2 border-b pb-4">
-                      <Calendar className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium">Task created</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(taskForm.createdAt).toLocaleString('en-US', {
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="details">
+          <Card>
+            <CardHeader>
+              <CardTitle>Task Details</CardTitle>
+              <CardDescription>View task information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TaskDetailsContent 
+                task={taskForm}
+                projects={projects}
+                projectMembers={projectMembers}
+                parentTask={parentTask}
+                isLoadingMembers={isLoadingMembers}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete the task "{taskForm.title}". 
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isSubmitting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete Task'
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+        <TabsContent value="subtasks">
+          <Card>
+            <CardContent className="mt-4">
+              <SubTasksContent 
+                subTasks={getSubTasksUpToDepth(subTasks, taskId, 2).map(mapToTask)}
+                parentTaskId={taskId}
+                onCreateSubTaskClick={() => setIsCreateSubTaskOpen(true)}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Log</CardTitle>
+              <CardDescription>Recent activity for this task</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ActivityContent 
+                updatedAt={taskForm.updatedAt}
+                createdAt={taskForm.createdAt}
+                status={taskForm.status}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <TaskDeleteDialog 
+        isOpen={isDeleteDialogOpen}
+        setIsOpen={setIsDeleteDialogOpen}
+        onDelete={handleDelete}
+        taskTitle={taskForm.title}
+        isSubmitting={isSubmitting}
+      />
+
+      <Dialog open={isCreateSubTaskOpen} onOpenChange={setIsCreateSubTaskOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Create Sub-Task</DialogTitle>
+            <DialogDescription>
+              Add a new sub-task to "{taskForm.title}"
+            </DialogDescription>
+          </DialogHeader>
+          <CreateTaskForm
+            initialData={{
+              projectId: taskForm.projectId,
+              parentTaskId: taskId // Set current task as parent
+            }}
+            onSuccess={handleSubTaskCreated}
+            onCancel={() => setIsCreateSubTaskOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+    </div>
   );
   
   // Return the content wrapped in DashboardLayout if not in dialog mode

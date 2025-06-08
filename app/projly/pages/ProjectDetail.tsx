@@ -326,13 +326,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
         
         <TabsContent value="tasks" className="mt-6">
           <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Tasks</CardTitle>
-              </div>
-              <CardDescription>Tasks associated with this project</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="mt-4">
               {/* Using the centralized TasksContainer component */}
               <TasksContainer
                 context="project"

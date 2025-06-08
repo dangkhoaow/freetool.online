@@ -4,17 +4,25 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
-import { Loader2, ArrowLeft } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "../../components/ui/date-picker";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
 import { useAccessibleProjectMembers } from '@/lib/services/projly/use-members';
+
+// Import form field components
+import {
+  TitleField,
+  DescriptionField,
+  ProjectField,
+  StatusField,
+  PriorityField,
+  AssigneeField,
+  ParentTaskField,
+  DateField,
+  FormButtons
+} from "../../components/tasks/form-fields";
 
 // Define type for project members
 type ProjectMember = {
@@ -285,173 +293,75 @@ export default function NewTaskPage() {
           <Card>
             <CardContent>
               <div className="space-y-4 pt-4">
-                <div>
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={taskForm.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                    placeholder="Enter task title"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={taskForm.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    placeholder="Enter task description"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="projectId">Project *</Label>
-                  <Select
-                    value={taskForm.projectId}
-                    onValueChange={(value) => handleChange('projectId', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={taskForm.status}
-                    onValueChange={(value) => handleChange('status', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Not Started">Not Started</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="In Review">In Review</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="priority">Priority</Label>
-                  <Select
-                    value={taskForm.priority}
-                    onValueChange={(value) => handleChange('priority', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="assignedTo">Assignee</Label>
-                  <Select
-                    value={taskForm.assignedTo}
-                    onValueChange={(value) => handleChange('assignedTo', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {/* Show loading state if fetching members */}
-                      {isLoadingMembers ? (
-                        <div className="flex items-center justify-center py-2">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          <span>Loading members...</span>
-                        </div>
-                      ) : projectMembers.length > 0 ? (
-                        // Show project members if available
-                        projectMembers.map((member: ProjectMember) => (
-                          <SelectItem key={member.userId} value={member.userId}>
-                            {member.user?.name?.trim() || member.user?.lastName?.trim() ? `${member.user?.name} - ${member.user?.email}` 
-                              : member.user?.email || 'Unknown user'}
-                          </SelectItem> 
-                        ))
-                      ) : (
-                        // Show message if no members found
-                        <div className="px-2 py-1 text-sm text-muted-foreground">
-                          No team members found for this project
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="parentTaskId">Parent Task (Optional)</Label>
-                  <Select
-                    value={taskForm.parentTaskId}
-                    onValueChange={(value) => handleChange('parentTaskId', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a parent task" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Parent Task</SelectItem>
-                      {parentTasks.map((task) => (
-                        <SelectItem key={task.id} value={task.id}>
-                          {task.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <DatePicker
-                    date={taskForm.startDate}
-                    setDate={(date) => handleChange('startDate', date)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="dueDate">Due Date</Label>
-                  <DatePicker
-                    date={taskForm.dueDate}
-                    setDate={(date) => handleChange('dueDate', date)}
-                  />
-                </div>
+                {/* Title field component */}
+                <TitleField 
+                  value={taskForm.title}
+                  onChange={(value) => handleChange('title', value)}
+                />
+                
+                {/* Description field component */}
+                <DescriptionField 
+                  value={taskForm.description}
+                  onChange={(value) => handleChange('description', value)}
+                />
+                
+                {/* Project field component */}
+                <ProjectField 
+                  value={taskForm.projectId}
+                  projects={projects}
+                  onChange={(value) => handleChange('projectId', value)}
+                />
+                
+                {/* Status field component */}
+                <StatusField 
+                  value={taskForm.status}
+                  onChange={(value) => handleChange('status', value)}
+                />
+                
+                {/* Priority field component */}
+                <PriorityField 
+                  value={taskForm.priority}
+                  onChange={(value) => handleChange('priority', value)}
+                />
+                
+                {/* Assignee field component */}
+                <AssigneeField 
+                  value={taskForm.assignedTo}
+                  projectMembers={projectMembers}
+                  isLoadingMembers={isLoadingMembers}
+                  onChange={(value) => handleChange('assignedTo', value)}
+                />
+                
+                {/* Parent task field component */}
+                <ParentTaskField 
+                  value={taskForm.parentTaskId}
+                  parentTasks={parentTasks}
+                  onChange={(value) => handleChange('parentTaskId', value)}
+                />
+                
+                {/* Start date field component */}
+                <DateField 
+                  label="Start Date"
+                  id="startDate"
+                  date={taskForm.startDate}
+                  setDate={(date) => handleChange('startDate', date)}
+                />
+                
+                {/* Due date field component */}
+                <DateField 
+                  label="Due Date"
+                  id="dueDate"
+                  date={taskForm.dueDate}
+                  setDate={(date) => handleChange('dueDate', date)}
+                />
               </div>
             </CardContent>
             <CardFooter>
-              <div className="flex w-full justify-end space-x-2 p-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/projly/tasks')}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Create Task'
-                  )}
-                </Button>
-              </div>
+              {/* Form buttons component */}
+              <FormButtons 
+                isSubmitting={isSubmitting}
+                onCancel={() => router.push('/projly/tasks')}
+              />
             </CardFooter>
           </Card>
         </form>
