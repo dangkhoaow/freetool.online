@@ -463,42 +463,18 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     try {
       setIsRefreshingSubTasks(true);
       log('Refreshing sub-tasks using main task list API');
-      
-      // First, we'll clear the subtasks to ensure the UI updates immediately
-      setSubTasks([]);
-      
+
       // Fetch fresh data from the API
       const allTasks = await projlyTasksService.getTasks();
       log('Fetched all tasks for subtask refresh', allTasks);
-      
-      // Find the current task
-      const parentTask = allTasks.find(t => t.id === taskId);
-      if (!parentTask) {
-        log('Parent task not found in all tasks', { taskId });
-        return; // We already cleared the subtasks above
-      }
-      
-      // Get all descendants (n+1, n+2, ...)
+
+      // Find current task and its descendant subtree
       const subtree = getTaskSubtree(allTasks, taskId, log);
       log('Filtered subtree for current task', subtree);
-      
-      // Implementation of a reliable React state update pattern:
-      // 1. First set empty array (already done above)
-      // 2. Use a small timeout to ensure the UI has rendered the empty state
-      // 3. Set the new state with a deep copy to ensure React detects changes
-      setTimeout(() => {
-        try {
-          // Create a deep copy of the subtree to ensure React treats it as new data
-          // This is important to force a re-render when tasks are deleted
-          const subtreeCopy = JSON.parse(JSON.stringify(subtree));
-          log('Setting subtasks with deep-copied data to force UI refresh', { count: subtreeCopy.length });
-          setSubTasks(subtreeCopy as ProjlyTaskData[]);
-        } catch (innerError) {
-          console.error('[PROJLY:TASK_DETAILS] Error in deferred subtask update:', innerError);
-          // Fallback in case the JSON operations fail
-          setSubTasks([...subtree] as ProjlyTaskData[]);
-        }
-      }, 50); // Short delay to ensure the UI updates properly
+
+      // Directly update state with a deep copy for React change detection
+      const subtreeCopy = JSON.parse(JSON.stringify(subtree));
+      setSubTasks(subtreeCopy as ProjlyTaskData[]);
     } catch (error) {
       console.error(`[PROJLY:TASK_DETAILS] Error refreshing sub-tasks:`, error);
       toast({

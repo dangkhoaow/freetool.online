@@ -40,14 +40,6 @@ export function TaskDetailsContent({
         <p className="text-base">{task.title}</p>
       </div>
       
-      {/* Description */}
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-        <div className="rounded-md bg-muted/30 p-3">
-          <p className="whitespace-pre-wrap">{task.description || 'No description provided'}</p>
-        </div>
-      </div>
-      
       {/* Dates and Status */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -165,6 +157,14 @@ export function TaskDetailsContent({
             return 'Unknown user';
           })()}
         </p>
+      </div>
+            
+      {/* Description */}
+      <div className="space-y-1">
+        <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
+        <div className="rounded-md bg-muted/50 p-3">
+          <p className="whitespace-pre-wrap">{task.description || 'No description provided'}</p>
+        </div>
       </div>
     </div>
   );
