@@ -152,7 +152,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Progress:</span>
-              <span className="text-xs text-muted-foreground">{task.percentProgress}%</span>
+              <span className="text-xs text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
             </div>
             <Progress value={task.percentProgress} className="h-1" />
           </div>

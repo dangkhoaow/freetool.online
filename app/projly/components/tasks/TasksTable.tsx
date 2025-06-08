@@ -776,7 +776,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right" title={`${task.percentProgress || 0}% complete`}>
-                  <span className="text-xs text-muted-foreground">{task.percentProgress || 0}%</span>
+                  <span className="text-xs text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap" title={task.assignee ? (task.assignee.firstName && task.assignee.lastName ? `${task.assignee.firstName} ${task.assignee.lastName}` : task.assignee.name || task.assignee.email) : "-"}>
                   {(() => {
