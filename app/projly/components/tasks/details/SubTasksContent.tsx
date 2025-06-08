@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Task } from "@/lib/services/projly/types";
 import { TasksContainer } from "@/app/projly/components/tasks/TasksContainer";
+import { CardTitle } from "@/components/ui/card";
 
 interface SubTasksContentProps {
   subTasks: Task[];
@@ -47,17 +48,27 @@ export function SubTasksContent({
     );
   }
 
-  // Render sub-tasks list using TasksContainer
+  // Render sub-tasks list with external create button
   return (
     <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <CardTitle>Sub-Tasks</CardTitle>
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" variant="outline" onClick={() => {
+          console.log('[SUB_TASKS_CONTENT] Create sub-task button clicked');
+          onCreateSubTaskClick();
+        }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Sub-Task
+        </Button>
+      </div>
       <TasksContainer
         key={subTasks.length} // remount when subtasks count changes to refresh table
         context="task"
         initialTasks={subTasks}
         autoLoad={false}
         displayOptions={{
-          showHeader: true,
-          showAddButton: true,
+          showHeader: false,
+          showAddButton: false,
           compact: true,
           title: "Sub-Tasks"
         }}
@@ -69,7 +80,6 @@ export function SubTasksContent({
         parentProjectId={parentProjectId}
         onDataChange={() => {
           console.log('[SUB_TASKS_CONTENT] Subtask data changed');
-          // Placeholder for data change handling
         }}
       />
     </div>

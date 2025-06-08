@@ -360,7 +360,7 @@ export function CreateTaskForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4">
         {/* Title, Project and Assignee fields on the same line */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <div>
             <FormField
               control={form.control}
@@ -376,6 +376,9 @@ export function CreateTaskForm({
               )}
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Only show project field if not hidden */}
           {!hideProjectField && (
             <div>
