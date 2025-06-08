@@ -12,15 +12,17 @@ interface TaskDialogProps {
   onOpenChange: (open: boolean) => void;
   taskId?: string;
   projectId: string;
+  parentTaskId?: string;
   onTaskChange?: () => Promise<void>;
 }
 
-export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange }: TaskDialogProps) {
+export function TaskDialog({ open, onOpenChange, taskId, projectId, parentTaskId, onTaskChange }: TaskDialogProps) {
   const [error, setError] = useState("");
   
   // Determine if we're in edit or create mode
   const mode = taskId && taskId !== "new" ? 'edit' : 'create';
   console.log("[TaskDialog] Rendering in mode:", mode, "with taskId:", taskId, "projectId:", projectId);
+  console.log("[TaskDialog] parentTaskId:", parentTaskId);
   
   // Only fetch task data if we're editing an existing task
   const validTaskId = taskId && taskId !== 'new' ? taskId : '';
@@ -62,9 +64,10 @@ export function TaskDialog({ open, onOpenChange, taskId, projectId, onTaskChange
       };
     }
     
-    // For create mode, just use the projectId
+    // For create mode, always include the parentTaskId prop
     return {
-      projectId: projectId || ""
+      projectId: projectId || "",
+      parentTaskId: parentTaskId
     };
   };
 

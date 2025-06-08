@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { TaskProjectField } from "./form-fields/TaskProjectField";
 import { TaskAssigneeField } from "./form-fields/TaskAssigneeField";
+import { LabelField } from "./form-fields/LabelField";
 // Import Task type from the central types file
 import { Task } from "@/lib/services/projly/types";
 import { projlyTasksService } from "@/lib/services/projly";
@@ -568,45 +569,13 @@ export function CreateTaskForm({
             control={form.control}
             name="label"
             render={({ field }) => (
-              <FormItem className="col-span-1">
-                <FormLabel>Label/Category</FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value === null ? "none" : field.value || "none"}
-                    onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectGroup>
-                        <SelectLabel>Development</SelectLabel>
-                        <SelectItem value="Frontend">Frontend</SelectItem>
-                        <SelectItem value="Backend">Backend</SelectItem>
-                        <SelectItem value="DevOps">DevOps</SelectItem>
-                        <SelectItem value="QA">QA & Testing</SelectItem>
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>Design</SelectLabel>
-                        <SelectItem value="UI">UI Design</SelectItem>
-                        <SelectItem value="UX">UX Design</SelectItem>
-                        <SelectItem value="Graphics">Graphics</SelectItem>
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>Management</SelectLabel>
-                        <SelectItem value="Planning">Planning</SelectItem>
-                        <SelectItem value="Research">Research</SelectItem>
-                        <SelectItem value="Documentation">Documentation</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <LabelField
+                value={field.value ?? null}
+                onChange={field.onChange}
+              />
             )}
           />
-          
+
           {/* Related Tasks field */}
           <FormField
             control={form.control}

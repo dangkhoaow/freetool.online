@@ -109,6 +109,7 @@ export function LabelField({
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">None</SelectItem>
             {Object.entries(INDUSTRY_CATEGORIES).map(([group, categories]) => (
               <SelectGroup key={group}>
                 <SelectLabel>{group}</SelectLabel>

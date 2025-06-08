@@ -83,6 +83,7 @@ export interface TasksContainerProps {
   // Whether to recursively load subtasks
   recursiveSubtasks?: boolean;
   tableParentTaskId?: string; // Forwards to TasksTable as parentTaskId
+  parentProjectId?: string;
 }
 
 // Define interface for UI filters
@@ -104,6 +105,7 @@ interface APIFilters extends UIFilters {
 export function TasksContainer({
   context = 'main',
   parentId,
+  parentProjectId,
   initialTasks,
   autoLoad = true,
   initialFilters = {},
@@ -901,8 +903,14 @@ export function TasksContainer({
           <TaskDialog
             open={isAddTaskOpen}
             onOpenChange={setIsAddTaskOpen}
-            projectId={context === 'project' && parentId ? parentId : ''}
-            taskId={context === 'task' ? parentId : undefined}
+            projectId={
+              context === 'project' && parentId
+                ? parentId
+                : context === 'task' && parentProjectId
+                ? parentProjectId
+                : ''
+            }
+            parentTaskId={tableParentTaskId}
             onTaskChange={async () => handleOperationComplete()}
           />
         )}

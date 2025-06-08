@@ -126,10 +126,13 @@ function mapToTask(taskData: ProjlyTaskData): Task {
     id: taskData.id,
     title: taskData.title,
     description: taskData.description || '',
-    status: taskData.status || 'To Do',
+    status: taskData.status || 'Not Started',
     startDate: taskData.startDate ? taskData.startDate.toString() : undefined,
     dueDate: taskData.dueDate ? taskData.dueDate.toString() : undefined,
     projectId: taskData.projectId,
+    project: taskData.project
+      ? { id: taskData.project.id, name: taskData.project.name }
+      : undefined,
     parentTaskId: taskData.parentTaskId || undefined,
     assignedTo: taskData.assignedTo,
     assignee: taskData.assignee,
@@ -822,6 +825,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
               <SubTasksContent 
                 subTasks={getSubTasksUpToDepth(subTasks, taskId, 2).map(mapToTask) as any}
                 parentTaskId={taskId}
+                parentProjectId={taskForm.projectId}
                 onCreateSubTaskClick={() => setIsCreateSubTaskOpen(true)}
               />
             </CardContent>

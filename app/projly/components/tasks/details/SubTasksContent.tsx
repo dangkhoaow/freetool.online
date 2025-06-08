@@ -6,6 +6,7 @@ import { TasksContainer } from "@/app/projly/components/tasks/TasksContainer";
 interface SubTasksContentProps {
   subTasks: Task[];
   parentTaskId: string;
+  parentProjectId: string;
   onCreateSubTaskClick: () => void;
 }
 
@@ -15,16 +16,19 @@ interface SubTasksContentProps {
  * @param {Object} props - The props object
  * @param {Task[]} props.subTasks - Array of sub-task objects
  * @param {string} props.parentTaskId - ID of the parent task
+ * @param {string} props.parentProjectId - ID of the parent project
  * @param {Function} props.onCreateSubTaskClick - Callback for creating a new sub-task
  * @returns {JSX.Element} Sub-tasks content component
  */
 export function SubTasksContent({ 
   subTasks, 
   parentTaskId, 
+  parentProjectId,
   onCreateSubTaskClick 
 }: SubTasksContentProps) {
   console.log('[SUB_TASKS_CONTENT] Rendering sub-tasks list', subTasks);
   console.log('[SUB_TASKS_CONTENT] Parent task ID', parentTaskId);
+  console.log('[SUB_TASKS_CONTENT] Parent project ID', parentProjectId);
 
   // Render empty state with create button if no sub-tasks exist
   if (subTasks.length === 0) {
@@ -47,6 +51,7 @@ export function SubTasksContent({
   return (
     <div className="space-y-4">
       <TasksContainer
+        key={subTasks.length} // remount when subtasks count changes to refresh table
         context="task"
         initialTasks={subTasks}
         autoLoad={false}
@@ -61,6 +66,7 @@ export function SubTasksContent({
           showAllSubtasks: false
         }}
         tableParentTaskId={parentTaskId}
+        parentProjectId={parentProjectId}
         onDataChange={() => {
           console.log('[SUB_TASKS_CONTENT] Subtask data changed');
           // Placeholder for data change handling
