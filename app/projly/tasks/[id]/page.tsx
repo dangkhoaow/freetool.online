@@ -827,6 +827,10 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
                 parentTaskId={taskId}
                 parentProjectId={taskForm.projectId}
                 onCreateSubTaskClick={() => setIsCreateSubTaskOpen(true)}
+                onSubTasksChange={() => {
+                  console.log('[TASK_DETAILS] Subtask deleted, refreshing list');
+                  refreshSubTasks();
+                }}
               />
             </CardContent>
           </Card>

@@ -9,6 +9,7 @@ interface SubTasksContentProps {
   parentTaskId: string;
   parentProjectId: string;
   onCreateSubTaskClick: () => void;
+  onSubTasksChange?: () => void;
 }
 
 /**
@@ -25,7 +26,8 @@ export function SubTasksContent({
   subTasks, 
   parentTaskId, 
   parentProjectId,
-  onCreateSubTaskClick 
+  onCreateSubTaskClick,
+  onSubTasksChange
 }: SubTasksContentProps) {
   console.log('[SUB_TASKS_CONTENT] Rendering sub-tasks list', subTasks);
   console.log('[SUB_TASKS_CONTENT] Parent task ID', parentTaskId);
@@ -78,8 +80,11 @@ export function SubTasksContent({
         }}
         tableParentTaskId={parentTaskId}
         parentProjectId={parentProjectId}
-        onDataChange={() => {
-          console.log('[SUB_TASKS_CONTENT] Subtask data changed');
+        onDataChange={(tasks) => {
+          console.log('[SUB_TASKS_CONTENT] Subtask data changed', tasks);
+          if (onSubTasksChange) {
+            onSubTasksChange();
+          }
         }}
       />
     </div>
