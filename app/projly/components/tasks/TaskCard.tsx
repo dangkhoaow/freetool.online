@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar, Clock } from 'lucide-react';
 import { TaskTitleCell } from './TaskTitleCell';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
+import { Progress } from "@/components/ui/progress";
 
 // Define detailed log function for debugging
 const log = (...args: any[]) => console.log('[TaskCard]', ...args);
@@ -137,6 +138,25 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
             </Badge>
           )}
         </div>
+        
+        {/* Display label if available */}
+        {task.label && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Label:</span>
+            <Badge variant="outline" className="text-xs">{task.label}</Badge>
+          </div>
+        )}
+
+        {/* Display progress bar if percentProgress is available */}
+        {task.percentProgress !== undefined && task.percentProgress !== null && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Progress:</span>
+              <span className="text-xs text-muted-foreground">{task.percentProgress}%</span>
+            </div>
+            <Progress value={task.percentProgress} className="h-1" />
+          </div>
+        )}
         
         {task.project && (
           <div className="text-xs text-gray-500">

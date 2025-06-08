@@ -188,11 +188,16 @@ export interface Task {
   title: string;
   description?: string;
   status: string;
+  priority?: string;
   projectId: string;
   assignedTo?: string;
+  assigneeId?: string; // Added for compatibility with backend
   startDate?: string;
   dueDate?: string;
   parentTaskId?: string;
+  percentProgress?: number; // Progress percentage (0-100)
+  label?: string; // Task category/label
+  relatedTasks?: string[] | Task[]; // Related tasks (can be array of IDs or Task objects)
   parentTask?: {
     id: string;
     title: string;

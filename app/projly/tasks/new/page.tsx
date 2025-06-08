@@ -21,7 +21,10 @@ import {
   AssigneeField,
   ParentTaskField,
   DateField,
-  FormButtons
+  FormButtons,
+  RelatedTasksField,
+  ProgressField,
+  LabelField
 } from "../../components/tasks/form-fields";
 
 // Define type for project members
@@ -57,7 +60,10 @@ export default function NewTaskPage() {
     startDate: null as Date | null,
     dueDate: null as Date | null,
     priority: 'Medium',
-    parentTaskId: 'none' // Add parent task ID field
+    parentTaskId: 'none', // Add parent task ID field
+    percentProgress: 0, // Add progress percentage field
+    label: null as string | null, // Add label field
+    relatedTasks: [] as string[] // Add related tasks field
   });
   
   // Use the useAccessibleProjectMembers hook to get accessible members for the selected project
@@ -237,7 +243,11 @@ export default function NewTaskPage() {
         assignedTo: taskForm.assignedTo === 'none' ? null : taskForm.assignedTo,
         parentTaskId: taskForm.parentTaskId === 'none' ? null : taskForm.parentTaskId,
         startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
-        dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined
+        dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined,
+        // Add percentProgress, label, and relatedTasks to the API request
+        percentProgress: taskForm.percentProgress,
+        label: taskForm.label,
+        relatedTasks: taskForm.relatedTasks.length > 0 ? taskForm.relatedTasks : undefined
       };
       
       log('Formatted task for submission:', formattedTask);
@@ -353,6 +363,23 @@ export default function NewTaskPage() {
                   id="dueDate"
                   date={taskForm.dueDate}
                   setDate={(date) => handleChange('dueDate', date)}
+                />
+                
+                <ProgressField
+                  value={taskForm.percentProgress}
+                  onChange={(value: number) => handleChange('percentProgress', value)}
+                />
+                
+                <LabelField
+                  value={taskForm.label}
+                  onChange={(value: string) => handleChange('label', value)}
+                />
+                
+                <RelatedTasksField
+                  value={taskForm.relatedTasks}
+                  onChange={(value: string[]) => handleChange('relatedTasks', value)}
+                  availableTasks={parentTasks}
+                  isLoading={isLoading}
                 />
               </div>
             </CardContent>

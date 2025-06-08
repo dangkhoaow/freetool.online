@@ -5,3 +5,4 @@ export * from './TaskDetailsContent';
 export * from './ActivityContent';
 export * from './SubTasksContent';
 export * from './TaskDeleteDialog';
+export * from './AdditionalInfoContent';

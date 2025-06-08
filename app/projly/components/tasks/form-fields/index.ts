@@ -10,3 +10,6 @@ export * from './ParentTaskFieldWithToggle';
 export * from './DateField';
 export * from './FormButtons';
 export * from './EditFormButtons';
+export { RelatedTasksField } from './RelatedTasksField';
+export { ProgressField } from './ProgressField';
+export { LabelField } from './LabelField';

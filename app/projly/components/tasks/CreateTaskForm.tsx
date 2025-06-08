@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { toISOStringSafe } from "@/app/projly/utils/dateUtils";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, ChevronsUpDown, Check, X } from "lucide-react";
 import { useCreateTask, useUpdateTask } from "@/lib/services/projly/use-tasks";
 import { useProjects } from "@/lib/services/projly/use-projects";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
@@ -31,6 +31,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel
 } from "@/components/ui/select";
 import {
   Popover,
@@ -39,10 +41,16 @@ import {
 } from "@/components/ui/popover";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Spinner } from "@/components/ui/spinner";
-// Import Task type from the central types file instead of from use-tasks
-import { Task } from "@/lib/services/projly/types";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
 import { TaskProjectField } from "./form-fields/TaskProjectField";
 import { TaskAssigneeField } from "./form-fields/TaskAssigneeField";
+// Import Task type from the central types file
+import { Task } from "@/lib/services/projly/types";
+import { projlyTasksService } from "@/lib/services/projly";
 
 // Helper function to safely convert date values for the Calendar component
 function toSafeDate(value: string | Date | undefined): Date | undefined {
@@ -69,6 +77,10 @@ const taskSchema = z.object({
   assignedTo: z.string().optional().transform(val => val === "unassigned" ? undefined : val),
   priority: z.string().optional().default("Medium"),
   parentTaskId: z.string().optional(),
+  // New fields
+  percentProgress: z.number().min(0).max(100).optional().default(0),
+  label: z.string().nullable().optional(),
+  relatedTasks: z.array(z.string()).optional().default([]),
 }).refine(data => {
   // If both dates are provided, ensure startDate is not after dueDate
   if (data.startDate && data.dueDate) {
@@ -144,7 +156,11 @@ export function CreateTaskForm({
       dueDate: initialData?.dueDate,
       startDate: initialData?.startDate,
       priority: initialData?.priority || "Medium",
-      parentTaskId: initialData?.parentTaskId
+      parentTaskId: initialData?.parentTaskId,
+      // New fields with default values
+      percentProgress: initialData?.percentProgress || 0,
+      label: initialData?.label || null,
+      relatedTasks: initialData?.relatedTasks || [],
     },
   });
   
@@ -231,16 +247,20 @@ export function CreateTaskForm({
     }
     
     // Create task data with the correct types for the API
-    // Explicitly type the taskData object to match only properties available in the Task interface
-    const taskData = {
-      title: data.title,
-      description: data.description,
+    // Ensure all required properties are non-undefined
+    const taskData: Omit<Task, 'id'> = {
+      title: data.title, // title is required
+      description: data.description || '', // provide default empty string
       status: data.status || "Not Started",
       assignedTo: data.assignedTo,
       projectId: data.projectId || "",
       startDate: isoStartDate,
       dueDate: isoDueDate,
-      parentTaskId: data.parentTaskId
+      parentTaskId: data.parentTaskId,
+      // Add new fields to the task data with appropriate type handling
+      percentProgress: data.percentProgress || 0, // Ensure it's not undefined
+      label: data.label || undefined, // Convert null to undefined for API
+      relatedTasks: data.relatedTasks || [],
     };
     
     // Log the exact task data being sent to API
@@ -511,6 +531,204 @@ export function CreateTaskForm({
                 <FormMessage />
               </FormItem>
             )}
+          />
+        </div>
+
+        {/* New fields section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          {/* Progress field */}
+          <FormField
+            control={form.control}
+            name="percentProgress"
+            render={({ field }) => (
+              <FormItem className="col-span-1">
+                <FormControl>
+                  <div className="space-y-4">
+                    <FormLabel>Progress</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <Slider
+                        value={[field.value || 0]}
+                        max={100}
+                        step={1}
+                        onValueChange={(vals) => field.onChange(vals[0])}
+                      />
+                      <span className="ml-2 text-sm text-muted-foreground w-10 text-right">
+                        {field.value || 0}%
+                      </span>
+                    </div>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Label field */}
+          <FormField
+            control={form.control}
+            name="label"
+            render={({ field }) => (
+              <FormItem className="col-span-1">
+                <FormLabel>Label/Category</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value === null ? "none" : field.value || "none"}
+                    onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectGroup>
+                        <SelectLabel>Development</SelectLabel>
+                        <SelectItem value="Frontend">Frontend</SelectItem>
+                        <SelectItem value="Backend">Backend</SelectItem>
+                        <SelectItem value="DevOps">DevOps</SelectItem>
+                        <SelectItem value="QA">QA & Testing</SelectItem>
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>Design</SelectLabel>
+                        <SelectItem value="UI">UI Design</SelectItem>
+                        <SelectItem value="UX">UX Design</SelectItem>
+                        <SelectItem value="Graphics">Graphics</SelectItem>
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>Management</SelectLabel>
+                        <SelectItem value="Planning">Planning</SelectItem>
+                        <SelectItem value="Research">Research</SelectItem>
+                        <SelectItem value="Documentation">Documentation</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          {/* Related Tasks field */}
+          <FormField
+            control={form.control}
+            name="relatedTasks"
+            render={({ field }) => {
+              // Get the list of tasks for the current project
+              const [availableTasks, setAvailableTasks] = useState<any[]>([]);
+              
+              // Fetch tasks for the selected project
+              useEffect(() => {
+                const fetchTasks = async () => {
+                  const projectIdValue = form.watch("projectId");
+                  if (projectIdValue) {
+                    try {
+                      const response = await projlyTasksService.getProjectTasks(projectIdValue);
+                      // Filter out the current task if in edit mode
+                      const filtered = taskId 
+                        ? response.filter((task: any) => task.id !== taskId)
+                        : response;
+                      setAvailableTasks(filtered);
+                    } catch (error) {
+                      console.error("Error fetching tasks:", error);
+                      setAvailableTasks([]);
+                    }
+                  } else {
+                    setAvailableTasks([]);
+                  }
+                };
+                
+                fetchTasks();
+              }, [form.watch("projectId"), taskId]);
+              
+              return (
+                <FormItem className="col-span-1">
+                  <FormLabel>Related Tasks</FormLabel>
+                  <FormControl>
+                    <div className="flex flex-col space-y-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="justify-between"
+                          >
+                            {field.value?.length 
+                              ? `${field.value.length} tasks selected`
+                              : "Select related tasks"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search tasks..." />
+                            <CommandEmpty>No tasks found</CommandEmpty>
+                            <CommandGroup>
+                              <ScrollArea className="h-64">
+                                {availableTasks.map((task: any) => (
+                                  <CommandItem
+                                    key={task.id}
+                                    onSelect={() => {
+                                      const selected = field.value || [];
+                                      const updatedTasks = selected.includes(task.id)
+                                        ? selected.filter(id => id !== task.id)
+                                        : [...selected, task.id];
+                                      field.onChange(updatedTasks);
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        (field.value || []).includes(task.id) 
+                                          ? "opacity-100" 
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    {task.title}
+                                  </CommandItem>
+                                ))}
+                              </ScrollArea>
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {field.value && field.value.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {field.value.map(taskId => {
+                            const task = availableTasks.find((t: any) => t.id === taskId);
+                            return (
+                              <Badge
+                                key={taskId}
+                                variant="secondary"
+                                className="flex items-center space-x-1"
+                              >
+                                <span className="truncate max-w-[150px]">
+                                  {task ? task.title : 'Unknown task'}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                  onClick={() => {
+                                    const updatedTasks = (field.value || []).filter(
+                                      id => id !== taskId
+                                    );
+                                    field.onChange(updatedTasks);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                  <span className="sr-only">Remove</span>
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         </div>
 

@@ -92,6 +92,7 @@ interface UIFilters {
   status?: string;
   search?: string;
   taskHierarchy?: string; // Filter for parent tasks only or include sub-tasks
+  label?: string; // Add label field to UIFilters
 }
 
 // Define interface for API filters that includes backend parameters
@@ -187,6 +188,15 @@ export function TasksContainer({
       }
     });
     return Array.from(users.values());
+  }, [rawTasks]);
+  
+  // Get unique labels from tasks for label filter
+  const uniqueLabels = useMemo(() => {
+    const labels = new Set<string>();
+    rawTasks.forEach(task => {
+      if (task.label) labels.add(task.label);
+    });
+    return Array.from(labels).sort();
   }, [rawTasks]);
   
   // Function to toggle filter visibility
@@ -310,6 +320,18 @@ export function TasksContainer({
     const updatedFilters = { 
       ...currentFilters, 
       taskHierarchy: value === 'all' ? undefined : value 
+    };
+    setCurrentFilters(updatedFilters);
+    
+    // Apply filters immediately if callback provided
+    loadTasks(toApiFilters(updatedFilters));
+  };
+  
+  const handleLabelFilterChange = (value: string) => {
+    log('[TASKS CONTAINER] Label filter changed:', value);
+    const updatedFilters = { 
+      ...currentFilters, 
+      label: value === 'all' ? undefined : value 
     };
     setCurrentFilters(updatedFilters);
     
@@ -728,7 +750,7 @@ export function TasksContainer({
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-col gap-4">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         {/* Project Filter */}
                         <div className="flex flex-col gap-2">
                           <label htmlFor="project-filter" className="text-sm font-medium">
@@ -773,6 +795,27 @@ export function TasksContainer({
                           </Select>
                         </div>
                         
+                        {/* Label Filter */}
+                        <div className="flex flex-col gap-2">
+                          <label htmlFor="label-filter" className="text-sm font-medium">
+                            Label
+                          </label>
+                          <Select
+                            value={currentFilters.label || "all"}
+                            onValueChange={handleLabelFilterChange}
+                          >
+                            <SelectTrigger id="label-filter">
+                              <SelectValue placeholder="All Labels" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Labels</SelectItem>
+                              {uniqueLabels.map((label) => (
+                                <SelectItem key={label} value={label}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
                         {/* Assigned To Filter */}
                         <div className="flex flex-col gap-2">
                           <label htmlFor="assigned-filter" className="text-sm font-medium">
@@ -804,7 +847,7 @@ export function TasksContainer({
                           </Select>
                         </div>
                         
-                        {/* Task Hierarchy Filter */}
+                        {/* Task Hierarchy Filter - moved to second row */}
                         <div className="flex flex-col gap-2">
                           <label htmlFor="hierarchy-filter" className="text-sm font-medium">
                             Task Hierarchy

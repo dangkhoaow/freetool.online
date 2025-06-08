@@ -49,6 +49,9 @@ export interface Task {
   };
   parentTask?: Task; // Reference to parent task
   subTasks?: Task[]; // Reference to sub-tasks
+  percentProgress?: number | null; // Progress percentage
+  label?: string | null; // Task label or category
+  relatedTasks?: string[] | Array<{id: string; title: string}>; // Related tasks
   _meta?: {
     level?: number;  // Store the task nesting level for UI purposes
     [key: string]: any;
@@ -121,6 +124,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 
 // Helper function to organize tasks into a complete hierarchy showing ALL nested levels
 export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; direction: "asc" | "desc" }): Task[] => {
@@ -343,6 +347,10 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
         return false;
       }
       
+      if (checkFilters.label && subTask.label !== checkFilters.label) {
+        return false;
+      }
+      
       if (checkFilters.assignedTo && subTask.assignedTo !== checkFilters.assignedTo) {
         return false;
       }
@@ -370,6 +378,10 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     }
     
     if (checkFilters.projectId && parentTask.projectId !== checkFilters.projectId) {
+      return false;
+    }
+    
+    if (checkFilters.label && parentTask.label !== checkFilters.label) {
       return false;
     }
     
@@ -436,6 +448,13 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     
     // Apply project filter
     if (filters.projectId && task.projectId !== filters.projectId) {
+      matchesBasicFilters = false;
+    }
+    
+    // Apply label filter
+    if (filters.label && task.label !== filters.label) {
+      console.log(`[TASKS TABLE] Task ${task.id} doesn't match label filter: ${filters.label}`);
+      console.log(`  - task.label: ${task.label || 'null'}`);
       matchesBasicFilters = false;
     }
     
@@ -699,6 +718,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   {renderSortIndicator("status")}
                 </div>
               </TableHead>
+              <TableHead className="whitespace-nowrap">Label</TableHead>
+              <TableHead className="whitespace-nowrap">Progress</TableHead>
               <TableHead className="whitespace-nowrap">Assignee</TableHead>
               <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
             </TableRow>
@@ -747,6 +768,16 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   })()}
                 </TableCell>
                 <TableCell className="whitespace-nowrap" title={task.status}>{renderStatusBadge(task.status)}</TableCell>
+                <TableCell className="whitespace-nowrap" title={task.label || "No label"}>
+                  {task.label ? (
+                    <Badge variant="outline">{task.label}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-right" title={`${task.percentProgress || 0}% complete`}>
+                  <span className="text-xs text-muted-foreground">{task.percentProgress || 0}%</span>
+                </TableCell>
                 <TableCell className="whitespace-nowrap" title={task.assignee ? (task.assignee.firstName && task.assignee.lastName ? `${task.assignee.firstName} ${task.assignee.lastName}` : task.assignee.name || task.assignee.email) : "-"}>
                   {(() => {
                     console.log("[TasksTable] Rendering assignee for task:", task.id, task.assignee);

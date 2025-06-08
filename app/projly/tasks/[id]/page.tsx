@@ -21,8 +21,22 @@ import {
   TaskDetailsContent,
   ActivityContent,
   SubTasksContent,
-  TaskDeleteDialog
+  TaskDeleteDialog,
+  AdditionalInfoContent
 } from "@/app/projly/components/tasks/details";
+
+// Fix for type error with related tasks
+// This matches the props for AdditionalInfoContent component
+interface AdditionalTaskInfo {
+  id: string;
+  title?: string;
+  percentProgress?: number | null;
+  label?: string | null;
+  relatedTasks?: string[] | Array<{id: string; title: string}> | null;
+  relatedToTasks?: Array<{relatedTaskId?: string; relatedTask?: {id?: string; title?: string}}>;
+  relatedFromTasks?: Array<{taskId?: string; task?: {id?: string; title?: string}}>;
+  [key: string]: any; // Allow any additional properties
+}
 
 // Define a custom task type that includes all the properties we need to work with
 // This helps bypass the type conflicts between different Task interfaces in the codebase
@@ -43,6 +57,11 @@ type ProjlyTaskData = {
   project?: any;
   assignee?: any;
   subTasks?: ProjlyTaskData[];
+  percentProgress?: number | null;
+  label?: string | null;
+  relatedTasks?: string[] | Array<{id: string; title: string}>;
+  relatedToTasks?: Array<{relatedTask: {id: string; title: string}}>;
+  relatedFromTasks?: Array<{task: {id: string; title: string}}>;
   [key: string]: any; // Allow any additional properties
 };
 
@@ -113,7 +132,10 @@ function mapToTask(taskData: ProjlyTaskData): Task {
     projectId: taskData.projectId,
     parentTaskId: taskData.parentTaskId || undefined,
     assignedTo: taskData.assignedTo,
-    assignee: taskData.assignee
+    assignee: taskData.assignee,
+    percentProgress: taskData.percentProgress !== undefined ? Number(taskData.percentProgress) : undefined,
+    label: taskData.label || undefined,
+    relatedTasks: taskData.relatedTasks || []
   };
 }
 
@@ -170,6 +192,10 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     project: any;
     assignee: any;
     parentTaskId?: string | null;
+    percentProgress: number | null;
+    label: string | null;
+    relatedTasks: string[];
+    _rawData?: any;
   }>({
     id: '',
     title: '',
@@ -184,7 +210,10 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     updatedAt: new Date(),
     project: null,
     assignee: null,
-    parentTaskId: null
+    parentTaskId: null,
+    percentProgress: 0,
+    label: null,
+    relatedTasks: []
   });
   
   // Use the useProjectMembers hook to get members for the selected project
@@ -287,6 +316,11 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
           project?: any;
           assignee?: any;
           parentTaskId?: string | null;
+          percentProgress?: string;
+          label?: string;
+          relatedTasks?: string[];
+          relatedToTasks?: any[];
+          relatedFromTasks?: any[];
         };
         
         const formData = {
@@ -303,7 +337,50 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
           updatedAt: taskWithAllFields.updatedAt ? new Date(taskWithAllFields.updatedAt) : new Date(),
           project: taskWithAllFields.project,
           assignee: taskWithAllFields.assignee,
-          parentTaskId: taskWithAllFields.parentTaskId || null
+          parentTaskId: taskWithAllFields.parentTaskId || null,
+          percentProgress: taskWithAllFields.percentProgress !== undefined ? Number(taskWithAllFields.percentProgress) : 0,
+          label: taskWithAllFields.label || null,
+          relatedTasks: (() => {
+            // Process related tasks to extract IDs
+            const relatedTaskIds: string[] = [];
+            
+            // Process tasks from relatedTasks array (if available)
+            if (taskWithAllFields.relatedTasks && Array.isArray(taskWithAllFields.relatedTasks)) {
+              taskWithAllFields.relatedTasks.forEach((task: any) => {
+                if (typeof task === 'string') {
+                  relatedTaskIds.push(task);
+                } else if (task && typeof task === 'object' && task.id) {
+                  relatedTaskIds.push(task.id);
+                }
+              });
+            }
+            
+            // Process tasks from relatedToTasks array (if available)
+            if (taskWithAllFields.relatedToTasks && Array.isArray(taskWithAllFields.relatedToTasks)) {
+              taskWithAllFields.relatedToTasks.forEach((relation: any) => {
+                if (relation && relation.relatedTask && relation.relatedTask.id) {
+                  if (!relatedTaskIds.includes(relation.relatedTask.id)) {
+                    relatedTaskIds.push(relation.relatedTask.id);
+                  }
+                }
+              });
+            }
+            
+            // Process tasks from relatedFromTasks array (if available)
+            if (taskWithAllFields.relatedFromTasks && Array.isArray(taskWithAllFields.relatedFromTasks)) {
+              taskWithAllFields.relatedFromTasks.forEach((relation: any) => {
+                if (relation && relation.task && relation.task.id) {
+                  if (!relatedTaskIds.includes(relation.task.id)) {
+                    relatedTaskIds.push(relation.task.id);
+                  }
+                }
+              });
+            }
+            
+            log('Extracted related task IDs:', relatedTaskIds);
+            return relatedTaskIds;
+          })(),
+          _rawData: taskData
         };
         
         // Log the form data with dates
@@ -615,6 +692,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
       }}>
         <TabsList className="mb-4">
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="additional">Additional Info</TabsTrigger>
           <TabsTrigger value="subtasks">Sub-Tasks {(() => {
             const filteredSubTasks = getSubTasksUpToDepth(subTasks, taskId, 2);
             return filteredSubTasks.length > 0 ? `(${filteredSubTasks.length})` : '';
@@ -639,12 +717,110 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="additional">
+          <Card>
+            <CardHeader>
+              <CardTitle>Additional Information</CardTitle>
+              <CardDescription>View additional task details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdditionalInfoContent
+                task={{
+                  id: taskForm.id,
+                  title: taskForm.title,
+                  percentProgress: taskForm.percentProgress,
+                  label: taskForm.label,
+                  relatedTasks: taskForm.relatedTasks,
+                  // Pass these fields directly from the raw task data if available
+                  relatedToTasks: taskForm._rawData?.relatedToTasks,
+                  relatedFromTasks: taskForm._rawData?.relatedFromTasks
+                } as AdditionalTaskInfo}
+                allTasks={(() => {
+                  // Define a type that includes label property
+                  type ExtendedTask = {
+                    id: string;
+                    title: string;
+                    label?: string | null;
+                  };
+
+                  // Create a list of all known tasks for related task resolution
+                  const allKnownTasks: ExtendedTask[] = [
+                    // Include current task
+                    { 
+                      id: taskId, 
+                      title: taskForm.title,
+                      label: taskForm.label
+                    },
+                    // Include all sub-tasks we're aware of
+                    ...subTasks.map(task => ({ 
+                      id: task.id, 
+                      title: task.title,
+                      label: task.label || null
+                    })),
+                  ];
+                  
+                  // Add related tasks from relatedToTasks if available
+                  if (taskForm._rawData?.relatedToTasks && Array.isArray(taskForm._rawData.relatedToTasks)) {
+                    taskForm._rawData.relatedToTasks.forEach((relation: any) => {
+                      if (relation.relatedTask && relation.relatedTask.id) {
+                        // Only add if not already in the list
+                        if (!allKnownTasks.some(task => task.id === relation.relatedTask.id)) {
+                          allKnownTasks.push({
+                            id: relation.relatedTask.id,
+                            title: relation.relatedTask.title || 'Unnamed task',
+                            label: relation.relatedTask.label || null
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  // Add related tasks from relatedFromTasks if available
+                  if (taskForm._rawData?.relatedFromTasks && Array.isArray(taskForm._rawData.relatedFromTasks)) {
+                    taskForm._rawData.relatedFromTasks.forEach((relation: any) => {
+                      if (relation.task && relation.task.id) {
+                        // Only add if not already in the list
+                        if (!allKnownTasks.some(task => task.id === relation.task.id)) {
+                          allKnownTasks.push({
+                            id: relation.task.id,
+                            title: relation.task.title || 'Unnamed task',
+                            label: relation.task.label || null
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  // Also check relatedTasks array for complete task objects
+                  if (taskForm._rawData?.relatedTasks && Array.isArray(taskForm._rawData.relatedTasks)) {
+                    taskForm._rawData.relatedTasks.forEach((relatedTask: any) => {
+                      if (typeof relatedTask === 'object' && relatedTask && relatedTask.id) {
+                        // Only add if not already in the list
+                        if (!allKnownTasks.some(task => task.id === relatedTask.id)) {
+                          allKnownTasks.push({
+                            id: relatedTask.id,
+                            title: relatedTask.title || 'Unnamed task',
+                            label: relatedTask.label || null
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  log('Created allKnownTasks list for AdditionalInfoContent', allKnownTasks);
+                  return allKnownTasks;
+                })()}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
         
         <TabsContent value="subtasks">
           <Card>
             <CardContent className="mt-4">
               <SubTasksContent 
-                subTasks={getSubTasksUpToDepth(subTasks, taskId, 2).map(mapToTask)}
+                subTasks={getSubTasksUpToDepth(subTasks, taskId, 2).map(mapToTask) as any}
                 parentTaskId={taskId}
                 onCreateSubTaskClick={() => setIsCreateSubTaskOpen(true)}
               />

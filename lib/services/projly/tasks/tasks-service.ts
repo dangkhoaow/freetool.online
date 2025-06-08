@@ -113,6 +113,44 @@ class TasksService {
         return null;
       }
 
+      // Process the task data to ensure relatedTasks are properly formatted
+      if (taskData.relatedToTasks && Array.isArray(taskData.relatedToTasks)) {
+        if (!taskData.relatedTasks) {
+          taskData.relatedTasks = [];
+        }
+        
+        // Extract related tasks from relatedToTasks
+        taskData.relatedToTasks.forEach((relation: any) => {
+          if (relation.relatedTask) {
+            if (!taskData.relatedTasks.some((task: any) => 
+              (typeof task === 'string' && task === relation.relatedTask.id) || 
+              (typeof task === 'object' && task.id === relation.relatedTask.id)
+            )) {
+              taskData.relatedTasks.push(relation.relatedTask);
+            }
+          }
+        });
+      }
+      
+      // Process relatedFromTasks if they exist
+      if (taskData.relatedFromTasks && Array.isArray(taskData.relatedFromTasks)) {
+        if (!taskData.relatedTasks) {
+          taskData.relatedTasks = [];
+        }
+        
+        // Extract related tasks from relatedFromTasks
+        taskData.relatedFromTasks.forEach((relation: any) => {
+          if (relation.task) {
+            if (!taskData.relatedTasks.some((task: any) => 
+              (typeof task === 'string' && task === relation.task.id) || 
+              (typeof task === 'object' && task.id === relation.task.id)
+            )) {
+              taskData.relatedTasks.push(relation.task);
+            }
+          }
+        });
+      }
+
       console.log(`${LOG_PREFIX} Successfully retrieved task:`, taskData);
       return taskData as Task;
     } catch (error) {
@@ -137,9 +175,20 @@ class TasksService {
         throw new Error('Authentication required to create a task');
       }
       
+      // Convert assignedTo to assigneeId if needed (for API compatibility)
+      const apiTaskData = {
+        ...taskData,
+        // If assignedTo is provided but not assigneeId, use assignedTo as assigneeId
+        assigneeId: taskData.assigneeId || taskData.assignedTo,
+        // Include new fields
+        percentProgress: taskData.percentProgress,
+        label: taskData.label,
+        relatedTasks: taskData.relatedTasks
+      };
+      
       const response = await apiClient.post(
         API_ENDPOINTS.TASKS.CREATE,
-        taskData
+        apiTaskData
       );
 
       // Debug the actual API response structure
@@ -184,9 +233,20 @@ class TasksService {
         throw new Error('Authentication required to update a task');
       }
       
+      // Convert assignedTo to assigneeId if needed (for API compatibility)
+      const apiTaskData = {
+        ...taskData,
+        // If assignedTo is provided but not assigneeId, use assignedTo as assigneeId
+        assigneeId: taskData.assigneeId || taskData.assignedTo,
+        // Include new fields
+        percentProgress: taskData.percentProgress,
+        label: taskData.label,
+        relatedTasks: taskData.relatedTasks
+      };
+      
       const response = await apiClient.put(
         API_ENDPOINTS.TASKS.UPDATE.replace(':id', id),
-        taskData
+        apiTaskData
       );
 
       console.log(`${LOG_PREFIX} Task update response:`, response);
@@ -298,6 +358,7 @@ class TasksService {
    * @returns Promise resolving to a task or null
    */
   async getTask(id: string): Promise<Task | null> {
+    // We're using getTaskById to ensure consistent handling of related tasks data
     return this.getTaskById(id);
   }
 }

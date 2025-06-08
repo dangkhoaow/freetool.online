@@ -23,7 +23,10 @@ import {
   AssigneeField,
   ParentTaskFieldWithToggle,
   DateField,
-  EditFormButtons
+  EditFormButtons,
+  RelatedTasksField,
+  ProgressField,
+  LabelField
 } from "../../../components/tasks/form-fields";
 
 // Define type for project members
@@ -70,6 +73,9 @@ export default function TaskEditPage({}: TaskEditPageProps) {
     startDate: null as Date | null,
     dueDate: null as Date | null,
     parentTaskId: 'none', // Add parent task ID field with 'none' as default
+    percentProgress: 0 as number | null, // Add progress percentage field
+    label: null as string | null, // Add label field
+    relatedTasks: [] as string[], // Add related tasks field
     // For displaying only
     project: null as any,
     assignee: null as any
@@ -193,6 +199,22 @@ export default function TaskEditPage({}: TaskEditPageProps) {
           log('Parsed startDate:', startDate);
         }
         
+        // Process related tasks - extract IDs
+        const relatedTaskIds: string[] = [];
+        
+        // Process tasks from relatedTasks array (if available)
+        if (taskData.relatedTasks && Array.isArray(taskData.relatedTasks)) {
+          taskData.relatedTasks.forEach((task: any) => {
+            if (typeof task === 'string') {
+              relatedTaskIds.push(task);
+            } else if (task && typeof task === 'object' && task.id) {
+              relatedTaskIds.push(task.id);
+            }
+          });
+        }
+        
+        log('Extracted related task IDs:', relatedTaskIds);
+        
         const formattedTask = {
           id: taskData.id,
           title: taskData.title || '',
@@ -201,16 +223,18 @@ export default function TaskEditPage({}: TaskEditPageProps) {
           status: taskData.status || 'Not Started',
           priority: taskData.priority || 'Medium',
           assignedTo: taskData.assigneeId || 'none',
-          parentTaskId: taskData.parentTaskId || 'none', // Include parentTaskId, default to 'none' if not present
           startDate: startDate,
           dueDate: dueDate,
-          // For displaying purposes
+          parentTaskId: taskData.parentTaskId || 'none',
+          percentProgress: taskData.percentProgress || 0,
+          label: taskData.label || null,
+          relatedTasks: relatedTaskIds,
           project: taskData.project || null,
           assignee: taskData.assignee || null
         };
         
         log('Formatted task for form:', formattedTask);
-        setTaskForm(formattedTask);
+        setTaskForm(formattedTask as typeof taskForm);
         
         // Get projects for dropdown
         const projectsData = await projlyProjectsService.getProjects();
@@ -290,43 +314,25 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       setIsSubmitting(true);
       log('Updating task:', taskForm);
       
-      // Format dates for API
+      // Format data for API submission
       const formattedTask = {
-        ...taskForm,
-        // Convert 'none' to null or undefined for the API
-        assignedTo: taskForm.assignedTo === 'none' ? null : taskForm.assignedTo,
-        // For parentTaskId, convert 'none' to undefined (not null) as the API expects
-        parentTaskId: taskForm.parentTaskId === 'none' ? undefined : taskForm.parentTaskId, 
+        title: taskForm.title,
+        description: taskForm.description,
+        projectId: taskForm.projectId,
+        status: taskForm.status,
+        priority: taskForm.priority,
+        assignedTo: taskForm.assignedTo === 'none' ? undefined : taskForm.assignedTo,
+        parentTaskId: taskForm.parentTaskId === 'none' ? undefined : taskForm.parentTaskId,
         startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
-        dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined
+        dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined,
+        percentProgress: taskForm.percentProgress === null ? undefined : taskForm.percentProgress,
+        label: taskForm.label === null ? undefined : taskForm.label,
+        relatedTasks: taskForm.relatedTasks.length > 0 ? taskForm.relatedTasks : undefined
       };
       
-      // Use object destructuring to format the task data for the API correctly
-      const { project, assignee, assignedTo, parentTaskId, startDate, dueDate, projectId, ...taskBasicData } = formattedTask;
+      log('Final update payload being sent to API:', formattedTask);
       
-      // Add detailed logging for debugging
-      log('Preparing task data for update:', {
-        assignedTo,
-        parentTaskId,
-        projectId,
-        startDate,
-        dueDate,
-        ...taskBasicData
-      });
-      
-      // Create an update payload that matches the TaskUpdateInput interface
-      const updatePayload = {
-        ...taskBasicData,
-        projectId: projectId,     // Explicitly include projectId in the update
-        assigneeId: assignedTo,   // This is the key field the backend expects
-        parentTaskId: parentTaskId, // Include the parentTaskId in the update
-        startDate: startDate,
-        dueDate: dueDate
-      };
-      
-      log('Final update payload being sent to API:', updatePayload);
-      
-      await projlyTasksService.updateTask(taskId, updatePayload);
+      await projlyTasksService.updateTask(taskId, formattedTask);
       log('Task updated successfully');
       
       toast({
@@ -459,6 +465,27 @@ export default function TaskEditPage({}: TaskEditPageProps) {
                   />
                 </div>
               </div>
+              
+              {/* Progress Field */}
+              <ProgressField 
+                value={taskForm.percentProgress}
+                onChange={(value: number) => handleChange('percentProgress', value)}
+              />
+              
+              {/* Label Field */}
+              <LabelField 
+                value={taskForm.label}
+                onChange={(value: string) => handleChange('label', value)}
+              />
+              
+              {/* Related Tasks Field */}
+              <RelatedTasksField 
+                value={taskForm.relatedTasks}
+                onChange={(value: string[]) => handleChange('relatedTasks', value)}
+                availableTasks={allTasks}
+                isLoading={isLoading}
+                currentTaskId={taskId}
+              />
             </CardContent>
             <CardFooter className="p-6">
               <EditFormButtons 

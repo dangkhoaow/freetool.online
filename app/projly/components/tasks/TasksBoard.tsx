@@ -21,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
+// Import the Task type from the service
+import { Task as ServiceTask } from '@/lib/services/projly/types';
 
 // Define detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksBoard]', ...args);
@@ -133,23 +135,36 @@ export function TasksBoard({
 
   // Apply search filter to tasks
   const filteredTasks = useMemo(() => {
-    // If no search filter, return all tasks
-    if (!initialFilters?.search) {
-      return tasks;
-    }
-
-    const searchTerm = (initialFilters.search as string).toLowerCase();
-    log(`Applying search filter: "${searchTerm}" to ${tasks.length} tasks in board view`);
+    // Start with all tasks
+    let filtered = tasks;
     
-    // Filter tasks by search term (match title, description, ID)
-    return tasks.filter(task => {
-      return (
-        (task.title?.toLowerCase().includes(searchTerm)) ||
-        (task.description?.toLowerCase().includes(searchTerm)) ||
-        (task.id?.toLowerCase().includes(searchTerm))
-      );
-    });
-  }, [tasks, initialFilters?.search]);
+    // Apply search filter if present
+    if (initialFilters?.search) {
+      const searchTerm = (initialFilters.search as string).toLowerCase();
+      log(`Applying search filter: "${searchTerm}" to ${tasks.length} tasks in board view`);
+      
+      filtered = filtered.filter(task => {
+        return (
+          (task.title?.toLowerCase().includes(searchTerm)) ||
+          (task.description?.toLowerCase().includes(searchTerm)) ||
+          (task.id?.toLowerCase().includes(searchTerm))
+        );
+      });
+      
+      log(`After search filter: ${filtered.length} tasks remaining`);
+    }
+    
+    // Apply label filter if present
+    if (initialFilters?.label) {
+      log(`Applying label filter: "${initialFilters.label}" to board view`);
+      
+      filtered = filtered.filter(task => task.label === initialFilters.label);
+      
+      log(`After label filter: ${filtered.length} tasks remaining`);
+    }
+    
+    return filtered;
+  }, [tasks, initialFilters?.search, initialFilters?.label]);
 
   // Group tasks by status
   const tasksByStatus = useMemo(() => {
@@ -196,7 +211,7 @@ export function TasksBoard({
       
       // Based on the backend implementation, we need to include only the necessary fields
       // The backend maps assignedTo to assigneeId, so we need to preserve that field
-      const updatePayload: Partial<Task> = {
+      const updatePayload = {
         // Include the minimum required fields
         title: task.title,
         status: newStatus,
@@ -206,8 +221,12 @@ export function TasksBoard({
         // Include description if available
         description: task.description || '',
         // Preserve parent task relationship
-        parentTaskId: task.parentTaskId // This will be undefined if not present, which is fine
-      };
+        parentTaskId: task.parentTaskId, // This will be undefined if not present, which is fine
+        // Include additional fields
+        label: task.label || undefined,
+        // Convert null to undefined for API compatibility
+        percentProgress: task.percentProgress !== null ? task.percentProgress : undefined
+      } as Partial<ServiceTask>;
       
       log('Sending update payload to API:', updatePayload);
       
