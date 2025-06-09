@@ -45,6 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { projlyProjectsService } from '@/lib/services/projly';
+import { TaskFilters as TaskFiltersComponent } from './TaskFilters';
 
 // Create a detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksContainer]', ...args);
@@ -746,132 +747,18 @@ export function TasksContainer({
               
               {/* Expandable filters section */}
               {showFilters && (
-                <Card className="mt-4 mb-4">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-md">Filters</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col gap-4">
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        {/* Project Filter */}
-                        <div className="flex flex-col gap-2">
-                          <label htmlFor="project-filter" className="text-sm font-medium">
-                            Project
-                          </label>
-                          <Select 
-                            value={currentFilters.projectId || "all"}
-                            onValueChange={handleProjectFilterChange}
-                          >
-                            <SelectTrigger id="project-filter">
-                              <SelectValue placeholder="All Projects" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Projects</SelectItem>
-                              {Array.isArray(projects) && projects.map(project => (
-                                <SelectItem key={project.id} value={project.id}>
-                                  {project.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {/* Status Filter */}
-                        <div className="flex flex-col gap-2">
-                          <label htmlFor="status-filter" className="text-sm font-medium">
-                            Status
-                          </label>
-                          <Select
-                            value={currentFilters.status || "all"}
-                            onValueChange={handleStatusFilterChange}
-                          >
-                            <SelectTrigger id="status-filter">
-                              <SelectValue placeholder="All Statuses" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Statuses</SelectItem>
-                              {uniqueStatuses.map((status) => (
-                                <SelectItem key={status} value={status}>{status}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {/* Label Filter */}
-                        <div className="flex flex-col gap-2">
-                          <label htmlFor="label-filter" className="text-sm font-medium">
-                            Label
-                          </label>
-                          <Select
-                            value={currentFilters.label || "all"}
-                            onValueChange={handleLabelFilterChange}
-                          >
-                            <SelectTrigger id="label-filter">
-                              <SelectValue placeholder="All Labels" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Labels</SelectItem>
-                              {uniqueLabels.map((label) => (
-                                <SelectItem key={label} value={label}>{label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {/* Assigned To Filter */}
-                        <div className="flex flex-col gap-2">
-                          <label htmlFor="assigned-filter" className="text-sm font-medium">
-                            Assigned To
-                          </label>
-                          <Select
-                            value={currentFilters.assignedTo || "all"}
-                            onValueChange={handleAssigneeChange}
-                          >
-                            <SelectTrigger id="assigned-filter">
-                              <SelectValue placeholder="All Members" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Members</SelectItem>
-                              <SelectItem value="current">My Tasks</SelectItem>
-                              {uniqueUsers.length > 0 && (
-                                <>
-                                  <SelectItem value="divider" disabled>
-                                    <Separator className="my-1" />
-                                  </SelectItem>
-                                  {uniqueUsers.map(assignee => (
-                                    <SelectItem key={assignee.id} value={assignee.id}>
-                                      {assignee.name}
-                                    </SelectItem>
-                                  ))}
-                                </>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {/* Task Hierarchy Filter - moved to second row */}
-                        <div className="flex flex-col gap-2">
-                          <label htmlFor="hierarchy-filter" className="text-sm font-medium">
-                            Task Hierarchy
-                          </label>
-                          <Select
-                            value={currentFilters.taskHierarchy || "all"}
-                            onValueChange={handleTaskHierarchyFilterChange}
-                          >
-                            <SelectTrigger id="hierarchy-filter">
-                              <SelectValue placeholder="All Tasks" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Tasks</SelectItem>
-                              <SelectItem value="parent_only">Parent Tasks Only</SelectItem>
-                              <SelectItem value="include_subtasks">Include Subtasks</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <TaskFiltersComponent
+                  filters={currentFilters}
+                  projects={projects}
+                  uniqueStatuses={uniqueStatuses}
+                  uniqueLabels={uniqueLabels}
+                  uniqueUsers={uniqueUsers}
+                  onProjectChange={handleProjectFilterChange}
+                  onStatusChange={handleStatusFilterChange}
+                  onLabelChange={handleLabelFilterChange}
+                  onAssigneeChange={handleAssigneeChange}
+                  onTaskHierarchyChange={handleTaskHierarchyFilterChange}
+                />
               )}
             </div>
             

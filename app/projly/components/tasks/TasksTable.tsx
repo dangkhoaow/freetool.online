@@ -70,7 +70,6 @@ export interface TasksTableProps {
   hideFilterUI?: boolean; // If true, hide the filter UI (for use with container-level filter)
 }
 import { CreateTaskForm } from "./CreateTaskForm";
-import { EditTaskForm } from "./EditTaskForm";
 import { TaskDetailView } from "./TaskDetailView";
 import { TaskTitleCell } from "./TaskTitleCell";
 
@@ -351,8 +350,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
         return false;
       }
       
-      if (checkFilters.assignedTo && subTask.assignedTo !== checkFilters.assignedTo) {
-        return false;
+      // Check assignee filter for sub-task using either assignedTo or assignee.id
+      if (checkFilters.assignedTo) {
+        const subId = subTask.assignedTo ?? subTask.assignee?.id;
+        if (checkFilters.assignedTo === 'current') {
+          if (subId !== user?.id) return false;
+        } else {
+          if (subId !== checkFilters.assignedTo) return false;
+        }
       }
       
       return true;
@@ -385,8 +390,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
       return false;
     }
     
-    if (checkFilters.assignedTo && parentTask.assignedTo !== checkFilters.assignedTo) {
-      return false;
+    // Check assignee filter for parent task
+    if (checkFilters.assignedTo) {
+      const parId = parentTask.assignedTo ?? parentTask.assignee?.id;
+      if (checkFilters.assignedTo === 'current') {
+        if (parId !== user?.id) return false;
+      } else {
+        if (parId !== checkFilters.assignedTo) return false;
+      }
     }
     
     return true;

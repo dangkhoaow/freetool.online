@@ -133,38 +133,73 @@ export function TasksBoard({
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
-  // Apply search filter to tasks
+  // Apply all filters to tasks for board view
   const filteredTasks = useMemo(() => {
-    // Start with all tasks
     let filtered = tasks;
+    const { search, label, projectId, status, assignedTo, taskHierarchy } = initialFilters || {};
     
-    // Apply search filter if present
-    if (initialFilters?.search) {
-      const searchTerm = (initialFilters.search as string).toLowerCase();
+    // Search filter (client-side)
+    if (search) {
+      const searchTerm = (search as string).toLowerCase();
       log(`Applying search filter: "${searchTerm}" to ${tasks.length} tasks in board view`);
-      
-      filtered = filtered.filter(task => {
-        return (
-          (task.title?.toLowerCase().includes(searchTerm)) ||
-          (task.description?.toLowerCase().includes(searchTerm)) ||
-          (task.id?.toLowerCase().includes(searchTerm))
-        );
-      });
-      
+      filtered = filtered.filter(task =>
+        task.title?.toLowerCase().includes(searchTerm) ||
+        task.description?.toLowerCase().includes(searchTerm) ||
+        task.id?.toLowerCase().includes(searchTerm)
+      );
       log(`After search filter: ${filtered.length} tasks remaining`);
     }
     
-    // Apply label filter if present
-    if (initialFilters?.label) {
-      log(`Applying label filter: "${initialFilters.label}" to board view`);
-      
-      filtered = filtered.filter(task => task.label === initialFilters.label);
-      
+    // Label filter
+    if (label) {
+      log(`Applying label filter: "${label}" to board view`);
+      filtered = filtered.filter(task => task.label === label);
       log(`After label filter: ${filtered.length} tasks remaining`);
     }
     
+    // Project filter
+    if (projectId) {
+      log(`Applying project filter: "${projectId}" to board view`);
+      filtered = filtered.filter(task => task.projectId === projectId);
+      log(`After project filter: ${filtered.length} tasks remaining`);
+    }
+    
+    // Status filter
+    if (status) {
+      log(`Applying status filter: "${status}" to board view`);
+      filtered = filtered.filter(task => task.status === status);
+      log(`After status filter: ${filtered.length} tasks remaining`);
+    }
+    
+    // Assignee filter
+    if (assignedTo) {
+      log(`Applying assignee filter: "${assignedTo}" to board view`);
+      filtered = filtered.filter(task => {
+        const id = task.assignedTo ?? task.assignee?.id;
+        if (assignedTo === 'current') {
+          return id === user?.id;
+        } else if (assignedTo === 'unassigned') {
+          return !id;
+        } else if (assignedTo === 'all') {
+          return true;
+        }
+        return id === assignedTo;
+      });
+      log(`After assignee filter: ${filtered.length} tasks remaining`);
+    }
+    
+    // Task hierarchy filter
+    if (taskHierarchy) {
+      log(`Applying task hierarchy filter: "${taskHierarchy}" to board view`);
+      if (taskHierarchy === 'parent_only') {
+        filtered = filtered.filter(task => !task.parentTaskId);
+      }
+      // 'include_subtasks' and default 'all' include everything
+      log(`After hierarchy filter: ${filtered.length} tasks remaining`);
+    }
+    
     return filtered;
-  }, [tasks, initialFilters?.search, initialFilters?.label]);
+  }, [tasks, initialFilters?.search, initialFilters?.label, initialFilters?.projectId, initialFilters?.status, initialFilters?.assignedTo, initialFilters?.taskHierarchy, user?.id]);
 
   // Group tasks by status
   const tasksByStatus = useMemo(() => {
