@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Eye, EyeOff, LogIn, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContextCustom";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/use-toast";
 
 export default function LoginJWT() {
@@ -15,6 +15,7 @@ export default function LoginJWT() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   
   const { login, user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -23,11 +24,21 @@ export default function LoginJWT() {
   // Get the redirect path from location state, or default to dashboard
   const from = location.state?.from || "/dashboard";
   
+  // Check for session error in URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionErrorParam = params.get('sessionError');
+    if (sessionErrorParam) {
+      setSessionError(decodeURIComponent(sessionErrorParam));
+    }
+  }, []);
+  
   console.log("[LOGIN_JWT] Render", {
     redirectPath: from,
     user: user?.email,
     isLoading,
     locationState: location.state,
+    sessionError,
     timestamp: new Date().toISOString()
   });
   
@@ -74,7 +85,14 @@ export default function LoginJWT() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {error && (
+            {sessionError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Session Error</AlertTitle>
+                <AlertDescription>{sessionError}</AlertDescription>
+              </Alert>
+            )}
+            {error && !sessionError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>

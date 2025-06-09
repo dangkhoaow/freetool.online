@@ -307,9 +307,36 @@ export const projlyAuthService = {
       return { success: true };
     } catch (error) {
       console.error('[PROJLY:AUTH] Session refresh error:', error);
+      
+      // Clear browser session and cookies when refresh fails
+      const clearCookies = () => {
+        console.log('[PROJLY:AUTH] Clearing cookies and session storage');
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqIndex = cookie.indexOf('=');
+          const name = eqIndex > -1 ? cookie.substring(0, eqIndex).trim() : cookie.trim();
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+      };
+      
+      // Clear all session storage items
+      sessionStorage.clear();
+      clearCookies();
+      
+      // Prepare error message
+      const errorMessage = error instanceof Error ? error.message : 'Session expired or error. Please login again or clear browser cache if needed before login';
+      
+      // Redirect to login page with error message if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        const loginPath = '/projly/login';
+        const encodedError = encodeURIComponent(errorMessage);
+        window.location.href = `${loginPath}?sessionError=${encodedError}`;
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to refresh session'
+        error: errorMessage
       };
     }
   },
