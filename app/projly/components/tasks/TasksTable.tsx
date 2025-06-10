@@ -72,6 +72,7 @@ export interface TasksTableProps {
 import { CreateTaskForm } from "./CreateTaskForm";
 import { TaskDetailView } from "./TaskDetailView";
 import { TaskTitleCell } from "./TaskTitleCell";
+import { getAssigneeInitials, getLabelInitials } from "./TasksContainer";
 
 import {
   Table,
@@ -82,6 +83,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -742,7 +744,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''}`}
                 onClick={() => handleViewTaskDetails(task)}
               >
-                <TableCell className="font-medium whitespace-nowrap" title={task.description || "-"}>
+                <TableCell className="font-medium whitespace-nowrap min-w-[400px]" title={task.description || "-"}>
                   {/* Use the dedicated TaskTitleCell component to prevent unwanted characters */}
                   <TaskTitleCell
                     task={task}
@@ -781,7 +783,9 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 <TableCell className="whitespace-nowrap" title={task.status}>{renderStatusBadge(task.status)}</TableCell>
                 <TableCell className="whitespace-nowrap" title={task.label || "No label"}>
                   {task.label ? (
-                    <Badge variant="outline">{task.label}</Badge>
+                    <Badge variant="outline" title={task.label}>
+                      {getLabelInitials(task.label)}
+                    </Badge>
                   ) : (
                     <span className="text-muted-foreground text-xs">-</span>
                   )}
@@ -790,33 +794,16 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   <span className="text-xs text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap" title={task.assignee ? (task.assignee.firstName && task.assignee.lastName ? `${task.assignee.firstName} ${task.assignee.lastName}` : task.assignee.name || task.assignee.email) : "-"}>
-                  {(() => {
-                    console.log("[TasksTable] Rendering assignee for task:", task.id, task.assignee);
-                    if (task.assignee) {
-                      console.log("[TasksTable] Assignee object:", task.assignee);
-                      const firstName = task.assignee.firstName || "";
-                      const lastName = task.assignee.lastName || "";
-                      const name = task.assignee.name || "";
-                      const email = task.assignee.email || "";
-                      
-                      // Display firstName and lastName if available
-                      if (firstName && lastName) {
-                        console.log(`[TasksTable] Displaying firstName and lastName: ${firstName} ${lastName}`);
-                        return `${firstName} ${lastName}`;
-                      } else if (name) {
-                        // Fallback to name if available
-                        console.log(`[TasksTable] Displaying name: ${name}`);
-                        return name;
-                      } else if (email) {
-                        // Fallback to email if no name available
-                        console.log(`[TasksTable] Displaying email: ${email}`);
-                        return email;
-                      } else {
-                        return "-";
-                      }
-                    }
-                    return "-";
-                  })()}
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      {task.assignee?.avatar && (
+                        <AvatarImage src={task.assignee.avatar} alt={task.assignee.name || task.assignee.email || "User"} />
+                      )}
+                      <AvatarFallback className="text-xs" title={task.assignee ? (task.assignee.firstName && task.assignee.lastName ? `${task.assignee.firstName} ${task.assignee.lastName} - ${task.assignee.email}` : task.assignee.name || task.assignee.email) : "-"}>
+                        {getAssigneeInitials(task.assignee)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>

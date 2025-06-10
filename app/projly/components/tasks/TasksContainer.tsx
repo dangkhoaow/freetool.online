@@ -50,6 +50,44 @@ import { TaskFilters as TaskFiltersComponent } from './TaskFilters';
 // Create a detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksContainer]', ...args);
 
+// Helper function to get assignee initials for avatar fallback
+export const getAssigneeInitials = (assignee?: any) => {
+  if (assignee) {
+    if (assignee.firstName && assignee.lastName) {
+      return `${assignee.firstName.charAt(0)}${assignee.lastName.charAt(0)}`.toUpperCase();
+    } else if (assignee.name) {
+      const parts = assignee.name.split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+      }
+      return parts[0].charAt(0);
+    } else if (assignee.email) {
+      return assignee.email.charAt(0).toUpperCase();
+    }
+  }
+  return 'U';
+};
+
+// Helper function to get label initials
+export const getLabelInitials = (label?: string) => {
+  if (!label) return '-';
+  
+  // Split by spaces, hyphens or underscores
+  const parts = label.split(/[ \-_]/);
+  
+  if (parts.length > 1) {
+    // Take first letter of each part, up to 2 parts
+    return parts.slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('');
+  }
+  
+  // For single word labels
+  if (label.length > 1) {
+    return label.slice(0, 2).toUpperCase(); // First two characters
+  } else {
+    return label.charAt(0).toUpperCase(); // Just the first character
+  }
+};
+
 export interface TaskWithDepth extends Task {
   depth?: number;
   children?: TaskWithDepth[];

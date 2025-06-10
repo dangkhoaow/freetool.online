@@ -20,6 +20,7 @@ import { Calendar, Clock } from 'lucide-react';
 import { TaskTitleCell } from './TaskTitleCell';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { Progress } from "@/components/ui/progress";
+import { getAssigneeInitials } from './TasksContainer';
 
 // Define detailed log function for debugging
 const log = (...args: any[]) => console.log('[TaskCard]', ...args);
@@ -83,7 +84,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
   const getAssigneeName = () => {
     if (task.assignee) {
       if (task.assignee.firstName && task.assignee.lastName) {
-        return `${task.assignee.firstName} ${task.assignee.lastName}`;
+        return `${task.assignee.firstName} ${task.assignee.lastName} - ${task.assignee.email}`;
       } else if (task.assignee.name) {
         return task.assignee.name;
       } else {
@@ -93,22 +94,9 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
     return 'Unassigned';
   };
   
-  // Get assignee initials for avatar fallback
-  const getAssigneeInitials = () => {
-    if (task.assignee) {
-      if (task.assignee.firstName && task.assignee.lastName) {
-        return `${task.assignee.firstName.charAt(0)}${task.assignee.lastName.charAt(0)}`;
-      } else if (task.assignee.name) {
-        const parts = task.assignee.name.split(' ');
-        if (parts.length >= 2) {
-          return `${parts[0].charAt(0)}${parts[1].charAt(0)}`;
-        }
-        return parts[0].charAt(0);
-      } else if (task.assignee.email) {
-        return task.assignee.email.charAt(0).toUpperCase();
-      }
-    }
-    return 'U';
+  // Using the shared getAssigneeInitials function from TasksContainer
+  const getInitials = () => {
+    return getAssigneeInitials(task.assignee);
   };
   
   // Get status color
@@ -125,7 +113,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
     >
       <CardContent className="p-0 space-y-2">
         <div className="flex justify-between items-start">
-          <div className="flex-1">
+          <div className="flex-1" title={task.title}>
             <TaskTitleCell 
               task={task} 
               hasSubtasks={!!task.subTasks && task.subTasks.length > 0} 
@@ -190,8 +178,8 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
           {task.assignee?.avatar && (
             <AvatarImage src={task.assignee.avatar} alt={getAssigneeName()} />
           )}
-          <AvatarFallback className="text-xs">
-            {getAssigneeInitials()}
+          <AvatarFallback className="text-xs" title={getAssigneeName()}>
+            {getInitials()}
           </AvatarFallback>
         </Avatar>
       </CardFooter>
