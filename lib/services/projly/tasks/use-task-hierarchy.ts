@@ -172,6 +172,9 @@ export function useTaskHierarchy(
           const depth = calculateTaskDepths.get(task.id) || 0;
           return depth <= maxDepth;
         });
+      } else {
+        console.log(`${LOG_PREFIX} Showing all subtasks regardless of depth`);
+        // No depth filtering when showAllSubtasks is true
       }
     }
     

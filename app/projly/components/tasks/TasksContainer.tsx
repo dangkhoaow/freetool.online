@@ -155,8 +155,8 @@ export function TasksContainer({
     title: 'Tasks'
   },
   hierarchyOptions = {
-    maxDepth: 1,
-    showAllSubtasks: false
+    maxDepth: Number.MAX_SAFE_INTEGER,  // Show all levels deep
+    showAllSubtasks: true
   },
   onDataChange,
   recursiveSubtasks = false,
@@ -507,25 +507,33 @@ export function TasksContainer({
     showAllSubtasks: context === 'task' ? true : hierarchyOptions.showAllSubtasks
   };
   
-  // Apply client-side filtering before using the task hierarchy hook
-  const clientSideFilteredTasks = useMemo(() => {
-    if (!(clientSideFilters as any).search) {
-      return rawTasks;
+  // Apply hierarchy filter (parent_only) before other client-side filtering
+  const tasksForHierarchy = useMemo(() => {
+    if (currentFilters.taskHierarchy === 'parent_only') {
+      console.log('[TASKS CONTAINER] Applying parent_only hierarchy filter');
+      return rawTasks.filter(task => !task.parentTaskId);
     }
-    
-    const searchTerm = ((clientSideFilters as any).search as string).toLowerCase();
-    log(`[TASKS CONTAINER] Applying client-side search filter: "${searchTerm}" to ${rawTasks.length} tasks`);
-    
-    return rawTasks.filter(task => {
+    return rawTasks;
+  }, [rawTasks, currentFilters.taskHierarchy]);
+
+  // Apply client-side search filtering on tasks prepared for hierarchy
+  const clientSideFilteredTasks = useMemo(() => {
+    const searchTerm = (clientSideFilters as any).search;
+    if (!searchTerm) {
+      return tasksForHierarchy;
+    }
+    const lower = (searchTerm as string).toLowerCase();
+    console.log(`[TASKS CONTAINER] Applying client-side search filter: "${lower}"`);
+    return tasksForHierarchy.filter(task => {
       return (
-        (task.title?.toLowerCase().includes(searchTerm)) ||
-        (task.description?.toLowerCase().includes(searchTerm)) ||
-        (task.id?.toLowerCase().includes(searchTerm))
+        (task.title?.toLowerCase().includes(lower)) ||
+        (task.description?.toLowerCase().includes(lower)) ||
+        (task.id?.toLowerCase().includes(lower))
       );
     });
-  }, [rawTasks, (clientSideFilters as any).search]);
+  }, [tasksForHierarchy, (clientSideFilters as any).search]);
 
-  // Use the task hierarchy hook with client-side filtered tasks
+  // Use the task hierarchy hook with filtered tasks
   const {
     tasks: filteredTasks,
     getTaskDepth,
@@ -584,26 +592,39 @@ export function TasksContainer({
               log(`Loaded parent task with ${parentTask.subTasks.length} direct subtasks`);
               tasks = [parentTask, ...parentTask.subTasks];
               
-              // If recursive loading is enabled, fetch nested subtasks for each direct subtask
-              if (recursiveSubtasks && parentTask.subTasks.length > 0) {
-                const nestedSubtasks = await Promise.all(
-                  parentTask.subTasks.map(async (subtask) => {
-                    try {
-                      log(`Loading nested subtasks for subtask ${subtask.id}`);
-                      const fullSubtask = await tasksService.getTask(subtask.id);
-                      return fullSubtask?.subTasks || [];
-                    } catch (error) {
-                      log(`Error loading nested subtasks for ${subtask.id}`, error);
-                      return [];
-                    }
-                  })
-                );
+              // Recursive function to load all levels of subtasks
+              const loadNestedSubtasks = async (parentTasks: any[]): Promise<any[]> => {
+                if (!parentTasks.length) return [];
                 
-                // Flatten nested subtasks and add to tasks array
-                const flattenedNestedSubtasks = nestedSubtasks.flat();
-                log(`Loaded ${flattenedNestedSubtasks.length} nested subtasks across all direct subtasks`);
-                tasks = [...tasks, ...flattenedNestedSubtasks];
-              }
+                const allNestedTasks: any[] = [];
+                
+                // Process each parent task to get its subtasks
+                for (const task of parentTasks) {
+                  try {
+                    log(`Loading nested subtasks for task ${task.id}`);
+                    const fullTask = await tasksService.getTask(task.id);
+                    
+                    if (fullTask?.subTasks && fullTask.subTasks.length > 0) {
+                      log(`Task ${task.id} has ${fullTask.subTasks.length} subtasks`);
+                      // Add these subtasks to our results
+                      allNestedTasks.push(...fullTask.subTasks);
+                      
+                      // Recursively get subtasks of these subtasks
+                      const deeperSubtasks = await loadNestedSubtasks(fullTask.subTasks);
+                      allNestedTasks.push(...deeperSubtasks);
+                    }
+                  } catch (error) {
+                    log(`Error loading nested subtasks for ${task.id}`, error);
+                  }
+                }
+                
+                return allNestedTasks;
+              };
+              
+              // Start recursive loading with the direct subtasks
+              const allNestedSubtasks = await loadNestedSubtasks(parentTask.subTasks);
+              log(`Loaded ${allNestedSubtasks.length} nested subtasks across all levels`);
+              tasks = [...tasks, ...allNestedSubtasks];
             } else {
               log('Parent task not found or has no subtasks');
             }

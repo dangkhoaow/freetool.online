@@ -66,9 +66,10 @@ export default function TasksPage() {
             title: "Tasks"
           }}
           hierarchyOptions={{
-            maxDepth: 1,
-            showAllSubtasks: false
+            maxDepth: Number.MAX_SAFE_INTEGER,
+            showAllSubtasks: true
           }}
+          recursiveSubtasks={true}
         />
       </div>
     </DashboardLayout>
