@@ -11,6 +11,7 @@ const formatDateForDisplay = (dateStr: string | undefined): string => {
 import {
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Edit,
   Trash,
   Plus,
@@ -524,6 +525,22 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // Sort tasks while preserving parent-child relationships
   const sortedTasks = organizeTasksHierarchy(filteredTasks, sortBy);
 
+  // State for collapsed parent tasks
+  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
+
+  // Compute which tasks are visible based on collapsed parents
+  const visibleTasks = useMemo(() => {
+    return sortedTasks.filter(task => {
+      let pid = task.parentTaskId;
+      while (pid) {
+        if (collapsedTasks.has(pid)) return false;
+        const parent = sortedTasks.find(t => t.id === pid);
+        pid = parent?.parentTaskId;
+      }
+      return true;
+    });
+  }, [sortedTasks, collapsedTasks]);
+
   // Toggle sort when clicking on a header
   const toggleSort = (field: string) => {
     if (sortBy.field === field) {
@@ -667,6 +684,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     return <Badge variant={variant} className={customClass}>{status}</Badge>;
   };
 
+  // Toggle collapse for a parent task
+  const toggleCollapse = (taskId: string) => {
+    const newSet = new Set(collapsedTasks);
+    if (newSet.has(taskId)) newSet.delete(taskId);
+    else newSet.add(taskId);
+    setCollapsedTasks(newSet);
+  };
+
   // Render the table
 
   return (
@@ -739,26 +764,44 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTasks?.filter(task => !hideParentRow || task.id !== parentTaskId).map((task) => (
+            {visibleTasks.filter(task => !hideParentRow || task.id !== parentTaskId).map((task) => (
               <TableRow 
                 key={task.id}
                 className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''}`}
                 onClick={() => handleViewTaskDetails(task)}
               >
                 <TableCell className="font-medium whitespace-nowrap min-w-[400px]" title={task.description || "-"}>
-                  {/* Wrap title in Link for new-tab support */}
-                  <Link
-                    href={`/projly/tasks/${task.id}`}
-                    className="block"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <TaskTitleCell
-                      task={task}
-                      level={task._meta?.level}
-                      hasSubtasks={task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow}
-                      subtaskCount={taskRelationships.get(task.id)?.length || 0}
-                    />
-                  </Link>
+                  <div className="flex items-center">
+                    {/* Collapse/expand toggle */}
+                    {taskRelationships.has(task.id) && task._meta?.level === 0 && !hideParentRow ? (
+                      <button
+                        className="p-0 mr-2"
+                        title="Collapse/Expand"
+                        onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
+                      >
+                        {collapsedTasks.has(task.id) ? (
+                          <ChevronRight className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-4 h-4 mr-2" />
+                    )}
+                    {/* Wrap title in Link for new-tab support */}
+                    <Link
+                      href={`/projly/tasks/${task.id}`}
+                      className="block flex-1"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <TaskTitleCell
+                        task={task}
+                        level={task._meta?.level}
+                        hasSubtasks={task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow}
+                        subtaskCount={taskRelationships.get(task.id)?.length || 0}
+                      />
+                    </Link>
+                  </div>
                 </TableCell>
                 {context !== 'project' && (
                   <TableCell className="whitespace-nowrap" title={task.project?.name || "-"}>

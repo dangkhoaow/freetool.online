@@ -23,6 +23,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 // Import the Task type from the service
 import { Task as ServiceTask } from '@/lib/services/projly/types';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAssigneeInitials } from './TasksContainer';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tag } from 'lucide-react';
 
 // Define detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksBoard]', ...args);
@@ -38,6 +42,55 @@ const STATUS_COLUMNS = [
   'Cancelled'
 ];
 
+// Define ordered labels following the industry categories dictionary
+const ORDERED_LABELS = [
+  // Business & Management
+  'Research',
+  'Business Requirements',
+  'Business Analysis',
+  'Project Management',
+  'Resource Planning',
+  'Stakeholder Management',
+  'Risk Assessment',
+  'Budget Management',
+  'Change Management',
+  'Strategy Planning',
+  // Design & Creative
+  'UI/UX Design',
+  'Graphic Design',
+  'Content Creation',
+  'Video Production',
+  'Animation',
+  'Illustration',
+  'Brand Identity',
+  // IT & Development
+  'System Architecture',
+  'Cloud Infrastructure',
+  'DevOps',
+  'Database Management',
+  'Backend Development',
+  'API Development',
+  'Frontend Development',
+  'Mobile App Development',
+  'QA & Testing',
+  'Security Implementation',
+  // Marketing & Sales
+  'Content Marketing',
+  'Social Media',
+  'SEO/SEM',
+  'Email Marketing',
+  'Sales',
+  'Customer Relations',
+  'Market Research',
+  'Brand Development',
+  'Campaign Management',
+  // Other
+  'Documentation',
+  'Training',
+  'Support',
+  'Custom',
+];
+
 // Define status colors for visual consistency
 const STATUS_COLORS: Record<string, string> = {
   'Not Started': 'bg-slate-100 hover:bg-slate-200 text-slate-700',
@@ -49,10 +102,29 @@ const STATUS_COLORS: Record<string, string> = {
   'Cancelled': 'bg-red-100 hover:bg-red-200 text-red-700',
 };
 
+// Define label colors for visual consistency
+const LABEL_COLORS: Record<string, string> = {
+  'Planning': 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700',
+  'Design': 'bg-purple-100 hover:bg-purple-200 text-purple-700',
+  'Development': 'bg-blue-100 hover:bg-blue-200 text-blue-700',
+  'Testing': 'bg-amber-100 hover:bg-amber-200 text-amber-700',
+  'Review': 'bg-orange-100 hover:bg-orange-200 text-orange-700',
+  'Documentation': 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+  'Deployment': 'bg-green-100 hover:bg-green-200 text-green-700',
+  'Maintenance': 'bg-teal-100 hover:bg-teal-200 text-teal-700',
+  'Bug': 'bg-red-100 hover:bg-red-200 text-red-700',
+  'Feature': 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700',
+  'Enhancement': 'bg-cyan-100 hover:bg-cyan-200 text-cyan-700',
+  'Refactoring': 'bg-violet-100 hover:bg-violet-200 text-violet-700',
+};
+
 // Define drag item types
 const ItemTypes = {
   TASK: 'task',
 };
+
+// Define grouping options
+type GroupingOption = 'status' | 'assignee' | 'label';
 
 // Props for TasksBoard
 export interface TasksBoardProps {
@@ -62,6 +134,211 @@ export interface TasksBoardProps {
   compact?: boolean;
   context?: 'main' | 'project' | 'task';
 }
+
+// LabelColumn component
+interface LabelColumnProps {
+  label: string | null;
+  tasks: Task[];
+  onTaskDrop: (taskId: string, newStatus: string, newAssigneeId?: string | null, newLabel?: string | null) => Promise<void>;
+  compact?: boolean;
+}
+
+const LabelColumn: React.FC<LabelColumnProps> = ({ label, tasks, onTaskDrop, compact }) => {
+  // Set up drop target
+  const [{ isOver }, dropRef] = useDrop({
+    accept: ItemTypes.TASK,
+    drop: (item: { id: string }) => {
+      log(`Task ${item.id} dropped in ${label || 'Unlabeled'} column`);
+      onTaskDrop(item.id, tasks[0]?.status || 'Not Started', undefined, label);
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
+  
+  // Create a ref function that calls the drop ref
+  const drop = (element: HTMLDivElement | null) => {
+    dropRef(element);
+  };
+
+  // Get only top-level tasks or orphaned subtasks (parent not in current group)
+  const topLevelTasks = tasks.filter(task =>
+    !task.parentTaskId || !tasks.some(t => t.id === task.parentTaskId)
+  );
+
+  // Create a map of parent tasks with their subtasks
+  const taskMap = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    
+    // Group tasks by parentTaskId
+    tasks.forEach(task => {
+      if (task.parentTaskId) {
+        if (!map.has(task.parentTaskId)) {
+          map.set(task.parentTaskId, []);
+        }
+        map.get(task.parentTaskId)?.push(task);
+      }
+    });
+    
+    // Attach subtasks to their parent tasks
+    topLevelTasks.forEach(parentTask => {
+      parentTask.subTasks = map.get(parentTask.id) || [];
+    });
+    
+    return map;
+  }, [tasks]);
+
+  // Get label color
+  const labelColor = label ? (LABEL_COLORS[label] || 'bg-gray-100 hover:bg-gray-200 text-gray-700') : 'bg-gray-100 hover:bg-gray-200 text-gray-700';
+
+  return (
+    <div
+      ref={drop}
+      className={`flex flex-col h-full min-h-[300px] ${isOver ? 'bg-blue-50' : 'bg-gray-50'} rounded-md p-2 transition-colors`}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-2 h-2 rounded-full ${label ? labelColor.split(' ')[0] : 'bg-gray-300'}`}></div>
+        <h3 className="text-sm font-medium flex-1">{label || 'Unlabeled'}</h3>
+        <Badge variant="outline" className={labelColor}>
+          {tasks.length}
+        </Badge>
+      </div>
+      <div className="flex-1 overflow-y-auto space-y-4">
+        {/* Only render top-level tasks and let TaskCard handle subtasks */}
+        {topLevelTasks.map(task => (
+          <TaskCard 
+            key={task.id} 
+            task={task} 
+            compact={compact} 
+            renderSubtasks={true}
+          />
+        ))}
+        {topLevelTasks.length === 0 && (
+          <div className="flex items-center justify-center h-20 text-gray-400 text-sm italic">
+            No tasks
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// AssigneeColumn component
+interface AssigneeColumnProps {
+  assignee: {
+    id: string;
+    name: string;
+    avatar?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+  tasks: Task[];
+  onTaskDrop: (taskId: string, newStatus: string, newAssigneeId?: string | null) => Promise<void>;
+  compact?: boolean;
+}
+
+const AssigneeColumn: React.FC<AssigneeColumnProps> = ({ assignee, tasks, onTaskDrop, compact }) => {
+  // Set up drop target
+  const [{ isOver }, dropRef] = useDrop({
+    accept: ItemTypes.TASK,
+    drop: (item: { id: string }) => {
+      log(`Task ${item.id} dropped in ${assignee?.name || 'Unassigned'} column`);
+      onTaskDrop(item.id, tasks[0]?.status || 'Not Started', assignee?.id);
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
+  
+  // Create a ref function that calls the drop ref
+  const drop = (element: HTMLDivElement | null) => {
+    dropRef(element);
+  };
+
+  // Get only top-level tasks (tasks without parentTaskId)
+  const topLevelTasks = tasks.filter(task => !task.parentTaskId);
+
+  // Create a map of parent tasks with their subtasks
+  const taskMap = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    
+    // Group tasks by parentTaskId
+    tasks.forEach(task => {
+      if (task.parentTaskId) {
+        if (!map.has(task.parentTaskId)) {
+          map.set(task.parentTaskId, []);
+        }
+        map.get(task.parentTaskId)?.push(task);
+      }
+    });
+    
+    // Attach subtasks to their parent tasks
+    topLevelTasks.forEach(parentTask => {
+      parentTask.subTasks = map.get(parentTask.id) || [];
+    });
+    
+    return map;
+  }, [tasks]);
+
+  // Get assignee display name
+  const getAssigneeName = () => {
+    if (assignee) {
+      if (assignee.firstName && assignee.lastName) {
+        return `${assignee.firstName} ${assignee.lastName}`;
+      } else if (assignee.name) {
+        return assignee.name;
+      } else {
+        return assignee.email || 'Unknown';
+      }
+    }
+    return 'Unassigned';
+  };
+
+  return (
+    <div
+      ref={drop}
+      className={`flex flex-col h-full min-h-[300px] ${isOver ? 'bg-blue-50' : 'bg-gray-50'} rounded-md p-2 transition-colors`}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        {assignee ? (
+          <Avatar className="h-6 w-6">
+            {assignee.avatar && (
+              <AvatarImage src={assignee.avatar} alt={getAssigneeName()} />
+            )}
+            <AvatarFallback className="text-xs" title={getAssigneeName()}>
+              {getAssigneeInitials(assignee)}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center">
+            <span className="text-xs text-gray-500">?</span>
+          </div>
+        )}
+        <h3 className="text-sm font-medium flex-1">{getAssigneeName()}</h3>
+        <Badge variant="outline" className="bg-gray-100 hover:bg-gray-200 text-gray-700">
+          {tasks.length}
+        </Badge>
+      </div>
+      <div className="flex-1 overflow-y-auto space-y-4">
+        {/* Only render top-level tasks and let TaskCard handle subtasks */}
+        {topLevelTasks.map(task => (
+          <TaskCard 
+            key={task.id} 
+            task={task} 
+            compact={compact} 
+            renderSubtasks={true}
+          />
+        ))}
+        {topLevelTasks.length === 0 && (
+          <div className="flex items-center justify-center h-20 text-gray-400 text-sm italic">
+            No tasks
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // StatusColumn component
 interface StatusColumnProps {
@@ -92,6 +369,31 @@ const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, 
   // Get status color
   const statusColor = STATUS_COLORS[status] || 'bg-gray-100 hover:bg-gray-200 text-gray-700';
 
+  // Get only top-level tasks (tasks without parentTaskId)
+  const topLevelTasks = tasks.filter(task => !task.parentTaskId);
+
+  // Create a map of parent tasks with their subtasks
+  const taskMap = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    
+    // Group tasks by parentTaskId
+    tasks.forEach(task => {
+      if (task.parentTaskId) {
+        if (!map.has(task.parentTaskId)) {
+          map.set(task.parentTaskId, []);
+        }
+        map.get(task.parentTaskId)?.push(task);
+      }
+    });
+    
+    // Attach subtasks to their parent tasks
+    topLevelTasks.forEach(parentTask => {
+      parentTask.subTasks = map.get(parentTask.id) || [];
+    });
+    
+    return map;
+  }, [tasks]);
+
   return (
     <div
       ref={drop}
@@ -103,15 +405,17 @@ const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, 
           {tasks.length}
         </Badge>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-2">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            compact={compact}
+      <div className="flex-1 overflow-y-auto space-y-4">
+        {/* Only render top-level tasks and let TaskCard handle subtasks */}
+        {topLevelTasks.map(task => (
+          <TaskCard 
+            key={task.id} 
+            task={task} 
+            compact={compact} 
+            renderSubtasks={true}
           />
         ))}
-        {tasks.length === 0 && (
+        {topLevelTasks.length === 0 && (
           <div className="flex items-center justify-center h-20 text-gray-400 text-sm italic">
             No tasks
           </div>
@@ -132,6 +436,7 @@ export function TasksBoard({
   const { user } = useAuth();
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<GroupingOption>('assignee');
 
   // Apply all filters to tasks for board view
   const filteredTasks = useMemo(() => {
@@ -201,6 +506,32 @@ export function TasksBoard({
     return filtered;
   }, [tasks, initialFilters?.search, initialFilters?.label, initialFilters?.projectId, initialFilters?.status, initialFilters?.assignedTo, initialFilters?.taskHierarchy, user?.id]);
 
+  // Prepare the task hierarchy by attaching subtasks to their parent tasks
+  const preparedTasks = useMemo(() => {
+    // Create a deep copy of the filtered tasks to avoid mutating the original array
+    const tasksCopy = JSON.parse(JSON.stringify(filteredTasks)) as Task[];
+    
+    // Create a map of parent tasks with their subtasks
+    const taskMap = new Map<string, Task[]>();
+    
+    // Group tasks by parentTaskId
+    tasksCopy.forEach(task => {
+      if (task.parentTaskId) {
+        if (!taskMap.has(task.parentTaskId)) {
+          taskMap.set(task.parentTaskId, []);
+        }
+        taskMap.get(task.parentTaskId)?.push(task);
+      }
+    });
+    
+    // Attach subtasks to their parent tasks
+    tasksCopy.forEach(task => {
+      task.subTasks = taskMap.get(task.id) || [];
+    });
+    
+    return tasksCopy;
+  }, [filteredTasks]);
+
   // Group tasks by status
   const tasksByStatus = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
@@ -211,7 +542,7 @@ export function TasksBoard({
     });
     
     // Group filtered tasks by status
-    filteredTasks.forEach(task => {
+    preparedTasks.forEach(task => {
       const status = task.status || 'Not Started';
       if (grouped[status]) {
         grouped[status].push(task);
@@ -222,10 +553,93 @@ export function TasksBoard({
     });
     
     return grouped;
-  }, [filteredTasks]);
+  }, [preparedTasks]);
 
-  // Handle task drop (status change)
-  const handleTaskDrop = async (taskId: string, newStatus: string) => {
+  // Group tasks by assignee
+  const tasksByAssignee = useMemo(() => {
+    // Create a map to store tasks by assignee ID
+    const grouped = new Map<string | null, Task[]>();
+    
+    // Group tasks by assignee ID
+    preparedTasks.forEach(task => {
+      const assigneeId = task.assignedTo ?? task.assignee?.id ?? null;
+      if (!grouped.has(assigneeId)) {
+        grouped.set(assigneeId, []);
+      }
+      grouped.get(assigneeId)?.push(task);
+    });
+    
+    return grouped;
+  }, [preparedTasks]);
+
+  // Group tasks by label
+  const tasksByLabel = useMemo(() => {
+    // Create a map to store tasks by label
+    const grouped = new Map<string | null, Task[]>();
+    
+    // Initialize predefined labels with empty arrays
+    ORDERED_LABELS.forEach(label => {
+      grouped.set(label, []);
+    });
+    
+    // Group tasks by label
+    preparedTasks.forEach(task => {
+      const label = task.label || null;
+      if (!grouped.has(label)) {
+        grouped.set(label, []);
+      }
+      grouped.get(label)?.push(task);
+    });
+    
+    return grouped;
+  }, [preparedTasks]);
+
+  // Get unique labels from tasks and order them according to ORDERED_LABELS
+  const orderedLabels = useMemo(() => {
+    const uniqueLabels = new Set<string | null>();
+    
+    // Add all predefined ordered labels
+    ORDERED_LABELS.forEach(label => uniqueLabels.add(label));
+    
+    // Add any additional labels from tasks
+    preparedTasks.forEach(task => {
+      if (task.label) uniqueLabels.add(task.label);
+    });
+    
+    // Add null for unlabeled tasks
+    uniqueLabels.add(null);
+    
+    // Convert to array and sort according to ORDERED_LABELS
+    return Array.from(uniqueLabels).sort((a, b) => {
+      if (a === null) return 1; // Null (unlabeled) always at the end
+      if (b === null) return -1;
+      
+      const indexA = ORDERED_LABELS.indexOf(a);
+      const indexB = ORDERED_LABELS.indexOf(b);
+      
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b); // Both custom labels, sort alphabetically
+      if (indexA === -1) return 1; // Custom label after predefined labels
+      if (indexB === -1) return -1; // Predefined label before custom labels
+      
+      return indexA - indexB; // Sort by predefined order
+    });
+  }, [preparedTasks]);
+
+  // Get unique assignees from tasks
+  const assignees = useMemo(() => {
+    const uniqueAssignees = new Map();
+    
+    preparedTasks.forEach(task => {
+      if (task.assignee) {
+        uniqueAssignees.set(task.assignee.id, task.assignee);
+      }
+    });
+    
+    return Array.from(uniqueAssignees.values());
+  }, [preparedTasks]);
+
+  // Handle task drop (status change, assignee change, or label change)
+  const handleTaskDrop = async (taskId: string, newStatus: string, newAssigneeId?: string | null, newLabel?: string | null) => {
     try {
       // Find the task
       const task = tasks.find(t => t.id === taskId);
@@ -234,13 +648,19 @@ export function TasksBoard({
         return;
       }
       
-      // Skip if status is already the same
-      if (task.status === newStatus) {
-        log(`Task ${taskId} already has status ${newStatus}`);
+      // Skip if status, assignee, and label are already the same
+      if (task.status === newStatus && 
+          (newAssigneeId === undefined || task.assignedTo === newAssigneeId) &&
+          (newLabel === undefined || task.label === newLabel)) {
+        log(`Task ${taskId} already has status ${newStatus}, assignee ${newAssigneeId}, and label ${newLabel}`);
         return;
       }
       
-      log(`Updating task ${taskId} status from ${task.status} to ${newStatus}`);
+      log(`Updating task ${taskId} status from ${task.status} to ${newStatus}${
+        newAssigneeId !== undefined ? ` and assignee to ${newAssigneeId}` : ''
+      }${
+        newLabel !== undefined ? ` and label to ${newLabel}` : ''
+      }`);
       setIsUpdating(true);
       setUpdatingTaskId(taskId);
       
@@ -251,14 +671,14 @@ export function TasksBoard({
         title: task.title,
         status: newStatus,
         projectId: task.projectId,
-        // Preserve the assignee information
-        assignedTo: task.assignedTo, // Use assignedTo instead of assigneeId to match Task type
+        // Preserve the assignee information or update if provided
+        assignedTo: newAssigneeId !== undefined ? newAssigneeId : task.assignedTo,
         // Include description if available
         description: task.description || '',
         // Preserve parent task relationship
         parentTaskId: task.parentTaskId, // This will be undefined if not present, which is fine
         // Include additional fields
-        label: task.label || undefined,
+        label: newLabel !== undefined ? newLabel : task.label || undefined,
         // Convert null to undefined for API compatibility
         percentProgress: task.percentProgress !== null ? task.percentProgress : undefined
       } as Partial<ServiceTask>;
@@ -287,9 +707,22 @@ export function TasksBoard({
       }
       
       // Show success toast
+      let changeDescription = '';
+      if (newStatus !== task.status) {
+        changeDescription += `status changed to ${newStatus}`;
+      }
+      if (newAssigneeId !== undefined && newAssigneeId !== task.assignedTo) {
+        changeDescription += changeDescription ? ' and ' : '';
+        changeDescription += 'assignee changed';
+      }
+      if (newLabel !== undefined && newLabel !== task.label) {
+        changeDescription += changeDescription ? ' and ' : '';
+        changeDescription += `label changed to ${newLabel || 'unlabeled'}`;
+      }
+      
       toast({
         title: 'Task updated',
-        description: `Task status changed to ${newStatus}`,
+        description: changeDescription || 'Task updated successfully',
       });
     } catch (error) {
       console.error('[TasksBoard] Error updating task status:', error);
@@ -306,23 +739,113 @@ export function TasksBoard({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-full overflow-x-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-w-[800px]">
-          {STATUS_COLUMNS.map((status) => (
-            <Card key={status} className={`${compact ? 'shadow-none border-0' : ''}`}>
-              <CardHeader className="py-2 px-3">
-                <CardTitle className="text-sm font-medium">{status}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2">
-                <StatusColumn
-                  status={status}
-                  tasks={tasksByStatus[status] || []}
-                  onTaskDrop={handleTaskDrop}
-                  compact={compact}
-                />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="w-full">
+        <div className="flex justify-end mb-4">
+          <Select value={groupBy} onValueChange={(value: GroupingOption) => setGroupBy(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Group by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="status">Group by Status</SelectItem>
+              <SelectItem value="assignee">Group by Assignee</SelectItem>
+              <SelectItem value="label">Group by Label</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-w-[800px]">
+            {groupBy === 'status' && (
+              // Group by status
+              STATUS_COLUMNS.map((status) => (
+                <Card key={status} className={`${compact ? 'shadow-none border-0' : ''}`}>
+                  <CardHeader className="py-2 px-3">
+                    <CardTitle className="text-sm font-medium">{status}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <StatusColumn
+                      status={status}
+                      tasks={tasksByStatus[status] || []}
+                      onTaskDrop={handleTaskDrop}
+                      compact={compact}
+                    />
+                  </CardContent>
+                </Card>
+              ))
+            )}
+            
+            {groupBy === 'assignee' && (
+              // Group by assignee
+              <>
+                {/* Unassigned column */}
+                <Card className={`${compact ? 'shadow-none border-0' : ''}`}>
+                  <CardHeader className="py-2 px-3">
+                    <CardTitle className="text-sm font-medium">Unassigned</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <AssigneeColumn
+                      assignee={null}
+                      tasks={tasksByAssignee.get(null) || []}
+                      onTaskDrop={handleTaskDrop}
+                      compact={compact}
+                    />
+                  </CardContent>
+                </Card>
+                
+                {/* Assignee columns */}
+                {assignees.map((assignee) => (
+                  <Card key={assignee.id} className={`${compact ? 'shadow-none border-0' : ''}`}>
+                    <CardHeader className="py-2 px-3 bg-blue-50">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          {assignee.avatar && (
+                            <AvatarImage src={assignee.avatar} alt={assignee.name || assignee.email || ''} />
+                          )}
+                          <AvatarFallback className="text-xs">
+                            {getAssigneeInitials(assignee)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {assignee.firstName && assignee.lastName 
+                          ? `${assignee.firstName} ${assignee.lastName}`
+                          : assignee.name || assignee.email || 'Unknown'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2">
+                      <AssigneeColumn
+                        assignee={assignee}
+                        tasks={tasksByAssignee.get(assignee.id) || []}
+                        onTaskDrop={handleTaskDrop}
+                        compact={compact}
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            )}
+            
+            {groupBy === 'label' && (
+              // Group by label
+              orderedLabels
+                .filter((label) => (tasksByLabel.get(label) || []).length > 0)
+                .map((label) => (
+                  <Card key={label || 'unlabeled'} className={`${compact ? 'shadow-none border-0' : ''}`}>
+                    <CardHeader className={`py-2 px-3 ${label ? 'bg-gray-50' : ''}`}>
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Tag className={`h-4 w-4 ${label ? LABEL_COLORS[label]?.split(' ').filter(c => c.startsWith('text'))[0] || 'text-gray-700' : 'text-gray-400'}`} />
+                        {label || 'Unlabeled'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2">
+                      <LabelColumn
+                        label={label}
+                        tasks={tasksByLabel.get(label) || []}
+                        onTaskDrop={handleTaskDrop}
+                        compact={compact}
+                      />
+                    </CardContent>
+                  </Card>
+                ))
+            )}
+          </div>
         </div>
       </div>
     </DndProvider>

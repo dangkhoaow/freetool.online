@@ -9,19 +9,20 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useDrag } from 'react-dnd';
 import { useRouter } from 'next/navigation';
 import { Task } from './TasksTable';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { TaskTitleCell } from './TaskTitleCell';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { Progress } from "@/components/ui/progress";
 import { getAssigneeInitials } from './TasksContainer';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 // Define detailed log function for debugging
 const log = (...args: any[]) => console.log('[TaskCard]', ...args);
@@ -52,14 +53,19 @@ const formatDateForDisplay = (dateStr: string | undefined): string => {
 export interface TaskCardProps {
   task: Task;
   compact?: boolean;
+  renderSubtasks?: boolean;
 }
 
-export function TaskCard({ task, compact = false }: TaskCardProps) {
+export function TaskCard({ task, compact = false, renderSubtasks = true }: TaskCardProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const [isSubtasksCollapsed, setIsSubtasksCollapsed] = useState(true);
   
   // Check if current user is assigned to the task
   const isAssignedToUser = user && task.assignedTo === user.id;
+  
+  // Check if task has subtasks
+  const hasSubtasks = task.subTasks && task.subTasks.length > 0;
   
   // Set up drag source
   const [{ isDragging }, dragRef] = useDrag({
@@ -104,20 +110,27 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
   // Get status color
   const statusColor = STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-700';
   
+  // Toggle subtasks visibility
+  const toggleSubtasks = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsSubtasksCollapsed(!isSubtasksCollapsed);
+  };
+  
   return (
-    <Link
-      href={`/projly/tasks/${task.id}`}
-      className="block"
-      onClick={e => e.stopPropagation()}
+    <div
+      ref={drag}
+      className={`cursor-pointer ${isDragging ? 'opacity-50' : 'opacity-100'} ${
+        compact ? 'p-0' : 'p-0'
+      } hover:shadow-md transition-all ${isAssignedToUser ? 'border-blue-300' : ''}`}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
     >
-      <div
-        ref={drag}
-        className={`cursor-pointer ${isDragging ? 'opacity-50' : 'opacity-100'} ${
-          compact ? 'p-0' : 'p-0'
-        } hover:shadow-md transition-all ${isAssignedToUser ? 'border-blue-300' : ''}`}
-        style={{ opacity: isDragging ? 0.5 : 1 }}
+      <Link
+        href={`/projly/tasks/${task.id}`}
+        className="block"
+        onClick={e => e.stopPropagation()}
       >
-        <Card>
+        <Card className={`${task.parentTaskId ? 'border-l-4 border-l-blue-300' : ''}`}>
           <CardContent className="p-2 space-y-3">
             <div className="flex justify-between items-start">
               <div className="flex-1" title={task.title}>
@@ -190,9 +203,47 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
               </AvatarFallback>
             </Avatar>
           </CardFooter>
+          
+          {/* Subtasks toggle button - only show if task has subtasks and we're rendering subtasks */}
+          {hasSubtasks && renderSubtasks && (
+            <div className="px-2 pb-2 pt-0">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full flex items-center justify-center text-xs py-1 h-auto hover:bg-blue-50 hover:text-blue-700"
+                onClick={toggleSubtasks}
+              >
+                {isSubtasksCollapsed ? (
+                  <>
+                    <ChevronRight className="h-3 w-3 mr-1" />
+                    <span className="text-xs">Show {task.subTasks?.length} subtask{task.subTasks?.length !== 1 ? 's' : ''}</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                    <span className="text-xs">Hide subtasks</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </Card>
-      </div>
-    </Link>
+      </Link>
+      
+      {/* Subtasks section - only render if task has subtasks, we're rendering subtasks, and they're not collapsed */}
+      {hasSubtasks && renderSubtasks && !isSubtasksCollapsed && (
+        <div className="pl-4 mt-2 space-y-2 border-l-2 border-blue-200">
+          {task.subTasks?.map((subtask) => (
+            <TaskCard 
+              key={subtask.id} 
+              task={subtask} 
+              compact={compact} 
+              renderSubtasks={false} // Prevent infinite nesting by not rendering subtasks of subtasks
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

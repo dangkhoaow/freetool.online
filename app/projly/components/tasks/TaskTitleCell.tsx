@@ -84,15 +84,16 @@ export const TaskTitleCell: React.FC<TaskTitleCellProps> = ({
         {level && level > 0 ? '└─' : ''}
       </div>
       
-      {/* Task title - using ref for direct DOM manipulation */}
-      <div 
+      {/* Task title - clamp to two lines with ellipsis */}
+      <div
         ref={titleRef}
-        style={{ 
-          whiteSpace: 'nowrap',
+        style={{
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          minWidth: '100px',
-        }} 
+          whiteSpace: 'normal',
+        }}
       />
       
       {/* Subtask badge */}
