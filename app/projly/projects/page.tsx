@@ -282,7 +282,15 @@ export default function Projects() {
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
                     onClick={() => handleProjectClick(project.id)}
                   >
-                    <TableCell title={project.name} className="font-medium whitespace-nowrap">{project.name}</TableCell>
+                    <TableCell title={project.name} className="font-medium whitespace-nowrap">
+                      <Link
+                        href={`/projly/projects/${project.id}`}
+                        className="block"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {project.name}
+                      </Link>
+                    </TableCell>
                     <TableCell title={project.description} className="max-w-[200px] whitespace-nowrap truncate">
                       {project.description || '-'}
                     </TableCell>

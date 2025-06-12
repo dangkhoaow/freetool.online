@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
 import { useRouter } from "next/navigation";
+import Link from 'next/link';
 
 // Helper function for date formatting
 const formatDateForDisplay = (dateStr: string | undefined): string => {
@@ -745,13 +746,19 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 onClick={() => handleViewTaskDetails(task)}
               >
                 <TableCell className="font-medium whitespace-nowrap min-w-[400px]" title={task.description || "-"}>
-                  {/* Use the dedicated TaskTitleCell component to prevent unwanted characters */}
-                  <TaskTitleCell
-                    task={task}
-                    level={task._meta?.level}
-                    hasSubtasks={task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow}
-                    subtaskCount={taskRelationships.get(task.id)?.length || 0}
-                  />
+                  {/* Wrap title in Link for new-tab support */}
+                  <Link
+                    href={`/projly/tasks/${task.id}`}
+                    className="block"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <TaskTitleCell
+                      task={task}
+                      level={task._meta?.level}
+                      hasSubtasks={task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow}
+                      subtaskCount={taskRelationships.get(task.id)?.length || 0}
+                    />
+                  </Link>
                 </TableCell>
                 {context !== 'project' && (
                   <TableCell className="whitespace-nowrap" title={task.project?.name || "-"}>

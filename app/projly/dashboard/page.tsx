@@ -287,7 +287,15 @@ export default function Dashboard() {
                   {projects.slice(0, 5).map((project) => (
                     <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
-                        <h3 className="text-lg font-medium">{project.name}</h3>
+                        <h3 className="text-lg font-medium">
+                          <Link
+                            href={`/projly/projects/${project.id}`}
+                            className="block"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {project.name}
+                          </Link>
+                        </h3>
                         <p className="text-sm text-muted-foreground">{project.description}</p>
                         <div className="flex items-center mt-1 text-xs text-muted-foreground">
                           {project.startDate && (
@@ -360,7 +368,15 @@ export default function Dashboard() {
                 <div className="space-y-4">
                   {userTasks.slice(0, 5).map((task) => (
                     <div key={task.id} className="p-4 border rounded-lg">
-                      <h3 className="text-lg font-medium">{task.title}</h3>
+                      <h3 className="text-lg font-medium">
+                        <Link
+                          href={`/projly/tasks/${task.id}`}
+                          className="block"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {task.title}
+                        </Link>
+                      </h3>
                       <p className="text-sm text-muted-foreground truncate">{task.description}</p>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center">

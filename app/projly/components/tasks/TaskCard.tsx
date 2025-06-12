@@ -21,6 +21,7 @@ import { TaskTitleCell } from './TaskTitleCell';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { Progress } from "@/components/ui/progress";
 import { getAssigneeInitials } from './TasksContainer';
+import Link from 'next/link';
 
 // Define detailed log function for debugging
 const log = (...args: any[]) => console.log('[TaskCard]', ...args);
@@ -69,9 +70,10 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
     }),
   });
   
-  // Create a ref function that calls the drag ref
-  const drag = (element: HTMLDivElement | null) => {
-    dragRef(element);
+  // Create a ref function that calls the drag ref (accepts any HTMLElement)
+  const drag = (element: HTMLElement | null) => {
+    // Cast to HTMLDivElement for react-dnd
+    dragRef(element as HTMLDivElement | null);
   };
   
   // Handle click to view task details
@@ -103,87 +105,94 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
   const statusColor = STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-700';
   
   return (
-    <Card
-      ref={drag}
-      className={`cursor-pointer ${isDragging ? 'opacity-50' : 'opacity-100'} ${
-        compact ? 'p-2' : 'p-3'
-      } hover:shadow-md transition-all ${isAssignedToUser ? 'border-blue-300' : ''}`}
-      onClick={handleClick}
-      style={{ opacity: isDragging ? 0.5 : 1 }}
+    <Link
+      href={`/projly/tasks/${task.id}`}
+      className="block"
+      onClick={e => e.stopPropagation()}
     >
-      <CardContent className="p-0 space-y-2">
-        <div className="flex justify-between items-start">
-          <div className="flex-1" title={task.title}>
-            <TaskTitleCell 
-              task={task} 
-              hasSubtasks={!!task.subTasks && task.subTasks.length > 0} 
-              subtaskCount={task.subTasks?.length || 0} 
-            />
-          </div>
-          {task.parentTaskId && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              Subtask
-            </Badge>
-          )}
-        </div>
-        
-        {/* Display label if available */}
-        {task.label && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Label:</span>
-            <Badge variant="outline" className="text-xs">{task.label}</Badge>
-          </div>
-        )}
+      <div
+        ref={drag}
+        className={`cursor-pointer ${isDragging ? 'opacity-50' : 'opacity-100'} ${
+          compact ? 'p-0' : 'p-0'
+        } hover:shadow-md transition-all ${isAssignedToUser ? 'border-blue-300' : ''}`}
+        style={{ opacity: isDragging ? 0.5 : 1 }}
+      >
+        <Card>
+          <CardContent className="p-2 space-y-3">
+            <div className="flex justify-between items-start">
+              <div className="flex-1" title={task.title}>
+                <TaskTitleCell 
+                  task={task} 
+                  hasSubtasks={!!task.subTasks && task.subTasks.length > 0} 
+                  subtaskCount={task.subTasks?.length || 0} 
+                />
+              </div>
+              {task.parentTaskId && (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  Subtask
+                </Badge>
+              )}
+            </div>
+            
+            {/* Display label if available */}
+            {task.label && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Label:</span>
+                <Badge variant="outline" className="text-xs">{task.label}</Badge>
+              </div>
+            )}
 
-        {/* Display progress bar if percentProgress is available */}
-        {task.percentProgress !== undefined && task.percentProgress !== null && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Progress:</span>
-              <span className="text-xs text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
+            {/* Display progress bar if percentProgress is available */}
+            {task.percentProgress !== undefined && task.percentProgress !== null && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Progress:</span>
+                  <span className="text-xs text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
+                </div>
+                <Progress value={task.percentProgress} className="h-1" />
+              </div>
+            )}
+            
+            {task.project && (
+              <div className="text-xs text-gray-500">
+                Project: {task.project.name}
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              {task.dueDate && (
+                <div className="flex items-center">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  <span>Due: {formatDateForDisplay(task.dueDate)}</span>
+                </div>
+              )}
+              
+              {task.startDate && !compact && (
+                <div className="flex items-center">
+                  <Clock className="h-3 w-3 mr-1" />
+                  <span>Start: {formatDateForDisplay(task.startDate)}</span>
+                </div>
+              )}
             </div>
-            <Progress value={task.percentProgress} className="h-1" />
-          </div>
-        )}
-        
-        {task.project && (
-          <div className="text-xs text-gray-500">
-            Project: {task.project.name}
-          </div>
-        )}
-        
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          {task.dueDate && (
-            <div className="flex items-center">
-              <Calendar className="h-3 w-3 mr-1" />
-              <span>Due: {formatDateForDisplay(task.dueDate)}</span>
-            </div>
-          )}
+          </CardContent>
           
-          {task.startDate && !compact && (
-            <div className="flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              <span>Start: {formatDateForDisplay(task.startDate)}</span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-      
-      <CardFooter className="p-0 pt-2 flex justify-between items-center">
-        <Badge className={`text-xs ${statusColor}`}>
-          {task.status}
-        </Badge>
-        
-        <Avatar className="h-6 w-6">
-          {task.assignee?.avatar && (
-            <AvatarImage src={task.assignee.avatar} alt={getAssigneeName()} />
-          )}
-          <AvatarFallback className="text-xs" title={getAssigneeName()}>
-            {getInitials()}
-          </AvatarFallback>
-        </Avatar>
-      </CardFooter>
-    </Card>
+          <CardFooter className="px-4 py-3 flex justify-between items-center">
+            <Badge className={`text-xs ${statusColor}`}>
+              {task.status}
+            </Badge>
+            
+            <Avatar className="h-6 w-6">
+              {task.assignee?.avatar && (
+                <AvatarImage src={task.assignee.avatar} alt={getAssigneeName()} />
+              )}
+              <AvatarFallback className="text-xs" title={getAssigneeName()}>
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+          </CardFooter>
+        </Card>
+      </div>
+    </Link>
   );
 }
 

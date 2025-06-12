@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Filter, Eye, CheckCircle } from 'lucide-react';
+import Link from 'next/link';
 import { format } from 'date-fns';
 import { useNotifications } from '@/lib/services/projly/use-notifications';
 import {
@@ -271,13 +272,19 @@ export default function NotificationsPage() {
                         <Bell className="h-4 w-4 text-blue-600" />
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">
-                      <div>
-                        {notification.title}
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {notification.message}
-                        </p>
-                      </div>
+                    <TableCell className="font-medium p-0">
+                      <Link
+                        href={notification.path}
+                        className="block p-2"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <div>
+                          {notification.title}
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {notification.message}
+                          </p>
+                        </div>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge className={getNotificationBadgeClass(notification.type)}>
