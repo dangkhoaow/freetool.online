@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Fragment } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/app/projly/components/ui/breadcrumb";
 
 // Import reusable components for task details
 import {
@@ -102,46 +102,6 @@ function getTaskSubtree(tasks: ProjlyTaskData[], parentId: string, log: (msg: st
   return subtree;
 }
 
-// Utility function to get subtasks up to a certain depth
-function getSubTasksUpToDepth(tasks: ProjlyTaskData[], parentId: string, maxDepth: number, currentDepth: number = 0): ProjlyTaskData[] {
-  const filteredTasks: ProjlyTaskData[] = [];
-  if (currentDepth >= maxDepth) return filteredTasks;
-  
-  // Find direct children
-  const children = tasks.filter(task => task.parentTaskId === parentId);
-  
-  // Add each child and recursively get their children up to maxDepth
-  children.forEach(child => {
-    filteredTasks.push(child);
-    const grandChildren = getSubTasksUpToDepth(tasks, child.id, maxDepth, currentDepth + 1);
-    filteredTasks.push(...grandChildren);
-  });
-  
-  return filteredTasks;
-}
-
-// Utility to map ProjlyTaskData to Task type to satisfy type requirements
-function mapToTask(taskData: ProjlyTaskData): Task {
-  return {
-    id: taskData.id,
-    title: taskData.title,
-    description: taskData.description || '',
-    status: taskData.status || 'Not Started',
-    startDate: taskData.startDate ? taskData.startDate.toString() : undefined,
-    dueDate: taskData.dueDate ? taskData.dueDate.toString() : undefined,
-    projectId: taskData.projectId,
-    project: taskData.project
-      ? { id: taskData.project.id, name: taskData.project.name }
-      : undefined,
-    parentTaskId: taskData.parentTaskId || undefined,
-    assignedTo: taskData.assignedTo,
-    assignee: taskData.assignee,
-    percentProgress: taskData.percentProgress !== undefined ? Number(taskData.percentProgress) : undefined,
-    label: taskData.label || undefined,
-    relatedTasks: taskData.relatedTasks || []
-  };
-}
-
 export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose }: TaskDetailsPageProps) {
   // Use useParams to get the route parameters if not in dialog mode
   const params = useParams();
@@ -169,13 +129,11 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   
   // Function to handle back navigation or dialog close
   const handleBackClick = () => {
-    console.log(`[PROJLY:TASK_DETAILS_PAGE] Back/Close button clicked, inDialogMode: ${inDialogMode}`);
+    console.log(`[PROJLY:TASK_DETAILS_PAGE] Back button clicked, inDialogMode: ${inDialogMode}`);
     if (inDialogMode && onDialogClose) {
-      console.log(`[PROJLY:TASK_DETAILS_PAGE] Closing dialog via back button`);
       onDialogClose();
     } else {
-      console.log(`[PROJLY:TASK_DETAILS_PAGE] Navigating back`);
-      handleIntelligentBackNavigation(router, taskId, (msg) => console.log(`[PROJLY:TASK_DETAILS_PAGE] ${msg}`));
+      router.push('/projly/tasks');
     }
   };
   
@@ -235,12 +193,29 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     }
   };
   
-  // Track navigation history in session storage using our utility function
+  // Breadcrumb chain of parent tasks
+  const [breadcrumbTasks, setBreadcrumbTasks] = useState<ProjlyTaskData[]>([]);
   useEffect(() => {
-    // Add current path to navigation history
-    const currentPath = `/projly/tasks/${taskId}`;
-    updateNavigationHistory(currentPath, 10, log);
-  }, [taskId]);
+    const buildBreadcrumb = async () => {
+      const chain: ProjlyTaskData[] = [];
+      let currentParentId = taskForm.parentTaskId;
+      while (currentParentId) {
+        try {
+          const parent = await projlyTasksService.getTask(currentParentId);
+          if (!parent) break;
+          chain.unshift(parent);
+          currentParentId = parent.parentTaskId || null;
+        } catch (error) {
+          console.error(`[PROJLY:TASK_DETAILS:${taskId}] Error fetching parent for breadcrumb`, error);
+          break;
+        }
+      }
+      setBreadcrumbTasks(chain);
+    };
+    if (taskForm.id) {
+      buildBreadcrumb();
+    }
+  }, [taskForm.id, taskForm.parentTaskId]);
   
   // Check authentication and load task and related data
   const initCalled = useRef(false);
@@ -648,36 +623,53 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   // Conditional rendering based on dialog mode
   const renderContent = () => (
     <div className={inDialogMode ? "" : "container mx-auto py-6"}>
-      <TaskActionButtons 
-        onBackClick={handleBackClick}
-        onEditClick={() => {
-          console.log('[TASK_DETAILS] Edit button clicked');
-          router.push(`/projly/tasks/${taskId}/edit`);
-        }}
-        onDeleteClick={() => {
-          console.log('[TASK_DETAILS] Delete button clicked');
-          setIsDeleteDialogOpen(true);
-        }}
-        isDialogMode={inDialogMode}
-        canDelete={canDeleteTask()}
-        isSubmitting={isSubmitting}
-      />
+      {/* Breadcrumb navigation */}
+      <Breadcrumb className="mb-4">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href={`/projly/projects/${taskForm.projectId}`}>{taskForm.project?.name || 'Project'}</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          {breadcrumbTasks.map((task: ProjlyTaskData) => (
+            <Fragment key={task.id}>
+              <BreadcrumbItem>
+                <BreadcrumbLink href={`/projly/tasks/${task.id}`}>{task.title}</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+            </Fragment>
+          ))}
+          <BreadcrumbItem>
+            <BreadcrumbPage>{taskForm.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      {/* Task title and ID header */}
+      <div className="mb-4">
+        <TaskHeader title={taskForm.title} taskId={taskId} />
+      </div>
 
-      <TaskHeader title={taskForm.title} taskId={taskId} />
-      
       <Tabs defaultValue="details" value={activeTab} onValueChange={(value) => {
         console.log(`[PROJLY:TASK_DETAILS:${taskId}] Tab changed to:`, value);
         setActiveTab(value);
       }}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="additional">Additional Info</TabsTrigger>
-          <TabsTrigger value="subtasks">Sub-Tasks {(() => {
-            const filteredSubTasks = getSubTasksUpToDepth(subTasks, taskId, 2);
-            return filteredSubTasks.length > 0 ? `(${filteredSubTasks.length})` : '';
-          })()}</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto flex items-center">
+          <TabsList className="mb-4 flex-nowrap">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="additional">Additional Info</TabsTrigger>
+            <TabsTrigger value="subtasks">Sub-Tasks {subTasks.length > 0 ? `(${subTasks.length})` : ''}</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            {/* Edit/Delete buttons as tab list item */}
+            <div className="ml-auto flex items-center space-x-2">
+              <TaskActionButtons
+                onBackClick={handleBackClick}
+                onEditClick={() => router.push(`/projly/tasks/${taskId}/edit`)}
+                onDeleteClick={() => setIsDeleteDialogOpen(true)}
+                canDelete={canDeleteTask()}
+                isSubmitting={isSubmitting}
+              />
+            </div>
+          </TabsList>
+        </div>
         
         <TabsContent value="details">
           <Card>
@@ -799,7 +791,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
           <Card>
             <CardContent className="mt-4">
               <SubTasksContent 
-                subTasks={getSubTasksUpToDepth(subTasks, taskId, 2).map(mapToTask) as any}
+                subTasks={subTasks as any}
                 parentTaskId={taskId}
                 parentProjectId={taskForm.projectId}
                 onCreateSubTaskClick={() => setIsCreateSubTaskOpen(true)}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { handleIntelligentBackNavigation, updateNavigationHistory } from "@/app/projly/utils/navigation-utils";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { ArrowLeft } from "lucide-react";
@@ -12,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/lib/services/projly';
 import { useToast } from "@/components/ui/use-toast";
 import { useAccessibleProjectMembers } from '@/lib/services/projly/use-members';
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/app/projly/components/ui/breadcrumb";
 
 // Import reusable form field components
 import {
@@ -146,13 +146,6 @@ export default function TaskEditPage({}: TaskEditPageProps) {
     }
   };
   
-  // Track navigation history in session storage using our utility function
-  useEffect(() => {
-    // Add current path to navigation history
-    const currentPath = `/projly/tasks/${taskId}/edit`;
-    updateNavigationHistory(currentPath, 10, log);
-  }, [taskId]);
-  
   // Check authentication and load task and related data
   useEffect(() => {
     const initPage = async () => {
@@ -260,10 +253,27 @@ export default function TaskEditPage({}: TaskEditPageProps) {
   // Handle form input changes
   const handleChange = (field: string, value: any) => {
     log(`Updating form field: ${field} with value:`, value);
-    setTaskForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field === 'percentProgress') {
+      setTaskForm(prev => {
+        const newPercent = value as number;
+        let newStatus = prev.status;
+        if (newPercent === 100 && prev.status === 'In Progress') {
+          newStatus = 'Completed';
+        } else if (newPercent < 100 && prev.status === 'Completed') {
+          newStatus = 'In Progress';
+        }
+        return {
+          ...prev,
+          percentProgress: newPercent,
+          status: newStatus
+        };
+      });
+    } else {
+      setTaskForm(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
     
     // If project ID changes, trigger a refetch of project members
     if (field === 'projectId') {
@@ -365,23 +375,36 @@ export default function TaskEditPage({}: TaskEditPageProps) {
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
-        <div className="flex items-center mb-6">
+        {/* Breadcrumb navigation */}
+        <Breadcrumb className="mb-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/projly/tasks">Tasks</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href={`/projly/tasks/${taskId}`}>{taskForm.title}</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Edit</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            {taskForm.title} ({taskForm.id})
+          </h1>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleIntelligentBackNavigation(router, taskId, log)}
-            className="mr-4"
+            onClick={() => router.push(`/projly/tasks/${taskId}`)}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Task
           </Button>
         </div>
         
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Task</h1>
-          <p className="text-muted-foreground">Update task details</p>
-        </div>
-
         <form onSubmit={handleSubmit}>
           <Card>
             <CardHeader>

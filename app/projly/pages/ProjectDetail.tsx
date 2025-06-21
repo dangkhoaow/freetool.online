@@ -340,8 +340,8 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
                   title: "Project Tasks"
                 }}
                 hierarchyOptions={{
-                  maxDepth: 1, // Show only direct subtasks (1 level deep)
-                  showAllSubtasks: false // Don't show deeper nested subtasks
+                  maxDepth: Number.MAX_SAFE_INTEGER,
+                  showAllSubtasks: true
                 }}
                 onDataChange={(tasks) => {
                   console.log("[ProjectDetail] Tasks data changed, refreshing");

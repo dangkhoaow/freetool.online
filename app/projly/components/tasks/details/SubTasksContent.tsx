@@ -75,8 +75,8 @@ export function SubTasksContent({
           title: "Sub-Tasks"
         }}
         hierarchyOptions={{
-          maxDepth: 2,
-          showAllSubtasks: false
+          maxDepth: Number.MAX_SAFE_INTEGER,
+          showAllSubtasks: true
         }}
         tableParentTaskId={parentTaskId}
         parentProjectId={parentProjectId}
