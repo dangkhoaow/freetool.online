@@ -134,6 +134,9 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   // Get comments for the task
   const { data: comments = [] } = useTaskComments(taskId);
   
+  // Ensure comments is always an array (additional safety check)
+  const safeComments = Array.isArray(comments) ? comments : [];
+  
   // Function to handle back navigation or dialog close
   const handleBackClick = () => {
     console.log(`[PROJLY:TASK_DETAILS_PAGE] Back button clicked, inDialogMode: ${inDialogMode}`);
@@ -664,7 +667,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="additional">Additional Info</TabsTrigger>
             <TabsTrigger value="subtasks">Sub-Tasks {subTasks.length > 0 ? `(${subTasks.length})` : ''}</TabsTrigger>
-            <TabsTrigger value="comments">Comments {comments.length > 0 ? `(${comments.length})` : ''}</TabsTrigger>
+            <TabsTrigger value="comments">Comments {safeComments.length > 0 ? `(${safeComments.length})` : ''}</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
             {/* Edit/Delete buttons as tab list item */}
             <div className="ml-auto flex items-center space-x-2">

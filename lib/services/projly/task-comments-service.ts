@@ -36,15 +36,20 @@ export const taskCommentsService = {
       const response = await apiClient.get(`/api/projly/tasks/${taskId}/comments`);
       
       if (response.success) {
-        console.log(`[TASK_COMMENTS_SERVICE] Retrieved ${response.data.length} comments`);
-        return response.data;
+        console.log(`[TASK_COMMENTS_SERVICE] API response:`, response);
+        // Ensure we always return an array
+        const comments = Array.isArray(response.data) ? response.data : [];
+        console.log(`[TASK_COMMENTS_SERVICE] Retrieved ${comments.length} comments`);
+        return comments;
       } else {
         console.error('[TASK_COMMENTS_SERVICE] Failed to get comments:', response.error);
-        throw new Error(response.error || 'Failed to get comments');
+        // Return empty array instead of throwing to prevent map errors
+        return [];
       }
     } catch (error: any) {
       console.error('[TASK_COMMENTS_SERVICE] Error getting comments:', error);
-      throw new Error(error.response?.data?.error?.message || error.message || 'Failed to get comments');
+      // Return empty array instead of throwing to prevent map errors
+      return [];
     }
   },
 

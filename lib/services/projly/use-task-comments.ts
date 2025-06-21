@@ -14,10 +14,26 @@ export function useTaskComments(taskId: string) {
   
   return useQuery<TaskComment[], Error>({
     queryKey: ["task-comments", taskId],
-    queryFn: () => taskCommentsService.getComments(taskId),
+    queryFn: async () => {
+      try {
+        const comments = await taskCommentsService.getComments(taskId);
+        // Ensure we always return an array
+        return Array.isArray(comments) ? comments : [];
+      } catch (error) {
+        console.error('[HOOK:TASK_COMMENTS] Error in queryFn:', error);
+        // Return empty array to prevent map errors
+        return [];
+      }
+    },
     enabled: !!taskId && !!session?.user?.id,
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: 'always', // Always fetch comments when component mounts
+    // Add retry configuration
+    retry: (failureCount, error) => {
+      console.log(`[HOOK:TASK_COMMENTS] Query failed ${failureCount} times:`, error);
+      return failureCount < 2; // Retry up to 2 times
+    },
   });
 }
 

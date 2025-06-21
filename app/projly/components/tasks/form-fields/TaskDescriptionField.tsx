@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { TaskFormValues } from "../schemas/taskSchema";
@@ -35,6 +35,8 @@ const CustomLinkStyling = Extension.create({
 
 export function TaskDescriptionField() {
   const form = useFormContext<TaskFormValues>();
+  // Initialize content once
+  const initialContent = useRef(form.getValues('description') || '');
   
   const editor = useEditor({
     extensions: [
@@ -48,25 +50,15 @@ export function TaskDescriptionField() {
       Underline,
       CustomLinkStyling,
     ],
-    content: form.watch('description') || '',
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      form.setValue('description', html, { shouldDirty: true, shouldValidate: true });
-    },
+    content: initialContent.current,
     editorProps: {
       attributes: {
-        class: 'focus:outline-none',
+        class: 'prose prose-sm dark:prose-invert focus:outline-none',
+        style: 'line-height: 1.4; outline: none;',
       },
     },
   });
   
-  // Update editor content when form value changes externally
-  React.useEffect(() => {
-    if (editor && editor.getHTML() !== form.watch('description')) {
-      editor.commands.setContent(form.watch('description') || '');
-    }
-  }, [form.watch('description'), editor]);
-
   // Add link button handler
   const addLink = () => {
     if (!editor) return;
@@ -90,6 +82,28 @@ export function TaskDescriptionField() {
   };
 
   return (
+    <>
+      <style jsx>{`
+        .ProseMirror {
+          outline: none !important;
+          border: none !important;
+          line-height: 1.4 !important;
+        }
+        .ProseMirror:focus {
+          outline: none !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .ProseMirror p {
+          margin: 0.5em 0 !important;
+        }
+        .ProseMirror ul, .ProseMirror ol {
+          margin: 0.5em 0 !important;
+        }
+        .ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
+          margin: 0.5em 0 !important;
+        }
+      `}</style>
     <FormField
       control={form.control}
       name="description"
@@ -97,7 +111,10 @@ export function TaskDescriptionField() {
         <FormItem>
           <FormLabel>Description</FormLabel>
           <FormControl>
-            <div className="border rounded-md overflow-hidden">
+            <div 
+              className="border rounded-md overflow-hidden min-h-[300px]" 
+              onClick={() => editor?.chain().focus().run()}
+            >
               {/* Editor Toolbar */}
               <div className="flex items-center gap-1 p-1 bg-gray-50 dark:bg-gray-900 border-b flex-wrap">
                 <Button 
@@ -186,14 +203,17 @@ export function TaskDescriptionField() {
               </div>
               
               {/* Editor Content */}
-              <div className="p-2 prose prose-sm dark:prose-invert w-full max-w-none">
-                <EditorContent 
-                  editor={editor} 
-                  className="min-h-[100px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words" 
+              <div className="p-3 w-full max-w-none">
+                <EditorContent
+                  editor={editor}
+                  className="min-h-[100px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words ProseMirror-focused"
                   style={{ 
-                    wordBreak: 'break-word',
-                    overflowWrap: 'break-word'
+                    wordBreak: 'break-word', 
+                    overflowWrap: 'break-word',
+                    lineHeight: '1.0',
+                    outline: 'none'
                   }}
+                  onBlur={() => form.setValue('description', editor?.getHTML() || '', { shouldDirty: true, shouldValidate: true })}
                 />
               </div>
             </div>
@@ -202,5 +222,6 @@ export function TaskDescriptionField() {
         </FormItem>
       )}
     />
+    </>
   );
 }

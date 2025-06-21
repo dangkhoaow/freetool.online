@@ -27,6 +27,11 @@ export function TaskCommentsSection({ taskId, className = "" }: TaskCommentsSect
   const updateCommentMutation = useUpdateTaskComment();
   const deleteCommentMutation = useDeleteTaskComment();
   
+  // Ensure comments is always an array (additional safety check)
+  const safeComments = Array.isArray(comments) ? comments : [];
+  
+  console.log('[TASK_COMMENTS_SECTION] Comments data:', comments, 'Safe comments:', safeComments);
+  
   const handleCreateComment = async () => {
     if (!newCommentContent.trim()) return;
     
@@ -154,12 +159,12 @@ export function TaskCommentsSection({ taskId, className = "" }: TaskCommentsSect
           </div>
         )}
         
-        {showNewCommentEditor && comments.length > 0 && (
+        {showNewCommentEditor && safeComments.length > 0 && (
           <Separator className="my-6" />
         )}
         
         {/* Comments List */}
-        {comments.length === 0 ? (
+        {safeComments.length === 0 ? (
           <div className="text-center py-8">
             <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
@@ -181,7 +186,7 @@ export function TaskCommentsSection({ taskId, className = "" }: TaskCommentsSect
           </div>
         ) : (
           <div className="space-y-4">
-            {comments.map((comment) => (
+            {safeComments.map((comment) => (
               <CommentItem
                 key={comment.id}
                 comment={comment}
@@ -195,10 +200,10 @@ export function TaskCommentsSection({ taskId, className = "" }: TaskCommentsSect
         )}
         
         {/* Load more indicator or pagination can be added here in the future */}
-        {comments.length > 0 && (
+        {safeComments.length > 0 && (
           <div className="text-center pt-4">
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              {comments.length} comment{comments.length !== 1 ? 's' : ''} total
+              {safeComments.length} comment{safeComments.length !== 1 ? 's' : ''} total
             </p>
           </div>
         )}

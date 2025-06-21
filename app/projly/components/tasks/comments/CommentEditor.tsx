@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -56,6 +56,8 @@ export function CommentEditor({
   minHeight = '120px'
 }: CommentEditorProps) {
   const [content, setContent] = useState(initialContent);
+  const [hasContent, setHasContent] = useState(false);
+  const initial = useRef(initialContent);
   
   const editor = useEditor({
     extensions: [
@@ -69,29 +71,21 @@ export function CommentEditor({
       Underline,
       CustomLinkStyling,
     ],
-    content: initialContent,
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      setContent(html);
-      onContentChange(html);
-    },
+    content: initial.current,
     editorProps: {
       attributes: {
-        class: 'focus:outline-none',
-        'data-placeholder': placeholder,
+        class: 'prose prose-sm dark:prose-invert focus:outline-none',
+        style: 'line-height: 1.4; outline: none;',
       },
     },
-    // Disable editor if disabled prop is true
     editable: !disabled,
+    onUpdate: ({ editor }) => {
+      // Only update button state, not external content
+      const currentContent = editor.getHTML();
+      const textContent = currentContent.replace(/<[^>]*>/g, '').trim();
+      setHasContent(textContent.length > 0);
+    },
   });
-  
-  // Update editor content when initialContent changes externally
-  useEffect(() => {
-    if (editor && editor.getHTML() !== initialContent) {
-      editor.commands.setContent(initialContent);
-      setContent(initialContent);
-    }
-  }, [initialContent, editor]);
   
   // Add link button handler
   const addLink = () => {
@@ -117,11 +111,7 @@ export function CommentEditor({
   
   // Check if content is empty (only contains empty paragraphs or whitespace)
   const isContentEmpty = () => {
-    if (!content || content.trim() === '') return true;
-    
-    // Remove HTML tags and check if there's actual content
-    const textContent = content.replace(/<[^>]*>/g, '').trim();
-    return textContent === '';
+    return !hasContent;
   };
   
   const handleSubmit = () => {
@@ -139,7 +129,33 @@ export function CommentEditor({
   };
 
   return (
-    <div className="border rounded-md overflow-hidden" onKeyDown={handleKeyDown}>
+    <>
+      <style jsx>{`
+        .ProseMirror {
+          outline: none !important;
+          border: none !important;
+          line-height: 1.4 !important;
+        }
+        .ProseMirror:focus {
+          outline: none !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .ProseMirror p {
+          margin: 0.5em 0 !important;
+        }
+        .ProseMirror ul, .ProseMirror ol {
+          margin: 0.5em 0 !important;
+        }
+        .ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
+          margin: 0.5em 0 !important;
+        }
+      `}</style>
+    <div
+      className="border rounded-md overflow-hidden min-h-[150px]"
+      onKeyDown={handleKeyDown}
+      onClick={() => editor?.chain().focus().run()}
+    >
       {/* Editor Toolbar */}
       <div className="flex items-center gap-1 p-1 bg-gray-50 dark:bg-gray-900 border-b flex-wrap">
         <Button 
@@ -236,45 +252,45 @@ export function CommentEditor({
       </div>
       
       {/* Editor Content */}
-      <div className="p-3 prose prose-sm dark:prose-invert w-full max-w-none">
-        <EditorContent 
-          editor={editor} 
-          className="outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words" 
+      <div className="p-3 w-full max-w-none">
+        <EditorContent
+          editor={editor}
+          className="min-h-[100px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words ProseMirror-focused"
           style={{ 
-            wordBreak: 'break-word',
+            wordBreak: 'break-word', 
             overflowWrap: 'break-word',
-            minHeight: minHeight
+            lineHeight: '1.0',
+            outline: 'none'
+          }}
+          onBlur={() => {
+            const html = editor?.getHTML() || '';
+            onContentChange(html);
+            setContent(html);
           }}
         />
       </div>
       
-      {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-2 p-3 bg-gray-50 dark:bg-gray-900 border-t">
+      {/* Buttons */}
+      <div className="p-2 flex justify-end space-x-2">
         {onCancel && (
           <Button 
-            type="button" 
             variant="outline" 
-            size="sm"
             onClick={onCancel}
             disabled={isLoading || disabled}
+            size="sm"
           >
             {cancelButtonText}
           </Button>
         )}
         <Button 
-          type="button" 
-          size="sm"
           onClick={handleSubmit}
-          disabled={isLoading || disabled || isContentEmpty()}
+          disabled={isContentEmpty() || isLoading || disabled}
+          size="sm"
         >
           {isLoading ? 'Posting...' : submitButtonText}
         </Button>
       </div>
-      
-      {/* Keyboard shortcut hint */}
-      <div className="px-3 pb-2 text-xs text-gray-500 dark:text-gray-400">
-        Press Ctrl+Enter (or Cmd+Enter) to submit
-      </div>
     </div>
+    </>
   );
 } 
