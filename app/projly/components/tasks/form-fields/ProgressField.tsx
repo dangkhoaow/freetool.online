@@ -14,8 +14,8 @@ export function ProgressField({
   onChange 
 }: ProgressFieldProps) {
   // Ensure value is within 0-100 range and not null
-  const safeValue = value === null ? 0 : Math.max(0, Math.min(100, value));
-  
+  let safeValue = value === null ? 0 : Math.max(0, Math.min(100, value));
+  safeValue = Math.round(safeValue);
   // Get color based on progress value
   const getProgressColor = (value: number): string => {
     if (value < 25) return 'bg-red-100 text-red-800 border-red-200';

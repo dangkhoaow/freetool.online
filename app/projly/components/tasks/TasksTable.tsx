@@ -773,7 +773,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 <TableCell className="font-medium whitespace-nowrap min-w-[400px]" title={task.description || "-"}>
                   <div className="flex items-center">
                     {/* Collapse/expand toggle */}
-                    {taskRelationships.has(task.id) && task._meta?.level === 0 && !hideParentRow ? (
+                    {taskRelationships.has(task.id) && task._meta?.level === 0 && (!hideParentRow || context !== 'main') ? (
                       <button
                         className="p-0 mr-2"
                         title="Collapse/Expand"

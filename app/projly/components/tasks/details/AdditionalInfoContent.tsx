@@ -130,7 +130,7 @@ export function AdditionalInfoContent({
         <h3 className="text-sm font-medium text-muted-foreground">Progress</h3>
         <div className="space-y-1">
           <Progress value={task.percentProgress || 0} className="h-2" />
-          <p className="text-sm text-right">{task.percentProgress || 0}%</p>
+          <p className="text-sm text-right">{Math.round(task.percentProgress || 0)}%</p>
         </div>
       </div>
       

@@ -25,6 +25,10 @@ import {
   AdditionalInfoContent
 } from "@/app/projly/components/tasks/details";
 
+// Import task comments component
+import { TaskCommentsSection } from "@/app/projly/components/tasks/comments/TaskCommentsSection";
+import { useTaskComments } from "@/lib/services/projly/use-task-comments";
+
 // Fix for type error with related tasks
 // This matches the props for AdditionalInfoContent component
 interface AdditionalTaskInfo {
@@ -126,6 +130,9 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   // Add state for task not found error
   const [taskNotFound, setTaskNotFound] = useState(false);
   const [taskError, setTaskError] = useState<string | null>(null);
+  
+  // Get comments for the task
+  const { data: comments = [] } = useTaskComments(taskId);
   
   // Function to handle back navigation or dialog close
   const handleBackClick = () => {
@@ -657,6 +664,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="additional">Additional Info</TabsTrigger>
             <TabsTrigger value="subtasks">Sub-Tasks {subTasks.length > 0 ? `(${subTasks.length})` : ''}</TabsTrigger>
+            <TabsTrigger value="comments">Comments {comments.length > 0 ? `(${comments.length})` : ''}</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
             {/* Edit/Delete buttons as tab list item */}
             <div className="ml-auto flex items-center space-x-2">
@@ -802,6 +810,10 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
               />
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="comments">
+          <TaskCommentsSection taskId={taskId} />
         </TabsContent>
         
         <TabsContent value="activity">

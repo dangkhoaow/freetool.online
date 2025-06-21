@@ -188,7 +188,7 @@ export function DescriptionField({ value, onChange }: DescriptionFieldProps) {
         <div className="p-2 prose prose-sm dark:prose-invert w-full max-w-none">
           <EditorContent 
             editor={editor} 
-            className="min-h-[400px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words" 
+            className="min-h-[200px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words" 
             style={{ 
               wordBreak: 'break-word',
               overflowWrap: 'break-word'
