@@ -112,7 +112,7 @@ export function TaskDescriptionField() {
           <FormLabel>Description</FormLabel>
           <FormControl>
             <div 
-              className="border rounded-md overflow-hidden min-h-[300px]" 
+              className="border rounded-md overflow-hidden" 
               onClick={() => editor?.chain().focus().run()}
             >
               {/* Editor Toolbar */}
@@ -206,7 +206,7 @@ export function TaskDescriptionField() {
               <div className="p-3 w-full max-w-none">
                 <EditorContent
                   editor={editor}
-                  className="min-h-[100px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words ProseMirror-focused"
+                  className="min-h-[50px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words ProseMirror-focused"
                   style={{ 
                     wordBreak: 'break-word', 
                     overflowWrap: 'break-word',

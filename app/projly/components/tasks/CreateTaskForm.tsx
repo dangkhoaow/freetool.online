@@ -15,7 +15,6 @@ import { useAccessibleProjectMembers } from "@/lib/services/projly/use-members";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { 
   Form, 
@@ -49,6 +48,7 @@ import { Slider } from "@/components/ui/slider";
 import { TaskProjectField } from "./form-fields/TaskProjectField";
 import { TaskAssigneeField } from "./form-fields/TaskAssigneeField";
 import { LabelField } from "./form-fields/LabelField";
+import { TaskDescriptionField } from "./form-fields/TaskDescriptionField";
 // Import Task type from the central types file
 import { Task } from "@/lib/services/projly/types";
 import { projlyTasksService } from "@/lib/services/projly";
@@ -394,24 +394,8 @@ export function CreateTaskForm({
           </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Task description" 
-                  className="min-h-[100px]" 
-                  {...field} 
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Rich text description field */}
+        <TaskDescriptionField />
         
         {/* Start Date, Due Date, and Status fields on the same line */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

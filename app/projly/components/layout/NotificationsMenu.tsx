@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -85,18 +86,20 @@ export const NotificationsMenu = () => {
           ) : (
             <>
               {notifications.map((notification) => (
-                <DropdownMenuItem 
-                  key={notification.id}
-                  className={`cursor-pointer flex flex-col items-start py-2 px-4 ${!notification.isRead ? 'bg-muted/50' : ''}`}
-                  onClick={() => handleNotificationClick(notification.path, notification.id)}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="font-semibold">{notification.title}</span>
-                    <span className="text-xs text-muted-foreground">{notification.timeAgo}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1 whitespace-normal">
-                    {notification.message}
-                  </p>
+                <DropdownMenuItem asChild key={notification.id}>
+                  <Link
+                    href={notification.path}
+                    className={`cursor-pointer flex flex-col items-start py-2 px-4 w-full ${!notification.isRead ? 'bg-muted/50' : ''}`}
+                    onClick={() => handleNotificationClick(notification.path, notification.id)}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-semibold">{notification.title}</span>
+                      <span className="text-xs text-muted-foreground">{notification.timeAgo}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-normal">
+                      {notification.message}
+                    </p>
+                  </Link>
                 </DropdownMenuItem>
               ))}
             </>

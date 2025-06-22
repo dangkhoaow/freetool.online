@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { X } from "lucide-react";
 
 // Define the log prefix for consistent logging
 const LOG_PREFIX = "[PROJLY:TASK_DETAIL_DIALOG]";
@@ -75,6 +76,16 @@ export function TaskDetailDialog({ taskId, isOpen, onClose }: TaskDetailDialogPr
         )}
         {...props}
       >
+        {/* Close button */}
+        <DialogPrimitive.Close asChild>
+          <button
+            type="button"
+            className="absolute top-2 right-2 rounded-sm p-1 opacity-70 hover:opacity-100 focus:outline-none"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </DialogPrimitive.Close>
         {children}
         {/* No close button here */}
       </DialogPrimitive.Content>

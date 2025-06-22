@@ -23,8 +23,8 @@ import {
   Filter
 } from "lucide-react";
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
-import { projlyTasksService, projlyProjectsService, projlyAuthService } from '@/lib/services/projly';
-import { Task as ProjlyTask } from '@/lib/services/projly/types';
+import { projlyTasksService } from '@/lib/services/projly';
+import { TaskDetailDialog } from "./TaskDetailDialog";
 
 // Define Task interface to match API response structure
 export interface Task {
@@ -71,8 +71,6 @@ export interface TasksTableProps {
   hideParentRow?: boolean; // If true, hide the parent row (for sub-task tab)
   hideFilterUI?: boolean; // If true, hide the filter UI (for use with container-level filter)
 }
-import { CreateTaskForm } from "./CreateTaskForm";
-import { TaskDetailView } from "./TaskDetailView";
 import { TaskTitleCell } from "./TaskTitleCell";
 import { getAssigneeInitials, getLabelInitials } from "./TasksContainer";
 
@@ -87,26 +85,12 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -301,9 +285,9 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   
   console.log("[TASKS TABLE] Initialized with default sort by dueDate");
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
-  const [detailTask, setDetailTask] = useState<Task | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  // State for Task detail dialog (rich modal)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
 
   // Log table rendering
   log('Rendering TasksTable with tasks:', tasks.length);
@@ -629,20 +613,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   };
 
   // Handle dialog close
-  const handleCreateDialogClose = () => {
-    setIsCreateDialogOpen(false);
-    
-    // Call callback to refresh tasks list if provided
-    if (onOperationComplete) {
-      console.log('Calling onOperationComplete callback to refresh tasks after create with current filters');
-      console.log('Current filters:', filters);
-      onOperationComplete(filters);
-    }
+  const handleTaskDetailClose = () => {
+    setIsTaskDetailOpen(false);
+    setSelectedTaskId(null);
   };
 
-  const handleDetailDialogClose = () => {
-    setIsDetailDialogOpen(false);
-    setDetailTask(null);
+  const openTaskDetailDialog = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setIsTaskDetailOpen(true);
   };
 
   // Render status badge with appropriate color
@@ -767,7 +745,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
             {visibleTasks.filter(task => !hideParentRow || task.id !== parentTaskId).map((task) => (
               <TableRow 
                 key={task.id}
-                className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''}`}
+                className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`}
                 onClick={() => handleViewTaskDetails(task)}
               >
                 <TableCell className="font-medium whitespace-nowrap min-w-[400px]" title={task.description || "-"}>
@@ -786,7 +764,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                         )}
                       </button>
                     ) : (
-                      <div className="w-4 h-4 mr-2" />
+                      <div className="w-4 h-4 mr-2 hidden" />
                     )}
                     {/* Wrap title in Link for new-tab support */}
                     <Link
@@ -801,6 +779,15 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                         subtaskCount={taskRelationships.get(task.id)?.length || 0}
                       />
                     </Link>
+                    {/* Detail icon - appears on hover */}
+                    <button
+                      type="button"
+                      title="View Task details dialog"
+                      className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); openTaskDetailDialog(task.id); }}
+                    >
+                      <ExternalLink className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                    </button>
                   </div>
                 </TableCell>
                 {context !== 'project' && (
@@ -863,6 +850,9 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => openTaskDetailDialog(task.id)}>
+                        <ExternalLink className="mr-2 h-4 w-4" /> View Details
+                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleEditTask(task)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
@@ -887,24 +877,12 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
 
       {/* Create Task Dialog removed - using page navigation instead */}
       
-      {/* Task Detail Dialog */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Task Details</DialogTitle>
-          </DialogHeader>
-          {detailTask && (
-            <TaskDetailView
-              task={detailTask}
-              onEdit={() => {
-                handleDetailDialogClose();
-                handleEditTask(detailTask);
-              }}
-              onClose={handleDetailDialogClose}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Task Detail Dialog (rich modal) */}
+      <TaskDetailDialog
+        taskId={selectedTaskId || ""}
+        isOpen={isTaskDetailOpen && !!selectedTaskId}
+        onClose={handleTaskDetailClose}
+      />
 
       {/* Delete task confirmation */}
       <AlertDialog open={!!deleteTaskId} onOpenChange={() => setDeleteTaskId(null)}>
