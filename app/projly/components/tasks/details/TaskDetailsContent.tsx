@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Loader2 } from "lucide-react";
+import { Calendar, Clock, Loader2, Rocket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
@@ -122,11 +122,12 @@ export function TaskDetailsContent({
         )}
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">Status: </span>
+          <span className="text-sm text-muted-foreground">Status </span>
           {renderStatusBadge(task.status)}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Priority:</span>
+          <Rocket className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Priority </span>
           <Badge variant={task.priority === 'High' ? 'destructive' : 'default'}>
             {task.priority}
           </Badge>

@@ -8,8 +8,8 @@ export function TaskHeader({ title, taskId }: TaskHeaderProps) {
   
   return (
     <div className="container mx-auto pb-4">
-      <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-      <p className="text-muted-foreground">
+      <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+      <p className="text-xs text-muted-foreground">
         Task ID: {taskId}
       </p>
     </div>

@@ -63,7 +63,7 @@ export default function TasksPage() {
             showHeader: true,
             showAddButton: true,
             compact: false,
-            title: "Tasks"
+            title: "All Tasks"
           }}
           hierarchyOptions={{
             maxDepth: Number.MAX_SAFE_INTEGER,

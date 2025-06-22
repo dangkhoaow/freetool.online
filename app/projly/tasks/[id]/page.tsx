@@ -648,9 +648,9 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
               <BreadcrumbSeparator />
             </Fragment>
           ))}
-          <BreadcrumbItem>
+          {/* <BreadcrumbItem>
             <BreadcrumbPage>{taskForm.title}</BreadcrumbPage>
-          </BreadcrumbItem>
+          </BreadcrumbItem> */}
         </BreadcrumbList>
       </Breadcrumb>
       {/* Task title and ID header */}

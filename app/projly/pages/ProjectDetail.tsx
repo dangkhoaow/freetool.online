@@ -326,7 +326,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
         
         <TabsContent value="tasks" className="mt-6">
           <Card>
-            <CardContent className="mt-4">
+            <CardContent>
               {/* Using the centralized TasksContainer component */}
               <TasksContainer
                 context="project"
