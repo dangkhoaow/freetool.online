@@ -800,7 +800,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
         
         <TabsContent value="subtasks">
           <Card>
-            <CardContent className="mt-4">
+            <CardContent>
               <SubTasksContent 
                 subTasks={subTasks as any}
                 parentTaskId={taskId}
