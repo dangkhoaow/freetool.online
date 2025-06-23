@@ -23,10 +23,6 @@ export const Header = ({ toggleSidebar, sidebarOpen }: { toggleSidebar: () => vo
         button[type="button"].absolute {
           z-index: 99;
         }
-        .space-y-4 > :not([hidden]) ~ :not([hidden]) {
-          margin-top: 0;
-          margin-bottom: 0;
-        }
       `}</style>
       <HeaderWrapper>
         <div className="flex items-center">
