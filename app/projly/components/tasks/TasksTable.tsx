@@ -748,7 +748,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`}
                 onClick={() => handleViewTaskDetails(task)}
               >
-                <TableCell className="font-medium whitespace-nowrap min-w-[90vw] md:min-w-[33vw]" title={task.description || "-"}>
+                <TableCell className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'}`} title={task.description || "-"}>
                   <div className="flex items-center">
                     {/* Collapse/expand toggle */}
                     {taskRelationships.has(task.id) && task._meta?.level === 0 && (!hideParentRow || context !== 'main') ? (
