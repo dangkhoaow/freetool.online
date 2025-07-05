@@ -549,7 +549,6 @@ export function TasksContainer({
     return tasksForHierarchy.filter(task => {
       return (
         (task.title?.toLowerCase().includes(lower)) ||
-        (task.description?.toLowerCase().includes(lower)) ||
         (task.id?.toLowerCase().includes(lower))
       );
     });

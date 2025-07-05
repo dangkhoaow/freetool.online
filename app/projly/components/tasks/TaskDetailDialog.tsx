@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { X } from "lucide-react";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
 // Define the log prefix for consistent logging
 const LOG_PREFIX = "[PROJLY:TASK_DETAIL_DIALOG]";
@@ -86,6 +87,10 @@ export function TaskDetailDialog({ taskId, isOpen, onClose }: TaskDetailDialogPr
             <X className="h-4 w-4" />
           </button>
         </DialogPrimitive.Close>
+        {/* Required DialogTitle for accessibility */}
+        <VisuallyHidden.Root>
+          <DialogPrimitive.Title>Task Details</DialogPrimitive.Title>
+        </VisuallyHidden.Root>
         {children}
         {/* No close button here */}
       </DialogPrimitive.Content>

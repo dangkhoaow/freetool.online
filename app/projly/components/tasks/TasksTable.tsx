@@ -1028,7 +1028,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
               >
                 <TableCell 
                   className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'} cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`} 
-                  title={task.description || "-"}
+                  title={task.title || "-"}
                   onClick={() => handleViewTaskDetails(task)}
                 >
                   <div className="flex items-center">

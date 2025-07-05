@@ -497,7 +497,6 @@ export function TasksBoard({
       log(`Applying search filter: "${searchTerm}" to ${tasks.length} tasks in board view`);
       filtered = filtered.filter(task =>
         task.title?.toLowerCase().includes(searchTerm) ||
-        task.description?.toLowerCase().includes(searchTerm) ||
         task.id?.toLowerCase().includes(searchTerm)
       );
       log(`After search filter: ${filtered.length} tasks remaining`);
