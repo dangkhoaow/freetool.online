@@ -340,8 +340,11 @@ export function TaskDialog({ projectId, taskId, open, onOpenChange }: TaskDialog
                     <SelectContent>
                       <SelectItem value="Not Started">Not Started</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="On Hold">On Hold</SelectItem>
+                      <SelectItem value="In Review">In Review</SelectItem>
                       <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Golive">Golive</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
                       <SelectItem value="Cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>

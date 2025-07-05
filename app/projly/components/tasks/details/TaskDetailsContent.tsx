@@ -73,6 +73,10 @@ export function TaskDetailsContent({
         variant = "outline";
         customClass = "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
         break;
+      case "Golive":
+        variant = "default";
+        customClass = "bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500";
+        break;
       case "Not Started":
         variant = "outline";
         customClass = "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
@@ -84,6 +88,10 @@ export function TaskDetailsContent({
       case "Pending":
         variant = "destructive";
         customClass = "bg-amber-500 text-white hover:bg-amber-600 border-amber-500";
+        break;
+      case "Cancelled":
+        variant = "destructive";
+        customClass = "bg-red-500 text-white hover:bg-red-600 border-red-500";
         break;
       default:
         variant = "outline";

@@ -95,7 +95,7 @@ export const transformTasksToEvents = (tasks: TaskWithDetails[] | null): Calenda
  */
 export type StatusColorKey = 'completed' | 'in progress' | 'in review' | 'not started' | 
   'on hold' | 'pending' | 'active' | 'planned' | 'cancelled' | 'canceled' | 
-  'archived' | 'overdue' | 'to do' | 'default';
+  'archived' | 'overdue' | 'to do' | 'golive' | 'default';
 
 export const STATUS_COLORS: Record<StatusColorKey, { bg: string; border: string }> = {
   'completed': { bg: '#16a34a', border: '#15803d' }, // green-600/700
@@ -111,6 +111,7 @@ export const STATUS_COLORS: Record<StatusColorKey, { bg: string; border: string 
   'archived': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600 (same as Not Started)
   'overdue': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
   'to do': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600
+  'golive': { bg: '#10b981', border: '#047857' }, // emerald-500/600 (green)
   'default': { bg: '#9ca3af', border: '#6b7280' }, // gray-400/500
 };
 

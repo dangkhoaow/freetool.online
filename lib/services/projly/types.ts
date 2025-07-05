@@ -181,6 +181,7 @@ export interface TaskFilters {
   includeSubTasks?: boolean;
   parentOnly?: boolean;
   parentTaskId?: string;
+  excludeStatuses?: string[]; // Add excludeStatuses field to TaskFilters
 }
 
 export interface Task {

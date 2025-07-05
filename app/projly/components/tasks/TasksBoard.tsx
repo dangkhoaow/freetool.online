@@ -37,6 +37,7 @@ const STATUS_COLUMNS = [
   'In Progress',
   'In Review',
   'Completed',
+  'Golive',
   'On Hold',
   'Pending',
   'Cancelled'
@@ -97,6 +98,7 @@ const STATUS_COLORS: Record<string, string> = {
   'In Progress': 'bg-blue-100 hover:bg-blue-200 text-blue-700',
   'In Review': 'bg-purple-100 hover:bg-purple-200 text-purple-700',
   'Completed': 'bg-green-100 hover:bg-green-200 text-green-700',
+  'Golive': 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700',
   'On Hold': 'bg-amber-100 hover:bg-amber-200 text-amber-700',
   'Pending': 'bg-orange-100 hover:bg-orange-200 text-orange-700',
   'Cancelled': 'bg-red-100 hover:bg-red-200 text-red-700',

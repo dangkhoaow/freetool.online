@@ -133,12 +133,14 @@ interface UIFilters {
   search?: string;
   taskHierarchy?: string; // Filter for parent tasks only or include sub-tasks
   label?: string; // Add label field to UIFilters
+  excludeStatuses?: string[]; // Add excludeStatuses field to UIFilters
 }
 
 // Define interface for API filters that includes backend parameters
 interface APIFilters extends UIFilters {
   parentOnly?: string;
   includeSubTasks?: string;
+  excludeStatuses?: string[]; // Add excludeStatuses field to APIFilters
 }
 
 export function TasksContainer({
@@ -171,7 +173,10 @@ export function TasksContainer({
   const [loading, setLoading] = useState<boolean>(autoLoad && !initialTasks);
   const [error, setError] = useState<string | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState<boolean>(false);
-  const [currentFilters, setCurrentFilters] = useState<UIFilters>(initialFilters);
+  const [currentFilters, setCurrentFilters] = useState<UIFilters>({
+    ...initialFilters,
+    excludeStatuses: initialFilters.excludeStatuses || ['Completed', 'Golive'] // Default to exclude 'Completed' and 'Golive' tasks
+  });
   
   // State for client-side filtering
   const [clientSideFilters, setClientSideFilters] = useState<UIFilters>({});
@@ -285,6 +290,11 @@ export function TasksContainer({
       delete apiFilters.search;
     }
     
+    // Exclude excludeStatuses from API filters - this is client-side only filtering
+    if (apiFilters.excludeStatuses) {
+      delete apiFilters.excludeStatuses;
+    }
+    
     // Handle special case for 'current' assignee - replace with actual user ID
     if (apiFilters.assignedTo === 'current') {
       if (user?.id) {
@@ -378,6 +388,18 @@ export function TasksContainer({
     
     // Apply filters immediately if callback provided
     loadTasks(toApiFilters(updatedFilters));
+  };
+
+  const handleExcludeStatusesFilterChange = (statuses: string[]) => {
+    log('[TASKS CONTAINER] Exclude statuses filter changed:', statuses);
+    const updatedFilters = { 
+      ...currentFilters, 
+      excludeStatuses: statuses 
+    };
+    setCurrentFilters(updatedFilters);
+    
+    // This is client-side filtering only, no need to reload tasks from server
+    log('Updated exclude statuses filter:', statuses);
   };
   
   // Handle search filter changes
@@ -517,7 +539,7 @@ export function TasksContainer({
   }, [rawTasks, currentFilters.taskHierarchy]);
 
   // Apply client-side search filtering on tasks prepared for hierarchy
-  const clientSideFilteredTasks = useMemo(() => {
+  const searchFilteredTasks = useMemo(() => {
     const searchTerm = (clientSideFilters as any).search;
     if (!searchTerm) {
       return tasksForHierarchy;
@@ -533,6 +555,52 @@ export function TasksContainer({
     });
   }, [tasksForHierarchy, (clientSideFilters as any).search]);
 
+  // Apply exclude statuses filtering at the highest level (parent tasks only)
+  const clientSideFilteredTasks = useMemo(() => {
+    const excludeStatuses = currentFilters.excludeStatuses;
+    if (!excludeStatuses || excludeStatuses.length === 0) {
+      return searchFilteredTasks;
+    }
+    console.log(`[TASKS CONTAINER] Applying exclude statuses filter at highest level: ${excludeStatuses.join(', ')}`);
+    
+    // Create a map of parent tasks to check their status
+    const parentTaskStatusMap = new Map<string, string>();
+    const excludedParentIds = new Set<string>();
+    
+    // First pass: identify parent tasks and their statuses
+    searchFilteredTasks.forEach(task => {
+      if (!task.parentTaskId) {
+        // This is a parent task
+        parentTaskStatusMap.set(task.id, task.status);
+        if (excludeStatuses.includes(task.status)) {
+          excludedParentIds.add(task.id);
+        }
+      }
+    });
+    
+    // Second pass: filter tasks based on parent task status
+    return searchFilteredTasks.filter(task => {
+      // If this is a parent task, exclude it if its status is in the excluded list
+      if (!task.parentTaskId) {
+        return !excludeStatuses.includes(task.status);
+      }
+      
+      // If this is a child task, exclude it only if its parent is excluded
+      // Find the root parent task ID
+      let rootParentId = task.parentTaskId;
+      
+      // Traverse up the hierarchy to find the root parent
+      let currentTask = searchFilteredTasks.find(t => t.id === rootParentId);
+      while (currentTask && currentTask.parentTaskId) {
+        rootParentId = currentTask.parentTaskId;
+        currentTask = searchFilteredTasks.find(t => t.id === rootParentId);
+      }
+      
+      // Only exclude if the root parent is excluded
+      return !excludedParentIds.has(rootParentId);
+    });
+  }, [searchFilteredTasks, currentFilters.excludeStatuses]);
+
   // Use the task hierarchy hook with filtered tasks
   const {
     tasks: filteredTasks,
@@ -543,13 +611,14 @@ export function TasksContainer({
   
   // Context-specific title
   const getContextTitle = () => {
+    const taskCount = filteredTasks?.length || 0;
     switch (context) {
       case 'project':
-        return displayOptions.title || 'Project Tasks';
+        return displayOptions.title || `Project Tasks (${taskCount})`;
       case 'task':
-        return displayOptions.title || 'Subtasks';
+        return displayOptions.title || `Subtasks (${taskCount})`;
       default:
-        return displayOptions.title || 'Tasks';
+        return displayOptions.title || `Tasks (${taskCount})`;
     }
   };
   
@@ -817,6 +886,7 @@ export function TasksContainer({
                   onLabelChange={handleLabelFilterChange}
                   onAssigneeChange={handleAssigneeChange}
                   onTaskHierarchyChange={handleTaskHierarchyFilterChange}
+                  onExcludeStatusesChange={handleExcludeStatusesFilterChange}
                 />
               )}
             </div>

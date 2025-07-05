@@ -173,6 +173,7 @@ const ResourceTimelineView = ({
     'Canceled': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
     'Archived': { bg: '#6b7280', border: '#4b5563' }, // gray-500/600 (same as Not Started)
     'Overdue': { bg: '#ef4444', border: '#dc2626' }, // red-500/600
+    'Golive': { bg: '#10b981', border: '#047857' }, // emerald-500/600 (green)
     'default': { bg: '#9ca3af', border: '#6b7280' }, // gray-400/500
   };
   

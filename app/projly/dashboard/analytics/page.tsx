@@ -47,6 +47,7 @@ const STATUS_COLORS = {
   'Due Soon': '#f59e0b', // amber-500 (same as Pending)
   'Due Later': '#0ea5e9', // sky-500
   'No Due Date': '#9ca3af', // gray-400
+  'Golive': '#10b981', // emerald-500 (green)
   // Resource types
   'License': '#16a34a', // green-600
   'File': '#2563eb', // blue-600

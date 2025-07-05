@@ -10,6 +10,7 @@ export interface TaskFiltersUI {
   label?: string;
   assignedTo?: string;
   taskHierarchy?: string;
+  excludeStatuses?: string[];
 }
 
 interface TaskFiltersProps {
@@ -26,6 +27,7 @@ interface TaskFiltersProps {
   onLabelChange: (value: string) => void;
   onAssigneeChange: (value: string) => void;
   onTaskHierarchyChange: (value: string) => void;
+  onExcludeStatusesChange: (statuses: string[]) => void;
 }
 
 export function TaskFilters({
@@ -39,6 +41,7 @@ export function TaskFilters({
   onLabelChange,
   onAssigneeChange,
   onTaskHierarchyChange,
+  onExcludeStatusesChange,
 }: TaskFiltersProps) {
   return (
     <Card className="mt-4 mb-4">
@@ -168,6 +171,37 @@ export function TaskFilters({
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          
+          {/* Exclude Statuses Filter */}
+          <div className="mt-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="exclude-statuses-filter" className="text-sm font-medium">
+                Hide Parent Tasks by Status
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Hides parent tasks and all their subtasks when the parent has the selected status
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {uniqueStatuses.map((status) => (
+                  <label key={status} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={filters.excludeStatuses?.includes(status) || false}
+                      onChange={(e) => {
+                        const currentExcluded = filters.excludeStatuses || [];
+                        const newExcluded = e.target.checked
+                          ? [...currentExcluded, status]
+                          : currentExcluded.filter(s => s !== status);
+                        onExcludeStatusesChange(newExcluded);
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {status}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
