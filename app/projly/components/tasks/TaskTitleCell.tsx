@@ -23,6 +23,7 @@ interface TaskTitleCellProps {
   level?: number;
   hasSubtasks: boolean;
   subtaskCount: number;
+  displayMode?: 'table' | 'board'; // New prop to control display
 }
 
 /**
@@ -33,7 +34,8 @@ export const TaskTitleCell: React.FC<TaskTitleCellProps> = ({
   task,
   level,
   hasSubtasks,
-  subtaskCount
+  subtaskCount,
+  displayMode = 'table' // Default to table mode for backward compatibility
 }) => {
   // Create refs for direct DOM manipulation
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,30 +82,33 @@ export const TaskTitleCell: React.FC<TaskTitleCellProps> = ({
       }}
     >
       {/* Indentation for nested tasks */}
-      <div style={{ color: '#9CA3AF' }}>
+      <div style={{ color: '#9CA3AF', display: displayMode === 'board' ? 'none' : 'block' }}>
         {level && level > 0 ? '└─' : ''}
       </div>
       
-      {/* Task title - clamp to two lines with ellipsis */}
-      <div
-        ref={titleRef}
-        style={{
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          whiteSpace: 'normal',
-        }}
-      />
-      
-      {/* Subtask badge */}
-      <div>
-        {hasSubtasks && (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-            {subtaskCount} subtasks
-          </Badge>
-        )}
-      </div>
+             {/* Task title - clamp to two lines with ellipsis */}
+       <div
+         ref={titleRef}
+         style={{
+           display: '-webkit-box',
+           WebkitLineClamp: 3,
+           WebkitBoxOrient: 'vertical',
+           overflow: 'hidden',
+           whiteSpace: 'normal',
+           fontSize: displayMode === 'board' ? '11px' : '14px',
+           lineHeight: displayMode === 'board' ? '1.2' : '1.3',
+           fontWeight: '500'
+         }}
+       />
+       
+       {/* Subtask badge - hidden in board mode */}
+       <div>
+         {hasSubtasks && displayMode === 'table' && (
+           <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+             {subtaskCount} subtasks
+           </Badge>
+         )}
+       </div>
     </div>
   );
 };

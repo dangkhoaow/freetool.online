@@ -202,7 +202,7 @@ const LabelColumn: React.FC<LabelColumnProps> = ({ label, tasks, onTaskDrop, com
   return (
     <div
       ref={drop}
-      className={`flex flex-col h-full min-h-[300px] rounded-md p-2 transition-all duration-200 ease-in-out ${
+      className={`flex flex-col h-full min-h-[300px] rounded-md p-1 transition-all duration-200 ease-in-out ${
         isOver && canDrop 
           ? 'bg-blue-50 border-2 border-blue-300 shadow-lg transform scale-[1.02]' 
           : isOver
@@ -323,7 +323,7 @@ const AssigneeColumn: React.FC<AssigneeColumnProps> = ({ assignee, tasks, onTask
   return (
     <div
       ref={drop}
-      className={`flex flex-col h-full min-h-[300px] rounded-md p-2 transition-all duration-200 ease-in-out ${
+      className={`flex flex-col h-full min-h-[300px] rounded-md p-1 transition-all duration-200 ease-in-out ${
         isOver && canDrop 
           ? 'bg-blue-50 border-2 border-blue-300 shadow-lg transform scale-[1.02]' 
           : isOver
@@ -439,7 +439,7 @@ const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, 
   return (
     <div
       ref={drop}
-      className={`flex flex-col h-full min-h-[300px] rounded-md p-2 transition-all duration-200 ease-in-out ${
+      className={`flex flex-col h-full min-h-[300px] rounded-md p-1 transition-all duration-200 ease-in-out ${
         isOver && canDrop 
           ? 'bg-blue-50 border-2 border-blue-300 shadow-lg transform scale-[1.02]' 
           : isOver
@@ -452,12 +452,6 @@ const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, 
         })
       }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium">{status}</h3>
-        <Badge variant="outline" className={statusColor}>
-          {tasks.length}
-        </Badge>
-      </div>
       <div className="flex-1 overflow-y-auto space-y-4">
         {/* Only render top-level tasks and let TaskCard handle subtasks */}
         {topLevelTasks.map(task => (
@@ -860,21 +854,167 @@ export function TasksBoard({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="status">Group by Status</SelectItem>
-              <SelectItem value="assignee">Group by Assignee</SelectItem>
-              <SelectItem value="label">Group by Label</SelectItem>
+              <SelectItem value="assignee">Status by Assignee</SelectItem>
+              <SelectItem value="label">Status by Label</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="overflow-x-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-w-[800px]">
-            {groupBy === 'status' && (
-              // Group by status
-              STATUS_COLUMNS.map((status) => (
-                <Card key={status} className={`${compact ? 'shadow-none border-0' : ''}`}>
-                  <CardHeader className="py-2 px-3">
-                    <CardTitle className="text-sm font-medium">{status}</CardTitle>
+          {groupBy === 'assignee' ? (
+            // Group by assignee based on status - show assignees vertically
+            <div className="space-y-8">
+              {/* Unassigned tasks */}
+              {tasksByAssignee.get(null) && tasksByAssignee.get(null)!.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-lg font-semibold">Unassigned</h3>
+                    <Badge variant="outline" className="text-xs">
+                      {tasksByAssignee.get(null)?.length || 0} tasks
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 min-w-[600px]">
+                    {STATUS_COLUMNS.map((status) => {
+                      const statusTasks = (tasksByAssignee.get(null) || []).filter(task => task.status === status);
+                      return (
+                        <Card key={status} className={`${compact ? 'shadow-none border-0' : ''} min-w-[160px]`}>
+                          <CardHeader className="py-1 px-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-xs font-medium">{status}</CardTitle>
+                              <Badge variant="outline" className="text-xs">
+                                {statusTasks.filter(t => !t.parentTaskId).length}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-1">
+                            <StatusColumn
+                              status={status}
+                              tasks={statusTasks}
+                              onTaskDrop={handleTaskDrop}
+                              compact={compact}
+                            />
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {/* Assignee task boards */}
+              {assignees.map((assignee) => {
+                const assigneeTasks = tasksByAssignee.get(assignee.id) || [];
+                if (assigneeTasks.length === 0) return null;
+                
+                return (
+                  <div key={assignee.id} className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Avatar className="h-8 w-8">
+                        {assignee.avatar && (
+                          <AvatarImage src={assignee.avatar} alt={assignee.name || assignee.email || ''} />
+                        )}
+                        <AvatarFallback className="text-sm">
+                          {getAssigneeInitials(assignee)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <h3 className="text-lg font-semibold">
+                        {assignee.firstName && assignee.lastName 
+                          ? `${assignee.firstName} ${assignee.lastName}`
+                          : assignee.name || assignee.email || 'Unknown'}
+                      </h3>
+                      <Badge variant="outline" className="text-xs">
+                        {assigneeTasks.length} tasks
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 min-w-[600px]">
+                      {STATUS_COLUMNS.map((status) => {
+                        const statusTasks = assigneeTasks.filter(task => task.status === status);
+                        return (
+                          <Card key={status} className={`${compact ? 'shadow-none border-0' : ''} min-w-[160px]`}>
+                            <CardHeader className="py-1 px-2">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-xs font-medium">{status}</CardTitle>
+                                <Badge variant="outline" className="text-xs">
+                                  {statusTasks.filter(t => !t.parentTaskId).length}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="p-1">
+                              <StatusColumn
+                                status={status}
+                                tasks={statusTasks}
+                                onTaskDrop={handleTaskDrop}
+                                compact={compact}
+                              />
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : groupBy === 'label' ? (
+            // Group by label based on status - show labels vertically
+            <div className="space-y-8">
+              {orderedLabels
+                .filter((label) => (tasksByLabel.get(label) || []).length > 0)
+                .map((label) => {
+                  const labelTasks = tasksByLabel.get(label) || [];
+                  return (
+                    <div key={label || 'unlabeled'} className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Tag className={`h-6 w-6 ${label ? LABEL_COLORS[label]?.split(' ').filter(c => c.startsWith('text'))[0] || 'text-gray-700' : 'text-gray-400'}`} />
+                        <h3 className="text-lg font-semibold">
+                          {label || 'Unlabeled'}
+                        </h3>
+                        <Badge variant="outline" className="text-xs">
+                          {labelTasks.length} tasks
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 min-w-[600px]">
+                        {STATUS_COLUMNS.map((status) => {
+                          const statusTasks = labelTasks.filter(task => task.status === status);
+                          return (
+                            <Card key={status} className={`${compact ? 'shadow-none border-0' : ''} min-w-[160px]`}>
+                              <CardHeader className="py-1 px-2">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-xs font-medium">{status}</CardTitle>
+                                  <Badge variant="outline" className="text-xs">
+                                    {statusTasks.filter(t => !t.parentTaskId).length}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="p-1">
+                                <StatusColumn
+                                  status={status}
+                                  tasks={statusTasks}
+                                  onTaskDrop={handleTaskDrop}
+                                  compact={compact}
+                                />
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            // Group by status - standard grid layout
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 min-w-[600px]">
+              {STATUS_COLUMNS.map((status) => (
+                <Card key={status} className={`${compact ? 'shadow-none border-0' : ''} min-w-[160px]`}>
+                  <CardHeader className="py-1 px-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xs font-medium">{status}</CardTitle>
+                      <Badge variant="outline" className="text-xs">
+                        {(tasksByStatus[status] || []).filter(t => !t.parentTaskId).length}
+                      </Badge>
+                    </div>
                   </CardHeader>
-                  <CardContent className="p-2">
+                  <CardContent className="p-1">
                     <StatusColumn
                       status={status}
                       tasks={tasksByStatus[status] || []}
@@ -883,82 +1023,9 @@ export function TasksBoard({
                     />
                   </CardContent>
                 </Card>
-              ))
-            )}
-            
-            {groupBy === 'assignee' && (
-              // Group by assignee
-              <>
-                {/* Unassigned column */}
-                <Card className={`${compact ? 'shadow-none border-0' : ''}`}>
-                  <CardHeader className="py-2 px-3">
-                    <CardTitle className="text-sm font-medium">Unassigned</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-2">
-                    <AssigneeColumn
-                      assignee={null}
-                      tasks={tasksByAssignee.get(null) || []}
-                      onTaskDrop={handleTaskDrop}
-                      compact={compact}
-                    />
-                  </CardContent>
-                </Card>
-                
-                {/* Assignee columns */}
-                {assignees.map((assignee) => (
-                  <Card key={assignee.id} className={`${compact ? 'shadow-none border-0' : ''}`}>
-                    <CardHeader className="py-2 px-3 bg-blue-50">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          {assignee.avatar && (
-                            <AvatarImage src={assignee.avatar} alt={assignee.name || assignee.email || ''} />
-                          )}
-                          <AvatarFallback className="text-xs">
-                            {getAssigneeInitials(assignee)}
-                          </AvatarFallback>
-                        </Avatar>
-                        {assignee.firstName && assignee.lastName 
-                          ? `${assignee.firstName} ${assignee.lastName}`
-                          : assignee.name || assignee.email || 'Unknown'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-2">
-                      <AssigneeColumn
-                        assignee={assignee}
-                        tasks={tasksByAssignee.get(assignee.id) || []}
-                        onTaskDrop={handleTaskDrop}
-                        compact={compact}
-                      />
-                    </CardContent>
-                  </Card>
-                ))}
-              </>
-            )}
-            
-            {groupBy === 'label' && (
-              // Group by label
-              orderedLabels
-                .filter((label) => (tasksByLabel.get(label) || []).length > 0)
-                .map((label) => (
-                  <Card key={label || 'unlabeled'} className={`${compact ? 'shadow-none border-0' : ''}`}>
-                    <CardHeader className={`py-2 px-3 ${label ? 'bg-gray-50' : ''}`}>
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Tag className={`h-4 w-4 ${label ? LABEL_COLORS[label]?.split(' ').filter(c => c.startsWith('text'))[0] || 'text-gray-700' : 'text-gray-400'}`} />
-                        {label || 'Unlabeled'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-2">
-                      <LabelColumn
-                        label={label}
-                        tasks={tasksByLabel.get(label) || []}
-                        onTaskDrop={handleTaskDrop}
-                        compact={compact}
-                      />
-                    </CardContent>
-                  </Card>
-                ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </DndProvider>

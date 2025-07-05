@@ -132,27 +132,27 @@ export function TaskCard({ task, compact = false, renderSubtasks = true }: TaskC
         onClick={e => e.stopPropagation()}
       >
         <Card className={`${task.parentTaskId ? 'border-l-4 border-l-blue-300' : ''}`}>
-          <CardContent className="p-2 space-y-3">
+          <CardContent className="p-1 space-y-2">
             <div className="flex justify-between items-start">
               <div className="flex-1" title={task.title}>
                 <TaskTitleCell 
                   task={task} 
                   hasSubtasks={!!task.subTasks && task.subTasks.length > 0} 
-                  subtaskCount={task.subTasks?.length || 0} 
+                  subtaskCount={task.subTasks?.length || 0}
+                  displayMode="board"
                 />
               </div>
               {task.parentTaskId && (
-                <Badge variant="outline" className="ml-2 text-xs">
-                  Subtask
+                <Badge variant="outline" className="ml-1 text-[9px] py-0 px-1">
+                  Sub
                 </Badge>
               )}
             </div>
             
             {/* Display label if available */}
             {task.label && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Label:</span>
-                <Badge variant="outline" className="text-xs">{task.label}</Badge>
+              <div className="flex items-center gap-1">
+                <Badge variant="outline" className="text-[10px] py-0 px-1">{task.label}</Badge>
               </div>
             )}
 
@@ -160,46 +160,38 @@ export function TaskCard({ task, compact = false, renderSubtasks = true }: TaskC
             {task.percentProgress !== undefined && task.percentProgress !== null && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Progress:</span>
-                  <span className="text-xs text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
+                  <span className="text-[10px] text-muted-foreground">{Math.round(task.percentProgress || 0)}%</span>
                 </div>
-                <Progress value={task.percentProgress} className="h-1" />
+                <Progress value={task.percentProgress} className="h-0.5" />
               </div>
             )}
             
             {task.project && (
-              <div className="text-xs text-gray-500">
-                Project: {task.project.name}
+              <div className="text-[10px] text-gray-500 truncate">
+                {task.project.name}
               </div>
             )}
             
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex flex-col gap-0.5 text-[10px] text-gray-500">
               {task.dueDate && (
                 <div className="flex items-center">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  <span>Due: {formatDateForDisplay(task.dueDate)}</span>
-                </div>
-              )}
-              
-              {task.startDate && !compact && (
-                <div className="flex items-center">
-                  <Clock className="h-3 w-3 mr-1" />
-                  <span>Start: {formatDateForDisplay(task.startDate)}</span>
+                  <Calendar className="h-2.5 w-2.5 mr-0.5" />
+                  <span>{formatDateForDisplay(task.dueDate)}</span>
                 </div>
               )}
             </div>
           </CardContent>
           
-          <CardFooter className="px-4 py-3 flex justify-between items-center">
-            <Badge className={`text-xs ${statusColor}`}>
+          <CardFooter className="px-1 py-0.5 flex justify-between items-center">
+            <Badge className={`text-[10px] py-0 px-1 ${statusColor}`}>
               {task.status}
             </Badge>
             
-            <Avatar className="h-6 w-6">
+            <Avatar className="h-3 w-3">
               {task.assignee?.avatar && (
                 <AvatarImage src={task.assignee.avatar} alt={getAssigneeName()} />
               )}
-              <AvatarFallback className="text-xs" title={getAssigneeName()}>
+              <AvatarFallback className="text-[8px]" title={getAssigneeName()}>
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
@@ -207,22 +199,23 @@ export function TaskCard({ task, compact = false, renderSubtasks = true }: TaskC
           
           {/* Subtasks toggle button - only show if task has subtasks and we're rendering subtasks */}
           {hasSubtasks && renderSubtasks && (
-            <div className="px-2 pb-2 pt-0">
+            <div className="px-1 pb-0.5 pt-0">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="w-full flex items-center justify-center text-xs py-1 h-auto hover:bg-blue-50 hover:text-blue-700"
+                title={isSubtasksCollapsed ? 'Expand subtasks' : 'Collapse subtasks'}
+                className="w-full flex items-center justify-center text-[10px] py-0 h-auto hover:bg-blue-50 hover:text-blue-700"
                 onClick={toggleSubtasks}
               >
                 {isSubtasksCollapsed ? (
                   <>
-                    <ChevronRight className="h-3 w-3 mr-1" />
-                    <span className="text-xs">Show {task.subTasks?.length} subtask{task.subTasks?.length !== 1 ? 's' : ''}</span>
+                    <ChevronRight className="h-2.5 w-2.5 mr-0.5" />
+                    <span className="text-[10px]">{task.subTasks?.length} subtasks</span>
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="h-3 w-3 mr-1" />
-                    <span className="text-xs">Hide subtasks</span>
+                    <ChevronDown className="h-2.5 w-2.5 mr-0.5" />
+                    <span className="text-[10px]">Hide</span>
                   </>
                 )}
               </Button>
@@ -233,7 +226,7 @@ export function TaskCard({ task, compact = false, renderSubtasks = true }: TaskC
       
       {/* Subtasks section - only render if task has subtasks, we're rendering subtasks, and they're not collapsed */}
       {hasSubtasks && renderSubtasks && !isSubtasksCollapsed && (
-        <div className="pl-4 mt-2 space-y-2 border-l-2 border-blue-200">
+        <div className="pl-1 mt-1 space-y-1 border-l-2 border-blue-200" title="Expanded subtasks">
           {task.subTasks?.map((subtask) => (
             <TaskCard 
               key={subtask.id} 
