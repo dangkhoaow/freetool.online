@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Helper function for date formatting
 const formatDateForDisplay = (dateStr: string | undefined): string => {
@@ -53,6 +55,7 @@ export interface Task {
   subTasks?: Task[]; // Reference to sub-tasks
   percentProgress?: number | null; // Progress percentage
   label?: string | null; // Task label or category
+  displayOrder?: number | null; // Custom ordering within parent context
   relatedTasks?: string[] | Array<{id: string; title: string}>; // Related tasks
   _meta?: {
     level?: number;  // Store the task nesting level for UI purposes
@@ -113,6 +116,18 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 
+// Define drag item types for react-dnd
+const ItemTypes = {
+  TASK_ROW: 'task_row',
+};
+
+// Define draggable task row interface
+interface DragItem {
+  id: string;
+  index: number;
+  type: string;
+}
+
 // Helper function to organize tasks into a complete hierarchy showing ALL nested levels
 export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; direction: "asc" | "desc" }): Task[] => {
   console.log('[TASKS TABLE] Organizing tasks into full hierarchy with ALL nested levels');
@@ -153,6 +168,25 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
   // Sort function used across different collections of tasks
   const sortTasks = (tasksToSort: Task[]) => {
     return tasksToSort.sort((a, b) => {
+      // First priority: Use displayOrder when both tasks have it set (not -1 or null)
+      const aDisplayOrder = a.displayOrder !== undefined && a.displayOrder !== null && a.displayOrder !== -1 ? a.displayOrder : null;
+      const bDisplayOrder = b.displayOrder !== undefined && b.displayOrder !== null && b.displayOrder !== -1 ? b.displayOrder : null;
+      
+      // If we're not explicitly sorting by another field, use displayOrder when available
+      if (sortBy.field === "displayOrder" || (aDisplayOrder !== null && bDisplayOrder !== null)) {
+        if (aDisplayOrder !== null && bDisplayOrder !== null) {
+          const orderCompare = sortBy.direction === "asc" 
+            ? aDisplayOrder - bDisplayOrder
+            : bDisplayOrder - aDisplayOrder;
+          if (orderCompare !== 0) return orderCompare;
+        } else if (aDisplayOrder !== null) {
+          return sortBy.direction === "asc" ? -1 : 1; // Tasks with displayOrder come first
+        } else if (bDisplayOrder !== null) {
+          return sortBy.direction === "asc" ? 1 : -1; // Tasks with displayOrder come first
+        }
+      }
+      
+      // Fall back to other sorting criteria
       if (sortBy.field === "dueDate") {
         if (!a.dueDate) return sortBy.direction === "asc" ? 1 : -1;
         if (!b.dueDate) return sortBy.direction === "asc" ? -1 : 1;
@@ -180,6 +214,8 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
           ? projectA.localeCompare(projectB)
           : projectB.localeCompare(projectA);
       }
+      
+      // Final fallback: if no displayOrder and no explicit sort, use creation time
       return 0;
     });
   };
@@ -252,6 +288,157 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
   return organizedTasks;
 };
 
+// Draggable task row component
+interface DraggableTaskRowProps {
+  task: Task;
+  index: number;
+  children: React.ReactNode;
+  onTaskReorder: (draggedTaskId: string, targetTaskId: string, position: 'before' | 'after') => void;
+  isDragDisabled?: boolean;
+}
+
+const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({ 
+  task, 
+  index, 
+  children, 
+  onTaskReorder, 
+  isDragDisabled = false 
+}) => {
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+  const dropRef = useRef<HTMLTableRowElement>(null);
+
+  const [{ isDragging }, dragRef] = useDrag({
+    type: ItemTypes.TASK_ROW,
+    item: { id: task.id, index, type: ItemTypes.TASK_ROW },
+    canDrag: !isDragDisabled,
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+    end: () => {
+      setDropPosition(null);
+    },
+  });
+
+  const [{ isOver, canDrop }, connectDropTarget] = useDrop({
+    accept: ItemTypes.TASK_ROW,
+    hover: (draggedItem: DragItem, monitor) => {
+      if (!monitor.isOver({ shallow: true })) {
+        setDropPosition(null);
+        return;
+      }
+      
+      const draggedId = draggedItem.id;
+      const targetId = task.id;
+      
+      if (draggedId === targetId) {
+        setDropPosition(null);
+        return; // Can't drop on itself
+      }
+      
+      // Get the bounding rectangle of the target row
+      const hoverBoundingRect = dropRef.current?.getBoundingClientRect();
+      if (!hoverBoundingRect) return;
+      
+      // Get mouse position
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      
+      // Get pixels to the top of the target row
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      const hoverHeight = hoverBoundingRect.bottom - hoverBoundingRect.top;
+      
+      // Create a more responsive drop zone calculation
+      // Use 30% top and bottom zones for better UX
+      const topZone = hoverHeight * 0.3;
+      const bottomZone = hoverHeight * 0.7;
+      
+      let position: 'before' | 'after';
+      if (hoverClientY < topZone) {
+        position = 'before';
+      } else if (hoverClientY > bottomZone) {
+        position = 'after';
+      } else {
+        // In the middle zone, maintain the current position if it exists
+        // This prevents flickering when hovering in the middle
+        position = dropPosition || 'after';
+      }
+      
+      setDropPosition(position);
+    },
+    drop: (draggedItem: DragItem, monitor) => {
+      if (!monitor.isOver({ shallow: true })) return;
+      
+      const draggedId = draggedItem.id;
+      const targetId = task.id;
+      
+      if (draggedId === targetId) return; // Can't drop on itself
+      
+      // Use the determined drop position or default to 'after'
+      const position = dropPosition || 'after';
+      onTaskReorder(draggedId, targetId, position);
+      setDropPosition(null);
+    },
+    canDrop: (draggedItem: DragItem) => {
+      return draggedItem.id !== task.id;
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  });
+
+  // Combine drag and drop refs
+  const combinedRef = (el: HTMLTableRowElement | null) => {
+    dropRef.current = el;
+    dragRef(el);
+    connectDropTarget(el);
+  };
+
+  // Enhanced visual feedback
+  const getRowClasses = () => {
+    const baseClasses = 'transition-all duration-200 ease-in-out';
+    
+    if (isDragging) {
+      return `${baseClasses} opacity-30 cursor-grabbing transform scale-105 shadow-lg bg-blue-50`;
+    }
+    
+    if (isDragDisabled) {
+      return `${baseClasses} cursor-default`;
+    }
+    
+    if (isOver && canDrop) {
+      const positionClasses = dropPosition === 'before' 
+        ? 'border-t-4 border-blue-500 shadow-md' 
+        : 'border-b-4 border-blue-500 shadow-md';
+      return `${baseClasses} ${positionClasses} bg-blue-50/50 transform scale-[1.02]`;
+    }
+    
+    // Remove isDragActive since we're using isDragging instead
+    
+    return `${baseClasses} cursor-grab hover:bg-gray-50/50`;
+  };
+
+  return (
+    <TableRow 
+      ref={combinedRef}
+      className={getRowClasses()}
+      style={{
+        // Add visual depth when dragging
+        ...(isDragging && {
+          boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
+          zIndex: 1000,
+        }),
+        // Add subtle elevation when hovering as drop target
+        ...(isOver && canDrop && {
+          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+        })
+      }}
+    >
+      {children}
+    </TableRow>
+  );
+};
+
 export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, compact, context, parentTaskId, hideParentRow, hideFilterUI }: TasksTableProps) {
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -279,7 +466,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     log('Current filters:', filters);
   }, [filters]);
   const [sortBy, setSortBy] = useState<{ field: string; direction: "asc" | "desc" }>({
-    field: "dueDate",
+    field: "displayOrder",
     direction: "asc",
   });
   
@@ -678,17 +865,98 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     setCollapsedTasks(newSet);
   };
 
+  // Handle task reordering via drag and drop
+  const handleTaskReorder = async (
+    draggedTaskId: string,
+    targetTaskId: string,
+    position: "before" | "after"
+  ) => {
+    try {
+      console.log(
+        `[TASKS TABLE] Reordering task ${draggedTaskId} ${position} task ${targetTaskId}`
+      );
+
+      // ---- 1. Identify dragged / target tasks -------------------------
+      const draggedTask = visibleTasks.find((t) => t.id === draggedTaskId);
+      const targetTask = visibleTasks.find((t) => t.id === targetTaskId);
+
+      if (!draggedTask || !targetTask) {
+        console.log("[TASKS TABLE] Could not find dragged or target task");
+        return;
+      }
+
+      // ---- 2. Get *siblings* (same parent context) ---------------------
+      const parentId = draggedTask.parentTaskId ?? null; // null for top-level
+
+      const siblingTasks = visibleTasks.filter(
+        (t) => (t.parentTaskId ?? null) === parentId
+      );
+
+      // Sort siblings by their current displayOrder (fallback to created order)
+      siblingTasks.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+
+      // ---- 3. Build new ordering array ---------------------------------
+      // Remove dragged from sibling list
+      const newOrder = siblingTasks.filter((t) => t.id !== draggedTaskId);
+
+      // Find target index in the new list
+      const tgtIdx = newOrder.findIndex((t) => t.id === targetTaskId);
+
+      // Insert dragged task before / after the target
+      const insertIdx = position === "before" ? tgtIdx : tgtIdx + 1;
+      newOrder.splice(insertIdx, 0, draggedTask);
+
+      // ---- 4. Re-assign sequential displayOrder values -----------------
+      const updates: Promise<any>[] = [];
+      newOrder.forEach((task, idx) => {
+        const requiredOrder = idx + 1; // 1-based, small integers
+        if (task.displayOrder !== requiredOrder) {
+          console.log(
+            `[TASKS TABLE]   -> ${task.id} displayOrder ${task.displayOrder} → ${requiredOrder}`
+          );
+          updates.push(
+            projlyTasksService.updateTask(task.id, {
+              title: task.title,
+              status: task.status,
+              projectId: task.projectId,
+              assignedTo: task.assignedTo,
+              description: task.description || "",
+              parentTaskId: task.parentTaskId,
+              label: task.label || undefined,
+              percentProgress:
+                task.percentProgress !== null ? task.percentProgress : undefined,
+              displayOrder: requiredOrder,
+            })
+          );
+        }
+      });
+
+      await Promise.all(updates);
+      console.log(
+        `[TASKS TABLE] Re-ordering complete – ${updates.length} task(s) updated.`
+      );
+
+      // ---- 5. Refresh list --------------------------------------------
+      if (onOperationComplete) {
+        onOperationComplete(filters);
+      }
+    } catch (error) {
+      console.error("[TASKS TABLE] Error reordering task:", error);
+    }
+  };
+
   // Render the table
 
   return (
-    <div>
-      <div className="bg-card rounded-md space-y-4">
-        {/* All filter UI removed - now handled by container */}
-        
-        <Separator />
-        
-        {/* Tasks table */}
-        <Table>
+    <DndProvider backend={HTML5Backend}>
+      <div>
+        <div className="bg-card rounded-md space-y-4">
+          {/* All filter UI removed - now handled by container */}
+          
+          <Separator />
+          
+          {/* Tasks table */}
+          <Table>
           <TableCaption>
             {filteredTasks?.length === 0 
               ? "No tasks found." 
@@ -750,13 +1018,19 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleTasks.filter(task => !hideParentRow || task.id !== parentTaskId).map((task) => (
-              <TableRow 
+            {visibleTasks.filter(task => !hideParentRow || task.id !== parentTaskId).map((task, index) => (
+              <DraggableTaskRow
                 key={task.id}
-                className={`cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`}
-                onClick={() => handleViewTaskDetails(task)}
+                task={task}
+                index={index}
+                onTaskReorder={handleTaskReorder}
+                isDragDisabled={false}
               >
-                <TableCell className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'}`} title={task.description || "-"}>
+                <TableCell 
+                  className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'} cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`} 
+                  title={task.description || "-"}
+                  onClick={() => handleViewTaskDetails(task)}
+                >
                   <div className="flex items-center">
                     {/* Collapse/expand toggle */}
                     {taskRelationships.has(task.id) && task._meta?.level === 0 && (!hideParentRow || context !== 'main') ? (
@@ -877,7 +1151,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
-              </TableRow>
+              </DraggableTaskRow>
             ))}
           </TableBody>
         </Table>
@@ -912,6 +1186,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </DndProvider>
   );
 }

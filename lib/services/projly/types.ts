@@ -198,6 +198,7 @@ export interface Task {
   parentTaskId?: string;
   percentProgress?: number; // Progress percentage (0-100)
   label?: string; // Task category/label
+  displayOrder?: number; // Custom ordering within parent context
   relatedTasks?: string[] | Task[]; // Related tasks (can be array of IDs or Task objects)
   parentTask?: {
     id: string;

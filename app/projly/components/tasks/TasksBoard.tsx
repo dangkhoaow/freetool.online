@@ -147,14 +147,20 @@ interface LabelColumnProps {
 
 const LabelColumn: React.FC<LabelColumnProps> = ({ label, tasks, onTaskDrop, compact }) => {
   // Set up drop target
-  const [{ isOver }, dropRef] = useDrop({
+  const [{ isOver, canDrop }, dropRef] = useDrop({
     accept: ItemTypes.TASK,
     drop: (item: { id: string }) => {
       log(`Task ${item.id} dropped in ${label || 'Unlabeled'} column`);
       onTaskDrop(item.id, tasks[0]?.status || 'Not Started', undefined, label);
     },
+    canDrop: (item: { id: string }) => {
+      // Allow dropping if the task doesn't already have this label
+      const task = tasks.find(t => t.id === item.id);
+      return task ? task.label !== label : true;
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
     }),
   });
   
@@ -196,7 +202,18 @@ const LabelColumn: React.FC<LabelColumnProps> = ({ label, tasks, onTaskDrop, com
   return (
     <div
       ref={drop}
-      className={`flex flex-col h-full min-h-[300px] ${isOver ? 'bg-blue-50' : 'bg-gray-50'} rounded-md p-2 transition-colors`}
+      className={`flex flex-col h-full min-h-[300px] rounded-md p-2 transition-all duration-200 ease-in-out ${
+        isOver && canDrop 
+          ? 'bg-blue-50 border-2 border-blue-300 shadow-lg transform scale-[1.02]' 
+          : isOver
+            ? 'bg-red-50 border-2 border-red-300'
+            : 'bg-gray-50 border-2 border-transparent'
+      }`}
+      style={{
+        ...(isOver && canDrop && {
+          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+        })
+      }}
     >
       <div className="flex items-center gap-2 mb-2">
         <div className={`w-2 h-2 rounded-full ${label ? labelColor.split(' ')[0] : 'bg-gray-300'}`}></div>
@@ -242,14 +259,20 @@ interface AssigneeColumnProps {
 
 const AssigneeColumn: React.FC<AssigneeColumnProps> = ({ assignee, tasks, onTaskDrop, compact }) => {
   // Set up drop target
-  const [{ isOver }, dropRef] = useDrop({
+  const [{ isOver, canDrop }, dropRef] = useDrop({
     accept: ItemTypes.TASK,
     drop: (item: { id: string }) => {
       log(`Task ${item.id} dropped in ${assignee?.name || 'Unassigned'} column`);
       onTaskDrop(item.id, tasks[0]?.status || 'Not Started', assignee?.id);
     },
+    canDrop: (item: { id: string }) => {
+      // Allow dropping if the task is not already assigned to this assignee
+      const task = tasks.find(t => t.id === item.id);
+      return task ? (task.assignedTo !== assignee?.id && task.assignee?.id !== assignee?.id) : true;
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
     }),
   });
   
@@ -300,7 +323,18 @@ const AssigneeColumn: React.FC<AssigneeColumnProps> = ({ assignee, tasks, onTask
   return (
     <div
       ref={drop}
-      className={`flex flex-col h-full min-h-[300px] ${isOver ? 'bg-blue-50' : 'bg-gray-50'} rounded-md p-2 transition-colors`}
+      className={`flex flex-col h-full min-h-[300px] rounded-md p-2 transition-all duration-200 ease-in-out ${
+        isOver && canDrop 
+          ? 'bg-blue-50 border-2 border-blue-300 shadow-lg transform scale-[1.02]' 
+          : isOver
+            ? 'bg-red-50 border-2 border-red-300'
+            : 'bg-gray-50 border-2 border-transparent'
+      }`}
+      style={{
+        ...(isOver && canDrop && {
+          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+        })
+      }}
     >
       <div className="flex items-center gap-2 mb-2">
         {assignee ? (
@@ -352,14 +386,20 @@ interface StatusColumnProps {
 
 const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, compact }) => {
   // Set up drop target
-  const [{ isOver }, dropRef] = useDrop({
+  const [{ isOver, canDrop }, dropRef] = useDrop({
     accept: ItemTypes.TASK,
     drop: (item: { id: string }) => {
       log(`Task ${item.id} dropped in ${status} column`);
       onTaskDrop(item.id, status);
     },
+    canDrop: (item: { id: string }) => {
+      // Allow dropping if the task is not already in this status
+      const task = tasks.find(t => t.id === item.id);
+      return task ? task.status !== status : true;
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
     }),
   });
   
@@ -399,7 +439,18 @@ const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, 
   return (
     <div
       ref={drop}
-      className={`flex flex-col h-full min-h-[300px] ${isOver ? 'bg-blue-50' : 'bg-gray-50'} rounded-md p-2 transition-colors`}
+      className={`flex flex-col h-full min-h-[300px] rounded-md p-2 transition-all duration-200 ease-in-out ${
+        isOver && canDrop 
+          ? 'bg-blue-50 border-2 border-blue-300 shadow-lg transform scale-[1.02]' 
+          : isOver
+            ? 'bg-red-50 border-2 border-red-300'
+            : 'bg-gray-50 border-2 border-transparent'
+      }`}
+      style={{
+        ...(isOver && canDrop && {
+          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+        })
+      }}
     >
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium">{status}</h3>
@@ -640,6 +691,64 @@ export function TasksBoard({
     return Array.from(uniqueAssignees.values());
   }, [preparedTasks]);
 
+  // Handle task reordering within the same column/group
+  const handleTaskReorder = async (taskId: string, newDisplayOrder: number, context: 'status' | 'assignee' | 'label', contextValue: string | null = null) => {
+    try {
+      // Find the task
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+        log(`Task ${taskId} not found for reordering`);
+        return;
+      }
+      
+      log(`Reordering task ${taskId} to position ${newDisplayOrder} in ${context} context: ${contextValue || 'all'}`);
+      setIsUpdating(true);
+      setUpdatingTaskId(taskId);
+      
+      // Prepare update payload with new displayOrder
+      const updatePayload = {
+        title: task.title,
+        status: task.status,
+        projectId: task.projectId,
+        assignedTo: task.assignedTo,
+        description: task.description || '',
+        parentTaskId: task.parentTaskId,
+        label: task.label || undefined,
+        percentProgress: task.percentProgress !== null ? task.percentProgress : undefined,
+        displayOrder: newDisplayOrder
+      } as Partial<ServiceTask>;
+      
+      log('Sending reorder payload to API:', updatePayload);
+      
+      // Update task with new displayOrder
+      await tasksService.updateTask(taskId, updatePayload);
+      
+      // Refresh the task list
+      if (onOperationComplete) {
+        const processedFilters = { ...initialFilters };
+        if (processedFilters.assignedTo === 'current' && user?.id) {
+          processedFilters.assignedTo = user.id;
+        }
+        onOperationComplete(processedFilters);
+      }
+      
+      toast({
+        title: 'Task reordered',
+        description: 'Task order updated successfully',
+      });
+    } catch (error) {
+      console.error('[TasksBoard] Error reordering task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to reorder task',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+      setUpdatingTaskId(null);
+    }
+  };
+
   // Handle task drop (status change, assignee change, or label change)
   const handleTaskDrop = async (taskId: string, newStatus: string, newAssigneeId?: string | null, newLabel?: string | null) => {
     try {
@@ -682,7 +791,9 @@ export function TasksBoard({
         // Include additional fields
         label: newLabel !== undefined ? newLabel : task.label || undefined,
         // Convert null to undefined for API compatibility
-        percentProgress: task.percentProgress !== null ? task.percentProgress : undefined
+        percentProgress: task.percentProgress !== null ? task.percentProgress : undefined,
+        // Preserve displayOrder when moving between columns
+        displayOrder: task.displayOrder !== null ? task.displayOrder : undefined
       } as Partial<ServiceTask>;
       
       log('Sending update payload to API:', updatePayload);
