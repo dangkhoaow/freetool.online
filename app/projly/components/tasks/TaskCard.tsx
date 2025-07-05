@@ -55,12 +55,13 @@ export interface TaskCardProps {
   task: Task;
   compact?: boolean;
   renderSubtasks?: boolean;
+  initiallyCollapsed?: boolean;
 }
 
-export function TaskCard({ task, compact = false, renderSubtasks = true }: TaskCardProps) {
+export function TaskCard({ task, compact = false, renderSubtasks = true, initiallyCollapsed = true }: TaskCardProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const [isSubtasksCollapsed, setIsSubtasksCollapsed] = useState(true);
+  const [isSubtasksCollapsed, setIsSubtasksCollapsed] = useState(initiallyCollapsed);
   
   // Check if current user is assigned to the task
   const isAssignedToUser = user && task.assignedTo === user.id;

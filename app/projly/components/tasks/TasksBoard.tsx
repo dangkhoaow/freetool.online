@@ -460,6 +460,7 @@ const StatusColumn: React.FC<StatusColumnProps> = ({ status, tasks, onTaskDrop, 
             task={task} 
             compact={compact} 
             renderSubtasks={true}
+            initiallyCollapsed={false}
           />
         ))}
         {topLevelTasks.length === 0 && (
@@ -881,7 +882,7 @@ export function TasksBoard({
                             <div className="flex items-center justify-between">
                               <CardTitle className="text-xs font-medium">{status}</CardTitle>
                               <Badge variant="outline" className="text-xs">
-                                {statusTasks.filter(t => !t.parentTaskId).length}
+                                {statusTasks.length}
                               </Badge>
                             </div>
                           </CardHeader>
@@ -934,7 +935,7 @@ export function TasksBoard({
                               <div className="flex items-center justify-between">
                                 <CardTitle className="text-xs font-medium">{status}</CardTitle>
                                 <Badge variant="outline" className="text-xs">
-                                  {statusTasks.filter(t => !t.parentTaskId).length}
+                                  {statusTasks.length}
                                 </Badge>
                               </div>
                             </CardHeader>
@@ -981,7 +982,7 @@ export function TasksBoard({
                                 <div className="flex items-center justify-between">
                                   <CardTitle className="text-xs font-medium">{status}</CardTitle>
                                   <Badge variant="outline" className="text-xs">
-                                    {statusTasks.filter(t => !t.parentTaskId).length}
+                                    {statusTasks.length}
                                   </Badge>
                                 </div>
                               </CardHeader>
@@ -1010,7 +1011,7 @@ export function TasksBoard({
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xs font-medium">{status}</CardTitle>
                       <Badge variant="outline" className="text-xs">
-                        {(tasksByStatus[status] || []).filter(t => !t.parentTaskId).length}
+                        {(tasksByStatus[status] || []).length}
                       </Badge>
                     </div>
                   </CardHeader>
