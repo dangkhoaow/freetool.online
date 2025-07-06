@@ -443,6 +443,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
               <ParentTaskFieldWithToggle 
                 value={taskForm.parentTaskId}
                 parentTasks={parentTasks}
+                allTasks={allTasks}
                 onChange={(value) => handleChange('parentTaskId', value)}
                 showAllTasks={showAllTasks}
                 onToggleShowAllTasks={(checked: boolean) => {

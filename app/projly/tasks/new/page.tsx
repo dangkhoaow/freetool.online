@@ -49,6 +49,7 @@ export default function NewTaskPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [parentTasks, setParentTasks] = useState<any[]>([]);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
   
   // Task form state
   const [taskForm, setTaskForm] = useState({
@@ -162,10 +163,15 @@ export default function NewTaskPage() {
       try {
         log('Loading parent tasks for project:', taskForm.projectId);
         const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
+        
+        // Store all tasks for RelatedTasksField
+        setAllTasks(tasks);
+        
         // Filter out tasks that already have a parent (they can't be parent tasks)
         const availableParentTasks = tasks.filter((task: any) => !task.parentTaskId);
         setParentTasks(availableParentTasks);
         log('Loaded parent tasks:', availableParentTasks.length);
+        log('Loaded all tasks:', tasks.length);
       } catch (error) {
         console.error('[PROJLY:NEW_TASK] Error loading parent tasks:', error);
         toast({
@@ -239,14 +245,14 @@ export default function NewTaskPage() {
       // Format dates for API and handle 'none' value for assignedTo and parentTaskId
       const formattedTask = {
         ...taskForm,
-        // Convert 'none' to null or undefined for the API
-        assignedTo: taskForm.assignedTo === 'none' ? null : taskForm.assignedTo,
-        parentTaskId: taskForm.parentTaskId === 'none' ? null : taskForm.parentTaskId,
+        // Convert 'none' to undefined for the API
+        assignedTo: taskForm.assignedTo === 'none' ? undefined : taskForm.assignedTo,
+        parentTaskId: taskForm.parentTaskId === 'none' ? undefined : taskForm.parentTaskId,
         startDate: taskForm.startDate ? taskForm.startDate.toISOString() : undefined,
         dueDate: taskForm.dueDate ? taskForm.dueDate.toISOString() : undefined,
         // Add percentProgress, label, and relatedTasks to the API request
         percentProgress: taskForm.percentProgress,
-        label: taskForm.label,
+        label: taskForm.label || undefined,
         relatedTasks: taskForm.relatedTasks.length > 0 ? taskForm.relatedTasks : undefined
       };
       
@@ -378,7 +384,7 @@ export default function NewTaskPage() {
                 <RelatedTasksField
                   value={taskForm.relatedTasks}
                   onChange={(value: string[]) => handleChange('relatedTasks', value)}
-                  availableTasks={parentTasks}
+                  availableTasks={allTasks}
                   isLoading={isLoading}
                 />
               </div>
