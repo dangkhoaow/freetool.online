@@ -1,0 +1,154 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { contractManagementAuthService } from '@/lib/services/contract-management';
+import { useLanguage } from '../contexts/language-context';
+import { LanguageSwitcher } from '../components/language-switcher';
+import ContractForm from '../components/contract-form';
+import ContractSearch from '../components/contract-search';
+import ContractExport from '../components/contract-export';
+import DashboardOverview from '../components/dashboard-overview';
+
+export default function Dashboard() {
+  const router = useRouter();
+  const { t } = useLanguage();
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await contractManagementAuthService.getCurrentUser();
+        if (!currentUser) {
+          router.push('/contract-management/login');
+          return;
+        }
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        router.push('/contract-management/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await contractManagementAuthService.logout();
+      router.push('/contract-management/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">
+                {t('dashboard.title')}
+              </h1>
+              {user && (
+                <Badge variant="secondary" className="ml-3">
+                  {user.role}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <LanguageSwitcher variant="compact" />
+              <span className="text-sm text-gray-600">
+                {t('dashboard.welcome')}, {user?.name}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleLogout}
+              >
+                {t('auth.logout')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="dashboard">{t('tabs.dashboard')}</TabsTrigger>
+            <TabsTrigger value="add-contract">{t('tabs.addContract')}</TabsTrigger>
+            <TabsTrigger value="search">{t('tabs.search')}</TabsTrigger>
+            <TabsTrigger value="export">{t('tabs.export')}</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="mt-6">
+            <DashboardOverview />
+          </TabsContent>
+
+          <TabsContent value="add-contract" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('contracts.addNew')}</CardTitle>
+                <CardDescription>
+                  {t('contracts.addDescription')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ContractForm />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="search" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('contracts.searchTitle')}</CardTitle>
+                <CardDescription>
+                  {t('contracts.searchDescription')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ContractSearch />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="export" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('export.title')}</CardTitle>
+                <CardDescription>
+                  {t('export.description')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ContractExport />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+} 

@@ -104,7 +104,8 @@ export async function middleware(request: NextRequest) {
     'ai-data-visualization',
     'privacy-media-recorder',
     'browser-design-studio',
-    'client-site-builder'
+    'client-site-builder',
+    'contract-management'
   ];
   
   // Check for valid top-level routes
@@ -156,7 +157,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // Only certain parent segments can have child routes
-    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin' || parentSegment === 'todo-list' || parentSegment === 'projly') {
+    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin' || parentSegment === 'todo-list' || parentSegment === 'projly' || parentSegment === 'contract-management') {
       // Special known nested routes
       if (parentSegment === 'private-ai-chat' && childSegment === 'debug') {
         return response;
@@ -175,6 +176,12 @@ export async function middleware(request: NextRequest) {
       if (parentSegment === 'projly') {
         // Allow all projly nested routes (login, dashboard, etc.)
         console.log(`Projly nested route allowed: ${path}`);
+        return response;
+      }
+      
+      if (parentSegment === 'contract-management') {
+        // Allow all contract-management nested routes (login, dashboard, etc.)
+        console.log(`Contract management nested route allowed: ${path}`);
         return response;
       }
       
@@ -224,6 +231,12 @@ export async function middleware(request: NextRequest) {
     // Allow projly routes to have deeper nesting
     if (parentSegment === 'projly') {
       console.log(`Allowing deeper nesting for projly route: ${path}`);
+      return response;
+    }
+    
+    // Allow contract-management routes to have deeper nesting
+    if (parentSegment === 'contract-management') {
+      console.log(`Allowing deeper nesting for contract-management route: ${path}`);
       return response;
     }
     
