@@ -137,19 +137,6 @@ export default function ContractManagementLoginPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Demo credentials */}
-              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                  {t('auth.demoCredentials')}
-                </h4>
-                <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                  <p><strong>{t('auth.admin')}:</strong> admin / admin123</p>
-                  <p><strong>{t('auth.manager')}:</strong> manager / manager123</p>
-                  <p><strong>{t('auth.user')}:</strong> user / user123</p>
-                  <p><strong>{t('auth.viewer')}:</strong> viewer / viewer123</p>
-                </div>
-              </div>
             </div>
 
             {/* Right side - Login form */}
