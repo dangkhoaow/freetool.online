@@ -22,10 +22,12 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
-        const currentUser = await contractManagementAuthService.getCurrentUser();
-        if (!currentUser) {
+        const isAuthenticated = contractManagementAuthService.isAuthenticated();
+        const currentUser = contractManagementAuthService.getCurrentUser();
+        
+        if (!isAuthenticated || !currentUser) {
           router.push('/contract-management/login');
           return;
         }

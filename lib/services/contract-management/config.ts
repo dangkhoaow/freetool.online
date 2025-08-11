@@ -1,0 +1,86 @@
+/**
+ * Contract Management Service Configuration
+ * Centralized configuration for all contract management services
+ */
+
+// Get API base URL from environment variables
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Contract Management API endpoints
+export const CONTRACT_MANAGEMENT_ENDPOINTS = {
+  // Authentication endpoints
+  AUTH: {
+    LOGIN: '/api/contract-management/auth/login',
+    LOGOUT: '/api/contract-management/auth/logout', 
+    REGISTER: '/api/contract-management/auth/register',
+    VERIFY_EMAIL: '/api/contract-management/auth/verify-email',
+  },
+  
+  // Contract endpoints
+  CONTRACTS: {
+    BASE: '/api/contract-management/contracts',
+    BY_ID: (id: string) => `/api/contract-management/contracts/${id}`,
+  },
+  
+  // Storage endpoints
+  STORAGE: {
+    UNITS: '/api/contract-management/storage-units',
+  },
+  
+  // Dashboard endpoints
+  DASHBOARD: {
+    STATS: '/api/contract-management/dashboard',
+  },
+  
+  // File endpoints
+  FILES: {
+    UPLOAD: '/api/contract-management/files/upload',
+    DOWNLOAD: (id: string) => `/api/contract-management/files/${id}/download`,
+  },
+  
+  // Export endpoints  
+  EXPORT: {
+    CONTRACTS: '/api/contract-management/exports/contracts',
+    STATUS: (jobId: string) => `/api/contract-management/exports/${jobId}/status`,
+  }
+} as const;
+
+/**
+ * Build full URL for API endpoint
+ */
+export const buildApiUrl = (endpoint: string): string => {
+  // Remove leading slash if present to avoid double slashes
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+  return `${API_BASE_URL}/${cleanEndpoint}`;
+};
+
+/**
+ * Default headers for API requests
+ */
+export const getDefaultHeaders = (): Record<string, string> => {
+  return {
+    'Content-Type': 'application/json',
+  };
+};
+
+/**
+ * Get authorization headers with token
+ */
+export const getAuthHeaders = (token?: string): Record<string, string> => {
+  const headers = getDefaultHeaders();
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
+// Export configuration object
+export const CONTRACT_MANAGEMENT_CONFIG = {
+  API_BASE_URL,
+  ENDPOINTS: CONTRACT_MANAGEMENT_ENDPOINTS,
+  buildApiUrl,
+  getDefaultHeaders,
+  getAuthHeaders,
+} as const;

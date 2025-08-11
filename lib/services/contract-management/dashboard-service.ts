@@ -8,11 +8,14 @@ import {
   ApiResponse
 } from './types';
 import { contractManagementService } from './contract-service';
+import { CONTRACT_MANAGEMENT_CONFIG } from './config';
 
 class ContractManagementDashboardService {
   private static instance: ContractManagementDashboardService;
 
-  private constructor() {}
+  private constructor() {
+    // Constructor body intentionally empty - using centralized config
+  }
 
   public static getInstance(): ContractManagementDashboardService {
     if (!ContractManagementDashboardService.instance) {
@@ -22,83 +25,54 @@ class ContractManagementDashboardService {
   }
 
   /**
+   * Get authentication headers
+   */
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('contractManagementToken');
+    return CONTRACT_MANAGEMENT_CONFIG.getAuthHeaders(token || undefined);
+  }
+
+  /**
    * Get comprehensive dashboard statistics
    */
   public async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
     try {
-      // Simulate API delay
-      await this.simulateDelay(600);
+            const dashboardUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.DASHBOARD.STATS);
+      console.log('[ContractManagementDashboard] Getting dashboard stats via API:', dashboardUrl);
+      
+      const response = await fetch(dashboardUrl, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
 
-      // Fetch all contracts and storage units
-      const contractsResponse = await contractManagementService.searchContracts(
-        {},
-        { field: 'createdAt', direction: 'desc' },
-        { page: 1, limit: 1000 } // Get all contracts
-      );
+      const data = await response.json();
 
-      const storageUnitsResponse = await contractManagementService.getStorageUnits();
-
-      if (!contractsResponse.success || !storageUnitsResponse.success) {
+      if (!response.ok) {
+        console.error('[ContractManagementDashboard] Get stats failed:', data);
         return {
           success: false,
-          error: 'Failed to fetch data for dashboard'
+          error: data.message || 'Failed to fetch dashboard statistics'
         };
       }
 
-      const contracts = contractsResponse.data!.contracts;
-      const storageUnits = storageUnitsResponse.data!;
-
-      // Calculate basic statistics
-      const totalContracts = contracts.length;
-      const activeContracts = contracts.filter(c => c.status === 'Active').length;
-      const expiredContracts = contracts.filter(c => c.status === 'Expired').length;
-      const totalValue = contracts.reduce((sum, c) => sum + c.contractValue, 0);
-      const averageValue = totalContracts > 0 ? totalValue / totalContracts : 0;
-
-      // Storage statistics
-      const storageUnitsUsed = storageUnits.filter(unit => unit.contractCount > 0).length;
-      const totalStorageUnits = storageUnits.length;
-      const storageUtilization = totalStorageUnits > 0 
-        ? (storageUnitsUsed / totalStorageUnits) * 100 
-        : 0;
-
-      // Contracts by type
-      const contractsByType = this.calculateContractsByType(contracts);
-
-      // Contracts by status
-      const contractsByStatus = this.calculateContractsByStatus(contracts);
-
-      // Monthly trend (last 12 months)
-      const monthlyContractTrend = this.calculateMonthlyTrend(contracts);
-
-      // Upcoming expirations (next 30 days)
-      const upcomingExpirations = this.findUpcomingExpirations(contracts, 30);
-
-      const stats: DashboardStats = {
-        totalContracts,
-        activeContracts,
-        expiredContracts,
-        totalValue,
-        averageValue,
-        storageUnitsUsed,
-        totalStorageUnits,
-        storageUtilization,
-        contractsByType,
-        contractsByStatus,
-        monthlyContractTrend,
-        upcomingExpirations
-      };
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to fetch dashboard statistics'
+        };
+      }
 
       return {
         success: true,
-        data: stats
+        data: data.data
       };
 
     } catch (error) {
       console.error('[ContractManagementDashboard] Get dashboard stats error:', error);
       return {
         success: false,
-        error: 'Failed to generate dashboard statistics'
+        error: 'Network error while fetching dashboard statistics'
       };
     }
   }

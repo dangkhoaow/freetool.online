@@ -4,6 +4,9 @@
 // Export all types
 export * from './types';
 
+// Export configuration
+export * from './config';
+
 // Export all services
 export { contractManagementAuthService } from './auth-service';
 export { contractManagementService } from './contract-service';

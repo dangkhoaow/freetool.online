@@ -12,6 +12,7 @@ import {
   PaginationConfig,
   FileUploadResult
 } from './types';
+import { CONTRACT_MANAGEMENT_CONFIG } from './config';
 
 // Mock storage for contracts and storage units
 let MOCK_CONTRACTS: Contract[] = [];
@@ -111,31 +112,20 @@ class ContractManagementService {
   }
 
   /**
+   * Get authentication headers
+   */
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('contractManagementToken');
+    return CONTRACT_MANAGEMENT_CONFIG.getAuthHeaders(token || undefined);
+  }
+
+  /**
    * Create a new contract with automatic storage assignment
    */
   public async createContract(contractData: ContractFormData, userId: string): Promise<ApiResponse<Contract>> {
     try {
-      // Simulate API delay
-      await this.simulateDelay(800);
-
-      // Find or create storage unit with available space
-      const storageUnit = await this.findOrCreateAvailableStorageUnit();
-
-      // Handle file upload if provided
-      let fileUploadResult: FileUploadResult | null = null;
-      if (contractData.pdfFile) {
-        fileUploadResult = await this.uploadFile(contractData.pdfFile);
-        if (!fileUploadResult.success) {
-          return {
-            success: false,
-            error: 'Failed to upload PDF file'
-          };
-        }
-      }
-
-      // Create contract
-      const contract: Contract = {
-        id: `contract-${contractIdCounter}`,
+      // Prepare contract data for API
+      const apiData = {
         companyName: contractData.companyName,
         contractNumber: contractData.contractNumber,
         contractStartDate: contractData.contractStartDate,
@@ -144,41 +134,61 @@ class ContractManagementService {
         contractValue: contractData.contractValue,
         winningBidDecisionNumber: contractData.winningBidDecisionNumber,
         contractType: contractData.contractType,
-        storageUnitId: storageUnit.id,
-        positionInUnit: storageUnit.contractCount + 1,
-        status: 'Active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: userId,
         notes: contractData.notes,
-        ...(fileUploadResult && {
-          pdfFilePath: fileUploadResult.filePath,
-          pdfFileName: fileUploadResult.fileName,
-          pdfFileSize: fileUploadResult.fileSize
-        })
+        status: 'Active'
       };
 
-      // Add to storage
-      MOCK_CONTRACTS.push(contract);
-      contractIdCounter++;
+            const createUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BASE);
+      console.log('[ContractManagement] Creating contract via API:', createUrl);
+      
+      const response = await fetch(createUrl, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify(apiData)
+      });
 
-      // Update storage unit
-      storageUnit.contracts.push(contract.id);
-      storageUnit.contractCount++;
-      storageUnit.isFull = storageUnit.contractCount >= 10;
-      storageUnit.updatedAt = new Date().toISOString();
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Create contract failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to create contract'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to create contract'
+        };
+      }
+
+      // Handle file upload if provided (TODO: implement file upload endpoint)
+      if (contractData.pdfFile) {
+        try {
+          // TODO: Upload file to contract files endpoint
+          console.log('[ContractManagement] File upload not yet implemented');
+        } catch (fileError) {
+          console.warn('[ContractManagement] File upload failed:', fileError);
+          // Continue even if file upload fails
+        }
+      }
+
+      console.log('[ContractManagement] Contract created successfully');
 
       return {
         success: true,
-        data: contract,
-        message: 'Contract created successfully'
+        data: data.data,
+        message: data.message || 'Contract created successfully'
       };
 
     } catch (error) {
       console.error('[ContractManagement] Create contract error:', error);
       return {
         success: false,
-        error: 'Failed to create contract'
+        error: 'Network error while creating contract'
       };
     }
   }
@@ -188,27 +198,42 @@ class ContractManagementService {
    */
   public async getContract(id: string): Promise<ApiResponse<Contract>> {
     try {
-      await this.simulateDelay(300);
-
-      const contract = MOCK_CONTRACTS.find(c => c.id === id);
+            const getUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(id));
+      console.log('[ContractManagement] Getting contract via API:', getUrl);
       
-      if (!contract) {
+      const response = await fetch(getUrl, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Get contract failed:', data);
         return {
           success: false,
-          error: 'Contract not found'
+          error: data.message || 'Failed to fetch contract'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to fetch contract'
         };
       }
 
       return {
         success: true,
-        data: contract
+        data: data.data
       };
 
     } catch (error) {
       console.error('[ContractManagement] Get contract error:', error);
       return {
         success: false,
-        error: 'Failed to fetch contract'
+        error: 'Network error while fetching contract'
       };
     }
   }
@@ -328,88 +353,85 @@ class ContractManagementService {
     pagination: PaginationConfig = { page: 1, limit: 10 }
   ): Promise<ApiResponse<ContractSearchResult>> {
     try {
-      await this.simulateDelay(500);
+      // Build query parameters
+      const searchParams = new URLSearchParams();
+      
+      // Add pagination
+      searchParams.append('page', pagination.page.toString());
+      searchParams.append('limit', pagination.limit.toString());
+      searchParams.append('sortBy', sort.field);
+      searchParams.append('sortOrder', sort.direction);
 
-      let filteredContracts = [...MOCK_CONTRACTS];
-
-      // Apply filters
+      // Add filters
       if (filters.companyName) {
-        const searchTerm = filters.companyName.toLowerCase();
-        filteredContracts = filteredContracts.filter(c => 
-          c.companyName.toLowerCase().includes(searchTerm)
-        );
+        searchParams.append('companyName', filters.companyName);
       }
-
       if (filters.winningBidDecisionNumber) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.winningBidDecisionNumber.includes(filters.winningBidDecisionNumber!)
-        );
+        searchParams.append('winningBidDecisionNumber', filters.winningBidDecisionNumber);
       }
-
       if (filters.contractType) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.contractType === filters.contractType
-        );
+        searchParams.append('contractType', filters.contractType);
       }
-
       if (filters.status) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.status === filters.status
-        );
+        searchParams.append('status', filters.status);
       }
-
       if (filters.startDateFrom) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.contractStartDate >= filters.startDateFrom!
-        );
+        searchParams.append('contractStartDateFrom', filters.startDateFrom);
       }
-
       if (filters.startDateTo) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.contractStartDate <= filters.startDateTo!
-        );
+        searchParams.append('contractStartDateTo', filters.startDateTo);
       }
-
+      if (filters.endDateFrom) {
+        searchParams.append('contractEndDateFrom', filters.endDateFrom);
+      }
+      if (filters.endDateTo) {
+        searchParams.append('contractEndDateTo', filters.endDateTo);
+      }
       if (filters.contractValueMin) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.contractValue >= filters.contractValueMin!
-        );
+        searchParams.append('contractValueMin', filters.contractValueMin.toString());
       }
-
       if (filters.contractValueMax) {
-        filteredContracts = filteredContracts.filter(c => 
-          c.contractValue <= filters.contractValueMax!
-        );
+        searchParams.append('contractValueMax', filters.contractValueMax.toString());
+      }
+      if (filters.storageUnitId) {
+        searchParams.append('storageUnitId', filters.storageUnitId);
       }
 
-      // Apply sorting
-      filteredContracts.sort((a, b) => {
-        const aValue = a[sort.field] as any;
-        const bValue = b[sort.field] as any;
-        
-        if (aValue == null && bValue == null) return 0;
-        if (aValue == null) return sort.direction === 'asc' ? 1 : -1;
-        if (bValue == null) return sort.direction === 'asc' ? -1 : 1;
-        
-        if (aValue < bValue) return sort.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sort.direction === 'asc' ? 1 : -1;
-        return 0;
+      const baseUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BASE);
+      const url = `${baseUrl}?${searchParams.toString()}`;
+      console.log('[ContractManagement] Searching contracts via API:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
       });
 
-      // Apply pagination
-      const totalCount = filteredContracts.length;
-      const pageCount = Math.ceil(totalCount / pagination.limit);
-      const startIndex = (pagination.page - 1) * pagination.limit;
-      const endIndex = startIndex + pagination.limit;
-      const paginatedContracts = filteredContracts.slice(startIndex, endIndex);
+      const data = await response.json();
 
+      if (!response.ok) {
+        console.error('[ContractManagement] Search contracts failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to search contracts'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to search contracts'
+        };
+      }
+
+      // Transform API response to match expected format
       const result: ContractSearchResult = {
-        contracts: paginatedContracts,
-        totalCount,
-        pageCount,
-        currentPage: pagination.page,
-        hasNextPage: pagination.page < pageCount,
-        hasPreviousPage: pagination.page > 1
+        contracts: data.data.data,
+        totalCount: data.data.pagination.total,
+        pageCount: data.data.pagination.totalPages,
+        currentPage: data.data.pagination.page,
+        hasNextPage: data.data.pagination.hasNext,
+        hasPreviousPage: data.data.pagination.hasPrev
       };
 
       return {
@@ -421,7 +443,7 @@ class ContractManagementService {
       console.error('[ContractManagement] Search contracts error:', error);
       return {
         success: false,
-        error: 'Failed to search contracts'
+        error: 'Network error while searching contracts'
       };
     }
   }

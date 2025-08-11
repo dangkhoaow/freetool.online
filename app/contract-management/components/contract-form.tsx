@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Upload, FileText, Save, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { contractManagementService, ContractFormData } from '@/lib/services/contract-management';
+import { contractManagementService, contractManagementAuthService, ContractFormData } from '@/lib/services/contract-management';
 import { useLanguage } from '../contexts/language-context';
 
 export default function ContractForm() {
@@ -144,13 +144,20 @@ export default function ContractForm() {
     setSuccessMessage('');
 
     try {
+      // Get current user
+      const currentUser = contractManagementAuthService.getCurrentUser();
+      if (!currentUser) {
+        setErrors({ general: 'Authentication required. Please log in again.' });
+        return;
+      }
+
       // Include the file in the form data
       const submitData = {
         ...formData,
         pdfFile: selectedFile || undefined
       };
       
-      const response = await contractManagementService.createContract(submitData, 'current-user');
+      const response = await contractManagementService.createContract(submitData, currentUser.id);
       
       if (response.success) {
         setSuccessMessage(t('contracts.contractSaved'));

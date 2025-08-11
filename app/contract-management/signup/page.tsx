@@ -57,8 +57,8 @@ export default function SignupPage() {
 
     if (!formData.password) {
       newErrors.password = t('contracts.required');
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     if (!formData.confirmPassword) {
@@ -91,19 +91,31 @@ export default function SignupPage() {
     setSuccessMessage('');
 
     try {
-      // Mock signup implementation
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      // Generate username from email (before @ symbol)
+      const username = formData.email.split('@')[0];
       
-      setSuccessMessage(t('auth.accountCreated'));
+      const response = await contractManagementAuthService.register({
+        email: formData.email,
+        username: username,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName
+      });
       
-      // Redirect to login after successful signup
-      setTimeout(() => {
-        router.push('/contract-management/login');
-      }, 2000);
+      if (response.success) {
+        setSuccessMessage(response.message || t('auth.accountCreated'));
+        
+        // Redirect to login after successful signup
+        setTimeout(() => {
+          router.push('/contract-management/login');
+        }, 2000);
+      } else {
+        setErrors({ general: response.error || 'Failed to create account. Please try again.' });
+      }
       
     } catch (error) {
       console.error('Signup failed:', error);
-      setErrors({ general: 'Failed to create account. Please try again.' });
+      setErrors({ general: 'Network error. Please try again.' });
     } finally {
       setIsLoading(false);
     }

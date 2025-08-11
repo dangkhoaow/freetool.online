@@ -6,6 +6,7 @@ import {
   Permission,
   ApiResponse 
 } from './types';
+import { CONTRACT_MANAGEMENT_CONFIG } from './config';
 
 // Mock users for development
 const MOCK_USERS: User[] = [
@@ -103,56 +104,175 @@ class ContractManagementAuthService {
   }
 
   /**
-   * Authenticate user with username and password
+   * Authenticate user with username/email and password
    */
   public async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      // Simulate API delay
-      await this.simulateDelay(800);
-
       const { username, password } = credentials;
-
-      // Find user by username
-      const user = MOCK_USERS.find(u => u.username === username && u.isActive);
       
-      if (!user) {
+      // Determine if input is email or username
+      const isEmail = username.includes('@');
+      const requestBody = {
+        password,
+        ...(isEmail ? { email: username } : { username })
+      };
+
+            const loginUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.AUTH.LOGIN);
+      console.log('[ContractManagementAuth] Attempting login to:', loginUrl);
+      
+      const response = await fetch(loginUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagementAuth] Login failed:', data);
         return {
           success: false,
-          error: 'User not found or account is inactive'
+          error: data.message || 'Login failed'
         };
       }
 
-      // Check password
-      if (MOCK_PASSWORDS[username] !== password) {
+      if (!data.success) {
         return {
           success: false,
-          error: 'Invalid password'
+          error: data.message || 'Authentication failed'
         };
       }
-
-      // Generate mock JWT token
-      const token = this.generateMockToken(user);
-
-      // Update last login
-      user.lastLogin = new Date().toISOString();
 
       // Store authentication state
-      this.currentUser = user;
-      this.authToken = token;
+      this.currentUser = data.user;
+      this.authToken = data.token;
       this.saveAuthState();
+
+      console.log('[ContractManagementAuth] Login successful');
 
       return {
         success: true,
-        token,
-        user,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        token: data.token,
+        user: data.user,
+        expiresAt: data.expiresAt
       };
 
     } catch (error) {
       console.error('[ContractManagementAuth] Login error:', error);
       return {
         success: false,
-        error: 'Authentication service error'
+        error: 'Network error during authentication'
+      };
+    }
+  }
+
+  /**
+   * Register a new user
+   */
+  public async register(userData: {
+    email: string;
+    username: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<AuthResponse> {
+    try {
+            const registerUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.AUTH.REGISTER);
+      console.log('[ContractManagementAuth] Attempting registration to:', registerUrl);
+      
+      const response = await fetch(registerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(userData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagementAuth] Registration failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Registration failed'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Registration failed'
+        };
+      }
+
+      console.log('[ContractManagementAuth] Registration successful');
+
+      return {
+        success: true,
+        user: data.user,
+        message: data.message
+      };
+
+    } catch (error) {
+      console.error('[ContractManagementAuth] Registration error:', error);
+      return {
+        success: false,
+        error: 'Network error during registration'
+      };
+    }
+  }
+
+  /**
+   * Verify email with token
+   */
+  public async verifyEmail(token: string): Promise<AuthResponse> {
+    try {
+      console.log('[ContractManagementAuth] Attempting email verification');
+
+      const verifyUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.AUTH.VERIFY_EMAIL);
+      const response = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagementAuth] Email verification failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Email verification failed'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Email verification failed'
+        };
+      }
+
+      console.log('[ContractManagementAuth] Email verification successful');
+
+      return {
+        success: true,
+        user: data.user,
+        message: data.message
+      };
+
+    } catch (error) {
+      console.error('[ContractManagementAuth] Email verification error:', error);
+      return {
+        success: false,
+        error: 'Network error during email verification'
       };
     }
   }
@@ -162,8 +282,21 @@ class ContractManagementAuthService {
    */
   public async logout(): Promise<ApiResponse<void>> {
     try {
-      // Simulate API delay
-      await this.simulateDelay(300);
+      // Call logout endpoint to clear server-side session
+      try {
+        const logoutUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.AUTH.LOGOUT);
+        await fetch(logoutUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` })
+          },
+          credentials: 'include'
+        });
+      } catch (error) {
+        // Continue with logout even if server call fails
+        console.warn('[ContractManagementAuth] Server logout failed, continuing with client logout');
+      }
 
       // Clear authentication state
       this.currentUser = null;
