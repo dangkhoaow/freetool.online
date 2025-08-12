@@ -84,9 +84,9 @@ export default function DashboardOverview() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalContracts}</div>
+            <div className="text-2xl font-bold">{stats.totalContracts || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.activeContracts} {t('dashboard.active')}
+              {stats.activeContracts || 0} {t('dashboard.active')}
             </p>
           </CardContent>
         </Card>
@@ -101,10 +101,10 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalValue)}
+              {formatCurrency(stats.totalValue || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {t('dashboard.average')}: {formatCurrency(stats.averageValue)}
+              {t('dashboard.average')}: {formatCurrency(stats.averageValue || 0)}
             </p>
           </CardContent>
         </Card>
@@ -119,12 +119,12 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.storageUtilization.toFixed(1)}%
+              {(stats.storageUtilization || 0).toFixed(1)}%
             </div>
             <div className="mt-2 space-y-1">
-              <Progress value={stats.storageUtilization} className="h-2" />
+              <Progress value={stats.storageUtilization || 0} className="h-2" />
               <p className="text-xs text-muted-foreground">
-                {stats.storageUnitsUsed} {t('dashboard.of')} {stats.totalStorageUnits} {t('dashboard.units')}
+                {stats.storageUnitsUsed || 0} {t('dashboard.of')} {stats.totalStorageUnits || 0} {t('dashboard.units')}
               </p>
             </div>
           </CardContent>
@@ -140,7 +140,7 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {stats.upcomingExpirations.length}
+              {stats.upcomingExpirations?.length || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {t('dashboard.next30Days')}
@@ -161,8 +161,8 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(stats.contractsByType).map(([type, count]) => {
-                const percentage = ((count / stats.totalContracts) * 100).toFixed(1);
+              {Object.entries(stats.contractsByType || {}).map(([type, count]) => {
+                const percentage = ((count / (stats.totalContracts || 1)) * 100).toFixed(1);
                 return (
                   <div key={type} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -190,8 +190,8 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(stats.contractsByStatus).map(([status, count]) => {
-                const percentage = ((count / stats.totalContracts) * 100).toFixed(1);
+              {Object.entries(stats.contractsByStatus || {}).map(([status, count]) => {
+                const percentage = ((count / (stats.totalContracts || 1)) * 100).toFixed(1);
                 const statusColor = getStatusColor(status);
                 return (
                   <div key={status} className="flex items-center justify-between">
@@ -223,8 +223,8 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.monthlyContractTrend.slice(-6).map((trend) => {
-                const maxValue = Math.max(...stats.monthlyContractTrend.map(t => t.count));
+              {(stats.monthlyContractTrend || []).slice(-6).map((trend) => {
+                const maxValue = Math.max(...(stats.monthlyContractTrend || []).map(t => t.count));
                 const percentage = (trend.count / maxValue) * 100;
                 const monthName = new Date(trend.month + '-01').toLocaleDateString('vi-VN', { 
                   year: 'numeric', 
@@ -259,14 +259,14 @@ export default function DashboardOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.upcomingExpirations.length === 0 ? (
+            {(stats.upcomingExpirations?.length || 0) === 0 ? (
               <div className="text-center py-6 text-gray-500">
                 <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No contracts expiring in the next 30 days</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {stats.upcomingExpirations.slice(0, 5).map((contract) => {
+                {(stats.upcomingExpirations || []).slice(0, 5).map((contract) => {
                   const daysToExpiry = Math.ceil(
                     (new Date(contract.contractEndDate).getTime() - new Date().getTime()) / 
                     (1000 * 60 * 60 * 24)
@@ -290,10 +290,10 @@ export default function DashboardOverview() {
                   );
                 })}
                 
-                {stats.upcomingExpirations.length > 5 && (
+                {(stats.upcomingExpirations?.length || 0) > 5 && (
                   <div className="text-center pt-2">
                     <p className="text-sm text-gray-500">
-                      +{stats.upcomingExpirations.length - 5} more contracts expiring soon
+                      +{(stats.upcomingExpirations?.length || 0) - 5} more contracts expiring soon
                     </p>
                   </div>
                 )}
@@ -314,25 +314,25 @@ export default function DashboardOverview() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{stats.totalStorageUnits}</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.totalStorageUnits || 0}</div>
               <p className="text-sm text-blue-700">Total Units</p>
             </div>
             
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{stats.storageUnitsUsed}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.storageUnitsUsed || 0}</div>
               <p className="text-sm text-green-700">Units in Use</p>
             </div>
             
             <div className="text-center p-4 bg-gray-50 rounded-lg">
               <div className="text-2xl font-bold text-gray-600">
-                {stats.totalStorageUnits - stats.storageUnitsUsed}
+                {(stats.totalStorageUnits || 0) - (stats.storageUnitsUsed || 0)}
               </div>
               <p className="text-sm text-gray-700">Available Units</p>
             </div>
             
             <div className="text-center p-4 bg-purple-50 rounded-lg">
               <div className="text-2xl font-bold text-purple-600">
-                {Math.ceil(stats.totalContracts / 10)}
+                {Math.ceil((stats.totalContracts || 0) / 10)}
               </div>
               <p className="text-sm text-purple-700">Required Units</p>
             </div>
@@ -341,9 +341,9 @@ export default function DashboardOverview() {
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm mb-2">
               <span>Storage Efficiency</span>
-              <span>{stats.storageUtilization.toFixed(1)}% utilized</span>
+              <span>{(stats.storageUtilization || 0).toFixed(1)}% utilized</span>
             </div>
-            <Progress value={stats.storageUtilization} className="h-3" />
+            <Progress value={stats.storageUtilization || 0} className="h-3" />
             <p className="text-xs text-gray-600 mt-1">
               Sequential storage system maintains organization with up to 10 contracts per unit
             </p>
