@@ -14,6 +14,7 @@ export const CONTRACT_MANAGEMENT_ENDPOINTS = {
     LOGOUT: '/api/contract-management/auth/logout', 
     REGISTER: '/api/contract-management/auth/register',
     VERIFY_EMAIL: '/api/contract-management/auth/verify-email',
+    RESEND_VERIFICATION: '/api/contract-management/auth/resend-verification',
   },
   
   // Contract endpoints

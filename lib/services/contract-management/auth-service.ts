@@ -278,6 +278,54 @@ class ContractManagementAuthService {
   }
 
   /**
+   * Resend verification email
+   */
+  public async resendVerificationEmail(email: string): Promise<AuthResponse> {
+    try {
+      console.log('[ContractManagementAuth] Requesting to resend verification email for:', email);
+
+      const resendUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.AUTH.RESEND_VERIFICATION);
+      const response = await fetch(resendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagementAuth] Resend verification failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to resend verification email'
+        };
+      }
+
+      if (data.success) {
+        console.log('[ContractManagementAuth] Verification email resent successfully');
+        return {
+          success: true,
+          message: data.message || 'Verification email sent successfully'
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || 'Failed to resend verification email'
+        };
+      }
+    } catch (error) {
+      console.error('[ContractManagementAuth] Resend verification error:', error);
+      return {
+        success: false,
+        error: 'Network error during resend verification'
+      };
+    }
+  }
+
+  /**
    * Logout current user
    */
   public async logout(): Promise<ApiResponse<void>> {

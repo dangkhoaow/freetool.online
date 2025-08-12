@@ -103,12 +103,13 @@ export default function SignupPage() {
       });
       
       if (response.success) {
-        setSuccessMessage(response.message || t('auth.accountCreated'));
+        const successMsg = response.message || 'Account created successfully! Please check your email for verification instructions.';
+        setSuccessMessage(successMsg);
         
         // Redirect to login after successful signup
         setTimeout(() => {
           router.push('/contract-management/login');
-        }, 2000);
+        }, 3000); // Give a bit more time to read the email verification message
       } else {
         setErrors({ general: response.error || 'Failed to create account. Please try again.' });
       }

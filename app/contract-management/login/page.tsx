@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, FileText, Users, BarChart3 } from "lucide-react";
+import { AlertCircle, FileText, Users, BarChart3, Mail, CheckCircle2 } from "lucide-react";
 import { contractManagementAuthService } from "@/lib/services/contract-management";
 import { useTranslation } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
@@ -20,6 +20,10 @@ export default function ContractManagementLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,13 +46,54 @@ export default function ContractManagementLoginPage() {
         // Redirect to dashboard
         router.push("/contract-management/dashboard");
       } else {
-        setError(response.error || t('auth.invalidCredentials'));
+        const errorMessage = response.error || t('auth.invalidCredentials');
+        setError(errorMessage);
+        
+        // Check if the error is about email verification
+        if (errorMessage.toLowerCase().includes('verify') || 
+            errorMessage.toLowerCase().includes('not active') ||
+            errorMessage.toLowerCase().includes('activation')) {
+          setShowResendVerification(true);
+          // Try to extract email from username (if it's an email format)
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (emailRegex.test(username)) {
+            setResendEmail(username);
+          }
+        } else {
+          setShowResendVerification(false);
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
       setError("An unexpected error occurred");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!resendEmail) {
+      setError("Please enter your email address to resend verification");
+      return;
+    }
+
+    setResendLoading(true);
+    setResendMessage("");
+
+    try {
+      const response = await contractManagementAuthService.resendVerificationEmail(resendEmail);
+      
+      if (response.success) {
+        setResendMessage(response.message || "Verification email sent successfully! Please check your inbox.");
+        setError(""); // Clear the login error
+      } else {
+        setResendMessage(response.error || "Failed to send verification email. Please try again.");
+      }
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      setResendMessage("Network error. Please try again.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -157,6 +202,72 @@ export default function ContractManagementLoginPage() {
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
+
+                  {/* Resend Verification Section */}
+                  {showResendVerification && (
+                    <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <Mail className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                            Email Verification Required
+                          </h4>
+                          <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                            Your account needs email verification before you can log in. Enter your email address to receive a new verification link.
+                          </p>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor="resendEmail" className="text-yellow-800 dark:text-yellow-200">Email Address</Label>
+                              <Input
+                                id="resendEmail"
+                                type="email"
+                                value={resendEmail}
+                                onChange={(e) => setResendEmail(e.target.value)}
+                                placeholder="Enter your email address"
+                                className="mt-1"
+                                disabled={resendLoading}
+                              />
+                            </div>
+                            
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleResendVerification}
+                              disabled={resendLoading || !resendEmail}
+                              className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 border-yellow-300"
+                            >
+                              {resendLoading ? (
+                                <div className="flex items-center space-x-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                                  <span>Sending...</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <Mail className="h-4 w-4" />
+                                  <span>Send Verification Email</span>
+                                </div>
+                              )}
+                            </Button>
+                          </div>
+
+                          {resendMessage && (
+                            <Alert className={`mt-3 ${resendMessage.includes('success') || resendMessage.includes('sent') ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : 'border-red-200 bg-red-50 dark:bg-red-900/20'}`}>
+                              {resendMessage.includes('success') || resendMessage.includes('sent') ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                              )}
+                              <AlertDescription className={resendMessage.includes('success') || resendMessage.includes('sent') ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}>
+                                {resendMessage}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
@@ -211,6 +322,15 @@ export default function ContractManagementLoginPage() {
                           className="text-blue-600 hover:text-blue-800 font-medium"
                         >
                           {t('auth.forgotPasswordLink')}
+                        </Link>
+                      </p>
+                      
+                      <p className="text-sm">
+                        <Link 
+                          href="/contract-management/resend-verification" 
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Resend Email Verification
                         </Link>
                       </p>
                     </div>
