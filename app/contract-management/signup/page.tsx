@@ -38,6 +38,23 @@ export default function SignupPage() {
     confirmPassword: ''
   });
 
+  const validatePassword = (password: string): string[] => {
+    const errors = [];
+    if (password.length < 8) {
+      errors.push('At least 8 characters long');
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('At least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('At least one lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push('At least one number');
+    }
+    return errors;
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -57,8 +74,11 @@ export default function SignupPage() {
 
     if (!formData.password) {
       newErrors.password = t('contracts.required');
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+    } else {
+      const passwordErrors = validatePassword(formData.password);
+      if (passwordErrors.length > 0) {
+        newErrors.password = `Password must have: ${passwordErrors.join(', ')}`;
+      }
     }
 
     if (!formData.confirmPassword) {
@@ -231,6 +251,9 @@ export default function SignupPage() {
                   {errors.password && (
                     <p className="text-sm text-red-500">{errors.password}</p>
                   )}
+                  <p className="text-xs text-gray-500">
+                    Password must be at least 8 characters with uppercase, lowercase, and number
+                  </p>
                 </div>
 
                 {/* Confirm Password */}

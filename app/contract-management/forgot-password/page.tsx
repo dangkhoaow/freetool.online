@@ -44,12 +44,23 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Mock API call for password reset
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      
-      // For demo purposes, we'll always show success
-      // In real implementation, you might want to show success even if email doesn't exist for security
-      setIsSuccess(true);
+      // Call the real password reset API
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contract-management/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsSuccess(true);
+      } else {
+        setErrors({ general: data.message || 'Failed to send reset email. Please try again.' });
+      }
       
     } catch (error) {
       console.error('Password reset failed:', error);

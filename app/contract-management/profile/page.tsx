@@ -44,6 +44,23 @@ export default function ProfilePage() {
     setUser(currentUser);
   }, [router]);
 
+  const validatePassword = (password: string): string[] => {
+    const errors = [];
+    if (password.length < 8) {
+      errors.push('At least 8 characters long');
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('At least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('At least one lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push('At least one number');
+    }
+    return errors;
+  };
+
   const validatePasswordForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -53,8 +70,11 @@ export default function ProfilePage() {
 
     if (!passwordData.newPassword) {
       newErrors.newPassword = 'New password is required';
-    } else if (passwordData.newPassword.length < 6) {
-      newErrors.newPassword = 'New password must be at least 6 characters';
+    } else {
+      const passwordErrors = validatePassword(passwordData.newPassword);
+      if (passwordErrors.length > 0) {
+        newErrors.newPassword = `Password must have: ${passwordErrors.join(', ')}`;
+      }
     }
 
     if (!passwordData.confirmPassword) {
@@ -153,7 +173,7 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-3">
               <User className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profile</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
                 <p className="text-gray-600 dark:text-gray-400">Manage your account settings</p>
               </div>
             </div>
@@ -290,7 +310,9 @@ export default function ProfilePage() {
                       {errors.newPassword && (
                         <p className="text-sm text-red-500">{errors.newPassword}</p>
                       )}
-                      <p className="text-xs text-gray-500">Password must be at least 6 characters long</p>
+                      <p className="text-xs text-gray-500">
+                        Password must be at least 8 characters with uppercase, lowercase, and number
+                      </p>
                     </div>
 
                     {/* Confirm Password */}
