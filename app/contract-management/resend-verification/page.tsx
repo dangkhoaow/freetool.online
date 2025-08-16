@@ -55,11 +55,6 @@ export default function ResendVerificationPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Language Switcher */}
-        <div className="flex justify-end">
-          <LanguageSwitcher variant="compact" />
-        </div>
-
         {/* System Branding */}
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-2">
@@ -117,23 +112,29 @@ export default function ResendVerificationPage() {
               </div>
 
               {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !email}
-              >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Sending Email...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Mail className="h-4 w-4" />
-                    <span>Send Verification Email</span>
-                  </div>
-                )}
-              </Button>
+              <div className="flex justify-end mb-2">
+                <Button
+                  type="submit"
+                  className="w-full mr-4"
+                  disabled={isLoading || !email}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Sending Email...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4" />
+                      <span>Send Verification Email</span>
+                    </div>
+                  )}
+                </Button>
+
+                <div className="flex justify-end mb-2">
+                  <LanguageSwitcher variant="compact" />
+                </div>
+              </div>
 
               {/* Navigation Links */}
               <div className="text-center space-y-2">
