@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Filter, X, FileText, Download, Eye, MoreHorizontal, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Settings, ChevronRight as ChevronRightIcon } from "lucide-react";
-import { contractManagementService, Contract, ContractSearchFilters } from '@/lib/services/contract-management';
+import { Contract, ContractSearchFilters, ContractType, ContractStatus } from '@/lib/services/contract-management/types';
+import { contractManagementService } from '@/lib/services/contract-management/contract-service';
 import { useLanguage } from '../contexts/language-context';
 import ContractDetailDialog from './contract-detail-dialog';
 import ContractEditDialog from './contract-edit-dialog';
@@ -19,11 +20,15 @@ import ContractDeleteDialog from './contract-delete-dialog';
 
 export default function ContractSearch() {
   const { t } = useLanguage();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const hasInitiallyLoadedRef = useRef(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSearchingRef = useRef(false);
+  const lastFiltersRef = useRef<string>('');
   
   // Pagination and sorting states
   const [itemsPerPage] = useState(10);
@@ -70,12 +75,20 @@ export default function ContractSearch() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const [filters, setFilters] = useState<ContractSearchFilters>({
+  const [filterValues, setFilterValues] = useState({
     companyName: '',
     winningBidDecisionNumber: '',
-    contractType: undefined,
-    status: undefined
+    contractType: undefined as string | undefined,
+    status: undefined as string | undefined
   });
+
+  // Memoize filters object to prevent recreations
+  const filters = useMemo(() => ({
+    companyName: filterValues.companyName,
+    winningBidDecisionNumber: filterValues.winningBidDecisionNumber,
+    contractType: filterValues.contractType as ContractType | undefined,
+    status: filterValues.status as ContractStatus | undefined
+  }), [filterValues.companyName, filterValues.winningBidDecisionNumber, filterValues.contractType, filterValues.status]);
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
@@ -94,10 +107,19 @@ export default function ContractSearch() {
   ];
 
   const handleSearch = async () => {
+    // Prevent concurrent API calls with ref-based check
+    if (isSearchingRef.current) {
+      console.log('[ContractSearch] Skipping search - already searching');
+      return;
+    }
+    
+    isSearchingRef.current = true;
+    console.log('[ContractSearch] Starting search with filters:', filters);
     setIsLoading(true);
+    
     try {
       const response = await contractManagementService.searchContracts(
-        filters,
+        filters as ContractSearchFilters,
         { field: 'createdAt', direction: 'desc' },
         { page: 1, limit: 100 } // load more for client-side sorting/paging
       );
@@ -115,6 +137,7 @@ export default function ContractSearch() {
       setTotalCount(0);
     } finally {
       setIsLoading(false);
+      isSearchingRef.current = false;
     }
   };
 
@@ -222,22 +245,24 @@ export default function ContractSearch() {
   };
 
   const handleClearFilters = () => {
-    setFilters({
+    setFilterValues({
       companyName: '',
       winningBidDecisionNumber: '',
       contractType: undefined,
       status: undefined
     });
     setCurrentPage(1);
-    // Trigger immediate search after clearing filters
-    setTimeout(() => handleSearch(), 100);
+    // Trigger search after clearing filters
+    triggerSearch(true);
   };
 
   const handleFilterChange = (field: keyof ContractSearchFilters, value: any) => {
-    setFilters(prev => ({
+    setFilterValues((prev: typeof filterValues) => ({
       ...prev,
       [field]: value === 'all' ? undefined : value || undefined
     }));
+    // Trigger delayed search after filter change
+    triggerSearch(false);
   };
 
   const formatCurrency = (value: number): string => {
@@ -262,19 +287,41 @@ export default function ContractSearch() {
     }
   };
 
-  // Auto-search when filters change
-  useEffect(() => {
-    const delayedSearch = setTimeout(() => {
+  // Trigger search function that can be called manually
+  const triggerSearch = (immediate = false) => {
+    // Clear any pending timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+    
+    // Prevent concurrent searches
+    if (isSearchingRef.current) {
+      console.log('[ContractSearch] Search blocked - already searching');
+      return;
+    }
+
+    if (immediate) {
+      console.log('[ContractSearch] Immediate search triggered');
       handleSearch();
-    }, 500);
+    } else {
+      console.log('[ContractSearch] Delayed search scheduled');
+      searchTimeoutRef.current = setTimeout(() => {
+        if (!isSearchingRef.current) {
+          handleSearch();
+        }
+      }, 300);
+    }
+  };
 
-    return () => clearTimeout(delayedSearch);
-  }, [filters, currentPage]);
-
-  // Initial load
+  // Single useEffect ONLY for initial load
   useEffect(() => {
-    handleSearch();
-  }, []);
+    if (!hasInitiallyLoadedRef.current) {
+      hasInitiallyLoadedRef.current = true;
+      console.log('[ContractSearch] Component mounted - initial search');
+      triggerSearch(true);
+    }
+  }, []); // Empty dependency array - only runs once on mount
 
   return (
     <div className="space-y-6">
@@ -285,7 +332,7 @@ export default function ContractSearch() {
           <Label>{t('contracts.companyName')}</Label>
           <Input
             placeholder="Search company name..."
-            value={filters.companyName || ''}
+            value={filterValues.companyName || ''}
             onChange={(e) => handleFilterChange('companyName', e.target.value)}
           />
         </div>
@@ -294,7 +341,7 @@ export default function ContractSearch() {
           <Label>{t('contracts.bidDecisionNumber')}</Label>
           <Input
             placeholder="Search bid decision number..."
-            value={filters.winningBidDecisionNumber || ''}
+            value={filterValues.winningBidDecisionNumber || ''}
             onChange={(e) => handleFilterChange('winningBidDecisionNumber', e.target.value)}
           />
         </div>
@@ -302,7 +349,7 @@ export default function ContractSearch() {
         <div className="space-y-2">
           <Label>{t('contracts.contractType')}</Label>
           <Select
-            value={filters.contractType || 'all'}
+            value={filterValues.contractType || 'all'}
             onValueChange={(value) => handleFilterChange('contractType', value)}
           >
             <SelectTrigger>
@@ -322,7 +369,7 @@ export default function ContractSearch() {
         <div className="space-y-2">
           <Label>Status</Label>
           <Select
-            value={filters.status || 'all'}
+            value={filterValues.status || 'all'}
             onValueChange={(value) => handleFilterChange('status', value)}
           >
             <SelectTrigger>
