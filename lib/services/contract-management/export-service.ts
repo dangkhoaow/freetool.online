@@ -168,7 +168,7 @@ class ContractManagementExportService {
         description: 'Medical equipment contracts only',
         format: 'csv',
         includeFiles: true,
-        filters: { contractType: 'Medical Equipment' }
+        filters: { contractType: 'MedicalEquipment' }
       },
       {
         name: 'contracts_json',

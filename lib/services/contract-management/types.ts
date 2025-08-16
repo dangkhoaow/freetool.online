@@ -22,7 +22,7 @@ export interface Contract {
   notes?: string;
 }
 
-export type ContractType = 'Pharmaceuticals' | 'Medical Equipment' | 'Services' | 'Consulting' | 'Other';
+export type ContractType = 'Pharmaceuticals' | 'MedicalEquipment' | 'Services' | 'Consulting' | 'Other';
 
 export type ContractStatus = 'Active' | 'Expired' | 'Pending' | 'Cancelled' | 'Draft';
 
@@ -45,7 +45,8 @@ export interface ContractFormData {
   contractValue: number;
   winningBidDecisionNumber: string;
   contractType: ContractType;
-  pdfFile?: File;
+  pdfFile?: File; // Legacy single file support
+  files?: File[]; // New multiple files support
   notes?: string;
 }
 

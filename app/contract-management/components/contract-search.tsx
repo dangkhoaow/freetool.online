@@ -29,7 +29,7 @@ export default function ContractSearch() {
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
-    { value: 'Medical Equipment', label: t('contractTypes.medicalEquipment') },
+    { value: 'MedicalEquipment', label: t('contractTypes.medicalEquipment') },
     { value: 'Services', label: t('contractTypes.services') },
     { value: 'Consulting', label: t('contractTypes.consulting') },
     { value: 'Other', label: t('contractTypes.other') }
@@ -127,10 +127,6 @@ export default function ContractSearch() {
     <div className="space-y-6">
       {/* Search Header */}
       <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">{t('contracts.searchTitle')}</h3>
-          <p className="text-sm text-gray-600">{t('contracts.searchDescription')}</p>
-        </div>
         <Button
           variant="outline"
           onClick={() => setShowFilters(!showFilters)}

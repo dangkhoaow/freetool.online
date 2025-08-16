@@ -225,7 +225,7 @@ class ContractManagementDashboardService {
       const distribution: Record<string, { count: number; totalValue: number; averageValue: number }> = {};
 
       // Initialize all contract types
-      const contractTypes: ContractType[] = ['Pharmaceuticals', 'Medical Equipment', 'Services', 'Consulting', 'Other'];
+      const contractTypes: ContractType[] = ['Pharmaceuticals', 'MedicalEquipment', 'Services', 'Consulting', 'Other'];
       
       contractTypes.forEach(type => {
         distribution[type] = { count: 0, totalValue: 0, averageValue: 0 };
@@ -262,7 +262,7 @@ class ContractManagementDashboardService {
   // Private helper methods
 
   private calculateContractsByType(contracts: Contract[]): Record<ContractType, number> {
-    const contractTypes: ContractType[] = ['Pharmaceuticals', 'Medical Equipment', 'Services', 'Consulting', 'Other'];
+    const contractTypes: ContractType[] = ['Pharmaceuticals', 'MedicalEquipment', 'Services', 'Consulting', 'Other'];
     const result: Record<string, number> = {};
 
     // Initialize all types with 0

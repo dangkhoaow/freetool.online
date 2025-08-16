@@ -63,7 +63,7 @@ const initializeMockData = () => {
         contractDurationMonths: 12,
         contractValue: 8500000000, // 8.5 billion VND
         winningBidDecisionNumber: 'QD-002-2024',
-        contractType: 'Medical Equipment',
+        contractType: 'MedicalEquipment',
         storageUnitId: 'unit-1',
         positionInUnit: 2,
         status: 'Active',
@@ -165,14 +165,36 @@ class ContractManagementService {
         };
       }
 
-      // Handle file upload if provided (TODO: implement file upload endpoint)
-      if (contractData.pdfFile) {
+      // Handle file upload if provided
+      if (contractData.files && contractData.files.length > 0) {
         try {
-          // TODO: Upload file to contract files endpoint
-          console.log('[ContractManagement] File upload not yet implemented');
+          const fileUploadResult = await this.uploadFiles(contractData.files, data.data.id);
+          if (!fileUploadResult.success) {
+            console.warn('[ContractManagement] File upload failed:', fileUploadResult.error);
+            // Continue with contract creation even if file upload fails
+          } else {
+            console.log('[ContractManagement] Files uploaded successfully for contract:', data.data.id);
+            if (fileUploadResult.errors && fileUploadResult.errors.length > 0) {
+              console.warn('[ContractManagement] Some files failed to upload:', fileUploadResult.errors);
+            }
+          }
         } catch (fileError) {
           console.warn('[ContractManagement] File upload failed:', fileError);
-          // Continue even if file upload fails
+          // Continue with contract creation even if file upload fails
+        }
+      } else if (contractData.pdfFile) {
+        // Legacy single file support
+        try {
+          const fileUploadResult = await this.uploadFile(contractData.pdfFile, data.data.id);
+          if (!fileUploadResult.success) {
+            console.warn('[ContractManagement] File upload failed:', fileUploadResult.error);
+            // Continue with contract creation even if file upload fails
+          } else {
+            console.log('[ContractManagement] File uploaded successfully for contract:', data.data.id);
+          }
+        } catch (fileError) {
+          console.warn('[ContractManagement] File upload failed:', fileError);
+          // Continue with contract creation even if file upload fails
         }
       }
 
@@ -243,59 +265,75 @@ class ContractManagementService {
    */
   public async updateContract(id: string, updates: Partial<ContractFormData>, userId: string): Promise<ApiResponse<Contract>> {
     try {
-      await this.simulateDelay(600);
-
-      const contractIndex = MOCK_CONTRACTS.findIndex(c => c.id === id);
+      // Prepare contract update data for API
+      const apiData: any = {};
       
-      if (contractIndex === -1) {
+      if (updates.companyName) apiData.companyName = updates.companyName;
+      if (updates.contractNumber) apiData.contractNumber = updates.contractNumber;
+      if (updates.contractStartDate) apiData.contractStartDate = updates.contractStartDate;
+      if (updates.contractEndDate) apiData.contractEndDate = updates.contractEndDate;
+      if (updates.contractDurationMonths) apiData.contractDurationMonths = updates.contractDurationMonths;
+      if (updates.contractValue) apiData.contractValue = updates.contractValue;
+      if (updates.winningBidDecisionNumber) apiData.winningBidDecisionNumber = updates.winningBidDecisionNumber;
+      if (updates.contractType) apiData.contractType = updates.contractType;
+      if (updates.notes) apiData.notes = updates.notes;
+
+      const updateUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(id));
+      console.log('[ContractManagement] Updating contract via API:', updateUrl);
+      
+      const response = await fetch(updateUrl, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify(apiData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Update contract failed:', data);
         return {
           success: false,
-          error: 'Contract not found'
+          error: data.message || 'Failed to update contract'
         };
       }
 
-      const contract = MOCK_CONTRACTS[contractIndex];
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to update contract'
+        };
+      }
 
-      // Handle file upload if new file provided
-      let fileUploadResult: FileUploadResult | null = null;
+      // Handle file upload if provided
       if (updates.pdfFile) {
-        fileUploadResult = await this.uploadFile(updates.pdfFile);
-        if (!fileUploadResult.success) {
-          return {
-            success: false,
-            error: 'Failed to upload PDF file'
-          };
+        try {
+          const fileUploadResult = await this.uploadFile(updates.pdfFile, id);
+          if (!fileUploadResult.success) {
+            console.warn('[ContractManagement] File upload failed:', fileUploadResult.error);
+            // Continue with contract update even if file upload fails
+          } else {
+            console.log('[ContractManagement] File uploaded successfully for contract:', id);
+          }
+        } catch (fileError) {
+          console.warn('[ContractManagement] File upload failed:', fileError);
+          // Continue with contract update even if file upload fails
         }
       }
 
-      // Update contract
-      const updatedContract: Contract = {
-        ...contract,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-        ...(fileUploadResult && {
-          pdfFilePath: fileUploadResult.filePath,
-          pdfFileName: fileUploadResult.fileName,
-          pdfFileSize: fileUploadResult.fileSize
-        })
-      };
-
-      // Remove pdfFile from updates as it's not part of Contract interface
-      delete (updatedContract as any).pdfFile;
-
-      MOCK_CONTRACTS[contractIndex] = updatedContract;
+      console.log('[ContractManagement] Contract updated successfully');
 
       return {
         success: true,
-        data: updatedContract,
-        message: 'Contract updated successfully'
+        data: data.data,
+        message: data.message || 'Contract updated successfully'
       };
 
     } catch (error) {
       console.error('[ContractManagement] Update contract error:', error);
       return {
         success: false,
-        error: 'Failed to update contract'
+        error: 'Network error while updating contract'
       };
     }
   }
@@ -305,41 +343,44 @@ class ContractManagementService {
    */
   public async deleteContract(id: string): Promise<ApiResponse<void>> {
     try {
-      await this.simulateDelay(400);
-
-      const contractIndex = MOCK_CONTRACTS.findIndex(c => c.id === id);
+      const deleteUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(id));
+      console.log('[ContractManagement] Deleting contract via API:', deleteUrl);
       
-      if (contractIndex === -1) {
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Delete contract failed:', data);
         return {
           success: false,
-          error: 'Contract not found'
+          error: data.message || 'Failed to delete contract'
         };
       }
 
-      const contract = MOCK_CONTRACTS[contractIndex];
-      
-      // Remove from contracts array
-      MOCK_CONTRACTS.splice(contractIndex, 1);
-
-      // Update storage unit
-      const storageUnit = MOCK_STORAGE_UNITS.find(unit => unit.id === contract.storageUnitId);
-      if (storageUnit) {
-        storageUnit.contracts = storageUnit.contracts.filter(cId => cId !== id);
-        storageUnit.contractCount--;
-        storageUnit.isFull = false;
-        storageUnit.updatedAt = new Date().toISOString();
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to delete contract'
+        };
       }
+
+      console.log('[ContractManagement] Contract deleted successfully');
 
       return {
         success: true,
-        message: 'Contract deleted successfully'
+        message: data.message || 'Contract deleted successfully'
       };
 
     } catch (error) {
       console.error('[ContractManagement] Delete contract error:', error);
       return {
         success: false,
-        error: 'Failed to delete contract'
+        error: 'Network error while deleting contract'
       };
     }
   }
@@ -453,18 +494,42 @@ class ContractManagementService {
    */
   public async getStorageUnits(): Promise<ApiResponse<StorageUnit[]>> {
     try {
-      await this.simulateDelay(300);
+      const storageUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.STORAGE.UNITS);
+      console.log('[ContractManagement] Getting storage units via API:', storageUrl);
+      
+      const response = await fetch(storageUrl, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Get storage units failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to fetch storage units'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to fetch storage units'
+        };
+      }
 
       return {
         success: true,
-        data: MOCK_STORAGE_UNITS
+        data: data.data
       };
 
     } catch (error) {
       console.error('[ContractManagement] Get storage units error:', error);
       return {
         success: false,
-        error: 'Failed to fetch storage units'
+        error: 'Network error while fetching storage units'
       };
     }
   }
@@ -474,20 +539,46 @@ class ContractManagementService {
    */
   public async getContractsByStorageUnit(unitId: string): Promise<ApiResponse<Contract[]>> {
     try {
-      await this.simulateDelay(400);
+      const searchParams = new URLSearchParams();
+      searchParams.append('storageUnitId', unitId);
+      
+      const baseUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BASE);
+      const url = `${baseUrl}?${searchParams.toString()}`;
+      console.log('[ContractManagement] Getting contracts by storage unit via API:', url);
 
-      const contracts = MOCK_CONTRACTS.filter(c => c.storageUnitId === unitId);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Get contracts by storage unit failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to fetch contracts for storage unit'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to fetch contracts for storage unit'
+        };
+      }
 
       return {
         success: true,
-        data: contracts
+        data: data.data.data || []
       };
 
     } catch (error) {
       console.error('[ContractManagement] Get contracts by storage unit error:', error);
       return {
         success: false,
-        error: 'Failed to fetch contracts for storage unit'
+        error: 'Network error while fetching contracts for storage unit'
       };
     }
   }
@@ -517,30 +608,154 @@ class ContractManagementService {
     return availableUnit;
   }
 
-  private async uploadFile(file: File): Promise<FileUploadResult> {
+  /**
+   * Upload multiple files for contract
+   */
+  public async uploadFiles(files: File[], contractId: string): Promise<{
+    success: boolean;
+    results?: Array<{
+      id: string;
+      fileName: string;
+      fileSize: string;
+      fileType: string;
+      uploadedAt: string;
+    }>;
+    errors?: string[];
+    error?: string;
+  }> {
     try {
-      // Simulate file upload delay
-      await this.simulateDelay(1000);
+      // Supported file types
+      const supportedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+        'text/csv',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/bmp',
+        'image/webp',
+        'image/svg+xml'
+      ];
 
-      // In real implementation, this would upload to a storage service
-      // For now, we'll simulate a successful upload
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `/uploads/contracts/${fileName}`;
+      // Validate files
+      for (const file of files) {
+        if (file.size > 25 * 1024 * 1024) { // 25MB limit per file
+          return {
+            success: false,
+            error: `File "${file.name}" exceeds 25MB limit`
+          };
+        }
+
+        if (!supportedTypes.includes(file.type)) {
+          return {
+            success: false,
+            error: `File type "${file.type}" is not supported for file "${file.name}"`
+          };
+        }
+      }
+
+      if (files.length > 10) {
+        return {
+          success: false,
+          error: 'Maximum 10 files can be uploaded at once'
+        };
+      }
+
+      // Prepare form data
+      const formData = new FormData();
+      files.forEach((file, index) => {
+        formData.append(`file`, file); // Use same key for multiple files
+      });
+      formData.append('contractId', contractId);
+
+      const uploadUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.FILES.UPLOAD);
+      console.log('[ContractManagement] Uploading files via API:', uploadUrl);
+
+      // Get auth headers but exclude Content-Type for file uploads
+      const authHeaders = this.getAuthHeaders() as Record<string, string>;
+      const uploadHeaders: Record<string, string> = {};
+      
+      // Only include Authorization header, exclude Content-Type
+      if (authHeaders.Authorization) {
+        uploadHeaders.Authorization = authHeaders.Authorization;
+      }
+
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: uploadHeaders, // Don't set Content-Type - browser will set multipart/form-data with boundary
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] File upload failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to upload files'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to upload files',
+          errors: data.errors
+        };
+      }
+
+      console.log('[ContractManagement] Files uploaded successfully');
 
       return {
         success: true,
-        filePath,
-        fileName,
-        fileSize: file.size
+        results: data.data?.uploadResults || [],
+        errors: data.data?.uploadErrors || []
       };
 
     } catch (error) {
       console.error('[ContractManagement] File upload error:', error);
       return {
         success: false,
-        error: 'File upload failed'
+        error: 'Network error while uploading files'
       };
     }
+  }
+
+  /**
+   * Upload single file for contract (legacy support)
+   */
+  public async uploadFile(file: File, contractId: string): Promise<FileUploadResult> {
+    const result = await this.uploadFiles([file], contractId);
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'Failed to upload file'
+      };
+    }
+
+    const uploadedFile = result.results?.[0];
+    if (!uploadedFile) {
+      return {
+        success: false,
+        error: 'No file was uploaded'
+      };
+    }
+
+    return {
+      success: true,
+      fileName: uploadedFile.fileName,
+      filePath: uploadedFile.fileName, // Use fileName as filePath for compatibility
+      fileSize: parseInt(uploadedFile.fileSize)
+    };
   }
 
   private async simulateDelay(ms: number): Promise<void> {

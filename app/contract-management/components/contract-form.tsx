@@ -17,7 +17,7 @@ export default function ContractForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const [formData, setFormData] = useState<ContractFormData>({
     companyName: '',
@@ -33,7 +33,7 @@ export default function ContractForm() {
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
-    { value: 'Medical Equipment', label: t('contractTypes.medicalEquipment') },
+    { value: 'MedicalEquipment', label: t('contractTypes.medicalEquipment') },
     { value: 'Services', label: t('contractTypes.services') },
     { value: 'Consulting', label: t('contractTypes.consulting') },
     { value: 'Other', label: t('contractTypes.other') }
@@ -114,23 +114,61 @@ export default function ContractForm() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (file.type !== 'application/pdf') {
-        setErrors(prev => ({ ...prev, pdfFile: 'Only PDF files are allowed' }));
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length === 0) return;
+
+    // Supported file types
+    const supportedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'text/csv',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/bmp',
+      'image/webp',
+      'image/svg+xml'
+    ];
+
+    // Validate files
+    for (const file of files) {
+      if (!supportedTypes.includes(file.type)) {
+        setErrors(prev => ({ 
+          ...prev, 
+          files: `File type "${file.type}" is not supported for file "${file.name}"` 
+        }));
         return;
       }
       
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setErrors(prev => ({ ...prev, pdfFile: 'File size must be less than 10MB' }));
+      // Validate file size (max 25MB per file)
+      if (file.size > 25 * 1024 * 1024) {
+        setErrors(prev => ({ 
+          ...prev, 
+          files: `File "${file.name}" exceeds 25MB limit` 
+        }));
         return;
       }
-      
-      setSelectedFile(file);
-      setErrors(prev => ({ ...prev, pdfFile: '' }));
     }
+
+    // Check total file count (max 10 files)
+    if (files.length > 10) {
+      setErrors(prev => ({ 
+        ...prev, 
+        files: 'Maximum 10 files can be uploaded at once' 
+      }));
+      return;
+    }
+    
+    setSelectedFiles(files);
+    setErrors(prev => ({ ...prev, files: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,10 +189,10 @@ export default function ContractForm() {
         return;
       }
 
-      // Include the file in the form data
+      // Include the files in the form data
       const submitData = {
         ...formData,
-        pdfFile: selectedFile || undefined
+        files: selectedFiles.length > 0 ? selectedFiles : undefined
       };
       
       const response = await contractManagementService.createContract(submitData, currentUser.id);
@@ -174,7 +212,7 @@ export default function ContractForm() {
           contractType: 'Pharmaceuticals',
           notes: ''
         });
-        setSelectedFile(null);
+        setSelectedFiles([]);
         
         // Clear file input
         const fileInput = document.getElementById('pdfFile') as HTMLInputElement;
@@ -203,7 +241,7 @@ export default function ContractForm() {
       contractType: 'Pharmaceuticals',
       notes: ''
     });
-    setSelectedFile(null);
+    setSelectedFiles([]);
     setErrors({});
     setSuccessMessage('');
     
@@ -381,31 +419,61 @@ export default function ContractForm() {
         </div>
       </div>
 
-      {/* PDF File Upload */}
+      {/* File Upload */}
       <div className="space-y-2">
-        <Label htmlFor="pdfFile">
-          {t('contracts.pdfFile')}
+        <Label htmlFor="files">
+          Upload Files (Optional)
         </Label>
-        <div className="flex items-center space-x-4">
+        <div className="space-y-3">
           <Input
-            id="pdfFile"
+            id="files"
             type="file"
-            accept=".pdf"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
             onChange={handleFileChange}
+            multiple
             className="flex-1"
           />
-          {selectedFile && (
-            <div className="flex items-center space-x-2 text-sm text-green-600">
-              <FileText className="h-4 w-4" />
-              <span>{selectedFile.name}</span>
+          {selectedFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700">Selected files ({selectedFiles.length}):</p>
+              <div className="space-y-1">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center space-x-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                    <FileText className="h-4 w-4" />
+                    <span className="flex-1">{file.name}</span>
+                    <span className="text-xs text-gray-500">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newFiles = selectedFiles.filter((_, i) => i !== index);
+                        setSelectedFiles(newFiles);
+                        // Update file input
+                        const fileInput = document.getElementById('files') as HTMLInputElement;
+                        if (fileInput && newFiles.length === 0) {
+                          fileInput.value = '';
+                        }
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
-        {errors.pdfFile && (
-          <p className="text-sm text-red-500">{errors.pdfFile}</p>
+        {errors.files && (
+          <p className="text-sm text-red-500">{errors.files}</p>
         )}
-        {!selectedFile && (
-          <p className="text-sm text-gray-500">{t('contracts.noFileSelected')}</p>
+        {selectedFiles.length === 0 && (
+          <div className="text-sm text-gray-500 space-y-1">
+            <p>No files selected. Supported formats:</p>
+            <p className="text-xs">PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), Text (.txt, .csv), Images (.jpg, .png, .gif, .bmp, .webp, .svg)</p>
+            <p className="text-xs">Max 10 files, 25MB per file</p>
+          </div>
         )}
       </div>
 

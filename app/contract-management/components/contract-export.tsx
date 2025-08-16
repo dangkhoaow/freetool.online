@@ -35,7 +35,7 @@ export default function ContractExport() {
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
-    { value: 'Medical Equipment', label: t('contractTypes.medicalEquipment') },
+    { value: 'MedicalEquipment', label: t('contractTypes.medicalEquipment') },
     { value: 'Services', label: t('contractTypes.services') },
     { value: 'Consulting', label: t('contractTypes.consulting') },
     { value: 'Other', label: t('contractTypes.other') }
