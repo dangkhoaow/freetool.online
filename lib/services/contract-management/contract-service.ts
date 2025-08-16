@@ -210,7 +210,55 @@ class ContractManagementService {
       console.error('[ContractManagement] Create contract error:', error);
       return {
         success: false,
-        error: 'Network error while creating contract'
+        error: 'Error creating contract'
+      };
+    }
+  }
+
+
+  /**
+   * Delete contract
+   */
+  public async deleteContract(id: string): Promise<ApiResponse<void>> {
+    try {
+      const deleteUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(id));
+      console.log('[ContractManagement] Deleting contract via API:', deleteUrl);
+      
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[ContractManagement] Delete contract failed:', data);
+        return {
+          success: false,
+          error: data.message || 'Failed to delete contract'
+        };
+      }
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to delete contract'
+        };
+      }
+
+      console.log('[ContractManagement] Contract deleted successfully');
+
+      return {
+        success: true,
+        message: data.message || 'Contract deleted successfully'
+      };
+
+    } catch (error) {
+      console.error('[ContractManagement] Delete contract error:', error);
+      return {
+        success: false,
+        error: 'Error deleting contract'
       };
     }
   }
@@ -338,52 +386,6 @@ class ContractManagementService {
     }
   }
 
-  /**
-   * Delete contract
-   */
-  public async deleteContract(id: string): Promise<ApiResponse<void>> {
-    try {
-      const deleteUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(id));
-      console.log('[ContractManagement] Deleting contract via API:', deleteUrl);
-      
-      const response = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-        credentials: 'include'
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('[ContractManagement] Delete contract failed:', data);
-        return {
-          success: false,
-          error: data.message || 'Failed to delete contract'
-        };
-      }
-
-      if (!data.success) {
-        return {
-          success: false,
-          error: data.message || 'Failed to delete contract'
-        };
-      }
-
-      console.log('[ContractManagement] Contract deleted successfully');
-
-      return {
-        success: true,
-        message: data.message || 'Contract deleted successfully'
-      };
-
-    } catch (error) {
-      console.error('[ContractManagement] Delete contract error:', error);
-      return {
-        success: false,
-        error: 'Network error while deleting contract'
-      };
-    }
-  }
 
   /**
    * Search contracts with filters and pagination
@@ -756,6 +758,74 @@ class ContractManagementService {
       filePath: uploadedFile.fileName, // Use fileName as filePath for compatibility
       fileSize: parseInt(uploadedFile.fileSize)
     };
+  }
+
+
+  /**
+   * Download a contract file by ID
+   */
+  async downloadFile(fileId: string): Promise<{ success: boolean; error?: string; blob?: Blob; fileName?: string }> {
+    try {
+      const token = localStorage.getItem('contractManagementToken');
+      if (!token) {
+        console.error('No authentication token found');
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const downloadUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(`/api/contract-management/files/${fileId}`);
+      console.log('Attempting to download from URL:', downloadUrl);
+      console.log('Using fileId:', fileId);
+      
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Cookie': `ctr-mgmt-token=${token}`,
+        },
+        credentials: 'include',
+      });
+
+      console.log('Download response status:', response.status);
+      console.log('Download response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { 
+          success: false, 
+          error: errorData.message || `Download failed with status ${response.status}` 
+        };
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      console.log('Content-Disposition header:', contentDisposition);
+      let fileName = 'download';
+      
+      if (contentDisposition) {
+        console.log('Parsing filename from Content-Disposition:', contentDisposition);
+        const matches = contentDisposition.match(/filename="(.+)"/);
+        console.log('Regex matches:', matches);
+        if (matches && matches[1]) {
+          fileName = matches[1];
+          console.log('Extracted filename:', fileName);
+        } else {
+          console.log('No filename match found in Content-Disposition header');
+        }
+      } else {
+        console.log('No Content-Disposition header found');
+      }
+
+      return {
+        success: true,
+        blob,
+        fileName
+      };
+    } catch (error) {
+      console.error('Download file error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to download file' 
+      };
+    }
   }
 
   private async simulateDelay(ms: number): Promise<void> {

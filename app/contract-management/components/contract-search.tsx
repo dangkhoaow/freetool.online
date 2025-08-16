@@ -8,9 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, X, FileText, Download, Eye } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, Filter, X, FileText, Download, Eye, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { contractManagementService, Contract, ContractSearchFilters } from '@/lib/services/contract-management';
 import { useLanguage } from '../contexts/language-context';
+import ContractDetailDialog from './contract-detail-dialog';
+import ContractEditDialog from './contract-edit-dialog';
+import ContractDeleteDialog from './contract-delete-dialog';
 
 export default function ContractSearch() {
   const { t } = useLanguage();
@@ -19,6 +23,12 @@ export default function ContractSearch() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Dialog states
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const [filters, setFilters] = useState<ContractSearchFilters>({
     companyName: '',
@@ -60,12 +70,32 @@ export default function ContractSearch() {
         setTotalCount(0);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Error searching contracts:', error);
       setContracts([]);
       setTotalCount(0);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleViewContract = (contract: Contract) => {
+    setSelectedContract(contract);
+    setIsDetailDialogOpen(true);
+  };
+
+  const handleEditContract = (contract: Contract) => {
+    setSelectedContract(contract);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteContract = (contract: Contract) => {
+    setSelectedContract(contract);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDialogSuccess = () => {
+    // Refresh the contract list after successful operations
+    handleSearch();
   };
 
   const handleClearFilters = () => {
@@ -273,16 +303,37 @@ export default function ContractSearch() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex space-x-1">
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          {contract.pdfFilePath && (
-                            <Button size="sm" variant="outline">
-                              <Download className="h-3 w-3" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          )}
-                        </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={() => handleViewContract(contract)}
+                              className="cursor-pointer"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View contract detail
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleEditContract(contract)}
+                              className="cursor-pointer"
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit contract
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteContract(contract)}
+                              className="cursor-pointer text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete contract
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -317,6 +368,27 @@ export default function ContractSearch() {
           </div>
         </div>
       )}
+
+      {/* Dialogs */}
+      <ContractDetailDialog
+        contractId={selectedContract?.id || null}
+        isOpen={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+      />
+
+      <ContractEditDialog
+        contractId={selectedContract?.id || null}
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSuccess={handleDialogSuccess}
+      />
+
+      <ContractDeleteDialog
+        contract={selectedContract}
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onSuccess={handleDialogSuccess}
+      />
     </div>
   );
 } 
