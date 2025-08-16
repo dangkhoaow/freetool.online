@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Filter, X, FileText, Download, Eye, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Search, Filter, X, FileText, Download, Eye, MoreHorizontal, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { contractManagementService, Contract, ContractSearchFilters } from '@/lib/services/contract-management';
 import { useLanguage } from '../contexts/language-context';
 import ContractDetailDialog from './contract-detail-dialog';
@@ -23,6 +23,11 @@ export default function ContractSearch() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination and sorting states
+  const [itemsPerPage] = useState(10);
+  const [sortField, setSortField] = useState<keyof Contract>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Dialog states
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
@@ -59,7 +64,7 @@ export default function ContractSearch() {
       const response = await contractManagementService.searchContracts(
         filters,
         { field: 'createdAt', direction: 'desc' },
-        { page: currentPage, limit: 10 }
+        { page: 1, limit: 100 } // load more for client-side sorting/paging
       );
 
       if (response.success && response.data) {
@@ -96,6 +101,54 @@ export default function ContractSearch() {
   const handleDialogSuccess = () => {
     // Refresh the contract list after successful operations
     handleSearch();
+  };
+
+  // Sorting functionality
+  const handleSort = (field: keyof Contract) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  const getSortIcon = (field: keyof Contract) => {
+    if (field !== sortField) return <ArrowUpDown className="h-4 w-4" />;
+    return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+  };
+
+  // Sort contracts based on current sort field and direction
+  const sortedContracts = [...contracts].sort((a, b) => {
+    const aValue = a[sortField];
+    const bValue = b[sortField];
+    
+    // Handle different data types
+    let comparison = 0;
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      comparison = aValue.localeCompare(bValue);
+    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+      comparison = aValue - bValue;
+    } else if (sortField.includes('Date') || sortField === 'createdAt' || sortField === 'updatedAt') {
+      const aDate = new Date(aValue as string);
+      const bDate = new Date(bValue as string);
+      comparison = aDate.getTime() - bDate.getTime();
+    } else {
+      comparison = String(aValue).localeCompare(String(bValue));
+    }
+    
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedContracts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentContracts = sortedContracts.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   const handleClearFilters = () => {
@@ -240,21 +293,101 @@ export default function ContractSearch() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">{t('contracts.companyName')}</TableHead>
-                    <TableHead className="whitespace-nowrap">{t('contracts.contractNumber')}</TableHead>
-                    <TableHead className="whitespace-nowrap">{t('contracts.contractType')}</TableHead>
-                    <TableHead className="whitespace-nowrap">{t('contracts.value')}</TableHead>
-                    <TableHead className="whitespace-nowrap">{t('contracts.bidDecisionNumber')}</TableHead>
-                    <TableHead className="whitespace-nowrap">{t('contracts.startDate')}</TableHead>
-                    <TableHead className="whitespace-nowrap">{t('contracts.endDate')}</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('companyName')}
+                      >
+                        {t('contracts.companyName')}
+                        {getSortIcon('companyName')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('contractNumber')}
+                      >
+                        {t('contracts.contractNumber')}
+                        {getSortIcon('contractNumber')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('contractType')}
+                      >
+                        {t('contracts.contractType')}
+                        {getSortIcon('contractType')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('contractValue')}
+                      >
+                        {t('contracts.value')}
+                        {getSortIcon('contractValue')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('winningBidDecisionNumber')}
+                      >
+                        {t('contracts.bidDecisionNumber')}
+                        {getSortIcon('winningBidDecisionNumber')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('contractStartDate')}
+                      >
+                        {t('contracts.startDate')}
+                        {getSortIcon('contractStartDate')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('contractEndDate')}
+                      >
+                        {t('contracts.endDate')}
+                        {getSortIcon('contractEndDate')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 p-0 font-semibold hover:bg-transparent"
+                        onClick={() => handleSort('status')}
+                      >
+                        Status
+                        {getSortIcon('status')}
+                      </Button>
+                    </TableHead>
                     <TableHead className="whitespace-nowrap">Storage</TableHead>
                     <TableHead className="whitespace-nowrap max-w-[200px]">Notes</TableHead>
                     <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {contracts.map((contract) => (
+                  {currentContracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell className="font-medium whitespace-nowrap">
                         {contract.companyName}
@@ -327,25 +460,63 @@ export default function ContractSearch() {
       </Card>
 
       {/* Pagination */}
-      {totalCount > 10 && (
-        <div className="flex justify-center">
-          <div className="flex space-x-2">
+      {contracts.length > itemsPerPage && (
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="text-sm text-gray-700">
+            Showing {startIndex + 1} to {Math.min(endIndex, sortedContracts.length)} of {sortedContracts.length} contracts
+          </div>
+          <div className="flex items-center space-x-2">
             <Button
               variant="outline"
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
+              <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
-            <span className="flex items-center px-4">
-              Page {currentPage} of {Math.ceil(totalCount / 10)}
-            </span>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const page = Math.max(1, currentPage - 2) + i;
+                if (page > totalPages) return null;
+                
+                return (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(page)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+              
+              {totalPages > 5 && currentPage < totalPages - 2 && (
+                <>
+                  <span className="px-2">...</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(totalPages)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {totalPages}
+                  </Button>
+                </>
+              )}
+            </div>
+            
             <Button
               variant="outline"
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage >= Math.ceil(totalCount / 10)}
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
             >
               Next
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>
