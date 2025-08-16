@@ -30,7 +30,7 @@ export default function ContractForm() {
     contractValue: 0,
     winningBidDecisionNumber: '',
     contractType: 'Pharmaceuticals',
-    status: 'Draft',
+    status: 'Active',
     notes: ''
   });
 
@@ -242,7 +242,7 @@ export default function ContractForm() {
           contractValue: 0,
           winningBidDecisionNumber: '',
           contractType: 'Pharmaceuticals',
-          status: 'Draft',
+          status: 'Active',
           notes: ''
         });
         setSelectedFiles([]);
@@ -252,11 +252,23 @@ export default function ContractForm() {
         if (fileInput) fileInput.value = '';
         
       } else {
-        setErrors({ general: response.message || t('contracts.errorSaving') });
+        // Show the actual API error message
+        const errorMessage = response.message || response.error || t('contracts.errorSaving');
+        setErrors({ general: errorMessage });
+        console.error('API Error:', response);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving contract:', error);
-      setErrors({ general: t('contracts.errorSaving') });
+      // Try to extract error message from different possible structures
+      let errorMessage = t('contracts.errorSaving');
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      setErrors({ general: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +284,7 @@ export default function ContractForm() {
       contractValue: 0,
       winningBidDecisionNumber: '',
       contractType: 'Pharmaceuticals',
-      status: 'Draft',
+      status: 'Active',
       notes: ''
     });
     setSelectedFiles([]);
@@ -303,7 +315,7 @@ export default function ContractForm() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Company Name with Autocomplete */}
         <div className="space-y-2 relative">
           <Label htmlFor="companyName">
