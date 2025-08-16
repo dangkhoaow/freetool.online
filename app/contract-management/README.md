@@ -114,6 +114,19 @@ lib/services/prisma/contract-management/
   - ✅ Contract delete confirmation dialog with safety warnings
   - ✅ BigInt serialization fix for contract file data
   - ✅ Real-time data refresh after successful operations
+- **File Management Enhancements**:
+  - ✅ Secure file download API with proper CORS headers and Content-Disposition
+  - ✅ File download functionality with loading indicators and original filename preservation
+  - ✅ File deletion capability in edit contract dialog
+  - ✅ Multiple file upload in edit contract dialog
+  - ✅ Fixed Next.js async params compatibility issues
+- **UI/UX Improvements**:
+  - ✅ Added Notes column to contract search table
+  - ✅ Implemented whitespace-nowrap styling for all table columns
+  - ✅ Notes column max-width (200px) with ellipsis overflow
+  - ✅ Auto-search functionality for all filter changes including "Clear Filters"
+  - ✅ Fixed date input loading in edit contract dialog
+  - ✅ Responsive search filter layout with improved Clear button positioning
 
 ### 🔴 **CRITICAL SECURITY ISSUE - IN PROGRESS**
 - **User Data Isolation Implementation**: 
@@ -233,13 +246,15 @@ lib/services/prisma/contract-management/
 ### Contracts
 - `GET /api/contract-management/contracts` - Search and list contracts
 - `POST /api/contract-management/contracts` - Create new contract
-- `GET /api/contract-management/contracts/[id]` - Get specific contract
-- `PUT /api/contract-management/contracts/[id]` - Update contract
-- `DELETE /api/contract-management/contracts/[id]` - Delete contract
 
-### Analytics
-- `GET /api/contract-management/dashboard` - Dashboard statistics
-- `GET /api/contract-management/exports` - Export job management
+### Files
+- `GET /api/contract-management/files/[id]` - Download file (secure with ownership verification)
+- `POST /api/contract-management/files/upload` - Upload files to contract
+- `DELETE /api/contract-management/files/[id]` - Delete file (with ownership verification)
+
+### Storage Units
+- `GET /api/contract-management/storage-units` - List available storage units
+- `POST /api/contract-management/storage-units` - Create new storage unit
 
 ## Configuration
 

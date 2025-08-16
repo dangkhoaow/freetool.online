@@ -117,7 +117,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[80vw] max-w-none max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             Contract Details
@@ -152,7 +152,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
             <Separator />
 
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -192,42 +192,58 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="h-5 w-5 text-purple-600" />
+                    <h3 className="font-semibold">Timeline</h3>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Start Date:</span>
+                      <span className="font-medium">{formatDate(contract.contractStartDate)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">End Date:</span>
+                      <span className="font-medium">{formatDate(contract.contractEndDate)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Dates */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar className="h-5 w-5 text-purple-600" />
-                  <h3 className="font-semibold">Timeline</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Start Date:</span>
-                    <span className="font-medium">{formatDate(contract.contractStartDate)}</span>
+            {/* Storage Location & Notes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Hash className="h-5 w-5 text-orange-600" />
+                    <h3 className="font-semibold">Storage Location</h3>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">End Date:</span>
-                    <span className="font-medium">{formatDate(contract.contractEndDate)}</span>
+                  <div className="text-sm">
+                    <span className="text-gray-600">
+                      Unit {contract.storageUnitId?.split('-')[1]} - Position {contract.positionInUnit}
+                    </span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Storage Location */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Hash className="h-5 w-5 text-orange-600" />
-                  <h3 className="font-semibold">Storage Location</h3>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">
-                    Unit {contract.storageUnitId?.split('-')[1]} - Position {contract.positionInUnit}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+              {contract.notes && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-5 w-5 text-gray-600" />
+                      <h3 className="font-semibold">Notes</h3>
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      {contract.notes}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
 
             {/* Files Section */}
             {(contract as any).contractFiles && (contract as any).contractFiles.length > 0 && (

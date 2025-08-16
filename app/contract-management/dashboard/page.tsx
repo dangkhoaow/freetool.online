@@ -77,19 +77,6 @@ export default function Dashboard() {
               )}
             </div>
             
-            <div className="flex items-center space-x-4">
-              <LanguageSwitcher variant="compact" />
-              <span className="text-sm text-gray-600">
-                {t('dashboard.welcome')}, {user?.name}
-              </span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleLogout}
-              >
-                {t('auth.logout')}
-              </Button>
-            </div>
           </div>
         </div>
       </header>

@@ -828,6 +828,46 @@ class ContractManagementService {
     }
   }
 
+  /**
+   * Delete a contract file
+   */
+  async deleteFile(fileId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const token = localStorage.getItem('contractManagementToken');
+      if (!token) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      const deleteUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(`/api/contract-management/files/${fileId}`);
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          'Cookie': `ctr-mgmt-token=${token}`,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { 
+          success: false, 
+          error: errorData.message || `Delete failed with status ${response.status}` 
+        };
+      }
+
+      const result = await response.json();
+      return {
+        success: true
+      };
+    } catch (error) {
+      console.error('Delete file error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to delete file' 
+      };
+    }
+  }
+
   private async simulateDelay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }

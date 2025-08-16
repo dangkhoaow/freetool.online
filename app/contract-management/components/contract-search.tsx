@@ -106,6 +106,8 @@ export default function ContractSearch() {
       status: undefined
     });
     setCurrentPage(1);
+    // Trigger immediate search after clearing filters
+    setTimeout(() => handleSearch(), 100);
   };
 
   const handleFilterChange = (field: keyof ContractSearchFilters, value: any) => {
@@ -140,9 +142,7 @@ export default function ContractSearch() {
   // Auto-search when filters change
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
-      if (filters.companyName || filters.winningBidDecisionNumber || filters.contractType || filters.status) {
-        handleSearch();
-      }
+      handleSearch();
     }, 500);
 
     return () => clearTimeout(delayedSearch);
@@ -155,20 +155,9 @@ export default function ContractSearch() {
 
   return (
     <div className="space-y-6">
-      {/* Search Header */}
-      <div className="flex justify-between items-center">
-        <Button
-          variant="outline"
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center space-x-2"
-        >
-          <Filter className="h-4 w-4" />
-          <span>Advanced Filters</span>
-        </Button>
-      </div>
 
       {/* Search Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
         <div className="space-y-2">
           <Label>{t('contracts.companyName')}</Label>
           <Input
@@ -226,24 +215,11 @@ export default function ContractSearch() {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-between items-center">
-        <div className="flex space-x-2">
-          <Button onClick={handleSearch} disabled={isLoading}>
-            <Search className="h-4 w-4 mr-2" />
-            {isLoading ? 'Searching...' : t('contracts.search')}
-          </Button>
-          
+        <div className="flex justify-end items-end">
           <Button variant="outline" onClick={handleClearFilters}>
             <X className="h-4 w-4 mr-2" />
             {t('contracts.clear')}
           </Button>
-        </div>
-
-        <div className="text-sm text-gray-600">
-          {totalCount > 0 && `${totalCount} ${t('contracts.results')}`}
         </div>
       </div>
 
@@ -264,45 +240,51 @@ export default function ContractSearch() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('contracts.companyName')}</TableHead>
-                    <TableHead>{t('contracts.contractNumber')}</TableHead>
-                    <TableHead>{t('contracts.contractType')}</TableHead>
-                    <TableHead>{t('contracts.value')}</TableHead>
-                    <TableHead>{t('contracts.bidDecisionNumber')}</TableHead>
-                    <TableHead>{t('contracts.startDate')}</TableHead>
-                    <TableHead>{t('contracts.endDate')}</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Storage</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.companyName')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.contractNumber')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.contractType')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.value')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.bidDecisionNumber')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.startDate')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('contracts.endDate')}</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Storage</TableHead>
+                    <TableHead className="whitespace-nowrap max-w-[200px]">Notes</TableHead>
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {contracts.map((contract) => (
                     <TableRow key={contract.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium whitespace-nowrap">
                         {contract.companyName}
                       </TableCell>
-                      <TableCell>{contract.contractNumber}</TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">{contract.contractNumber}</TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Badge variant="outline">{contract.contractType}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right whitespace-nowrap">
                         {formatCurrency(contract.contractValue)}
                       </TableCell>
-                      <TableCell>{contract.winningBidDecisionNumber}</TableCell>
-                      <TableCell>{formatDate(contract.contractStartDate)}</TableCell>
-                      <TableCell>{formatDate(contract.contractEndDate)}</TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">{contract.winningBidDecisionNumber}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(contract.contractStartDate)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(contract.contractEndDate)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Badge className={getStatusColor(contract.status)}>
                           {contract.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <span className="text-sm text-gray-600">
                           Unit {contract.storageUnitId.split('-')[1]} - Pos {contract.positionInUnit}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[200px]">
+                        <div className="truncate text-sm text-gray-600" title={contract.notes || ''}>
+                          {contract.notes || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
