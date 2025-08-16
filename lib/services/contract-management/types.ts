@@ -45,6 +45,7 @@ export interface ContractFormData {
   contractValue: number;
   winningBidDecisionNumber: string;
   contractType: ContractType;
+  status: ContractStatus;
   pdfFile?: File; // Legacy single file support
   files?: File[]; // New multiple files support
   notes?: string;

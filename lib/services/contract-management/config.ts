@@ -21,6 +21,7 @@ export const CONTRACT_MANAGEMENT_ENDPOINTS = {
   CONTRACTS: {
     BASE: '/api/contract-management/contracts',
     BY_ID: (id: string) => `/api/contract-management/contracts/${id}`,
+    COMPANIES: '/api/contract-management/companies',
   },
   
   // Storage endpoints

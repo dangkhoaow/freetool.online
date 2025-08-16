@@ -70,20 +70,16 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
         setContractFiles((response.data as any).contractFiles || []);
         
         // Format dates for HTML date inputs (YYYY-MM-DD)
-        const formatDateForInput = (dateString: string) => {
-          const date = new Date(dateString);
-          return date.toISOString().split('T')[0];
-        };
-
         setFormData({
-          companyName: response.data.companyName,
-          contractNumber: response.data.contractNumber,
-          contractStartDate: formatDateForInput(response.data.contractStartDate),
-          contractEndDate: formatDateForInput(response.data.contractEndDate),
-          contractDurationMonths: response.data.contractDurationMonths,
-          contractValue: response.data.contractValue,
-          winningBidDecisionNumber: response.data.winningBidDecisionNumber,
-          contractType: response.data.contractType,
+          companyName: response.data.companyName || '',
+          contractNumber: response.data.contractNumber || '',
+          contractStartDate: response.data.contractStartDate ? response.data.contractStartDate.split('T')[0] : '',
+          contractEndDate: response.data.contractEndDate ? response.data.contractEndDate.split('T')[0] : '',
+          contractDurationMonths: response.data.contractDurationMonths || 0,
+          contractValue: response.data.contractValue || 0,
+          winningBidDecisionNumber: response.data.winningBidDecisionNumber || '',
+          contractType: response.data.contractType || 'Pharmaceuticals',
+          status: response.data.status || 'Draft',
           notes: response.data.notes || ''
         });
       } else {
@@ -345,21 +341,40 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
-              <div>
-                <Label htmlFor="contractType">Contract Type</Label>
+              <div className="space-y-2">
+                <Label htmlFor="contractType">Contract Type <span className="text-red-500">*</span></Label>
                 <Select
-                  value={formData.contractType || ''}
-                  onValueChange={(value) => handleInputChange('contractType', value)}
+                  value={formData.contractType}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, contractType: value as any }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select contract type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {contractTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="Pharmaceuticals">Pharmaceuticals</SelectItem>
+                    <SelectItem value="MedicalEquipment">Medical Equipment</SelectItem>
+                    <SelectItem value="Services">Services</SelectItem>
+                    <SelectItem value="Consulting">Consulting</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Contract Status <span className="text-red-500">*</span></Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select contract status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Expired">Expired</SelectItem>
+                    <SelectItem value="Cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

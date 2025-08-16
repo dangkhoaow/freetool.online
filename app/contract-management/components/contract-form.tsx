@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,8 @@ export default function ContractForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [companyNames, setCompanyNames] = useState<string[]>([]);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
 
   const [formData, setFormData] = useState<ContractFormData>({
     companyName: '',
@@ -28,6 +30,7 @@ export default function ContractForm() {
     contractValue: 0,
     winningBidDecisionNumber: '',
     contractType: 'Pharmaceuticals',
+    status: 'Draft',
     notes: ''
   });
 
@@ -38,6 +41,30 @@ export default function ContractForm() {
     { value: 'Consulting', label: t('contractTypes.consulting') },
     { value: 'Other', label: t('contractTypes.other') }
   ];
+
+  const contractStatuses = [
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Expired', label: 'Expired' },
+    { value: 'Cancelled', label: 'Cancelled' }
+  ];
+
+  // Load company names on component mount
+  useEffect(() => {
+    const loadCompanyNames = async () => {
+      try {
+        const response = await contractManagementService.getCompanyNames();
+        if (response.success && response.data) {
+          setCompanyNames(response.data);
+        }
+      } catch (error) {
+        console.error('Error loading company names:', error);
+      }
+    };
+
+    loadCompanyNames();
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -104,6 +131,9 @@ export default function ContractForm() {
         updatedData.contractEndDate
       );
     }
+    
+    console.log(`Updating ${field} to:`, value);
+    console.log('Updated form data:', updatedData);
     
     setFormData(updatedData);
     
@@ -190,10 +220,12 @@ export default function ContractForm() {
       }
 
       // Include the files in the form data
-      const submitData = {
+      const submitData: ContractFormData = {
         ...formData,
         files: selectedFiles.length > 0 ? selectedFiles : undefined
       };
+      
+      console.log('Final submit data before API call:', submitData);
       
       const response = await contractManagementService.createContract(submitData, currentUser.id);
       
@@ -210,6 +242,7 @@ export default function ContractForm() {
           contractValue: 0,
           winningBidDecisionNumber: '',
           contractType: 'Pharmaceuticals',
+          status: 'Draft',
           notes: ''
         });
         setSelectedFiles([]);
@@ -239,6 +272,7 @@ export default function ContractForm() {
       contractValue: 0,
       winningBidDecisionNumber: '',
       contractType: 'Pharmaceuticals',
+      status: 'Draft',
       notes: ''
     });
     setSelectedFiles([]);
@@ -246,10 +280,9 @@ export default function ContractForm() {
     setSuccessMessage('');
     
     // Clear file input
-    const fileInput = document.getElementById('pdfFile') as HTMLInputElement;
+    const fileInput = document.getElementById('files') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Success Message */}
@@ -270,19 +303,90 @@ export default function ContractForm() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Company Name */}
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Company Name with Autocomplete */}
+        <div className="space-y-2 relative">
           <Label htmlFor="companyName">
             {t('contracts.companyName')} <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="companyName"
-            value={formData.companyName}
-            onChange={(e) => handleInputChange('companyName', e.target.value)}
-            placeholder="Enter company name"
-            className={errors.companyName ? 'border-red-500' : ''}
-          />
+          <div className="relative">
+            <Input
+              id="companyName"
+              value={formData.companyName}
+              onChange={(e) => {
+                handleInputChange('companyName', e.target.value);
+                setShowCompanyDropdown(true);
+              }}
+              onFocus={() => setShowCompanyDropdown(true)}
+              onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
+              placeholder="Enter or select company name"
+              className={errors.companyName ? 'border-red-500' : ''}
+              autoComplete="off"
+            />
+            {showCompanyDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {(() => {
+                  const filteredCompanies = companyNames
+                    .filter(company => 
+                      company.toLowerCase().includes(formData.companyName.toLowerCase())
+                    )
+                    .slice(0, 5);
+                  
+                  const hasExactMatch = filteredCompanies.some(company => 
+                    company.toLowerCase() === formData.companyName.toLowerCase()
+                  );
+                  
+                  return (
+                    <>
+                      {formData.companyName.length > 0 && (
+                        <div className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
+                          Select an option or create one
+                        </div>
+                      )}
+                      
+                      {/* Existing companies */}
+                      {filteredCompanies.map((company, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm group"
+                          onClick={() => {
+                            handleInputChange('companyName', company);
+                            setShowCompanyDropdown(false);
+                          }}
+                        >
+                          <span className="text-gray-700">{company}</span>
+                        </div>
+                      ))}
+                      
+                      {/* Create new option */}
+                      {formData.companyName.length > 0 && !hasExactMatch && (
+                        <div
+                          className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-gray-100 group"
+                          onClick={() => {
+                            setShowCompanyDropdown(false);
+                          }}
+                        >
+                          <div className="flex items-center mr-3">
+                            <span className="text-gray-500 text-xs font-medium">Create</span>
+                          </div>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                            {formData.companyName}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* No results message */}
+                      {formData.companyName.length > 0 && filteredCompanies.length === 0 && hasExactMatch && (
+                        <div className="px-3 py-2 text-sm text-gray-500">
+                          No other companies found
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
           {errors.companyName && (
             <p className="text-sm text-red-500">{errors.companyName}</p>
           )}
@@ -415,6 +519,31 @@ export default function ContractForm() {
           </Select>
           {errors.contractType && (
             <p className="text-sm text-red-500">{errors.contractType}</p>
+          )}
+        </div>
+
+        {/* Contract Status */}
+        <div className="space-y-2">
+          <Label htmlFor="status">
+            Contract Status <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={formData.status}
+            onValueChange={(value) => handleInputChange('status', value)}
+          >
+            <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
+              <SelectValue placeholder="Select contract status" />
+            </SelectTrigger>
+            <SelectContent>
+              {contractStatuses.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.status && (
+            <p className="text-sm text-red-500">{errors.status}</p>
           )}
         </div>
       </div>

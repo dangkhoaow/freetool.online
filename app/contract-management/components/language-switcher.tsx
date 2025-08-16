@@ -36,18 +36,18 @@ export function LanguageSwitcher({ variant = 'default', className = '' }: Langua
           <Button
             variant="ghost"
             size="sm"
-            className={`h-8 w-8 p-0 ${className}`}
+            className={`h-10 w-8 p-0 ${className}`}
             aria-label="Switch language"
           >
             <span className="text-lg">{currentLangConfig?.flag}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-64">
           {availableLanguages.map((lang) => (
             <DropdownMenuItem
               key={lang.code}
               onClick={() => handleLanguageChange(lang.code)}
-              className={`flex items-center space-x-3 ${
+              className={`flex items-center space-x-3x ${
                 currentLanguage === lang.code ? 'bg-blue-50 dark:bg-blue-900/20' : ''
               }`}
             >
@@ -71,13 +71,13 @@ export function LanguageSwitcher({ variant = 'default', className = '' }: Langua
           <Button
             variant="outline"
             size="sm"
-            className={`h-8 px-2 ${className}`}
+            className={`h-10 px-2 ${className}`}
           >
             <span className="text-sm">{currentLangConfig?.flag}</span>
             <ChevronDown className="ml-1 h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-64">
           {availableLanguages.map((lang) => (
             <DropdownMenuItem
               key={lang.code}
@@ -113,7 +113,7 @@ export function LanguageSwitcher({ variant = 'default', className = '' }: Langua
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
         <div className="px-2 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 border-b">
           Chọn ngôn ngữ / Select Language
         </div>

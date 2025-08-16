@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,27 @@ export default function ContractManagementLoginPage() {
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const isAuthenticated = contractManagementAuthService.isAuthenticated();
+        if (isAuthenticated) {
+          // User is already logged in, redirect to dashboard
+          router.push('/contract-management/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,36 +118,20 @@ export default function ContractManagementLoginPage() {
     }
   };
 
+  // Show loading while checking authentication
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="w-full bg-white dark:bg-gray-900 shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {t('cms.title')}
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('cms.subtitle')}
-                </p>
-              </div>
-            </div>
-            
-            {/* Language Switcher */}
-            <div className="flex items-center">
-              <LanguageSwitcher variant="compact" />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-6xl">
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-6xl py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             {/* Left side - Features */}
             <div className="space-y-8">
@@ -296,13 +301,19 @@ export default function ContractManagementLoginPage() {
                       />
                     </div>
                     
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? t('auth.signingIn') : t('auth.signIn')}
-                    </Button>
+                    <div className="flex justify-end mb-2">
+                      <Button
+                        type="submit"
+                        className="w-full mr-4"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? t('auth.signingIn') : t('auth.signIn')}
+                      </Button>
+
+                      <div className="flex justify-end mb-2">
+                        <LanguageSwitcher variant="compact" />
+                      </div>
+                    </div>
                     
                     {/* Navigation Links */}
                     <div className="text-center space-y-2 mt-4">
@@ -335,12 +346,6 @@ export default function ContractManagementLoginPage() {
                       </p>
                     </div>
                   </form>
-
-                  <div className="mt-6 text-center">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {t('language_support.translationSystemImplemented')}
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
             </div>

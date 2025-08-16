@@ -135,7 +135,7 @@ class ContractManagementService {
         winningBidDecisionNumber: contractData.winningBidDecisionNumber,
         contractType: contractData.contractType,
         notes: contractData.notes,
-        status: 'Active'
+        status: contractData.status
       };
 
             const createUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BASE);
@@ -264,11 +264,40 @@ class ContractManagementService {
   }
 
   /**
+   * Get unique company names for autocomplete
+   */
+  async getCompanyNames(): Promise<ApiResponse<string[]>> {
+    try {
+      const companiesUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.COMPANIES);
+      console.log('[ContractManagement] Getting companies via API:', companiesUrl);
+      
+      const response = await fetch(companiesUrl, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('[ContractManagement] Failed to fetch companies:', data);
+        return { success: false, error: data.message || 'Failed to fetch company names' };
+      }
+
+      console.log('[ContractManagement] Companies fetched successfully:', data.data?.length || 0);
+      return { success: true, data: data.data || [] };
+    } catch (error: any) {
+      console.error('[ContractManagement] Error fetching company names:', error);
+      return { success: false, error: error.message || 'Network error' };
+    }
+  }
+
+  /**
    * Get contract by ID
    */
-  public async getContract(id: string): Promise<ApiResponse<Contract>> {
+  public async getContract(contractId: string): Promise<ApiResponse<Contract>> {
     try {
-            const getUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(id));
+            const getUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.CONTRACTS.BY_ID(contractId));
       console.log('[ContractManagement] Getting contract via API:', getUrl);
       
       const response = await fetch(getUrl, {

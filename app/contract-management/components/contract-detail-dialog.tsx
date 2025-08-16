@@ -156,21 +156,34 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <Building2 className="h-5 w-5 text-blue-600" />
+                    <FileText className="h-5 w-5 text-blue-600" />
                     <h3 className="font-semibold">Contract Information</h3>
                   </div>
                   <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Company:</span>
+                      <span className="font-medium">{contract.companyName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Contract Number:</span>
+                      <span className="font-medium">{contract.contractNumber}</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Contract Type:</span>
                       <span className="font-medium">{contract.contractType}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Decision Number:</span>
-                      <span className="font-medium">{contract.winningBidDecisionNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">{contract.contractDurationMonths} months</span>
+                      <span className="text-gray-600">Status:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        contract.status === 'Active' ? 'bg-green-100 text-green-800' :
+                        contract.status === 'Draft' ? 'bg-gray-100 text-gray-800' :
+                        contract.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        contract.status === 'Expired' ? 'bg-red-100 text-red-800' :
+                        contract.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {contract.status}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
