@@ -476,37 +476,66 @@ class ContractManagementAuthService {
    */
   public async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<void>> {
     try {
-      if (!this.currentUser) {
+      if (!this.authToken) {
         return {
           success: false,
-          error: 'User not authenticated'
+          error: 'Authentication required'
         };
       }
 
-      // Simulate API delay
-      await this.simulateDelay(600);
-
-      // Verify current password
-      if (MOCK_PASSWORDS[this.currentUser.username] !== currentPassword) {
+      // Validate input
+      if (!currentPassword || !newPassword) {
         return {
           success: false,
-          error: 'Current password is incorrect'
+          error: 'Current password and new password are required'
         };
       }
 
-      // Update password (in real implementation, this would be hashed)
-      MOCK_PASSWORDS[this.currentUser.username] = newPassword;
+      if (newPassword.length < 6) {
+        return {
+          success: false,
+          error: 'New password must be at least 6 characters long'
+        };
+      }
+
+      if (currentPassword === newPassword) {
+        return {
+          success: false,
+          error: 'New password must be different from current password'
+        };
+      }
+
+      // Forward request to service backend
+      const changePasswordUrl = CONTRACT_MANAGEMENT_CONFIG.buildApiUrl('/api/contract-management/auth/change-password');
+      const serviceResponse = await fetch(changePasswordUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.authToken}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+
+      const result = await serviceResponse.json();
+
+      if (!serviceResponse.ok) {
+        return {
+          success: false,
+          error: result.message || 'Failed to change password'
+        };
+      }
 
       return {
-        success: true,
-        message: 'Password changed successfully'
+        success: result.success,
+        message: result.message || 'Password changed successfully',
+        error: result.success ? undefined : result.message
       };
 
     } catch (error) {
       console.error('[ContractManagementAuth] Change password error:', error);
       return {
         success: false,
-        error: 'Failed to change password'
+        error: error instanceof Error ? error.message : 'Failed to change password'
       };
     }
   }

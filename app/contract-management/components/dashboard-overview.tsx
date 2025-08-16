@@ -683,54 +683,6 @@ export default function DashboardOverview() {
         onClose={() => setIsDeleteDialogOpen(false)}
         onSuccess={handleDialogSuccess}
       />
-
-      {/* Storage Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Database className="h-5 w-5" />
-            <span>Storage System Overview</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{stats.totalStorageUnits || 0}</div>
-              <p className="text-sm text-blue-700">Total Units</p>
-            </div>
-            
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{stats.storageUnitsUsed || 0}</div>
-              <p className="text-sm text-green-700">Units in Use</p>
-            </div>
-            
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-600">
-                {(stats.totalStorageUnits || 0) - (stats.storageUnitsUsed || 0)}
-              </div>
-              <p className="text-sm text-gray-700">Available Units</p>
-            </div>
-            
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {Math.ceil((stats.totalContracts || 0) / 10)}
-              </div>
-              <p className="text-sm text-purple-700">Required Units</p>
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span>Storage Efficiency</span>
-              <span>{(stats.storageUtilization || 0).toFixed(1)}% utilized</span>
-            </div>
-            <Progress value={stats.storageUtilization || 0} className="h-3" />
-            <p className="text-xs text-gray-600 mt-1">
-              Sequential storage system maintains organization with up to 10 contracts per unit
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

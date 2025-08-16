@@ -28,8 +28,7 @@ export default function ContractHeader() {
   };
 
   const handleProfile = () => {
-    // Placeholder for profile functionality
-    console.log('Profile clicked');
+    router.push('/contract-management/profile');
   };
 
   const handleSettings = () => {
