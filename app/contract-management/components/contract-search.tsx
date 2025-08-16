@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Filter, X, FileText, Download, Eye, MoreHorizontal, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, Filter, X, FileText, Download, Eye, MoreHorizontal, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Settings, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { contractManagementService, Contract, ContractSearchFilters } from '@/lib/services/contract-management';
 import { useLanguage } from '../contexts/language-context';
 import ContractDetailDialog from './contract-detail-dialog';
@@ -28,6 +29,40 @@ export default function ContractSearch() {
   const [itemsPerPage] = useState(10);
   const [sortField, setSortField] = useState<keyof Contract>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Column visibility states with localStorage persistence
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    // Default column visibility
+    const defaultColumns = {
+      companyName: true,
+      contractNumber: true,
+      contractType: true,
+      contractValue: true,
+      winningBidDecisionNumber: true,
+      contractStartDate: true,
+      contractEndDate: true,
+      status: true,
+      storage: true,
+      notes: true,
+      actions: true
+    };
+
+    // Try to load from localStorage
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('contract-search-column-visibility');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Merge with defaults to handle new columns that might be added
+          return { ...defaultColumns, ...parsed };
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load column visibility from localStorage:', error);
+    }
+
+    return defaultColumns;
+  });
 
   // Dialog states
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
@@ -149,6 +184,41 @@ export default function ContractSearch() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  // Column visibility functions
+  const toggleColumn = (columnKey: keyof typeof visibleColumns) => {
+    setVisibleColumns((prev: typeof visibleColumns) => {
+      const newVisibility = {
+        ...prev,
+        [columnKey]: !prev[columnKey]
+      };
+      
+      // Save to localStorage
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('contract-search-column-visibility', JSON.stringify(newVisibility));
+        }
+      } catch (error) {
+        console.warn('Failed to save column visibility to localStorage:', error);
+      }
+      
+      return newVisibility;
+    });
+  };
+
+  const columnLabels = {
+    companyName: t('contracts.companyName'),
+    contractNumber: t('contracts.contractNumber'),
+    contractType: t('contracts.contractType'),
+    contractValue: t('contracts.value'),
+    winningBidDecisionNumber: t('contracts.bidDecisionNumber'),
+    contractStartDate: t('contracts.startDate'),
+    contractEndDate: t('contracts.endDate'),
+    status: 'Status',
+    storage: 'Storage',
+    notes: 'Notes',
+    actions: 'Actions'
   };
 
   const handleClearFilters = () => {
@@ -278,6 +348,32 @@ export default function ContractSearch() {
 
       {/* Results Table */}
       <Card>
+        <CardHeader className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Search Results</CardTitle>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-3 py-2 text-sm font-medium">Show/Hide Columns</div>
+                <DropdownMenuSeparator />
+                {Object.entries(columnLabels).map(([key, label]) => (
+                  <DropdownMenuCheckboxItem
+                    key={key}
+                    checked={visibleColumns[key as keyof typeof visibleColumns]}
+                    onCheckedChange={() => toggleColumn(key as keyof typeof visibleColumns)}
+                  >
+                    {label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -289,171 +385,271 @@ export default function ContractSearch() {
               <p className="text-gray-500">{t('contracts.noResults')}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div 
+              className="relative"
+              onMouseEnter={() => {
+                const scrollContainer = document.querySelector('.table-scroll-container');
+                if (scrollContainer) {
+                  (scrollContainer as HTMLElement).style.overflowX = 'auto';
+                }
+                // Show scroll indicator
+                const indicator = document.querySelector('.scroll-indicator');
+                if (indicator) {
+                  (indicator as HTMLElement).style.opacity = '1';
+                }
+              }}
+              onMouseLeave={() => {
+                const scrollContainer = document.querySelector('.table-scroll-container');
+                if (scrollContainer) {
+                  (scrollContainer as HTMLElement).style.overflowX = 'hidden';
+                }
+                // Hide scroll indicator
+                const indicator = document.querySelector('.scroll-indicator');
+                if (indicator) {
+                  (indicator as HTMLElement).style.opacity = '0';
+                }
+              }}
+            >
+              {/* Scroll indicator */}
+              <div 
+                className="scroll-indicator absolute right-0 top-0 bottom-0 w-8 pointer-events-none z-10 transition-opacity duration-200"
+                style={{
+                  background: 'linear-gradient(to left, rgba(255,255,255,0.9), transparent)',
+                  opacity: 0
+                }}
+              >
+                <div className="flex items-center justify-center h-full">
+                  <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+              
+              <div className="table-scroll-container" style={{ overflowX: 'hidden' }}>
+                {/* CSS to show scrollbar on hover */}
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    height: 8px;
+                  }
+                  div::-webkit-scrollbar-track {
+                    background: #f1f1f1;
+                    border-radius: 4px;
+                  }
+                  div::-webkit-scrollbar-thumb {
+                    background: #c1c1c1;
+                    border-radius: 4px;
+                  }
+                  div:hover::-webkit-scrollbar-thumb:hover {
+                    background: #a8a8a8;
+                  }
+                `}</style>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('companyName')}
-                      >
-                        {t('contracts.companyName')}
-                        {getSortIcon('companyName')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractNumber')}
-                      >
-                        {t('contracts.contractNumber')}
-                        {getSortIcon('contractNumber')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractType')}
-                      >
-                        {t('contracts.contractType')}
-                        {getSortIcon('contractType')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractValue')}
-                      >
-                        {t('contracts.value')}
-                        {getSortIcon('contractValue')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('winningBidDecisionNumber')}
-                      >
-                        {t('contracts.bidDecisionNumber')}
-                        {getSortIcon('winningBidDecisionNumber')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractStartDate')}
-                      >
-                        {t('contracts.startDate')}
-                        {getSortIcon('contractStartDate')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractEndDate')}
-                      >
-                        {t('contracts.endDate')}
-                        {getSortIcon('contractEndDate')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('status')}
-                      >
-                        Status
-                        {getSortIcon('status')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">Storage</TableHead>
-                    <TableHead className="whitespace-nowrap max-w-[200px]">Notes</TableHead>
-                    <TableHead className="whitespace-nowrap">Actions</TableHead>
+                    {visibleColumns.companyName && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('companyName')}
+                        >
+                          {t('contracts.companyName')}
+                          {getSortIcon('companyName')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.contractNumber && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('contractNumber')}
+                        >
+                          {t('contracts.contractNumber')}
+                          {getSortIcon('contractNumber')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.contractType && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('contractType')}
+                        >
+                          {t('contracts.contractType')}
+                          {getSortIcon('contractType')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.contractValue && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('contractValue')}
+                        >
+                          {t('contracts.value')}
+                          {getSortIcon('contractValue')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.winningBidDecisionNumber && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('winningBidDecisionNumber')}
+                        >
+                          {t('contracts.bidDecisionNumber')}
+                          {getSortIcon('winningBidDecisionNumber')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.contractStartDate && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('contractStartDate')}
+                        >
+                          {t('contracts.startDate')}
+                          {getSortIcon('contractStartDate')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.contractEndDate && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('contractEndDate')}
+                        >
+                          {t('contracts.endDate')}
+                          {getSortIcon('contractEndDate')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.status && (
+                      <TableHead className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 p-0 font-semibold hover:bg-transparent"
+                          onClick={() => handleSort('status')}
+                        >
+                          Status
+                          {getSortIcon('status')}
+                        </Button>
+                      </TableHead>
+                    )}
+                    {visibleColumns.storage && (
+                      <TableHead className="whitespace-nowrap">Storage</TableHead>
+                    )}
+                    {visibleColumns.notes && (
+                      <TableHead className="whitespace-nowrap max-w-[200px]">Notes</TableHead>
+                    )}
+                    {visibleColumns.actions && (
+                      <TableHead className="whitespace-nowrap">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {currentContracts.map((contract) => (
                     <TableRow key={contract.id}>
-                      <TableCell className="font-medium whitespace-nowrap">
-                        {contract.companyName}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{contract.contractNumber}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge variant="outline">{contract.contractType}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        {formatCurrency(contract.contractValue)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{contract.winningBidDecisionNumber}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(contract.contractStartDate)}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(contract.contractEndDate)}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge className={getStatusColor(contract.status)}>
-                          {contract.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <span className="text-sm text-gray-600">
-                          Unit {contract.storageUnitId.split('-')[1]} - Pos {contract.positionInUnit}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <div className="truncate text-sm text-gray-600" title={contract.notes || ''}>
-                          {contract.notes || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onClick={() => handleViewContract(contract)}
-                              className="cursor-pointer"
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View contract detail
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleEditContract(contract)}
-                              className="cursor-pointer"
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit contract
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteContract(contract)}
-                              className="cursor-pointer text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete contract
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                      {visibleColumns.companyName && (
+                        <TableCell className="font-medium whitespace-nowrap">
+                          {contract.companyName}
+                        </TableCell>
+                      )}
+                      {visibleColumns.contractNumber && (
+                        <TableCell className="whitespace-nowrap">{contract.contractNumber}</TableCell>
+                      )}
+                      {visibleColumns.contractType && (
+                        <TableCell className="whitespace-nowrap">
+                          <Badge variant="outline">{contract.contractType}</Badge>
+                        </TableCell>
+                      )}
+                      {visibleColumns.contractValue && (
+                        <TableCell className="text-right whitespace-nowrap">
+                          {formatCurrency(contract.contractValue)}
+                        </TableCell>
+                      )}
+                      {visibleColumns.winningBidDecisionNumber && (
+                        <TableCell className="whitespace-nowrap">{contract.winningBidDecisionNumber}</TableCell>
+                      )}
+                      {visibleColumns.contractStartDate && (
+                        <TableCell className="whitespace-nowrap">{formatDate(contract.contractStartDate)}</TableCell>
+                      )}
+                      {visibleColumns.contractEndDate && (
+                        <TableCell className="whitespace-nowrap">{formatDate(contract.contractEndDate)}</TableCell>
+                      )}
+                      {visibleColumns.status && (
+                        <TableCell className="whitespace-nowrap">
+                          <Badge className={getStatusColor(contract.status)}>
+                            {contract.status}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {visibleColumns.storage && (
+                        <TableCell className="whitespace-nowrap">
+                          <span className="text-sm text-gray-600">
+                            Unit {contract.storageUnitId.split('-')[1]} - Pos {contract.positionInUnit}
+                          </span>
+                        </TableCell>
+                      )}
+                      {visibleColumns.notes && (
+                        <TableCell className="max-w-[200px]">
+                          <div className="truncate text-sm text-gray-600" title={contract.notes || ''}>
+                            {contract.notes || '-'}
+                          </div>
+                        </TableCell>
+                      )}
+                      {visibleColumns.actions && (
+                        <TableCell className="whitespace-nowrap">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={() => handleViewContract(contract)}
+                                className="cursor-pointer"
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View contract detail
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleEditContract(contract)}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit contract
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteContract(contract)}
+                                className="cursor-pointer text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete contract
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </CardContent>
