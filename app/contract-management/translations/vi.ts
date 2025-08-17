@@ -108,7 +108,7 @@ export const viTranslations = {
     dashboard: 'Tổng quan',
     addContract: 'Thêm hợp đồng',
     search: 'Tìm kiếm',
-    export: 'Xuất dữ liệu'
+    export: 'Xuất/Nhập dữ liệu'
   },
 
   // Contracts

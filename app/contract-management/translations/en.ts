@@ -108,7 +108,7 @@ export const enTranslations = {
     dashboard: 'Dashboard',
     addContract: 'Add Contract',
     search: 'Search',
-    export: 'Export'
+    export: 'Export/Import'
   },
 
   // Contracts

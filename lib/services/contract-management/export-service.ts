@@ -24,72 +24,58 @@ class ContractManagementExportService {
    */
   public async exportContracts(options: ExportOptions): Promise<ApiResponse<ExportResult>> {
     try {
-      // Simulate API delay
-      await this.simulateDelay(1000);
+      // Get auth token from cookie or localStorage
+      const token = this.getAuthToken();
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required for export'
+        };
+      }
 
-      // Fetch contracts based on filters
-      const filters: ContractSearchFilters = options.filters || {};
+      // Call backend export API
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contract-management/exports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(options)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errorData.message || 'Failed to export contracts'
+        };
+      }
+
+      const result = await response.json();
       
-      // Apply date range filter if specified
-      if (options.dateRange) {
-        filters.startDateFrom = options.dateRange.from;
-        filters.startDateTo = options.dateRange.to;
-      }
-
-      const contractsResponse = await contractManagementService.searchContracts(
-        filters,
-        { field: 'createdAt', direction: 'desc' },
-        { page: 1, limit: 10000 } // Export all matching contracts
-      );
-
-      if (!contractsResponse.success) {
+      if (!result.success) {
         return {
           success: false,
-          error: 'Failed to fetch contracts for export'
+          error: result.message || 'Export failed'
         };
       }
 
-      const contracts = contractsResponse.data!.contracts;
-
-      if (contracts.length === 0) {
-        return {
-          success: false,
-          error: 'No contracts found matching the specified criteria'
-        };
+      // Convert base64 data back to blob for download
+      if (result.data.data && result.data.mimeType) {
+        const binaryString = atob(result.data.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: result.data.mimeType });
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        result.data.downloadUrl = downloadUrl;
+        delete result.data.data; // Remove base64 data after creating blob
       }
 
-      // Generate export based on format
-      let exportData: string;
-      let fileName: string;
-      let mimeType: string;
-
-      if (options.format === 'csv') {
-        exportData = this.generateCSV(contracts, options.includeFiles);
-        fileName = `contracts_export_${new Date().toISOString().split('T')[0]}.csv`;
-        mimeType = 'text/csv';
-      } else {
-        exportData = this.generateJSON(contracts, options.includeFiles);
-        fileName = `contracts_export_${new Date().toISOString().split('T')[0]}.json`;
-        mimeType = 'application/json';
-      }
-
-      // Create blob and generate download URL
-      const blob = new Blob([exportData], { type: mimeType });
-      const downloadUrl = URL.createObjectURL(blob);
-
-      const result: ExportResult = {
-        downloadUrl,
-        fileName,
-        fileSize: blob.size,
-        recordCount: contracts.length,
-        exportedAt: new Date().toISOString()
-      };
-
-      return {
-        success: true,
-        data: result,
-        message: `Successfully exported ${contracts.length} contracts`
-      };
+      return result;
 
     } catch (error) {
       console.error('[ContractManagementExport] Export contracts error:', error);
@@ -98,6 +84,35 @@ class ContractManagementExportService {
         error: 'Failed to export contracts'
       };
     }
+  }
+
+  /**
+   * Get authentication token from cookie or localStorage
+   */
+  private getAuthToken(): string | null {
+    console.log('[ExportService] Getting auth token...');
+    
+    // Try to get from cookie first
+    if (typeof document !== 'undefined') {
+      console.log('[ExportService] Checking cookies...');
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        console.log('[ExportService] Cookie found:', name);
+        if (name === 'ctr-mgmt-token') {
+          console.log('[ExportService] Found ctr-mgmt-token in cookies');
+          return value;
+        }
+      }
+      
+      // Fallback to localStorage - use same key as contract service
+      console.log('[ExportService] Checking localStorage for contractManagementToken...');
+      const token = localStorage.getItem('contractManagementToken');
+      console.log('[ExportService] localStorage token found:', !!token);
+      return token;
+    }
+    console.log('[ExportService] Document not available, returning null');
+    return null;
   }
 
   /**
