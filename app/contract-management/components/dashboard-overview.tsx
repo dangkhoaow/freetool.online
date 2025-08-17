@@ -34,6 +34,7 @@ import { useLanguage } from '../contexts/language-context';
 import ContractDetailDialog from './contract-detail-dialog';
 import ContractEditDialog from './contract-edit-dialog';
 import ContractDeleteDialog from './contract-delete-dialog';
+import ContractTable from './contract-table';
 
 export default function DashboardOverview() {
   const { t } = useLanguage();
@@ -454,148 +455,25 @@ export default function DashboardOverview() {
               <p className="text-gray-500">{t('contracts.noResults')}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('companyName')}
-                      >
-                        {t('contracts.companyName')}
-                        {getSortIcon('companyName')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractNumber')}
-                      >
-                        {t('contracts.contractNumber')}
-                        {getSortIcon('contractNumber')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractType')}
-                      >
-                        {t('contracts.contractType')}
-                        {getSortIcon('contractType')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractValue')}
-                      >
-                        {t('contracts.value')}
-                        {getSortIcon('contractValue')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractStartDate')}
-                      >
-                        {t('contracts.startDate')}
-                        {getSortIcon('contractStartDate')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('contractEndDate')}
-                      >
-                        {t('contracts.endDate')}
-                        {getSortIcon('contractEndDate')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 p-0 font-semibold hover:bg-transparent"
-                        onClick={() => handleSort('status')}
-                      >
-                        Status
-                        {getSortIcon('status')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentContracts.map((contract) => (
-                    <TableRow key={contract.id}>
-                      <TableCell className="font-medium whitespace-nowrap">
-                        {contract.companyName}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{contract.contractNumber}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge variant="outline">{contract.contractType}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        {formatCurrency(contract.contractValue)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(contract.contractStartDate)}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(contract.contractEndDate)}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Badge className={getStatusColor(contract.status)}>
-                          {contract.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onClick={() => handleViewContract(contract)}
-                              className="cursor-pointer"
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleEditContract(contract)}
-                              className="cursor-pointer"
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Contract
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteContract(contract)}
-                              className="cursor-pointer text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Contract
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <ContractTable
+              contracts={currentContracts}
+              onSort={handleSort}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onViewContract={handleViewContract}
+              onEditContract={handleEditContract}
+              onDeleteContract={handleDeleteContract}
+              visibleColumns={{
+                companyName: true,
+                contractNumber: true,
+                contractDurationMonths: true,
+                contractValue: true,
+                winningBidDecisionNumber: true,
+                contractType: true,
+                storage: true,
+                notes: true
+              }}
+            />
           )}
         </CardContent>
       </Card>
