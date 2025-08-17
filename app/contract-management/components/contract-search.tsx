@@ -249,8 +249,7 @@ export default function ContractSearch() {
       status: undefined
     });
     setCurrentPage(1);
-    // Trigger search after clearing filters
-    triggerSearch(true);
+    // Note: useEffect will trigger search when filters change
   };
 
   const handleFilterChange = (field: keyof ContractSearchFilters, value: any) => {
@@ -258,8 +257,8 @@ export default function ContractSearch() {
       ...prev,
       [field]: value === 'all' ? undefined : value || undefined
     }));
-    // Trigger delayed search after filter change
-    triggerSearch(false);
+    setCurrentPage(1); // Reset to first page when filtering
+    // Note: useEffect will trigger search when filters change
   };
 
   const formatCurrency = (value: number): string => {
@@ -319,6 +318,14 @@ export default function ContractSearch() {
       triggerSearch(true);
     }
   }, []); // Empty dependency array - only runs once on mount
+
+  // useEffect to trigger search when filters change
+  useEffect(() => {
+    if (hasInitiallyLoadedRef.current) {
+      console.log('[ContractSearch] Filters changed - triggering search:', filters);
+      triggerSearch(false); // Use delayed search for filter changes
+    }
+  }, [filters]); // Re-run when memoized filters object changes
 
   return (
     <div className="space-y-6">

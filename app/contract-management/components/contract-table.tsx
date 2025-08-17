@@ -197,7 +197,11 @@ export default function ContractTable({
         </TableHeader>
         <TableBody>
           {contracts.map((contract) => (
-            <TableRow key={contract.id}>
+            <TableRow 
+              key={contract.id}
+              className="cursor-pointer hover:bg-gray-50"
+              onDoubleClick={() => onEditContract && onEditContract(contract)}
+            >
               {visibleColumns.companyName && (
                 <TableCell className="font-medium whitespace-nowrap">
                   {contract.companyName}
