@@ -709,6 +709,8 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
                   if (inDialogMode) {
                     setIsEditMode(true);
                     setEditFormData(taskForm);
+                    // Auto-jump to Details tab when edit is clicked
+                    setActiveTab('details');
                   } else {
                     router.push(`/projly/tasks/${taskId}/edit`);
                   }
