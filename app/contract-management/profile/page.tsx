@@ -47,16 +47,16 @@ export default function ProfilePage() {
   const validatePassword = (password: string): string[] => {
     const errors = [];
     if (password.length < 8) {
-      errors.push('At least 8 characters long');
+      errors.push(t('profile.passwordMinLength' as any));
     }
     if (!/[A-Z]/.test(password)) {
-      errors.push('At least one uppercase letter');
+      errors.push(t('profile.passwordUppercase' as any));
     }
     if (!/[a-z]/.test(password)) {
-      errors.push('At least one lowercase letter');
+      errors.push(t('profile.passwordLowercase' as any));
     }
     if (!/[0-9]/.test(password)) {
-      errors.push('At least one number');
+      errors.push(t('profile.passwordNumber' as any));
     }
     return errors;
   };
@@ -65,27 +65,27 @@ export default function ProfilePage() {
     const newErrors: Record<string, string> = {};
 
     if (!passwordData.currentPassword) {
-      newErrors.currentPassword = 'Current password is required';
+      newErrors.currentPassword = t('profile.currentPasswordRequired' as any);
     }
 
     if (!passwordData.newPassword) {
-      newErrors.newPassword = 'New password is required';
+      newErrors.newPassword = t('profile.newPasswordRequired' as any);
     } else {
       const passwordErrors = validatePassword(passwordData.newPassword);
       if (passwordErrors.length > 0) {
-        newErrors.newPassword = `Password must have: ${passwordErrors.join(', ')}`;
+        newErrors.newPassword = `${t('profile.passwordMustHave' as any)}: ${passwordErrors.join(', ')}`;
       }
     }
 
     if (!passwordData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your new password';
+      newErrors.confirmPassword = t('profile.confirmPasswordRequired' as any);
     } else if (passwordData.newPassword !== passwordData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('profile.passwordsDoNotMatch' as any);
     }
 
     if (passwordData.currentPassword && passwordData.newPassword && 
         passwordData.currentPassword === passwordData.newPassword) {
-      newErrors.newPassword = 'New password must be different from current password';
+      newErrors.newPassword = t('profile.newPasswordMustBeDifferent' as any);
     }
 
     setErrors(newErrors);
@@ -110,7 +110,7 @@ export default function ProfilePage() {
       );
 
       if (result.success) {
-        setSuccessMessage(result.message || 'Password changed successfully!');
+        setSuccessMessage(result.message || t('profile.passwordChangedSuccess' as any));
         setPasswordData({
           currentPassword: '',
           newPassword: '',
@@ -119,14 +119,14 @@ export default function ProfilePage() {
       } else {
         setErrors(prev => ({ 
           ...prev, 
-          general: result.error || 'Failed to change password' 
+          general: result.error || t('profile.passwordChangeFailure' as any) 
         }));
       }
     } catch (error) {
       console.error('Error changing password:', error);
       setErrors(prev => ({ 
         ...prev, 
-        general: 'An error occurred while changing password' 
+        general: t('profile.passwordChangeError' as any) 
       }));
     } finally {
       setIsLoading(false);
@@ -167,14 +167,14 @@ export default function ProfilePage() {
               className="mb-4"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              {t('profile.backToDashboard' as any)}
             </Button>
             
             <div className="flex items-center space-x-3">
               <User className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
-                <p className="text-gray-600 dark:text-gray-400">Manage your account settings</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('profile.title' as any)}</h1>
+                <p className="text-gray-600 dark:text-gray-400">{t('profile.subtitle' as any)}</p>
               </div>
             </div>
           </div>
@@ -186,27 +186,27 @@ export default function ProfilePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <User className="h-5 w-5" />
-                    <span>Account Information</span>
+                    <span>{t('profile.accountInformation' as any)}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Name</Label>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('profile.name' as any)}</Label>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{user.name}</p>
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</Label>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('profile.email' as any)}</Label>
                     <p className="text-lg text-gray-900 dark:text-white">{user.email}</p>
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Username</Label>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('profile.username' as any)}</Label>
                     <p className="text-lg text-gray-900 dark:text-white">{user.username}</p>
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">System</Label>
+                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('profile.system' as any)}</Label>
                     <p className="text-lg text-gray-900 dark:text-white capitalize">{user.system || 'Contract Management'}</p>
                   </div>
                 </CardContent>
@@ -219,7 +219,7 @@ export default function ProfilePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Lock className="h-5 w-5" />
-                    <span>Change Password</span>
+                    <span>{t('profile.changePassword' as any)}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -245,7 +245,7 @@ export default function ProfilePage() {
                     {/* Current Password */}
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">
-                        Current Password <span className="text-red-500">*</span>
+                        {t('profile.currentPassword' as any)} <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
                         <Input
@@ -253,7 +253,7 @@ export default function ProfilePage() {
                           type={showCurrentPassword ? "text" : "password"}
                           value={passwordData.currentPassword}
                           onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-                          placeholder="Enter your current password"
+                          placeholder={t('profile.enterCurrentPassword' as any)}
                           className={errors.currentPassword ? 'border-red-500 pr-10' : 'pr-10'}
                           disabled={isLoading}
                         />
@@ -280,7 +280,7 @@ export default function ProfilePage() {
                     {/* New Password */}
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">
-                        New Password <span className="text-red-500">*</span>
+                        {t('profile.newPassword' as any)} <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
                         <Input
@@ -288,7 +288,7 @@ export default function ProfilePage() {
                           type={showNewPassword ? "text" : "password"}
                           value={passwordData.newPassword}
                           onChange={(e) => handleInputChange('newPassword', e.target.value)}
-                          placeholder="Enter your new password"
+                          placeholder={t('profile.enterNewPassword' as any)}
                           className={errors.newPassword ? 'border-red-500 pr-10' : 'pr-10'}
                           disabled={isLoading}
                         />
@@ -311,14 +311,14 @@ export default function ProfilePage() {
                         <p className="text-sm text-red-500">{errors.newPassword}</p>
                       )}
                       <p className="text-xs text-gray-500">
-                        Password must be at least 8 characters with uppercase, lowercase, and number
+                        {t('profile.passwordRequirements' as any)}
                       </p>
                     </div>
 
                     {/* Confirm Password */}
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">
-                        Confirm New Password <span className="text-red-500">*</span>
+                        {t('profile.confirmNewPassword' as any)} <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
                         <Input
@@ -326,7 +326,7 @@ export default function ProfilePage() {
                           type={showConfirmPassword ? "text" : "password"}
                           value={passwordData.confirmPassword}
                           onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                          placeholder="Confirm your new password"
+                          placeholder={t('profile.confirmNewPasswordPlaceholder' as any)}
                           className={errors.confirmPassword ? 'border-red-500 pr-10' : 'pr-10'}
                           disabled={isLoading}
                         />
@@ -362,7 +362,7 @@ export default function ProfilePage() {
                         ) : (
                           <Lock className="h-4 w-4 mr-2" />
                         )}
-                        {isLoading ? 'Changing...' : 'Change Password'}
+                        {isLoading ? t('profile.changing' as any) : t('profile.changePassword' as any)}
                       </Button>
                     </div>
                   </form>

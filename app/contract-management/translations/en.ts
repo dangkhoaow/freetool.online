@@ -337,6 +337,42 @@ export const enTranslations = {
     kb: 'KB'
   },
 
+  // Profile
+  profile: {
+    title: 'Profile',
+    subtitle: 'Manage your account settings',
+    backToDashboard: 'Back to Dashboard',
+    accountInformation: 'Account Information',
+    name: 'Name',
+    email: 'Email',
+    username: 'Username',
+    system: 'System',
+    changePassword: 'Change Password',
+    currentPassword: 'Current Password',
+    newPassword: 'New Password',
+    confirmNewPassword: 'Confirm New Password',
+    enterCurrentPassword: 'Enter your current password',
+    enterNewPassword: 'Enter your new password',
+    confirmNewPasswordPlaceholder: 'Confirm your new password',
+    passwordRequirements: 'Password must be at least 8 characters with uppercase, lowercase, and number',
+    changing: 'Changing...',
+    passwordChangedSuccess: 'Password changed successfully!',
+    // Validation messages
+    currentPasswordRequired: 'Current password is required',
+    newPasswordRequired: 'New password is required',
+    confirmPasswordRequired: 'Please confirm your new password',
+    passwordsDoNotMatch: 'Passwords do not match',
+    newPasswordMustBeDifferent: 'New password must be different from current password',
+    passwordChangeError: 'An error occurred while changing password',
+    passwordChangeFailure: 'Failed to change password',
+    // Password validation
+    passwordMinLength: 'At least 8 characters long',
+    passwordUppercase: 'At least one uppercase letter',
+    passwordLowercase: 'At least one lowercase letter',
+    passwordNumber: 'At least one number',
+    passwordMustHave: 'Password must have'
+  },
+
   // Language Support
   language_support: {
     multiLanguageReady: 'Multi-language system ready',

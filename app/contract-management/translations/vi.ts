@@ -337,6 +337,42 @@ export const viTranslations = {
     kb: 'KB'
   },
 
+  // Profile
+  profile: {
+    title: 'Hồ sơ',
+    subtitle: 'Quản lý cài đặt tài khoản của bạn',
+    backToDashboard: 'Quay lại Bảng điều khiển',
+    accountInformation: 'Thông tin tài khoản',
+    name: 'Họ tên',
+    email: 'Email',
+    username: 'Tên đăng nhập',
+    system: 'Hệ thống',
+    changePassword: 'Đổi mật khẩu',
+    currentPassword: 'Mật khẩu hiện tại',
+    newPassword: 'Mật khẩu mới',
+    confirmNewPassword: 'Xác nhận mật khẩu mới',
+    enterCurrentPassword: 'Nhập mật khẩu hiện tại của bạn',
+    enterNewPassword: 'Nhập mật khẩu mới của bạn',
+    confirmNewPasswordPlaceholder: 'Xác nhận mật khẩu mới của bạn',
+    passwordRequirements: 'Mật khẩu phải có ít nhất 8 ký tự với chữ hoa, chữ thường và số',
+    changing: 'Đang thay đổi...',
+    passwordChangedSuccess: 'Đổi mật khẩu thành công!',
+    // Validation messages
+    currentPasswordRequired: 'Mật khẩu hiện tại là bắt buộc',
+    newPasswordRequired: 'Mật khẩu mới là bắt buộc',
+    confirmPasswordRequired: 'Vui lòng xác nhận mật khẩu mới của bạn',
+    passwordsDoNotMatch: 'Mật khẩu xác nhận không khớp',
+    newPasswordMustBeDifferent: 'Mật khẩu mới phải khác với mật khẩu hiện tại',
+    passwordChangeError: 'Đã xảy ra lỗi khi thay đổi mật khẩu',
+    passwordChangeFailure: 'Không thể thay đổi mật khẩu',
+    // Password validation
+    passwordMinLength: 'Ít nhất 8 ký tự',
+    passwordUppercase: 'Ít nhất một chữ cái viết hoa',
+    passwordLowercase: 'Ít nhất một chữ cái viết thường',
+    passwordNumber: 'Ít nhất một số',
+    passwordMustHave: 'Mật khẩu phải có'
+  },
+
   // Language Support
   language_support: {
     multiLanguageReady: 'Hệ thống đa ngôn ngữ đã sẵn sàng',
