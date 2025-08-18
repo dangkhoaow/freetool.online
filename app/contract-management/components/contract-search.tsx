@@ -333,36 +333,38 @@ export default function ContractSearch() {
       {/* Search Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
         <div className="space-y-2">
-          <Label>{t('contracts.companyName')}</Label>
+          <Label className="dark:text-gray-200">{t('contracts.companyName')}</Label>
           <Input
             placeholder={t('contracts.searchCompanyPlaceholder')}
             value={filterValues.companyName || ''}
             onChange={(e) => handleFilterChange('companyName', e.target.value)}
+            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
           />
         </div>
 
         <div className="space-y-2">
-          <Label>{t('contracts.bidDecisionNumber')}</Label>
+          <Label className="dark:text-gray-200">{t('contracts.bidDecisionNumber')}</Label>
           <Input
             placeholder={t('contracts.searchBidNumberPlaceholder')}
             value={filterValues.winningBidDecisionNumber || ''}
             onChange={(e) => handleFilterChange('winningBidDecisionNumber', e.target.value)}
+            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
           />
         </div>
 
         <div className="space-y-2">
-          <Label>{t('contracts.contractType')}</Label>
+          <Label className="dark:text-gray-200">{t('contracts.contractType')}</Label>
           <Select
             value={filterValues.contractType || 'all'}
             onValueChange={(value) => handleFilterChange('contractType', value)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder={t('contracts.allTypes')} />
+            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+              <SelectValue placeholder={t('contracts.allTypes')} className="dark:text-gray-400" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('contracts.allTypes')}</SelectItem>
+            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+              <SelectItem value="all" className="dark:text-gray-200 dark:hover:bg-gray-700">{t('contracts.allTypes')}</SelectItem>
               {contractTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
+                <SelectItem key={type.value} value={type.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
                   {type.label}
                 </SelectItem>
               ))}
@@ -371,18 +373,18 @@ export default function ContractSearch() {
         </div>
 
         <div className="space-y-2">
-          <Label>{t('common.status')}</Label>
+          <Label className="dark:text-gray-200">{t('common.status')}</Label>
           <Select
             value={filterValues.status || 'all'}
             onValueChange={(value) => handleFilterChange('status', value)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder={t('contracts.allStatuses')} />
+            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+              <SelectValue placeholder={t('contracts.allStatuses')} className="dark:text-gray-400" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('contracts.allStatuses')}</SelectItem>
+            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+              <SelectItem value="all" className="dark:text-gray-200 dark:hover:bg-gray-700">{t('contracts.allStatuses')}</SelectItem>
               {statusOptions.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
+                <SelectItem key={status.value} value={status.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
                   {status.label}
                 </SelectItem>
               ))}
@@ -390,7 +392,7 @@ export default function ContractSearch() {
           </Select>
         </div>
         <div className="flex justify-end items-end">
-          <Button variant="outline" onClick={handleClearFilters}>
+          <Button variant="outline" onClick={handleClearFilters} className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
             <X className="h-4 w-4 mr-2" />
             {t('contracts.clear')}
           </Button>
@@ -398,25 +400,26 @@ export default function ContractSearch() {
       </div>
 
       {/* Results Table */}
-      <Card>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">{t('contracts.searchResults')}</CardTitle>
+            <CardTitle className="text-lg font-semibold dark:text-gray-100">{t('contracts.searchResults')}</CardTitle>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
                   <Settings className="h-4 w-4 mr-2" />
                   {t('contracts.columns')}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-3 py-2 text-sm font-medium">{t('contracts.showHideColumns')}</div>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-56 dark:bg-gray-800 dark:border-gray-600">
+                <div className="px-3 py-2 text-sm font-medium dark:text-gray-200">{t('contracts.showHideColumns')}</div>
+                <DropdownMenuSeparator className="dark:border-gray-600" />
                 {Object.entries(columnLabels).map(([key, label]) => (
                   <DropdownMenuCheckboxItem
                     key={key}
                     checked={visibleColumns[key as keyof typeof visibleColumns]}
                     onCheckedChange={() => toggleColumn(key as keyof typeof visibleColumns)}
+                    className="dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     {label}
                   </DropdownMenuCheckboxItem>
@@ -432,8 +435,8 @@ export default function ContractSearch() {
             </div>
           ) : contracts.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">{t('contracts.noResults')}</p>
+              <FileText className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">{t('contracts.noResults')}</p>
             </div>
           ) : (
             <ContractTable
@@ -464,7 +467,7 @@ export default function ContractSearch() {
       {/* Pagination */}
       {contracts.length > itemsPerPage && (
         <div className="flex items-center justify-between px-6 py-4">
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
             {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, sortedContracts.length)} {t('common.of')} {sortedContracts.length} {t('contracts.items')}
           </div>
           <div className="flex items-center space-x-2">
@@ -473,6 +476,7 @@ export default function ContractSearch() {
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
+              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               {t('common.previous')}
@@ -489,7 +493,7 @@ export default function ContractSearch() {
                     variant={currentPage === page ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(page)}
-                    className="w-8 h-8 p-0"
+                    className={`w-8 h-8 p-0 ${currentPage === page ? 'dark:bg-blue-600 dark:hover:bg-blue-700' : 'dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'}`}
                   >
                     {page}
                   </Button>
@@ -498,12 +502,12 @@ export default function ContractSearch() {
               
               {totalPages > 5 && currentPage < totalPages - 2 && (
                 <>
-                  <span className="px-2">...</span>
+                  <span className="px-2 dark:text-gray-400">...</span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handlePageChange(totalPages)}
-                    className="w-8 h-8 p-0"
+                    className="w-8 h-8 p-0 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     {totalPages}
                   </Button>
@@ -516,6 +520,7 @@ export default function ContractSearch() {
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
+              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               {t('common.next')}
               <ChevronRight className="h-4 w-4 ml-1" />

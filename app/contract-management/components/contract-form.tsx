@@ -299,9 +299,9 @@ export default function ContractForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Success Message */}
       {successMessage && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
+        <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+          <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-300">
             {successMessage}
           </AlertDescription>
         </Alert>
@@ -309,16 +309,16 @@ export default function ContractForm() {
 
       {/* General Error */}
       {errors.general && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{errors.general}</AlertDescription>
+        <Alert variant="destructive" className="dark:border-red-800 dark:bg-red-900/20">
+          <AlertCircle className="h-4 w-4 dark:text-red-400" />
+          <AlertDescription className="dark:text-red-300">{errors.general}</AlertDescription>
         </Alert>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Company Name with Autocomplete */}
         <div className="space-y-2 relative">
-          <Label htmlFor="companyName">
+          <Label htmlFor="companyName" className="dark:text-gray-200">
             {t('contracts.companyName')} <span className="text-red-500">*</span>
           </Label>
           <div className="relative">
@@ -332,11 +332,11 @@ export default function ContractForm() {
               onFocus={() => setShowCompanyDropdown(true)}
               onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
               placeholder={t('contracts.enterOrSelectCompany')}
-              className={errors.companyName ? 'border-red-500' : ''}
+              className={`${errors.companyName ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400`}
               autoComplete="off"
             />
             {showCompanyDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {(() => {
                   const filteredCompanies = companyNames
                     .filter(company => 
@@ -351,7 +351,7 @@ export default function ContractForm() {
                   return (
                     <>
                       {formData.companyName.length > 0 && (
-                        <div className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
+                        <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
                           {t('contracts.selectOptionOrCreate')}
                         </div>
                       )}
@@ -360,28 +360,28 @@ export default function ContractForm() {
                       {filteredCompanies.map((company, index) => (
                         <div
                           key={index}
-                          className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm group"
+                          className="flex items-center px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer text-sm group"
                           onClick={() => {
                             handleInputChange('companyName', company);
                             setShowCompanyDropdown(false);
                           }}
                         >
-                          <span className="text-gray-700">{company}</span>
+                          <span className="text-gray-700 dark:text-gray-200">{company}</span>
                         </div>
                       ))}
                       
                       {/* Create new option */}
                       {formData.companyName.length > 0 && !hasExactMatch && (
                         <div
-                          className="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-gray-100 group"
+                          className="flex items-center px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer text-sm border-t border-gray-100 dark:border-gray-600 group"
                           onClick={() => {
                             setShowCompanyDropdown(false);
                           }}
                         >
                           <div className="flex items-center mr-3">
-                            <span className="text-gray-500 text-xs font-medium">{t('common.create')}</span>
+                            <span className="text-gray-500 dark:text-gray-400 text-xs font-medium">{t('common.create')}</span>
                           </div>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-xs font-medium">
                             {formData.companyName}
                           </span>
                         </div>
@@ -389,7 +389,7 @@ export default function ContractForm() {
                       
                       {/* No results message */}
                       {formData.companyName.length > 0 && filteredCompanies.length === 0 && hasExactMatch && (
-                        <div className="px-3 py-2 text-sm text-gray-500">
+                        <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                           {t('contracts.noOtherCompanies')}
                         </div>
                       )}
@@ -400,13 +400,13 @@ export default function ContractForm() {
             )}
           </div>
           {errors.companyName && (
-            <p className="text-sm text-red-500">{errors.companyName}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.companyName}</p>
           )}
         </div>
 
         {/* Contract Number */}
         <div className="space-y-2">
-          <Label htmlFor="contractNumber">
+          <Label htmlFor="contractNumber" className="dark:text-gray-200">
             {t('contracts.contractNumber')} <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -414,16 +414,16 @@ export default function ContractForm() {
             value={formData.contractNumber}
             onChange={(e) => handleInputChange('contractNumber', e.target.value)}
             placeholder={t('contracts.enterContractAddendumNumber')}
-            className={errors.contractNumber ? 'border-red-500' : ''}
+            className={`${errors.contractNumber ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400`}
           />
           {errors.contractNumber && (
-            <p className="text-sm text-red-500">{errors.contractNumber}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.contractNumber}</p>
           )}
         </div>
 
         {/* Start Date */}
         <div className="space-y-2">
-          <Label htmlFor="startDate">
+          <Label htmlFor="startDate" className="dark:text-gray-200">
             {t('contracts.startDate')} <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -431,16 +431,16 @@ export default function ContractForm() {
             type="date"
             value={formData.contractStartDate}
             onChange={(e) => handleInputChange('contractStartDate', e.target.value)}
-            className={errors.contractStartDate ? 'border-red-500' : ''}
+            className={`${errors.contractStartDate ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100`}
           />
           {errors.contractStartDate && (
-            <p className="text-sm text-red-500">{errors.contractStartDate}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.contractStartDate}</p>
           )}
         </div>
 
         {/* End Date */}
         <div className="space-y-2">
-          <Label htmlFor="endDate">
+          <Label htmlFor="endDate" className="dark:text-gray-200">
             {t('contracts.endDate')} <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -448,16 +448,16 @@ export default function ContractForm() {
             type="date"
             value={formData.contractEndDate}
             onChange={(e) => handleInputChange('contractEndDate', e.target.value)}
-            className={errors.contractEndDate ? 'border-red-500' : ''}
+            className={`${errors.contractEndDate ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100`}
           />
           {errors.contractEndDate && (
-            <p className="text-sm text-red-500">{errors.contractEndDate}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.contractEndDate}</p>
           )}
         </div>
 
         {/* Duration */}
         <div className="space-y-2">
-          <Label htmlFor="duration">
+          <Label htmlFor="duration" className="dark:text-gray-200">
             {t('contracts.duration')} <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -466,16 +466,16 @@ export default function ContractForm() {
             min="1"
             value={formData.contractDurationMonths}
             onChange={(e) => handleInputChange('contractDurationMonths', parseInt(e.target.value) || 0)}
-            className={errors.contractDurationMonths ? 'border-red-500' : ''}
+            className={`${errors.contractDurationMonths ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100`}
           />
           {errors.contractDurationMonths && (
-            <p className="text-sm text-red-500">{errors.contractDurationMonths}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.contractDurationMonths}</p>
           )}
         </div>
 
         {/* Contract Value */}
         <div className="space-y-2">
-          <Label htmlFor="value">
+          <Label htmlFor="value" className="dark:text-gray-200">
             {t('contracts.value')} ({currentLanguage === 'vi' ? 'VND' : 'USD'}) <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -485,16 +485,16 @@ export default function ContractForm() {
             value={formData.contractValue}
             onChange={(e) => handleInputChange('contractValue', parseFloat(e.target.value) || 0)}
             placeholder="Enter contract value"
-            className={errors.contractValue ? 'border-red-500' : ''}
+            className={`${errors.contractValue ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400`}
           />
           {errors.contractValue && (
-            <p className="text-sm text-red-500">{errors.contractValue}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.contractValue}</p>
           )}
         </div>
 
         {/* Bid Decision Number */}
         <div className="space-y-2">
-          <Label htmlFor="bidDecision">
+          <Label htmlFor="bidDecision" className="dark:text-gray-200">
             {t('contracts.bidDecisionNumber')} <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -502,67 +502,67 @@ export default function ContractForm() {
             value={formData.winningBidDecisionNumber}
             onChange={(e) => handleInputChange('winningBidDecisionNumber', e.target.value)}
             placeholder={t('contracts.enterWinningBidDecisionNumber')}
-            className={errors.winningBidDecisionNumber ? 'border-red-500' : ''}
+            className={`${errors.winningBidDecisionNumber ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400`}
           />
           {errors.winningBidDecisionNumber && (
-            <p className="text-sm text-red-500">{errors.winningBidDecisionNumber}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.winningBidDecisionNumber}</p>
           )}
         </div>
 
         {/* Contract Type */}
         <div className="space-y-2">
-          <Label htmlFor="contractType">
+          <Label htmlFor="contractType" className="dark:text-gray-200">
             {t('contracts.contractType')} <span className="text-red-500">*</span>
           </Label>
           <Select
             value={formData.contractType}
             onValueChange={(value) => handleInputChange('contractType', value)}
           >
-            <SelectTrigger className={errors.contractType ? 'border-red-500' : ''}>
-              <SelectValue placeholder={t('contracts.selectContractType')} />
+            <SelectTrigger className={`${errors.contractType ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100`}>
+              <SelectValue placeholder={t('contracts.selectContractType')} className="dark:text-gray-400" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
               {contractTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
+                <SelectItem key={type.value} value={type.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
                   {type.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {errors.contractType && (
-            <p className="text-sm text-red-500">{errors.contractType}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.contractType}</p>
           )}
         </div>
 
         {/* Contract Status */}
         <div className="space-y-2">
-          <Label htmlFor="status">
+          <Label htmlFor="status" className="dark:text-gray-200">
             {t('common.status')} <span className="text-red-500">*</span>
           </Label>
           <Select
             value={formData.status}
             onValueChange={(value) => handleInputChange('status', value)}
           >
-            <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
-              <SelectValue placeholder={t('contracts.selectContractStatus')} />
+            <SelectTrigger className={`${errors.status ? 'border-red-500' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100`}>
+              <SelectValue placeholder={t('contracts.selectContractStatus')} className="dark:text-gray-400" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
               {contractStatuses.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
+                <SelectItem key={status.value} value={status.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
                   {status.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {errors.status && (
-            <p className="text-sm text-red-500">{errors.status}</p>
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.status}</p>
           )}
         </div>
       </div>
 
       {/* File Upload */}
       <div className="space-y-2">
-        <Label htmlFor="files">
+        <Label htmlFor="files" className="dark:text-gray-200">
           {t('contracts.uploadFilesOptional')}
         </Label>
         <div className="space-y-3">
@@ -572,17 +572,17 @@ export default function ContractForm() {
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
             onChange={handleFileChange}
             multiple
-            className="flex-1"
+            className="flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           />
           {selectedFiles.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">{t('common.selectedFiles')} ({selectedFiles.length}):</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{t('common.selectedFiles')} ({selectedFiles.length}):</p>
               <div className="space-y-1">
                 {selectedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center space-x-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                  <div key={index} className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded">
                     <FileText className="h-4 w-4" />
                     <span className="flex-1">{file.name}</span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </span>
                     <button
@@ -596,7 +596,7 @@ export default function ContractForm() {
                           fileInput.value = '';
                         }
                       }}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -607,10 +607,10 @@ export default function ContractForm() {
           )}
         </div>
         {errors.files && (
-          <p className="text-sm text-red-500">{errors.files}</p>
+          <p className="text-sm text-red-500 dark:text-red-400">{errors.files}</p>
         )}
         {selectedFiles.length === 0 && (
-          <div className="text-sm text-gray-500 space-y-1">
+          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
             <p>{t('contracts.noFilesSelectedInfo')}</p>
             <p className="text-xs">{t('contracts.supportedFormatsList')}</p>
             <p className="text-xs">{t('contracts.fileLimits')}</p>
@@ -620,13 +620,14 @@ export default function ContractForm() {
 
       {/* Notes */}
       <div className="space-y-2">
-        <Label htmlFor="notes">{t('contracts.notesOptional')}</Label>
+        <Label htmlFor="notes" className="dark:text-gray-200">{t('contracts.notesOptional')}</Label>
         <Textarea
           id="notes"
           value={formData.notes || ''}
           onChange={(e) => handleInputChange('notes', e.target.value)}
           placeholder={t('contracts.enterNotes')}
           rows={3}
+          className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
         />
       </div>
 
@@ -637,6 +638,7 @@ export default function ContractForm() {
           variant="outline"
           onClick={handleReset}
           disabled={isLoading}
+          className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
         >
           <X className="h-4 w-4 mr-2" />
           {t('contracts.cancel')}
@@ -645,7 +647,7 @@ export default function ContractForm() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="min-w-[120px]"
+          className="min-w-[120px] dark:bg-blue-600 dark:hover:bg-blue-700"
         >
           {isLoading ? (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

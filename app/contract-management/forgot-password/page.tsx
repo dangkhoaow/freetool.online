@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-6">
           {/* Success State */}
           <Card className="w-full">
@@ -141,7 +141,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* System Branding */}
         <div className="text-center">
@@ -200,7 +200,7 @@ export default function ForgotPasswordPage() {
                   {isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Sending...</span>
+                      <span>{t('auth.sending')}</span>
                     </div>
                   ) : (
                     <>
@@ -232,7 +232,7 @@ export default function ForgotPasswordPage() {
         {/* Help Text */}
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            Don't remember your email? Contact your system administrator for assistance.
+            {t('auth.dontRememberEmail')}
           </p>
         </div>
 

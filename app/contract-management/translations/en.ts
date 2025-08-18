@@ -43,12 +43,47 @@ export const enTranslations = {
     sendResetLink: 'Send Reset Link',
     resetLinkSent: 'Password reset link sent',
     checkEmail: 'Please check your email for password reset instructions',
-    backToLogin: 'Back to Login',
     emailNotFound: 'Email not found in our system',
     
     // Navigation
     dontHaveAccount: "Don't have an account?",
-    forgotPasswordLink: 'Forgot your password?'
+    forgotPasswordLink: 'Forgot your password?',
+    backToLogin: 'Back to Login',
+    
+    // Email Verification
+    emailVerificationRequired: 'Email Verification Required',
+    emailVerificationDescription: 'Your account needs email verification before you can log in. Enter your email address to receive a new verification link.',
+    emailAddress: 'Email Address',
+    enterEmailAddress: 'Enter your email address',
+    sendVerificationEmail: 'Send Verification Email',
+    sending: 'Sending...',
+    sendingEmail: 'Sending Email...',
+    verificationEmailSent: 'Verification email sent successfully! Please check your inbox.',
+    networkError: 'Network error. Please try again.',
+    pleaseEnterEmail: 'Please enter your email address',
+    resendEmailVerification: 'Resend Email Verification',
+    
+    // Resend Verification Page
+    resendVerificationTitle: 'Resend Verification Email',
+    resendVerificationDescription: 'Enter your email address to receive a new verification link',
+    dontHaveAccountSignUp: "Don't have an account?",
+    signUpLink: 'Sign Up',
+    
+    // Success Messages
+    whatsNext: "What's Next?",
+    checkEmailInbox: '• Check your email inbox for the verification link',
+    checkSpamFolder: "• Don't forget to check your spam/junk folder",
+    clickVerificationLink: '• Click the verification link to activate your account',
+    returnToLogin: '• Return to the login page to access your account',
+    
+    // Help Text
+    troubleSupport: 'Still having trouble? Contact our support team for assistance.',
+    dontRememberEmail: "Don't remember your email? Contact your system administrator for assistance.",
+    
+    // Loading States
+    unexpectedError: 'An unexpected error occurred',
+    failedSendVerification: 'Failed to send verification email. Please try again.',
+    enterEmailToResend: 'Please enter your email address to resend verification'
   },
 
   // Contract Management System

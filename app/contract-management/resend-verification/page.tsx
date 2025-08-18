@@ -25,7 +25,7 @@ export default function ResendVerificationPage() {
     e.preventDefault();
     
     if (!email) {
-      setMessage('Please enter your email address');
+      setMessage(t('auth.pleaseEnterEmail'));
       setIsSuccess(false);
       return;
     }
@@ -37,15 +37,15 @@ export default function ResendVerificationPage() {
       const response = await contractManagementAuthService.resendVerificationEmail(email);
       
       if (response.success) {
-        setMessage(response.message || 'Verification email sent successfully! Please check your inbox.');
+        setMessage(response.message || t('auth.verificationEmailSent'));
         setIsSuccess(true);
       } else {
-        setMessage(response.error || 'Failed to send verification email. Please try again.');
+        setMessage(response.error || t('auth.failedSendVerification'));
         setIsSuccess(false);
       }
     } catch (error) {
       console.error('Resend verification error:', error);
-      setMessage('Network error. Please try again.');
+      setMessage(t('auth.networkError'));
       setIsSuccess(false);
     } finally {
       setIsLoading(false);
@@ -53,7 +53,7 @@ export default function ResendVerificationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* System Branding */}
         <div className="text-center">
@@ -74,9 +74,9 @@ export default function ResendVerificationPage() {
                 <Mail className="h-8 w-8 text-blue-600" />
               </div>
             </div>
-            <CardTitle className="text-xl">Resend Verification Email</CardTitle>
+            <CardTitle className="text-xl">{t('auth.resendVerificationTitle')}</CardTitle>
             <CardDescription>
-              Enter your email address to receive a new verification link
+              {t('auth.resendVerificationDescription')}
             </CardDescription>
           </CardHeader>
           
@@ -99,14 +99,14 @@ export default function ResendVerificationPage() {
               {/* Email Input */}
               <div className="space-y-2">
                 <Label htmlFor="email">
-                  Email Address <span className="text-red-500">*</span>
+                  {t('auth.emailAddress')} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
+                  placeholder={t('auth.enterEmailAddress')}
                   disabled={isLoading}
                 />
               </div>
@@ -121,12 +121,12 @@ export default function ResendVerificationPage() {
                   {isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Sending Email...</span>
+                      <span>{t('auth.sendingEmail')}</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">
                       <Mail className="h-4 w-4" />
-                      <span>Send Verification Email</span>
+                      <span>{t('auth.sendVerificationEmail')}</span>
                     </div>
                   )}
                 </Button>
@@ -144,17 +144,17 @@ export default function ResendVerificationPage() {
                     className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center"
                   >
                     <ArrowLeft className="h-3 w-3 mr-1" />
-                    Back to Login
+                    {t('auth.backToLogin')}
                   </Link>
                 </p>
                 
                 <p className="text-sm text-gray-600">
-                  Don't have an account?{' '}
+                  {t('auth.dontHaveAccountSignUp')}{' '}
                   <Link 
                     href="/contract-management/signup" 
                     className="text-blue-600 hover:text-blue-800 font-medium"
                   >
-                    Sign Up
+                    {t('auth.signUpLink')}
                   </Link>
                 </p>
               </div>
@@ -165,12 +165,12 @@ export default function ResendVerificationPage() {
         {/* Help Information */}
         {isSuccess && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-green-800 mb-2">What's Next?</h3>
+            <h3 className="text-sm font-medium text-green-800 mb-2">{t('auth.whatsNext')}</h3>
             <ul className="text-sm text-green-700 space-y-1">
-              <li>• Check your email inbox for the verification link</li>
-              <li>• Don't forget to check your spam/junk folder</li>
-              <li>• Click the verification link to activate your account</li>
-              <li>• Return to the login page to access your account</li>
+              <li>{t('auth.checkEmailInbox')}</li>
+              <li>{t('auth.checkSpamFolder')}</li>
+              <li>{t('auth.clickVerificationLink')}</li>
+              <li>{t('auth.returnToLogin')}</li>
             </ul>
           </div>
         )}
@@ -178,7 +178,7 @@ export default function ResendVerificationPage() {
         {/* Troubleshooting */}
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            Still having trouble? Contact our support team for assistance.
+            {t('auth.troubleSupport')}
           </p>
         </div>
       </div>

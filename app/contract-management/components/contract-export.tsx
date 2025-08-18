@@ -247,242 +247,262 @@ export default function ContractExport() {
         </TabsList>
 
         <TabsContent value="export" className="space-y-6">
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold">{t('export.tabExport')}</CardTitle>
+              <CardTitle className="text-xl font-semibold dark:text-gray-100">{t('export.tabExport')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-            {/* Format Selection */}
-            <div className="space-y-2">
-              <Label>{t('export.format')}</Label>
-              <Select
-                value={exportOptions.format}
-                onValueChange={(value) => setExportOptions(prev => ({ ...prev, format: value as 'csv' | 'json' }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="csv">
-                    <div className="flex items-center space-x-2">
-                      <Table2 className="h-4 w-4" />
-                      <span>{t('export.csv')}</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="json">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="h-4 w-4" />
-                      <span>{t('export.json')}</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Include Files Option */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="includeFiles"
-                checked={exportOptions.includeFiles}
-                onCheckedChange={(checked) => 
-                  setExportOptions(prev => ({ ...prev, includeFiles: !!checked }))
-                }
-              />
-              <Label htmlFor="includeFiles" className="text-sm">
-                {t('export.includeFiles')}
-              </Label>
-            </div>
-
-            {/* Date Range Filter */}
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="dateRange"
-                  checked={dateRange.enabled}
-                  onCheckedChange={handleDateRangeToggle}
-                />
-                <Label htmlFor="dateRange" className="text-sm">
-                  {t('export.customRange')}
-                </Label>
+            {/* 4-Column Grid Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Format Selection */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('export.format')}</Label>
+                <Select
+                  value={exportOptions.format}
+                  onValueChange={(value) => setExportOptions(prev => ({ ...prev, format: value as 'csv' | 'json' }))}
+                >
+                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+                    <SelectItem value="csv" className="dark:hover:bg-gray-700">
+                      <div className="flex items-center space-x-2">
+                        <Table2 className="h-4 w-4" />
+                        <span>{t('export.csv')}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="json" className="dark:hover:bg-gray-700">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-4 w-4" />
+                        <span>{t('export.json')}</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {dateRange.enabled && (
-                <div className="grid grid-cols-2 gap-2 ml-6">
-                  <div className="space-y-1">
-                    <Label className="text-xs">{t('export.from')}</Label>
-                    <Input
-                      type="date"
-                      value={dateRange.from}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">{t('export.to')}</Label>
-                    <Input
-                      type="date"
-                      value={dateRange.to}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-                    />
-                  </div>
+              {/* Contract Type Filter */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('export.contractType_')}</Label>
+                <Select
+                  value={contractTypeFilter || 'all'}
+                  onValueChange={(value) => setContractTypeFilter(value === 'all' ? '' : value)}
+                >
+                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-600">
+                    <SelectValue placeholder={t('contracts.allTypes')} />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+                    <SelectItem value="all" className="dark:hover:bg-gray-700">{t('export.allTypes')}</SelectItem>
+                    {contractTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value} className="dark:hover:bg-gray-700">{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Company Name Filter */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('contracts.companyName')}</Label>
+                <div className="relative">
+                  <Input
+                    placeholder={t('contracts.enterCompanyFilter')}
+                    value={filters.companyName}
+                    onChange={(e) => {
+                      setFilters(prev => ({ ...prev, companyName: e.target.value }));
+                      setShowCompanyDropdown(true);
+                    }}
+                    onFocus={() => setShowCompanyDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
+                    autoComplete="off"
+                    className="dark:bg-gray-800 dark:border-gray-600"
+                  />
+                  {showCompanyDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {(() => {
+                        const filteredCompanies = filters.companyName.trim() === '' 
+                          ? companyNames.slice(0, 5)
+                          : companyNames
+                              .filter(company => 
+                                company.toLowerCase().includes(filters.companyName.toLowerCase())
+                              )
+                              .slice(0, 5);
+                        
+                        return (
+                          <>
+                            {filteredCompanies.length > 0 && (
+                              <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
+                                {filters.companyName.trim() === '' ? t('contracts.allCompanies') : t('contracts.selectCompany')}
+                              </div>
+                            )}
+                            
+                            {filteredCompanies.map((company, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer text-sm group"
+                                onClick={() => {
+                                  setFilters(prev => ({ ...prev, companyName: company }));
+                                  setShowCompanyDropdown(false);
+                                }}
+                              >
+                                <span className="text-gray-700 dark:text-gray-300">{company}</span>
+                              </div>
+                            ))}
+                            
+                            {filteredCompanies.length === 0 && (
+                              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                                {t('contracts.noResults')}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Contract Type Filter */}
-            <div className="space-y-2">
-              <Label>{t('export.contractType_')}</Label>
-              <Select
-                value={contractTypeFilter || 'all'}
-                onValueChange={(value) => setContractTypeFilter(value === 'all' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('contracts.allTypes')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('export.allTypes')}</SelectItem>
-                  {contractTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Company Name Filter */}
-            <div className="space-y-2">
-              <Label>{t('contracts.companyName')}</Label>
-              <div className="relative">
+              {/* Contract Number Filter */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('contracts.contractNumber')}</Label>
                 <Input
-                  placeholder={t('contracts.enterCompanyFilter')}
-                  value={filters.companyName}
-                  onChange={(e) => {
-                    setFilters(prev => ({ ...prev, companyName: e.target.value }));
-                    setShowCompanyDropdown(true);
-                  }}
-                  onFocus={() => setShowCompanyDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
-                  autoComplete="off"
+                  placeholder={t('contracts.enterContractNumber')}
+                  value={filters.contractNumber}
+                  onChange={(e) => setFilters(prev => ({ ...prev, contractNumber: e.target.value }))}
+                  className="dark:bg-gray-800 dark:border-gray-600"
                 />
-                {showCompanyDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {(() => {
-                      const filteredCompanies = filters.companyName.trim() === '' 
-                        ? companyNames.slice(0, 5)  // Show first 5 companies when input is empty
-                        : companyNames
-                            .filter(company => 
-                              company.toLowerCase().includes(filters.companyName.toLowerCase())
-                            )
-                            .slice(0, 5);
-                      
-                      return (
-                        <>
-                          {filteredCompanies.length > 0 && (
-                            <div className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
-                              {filters.companyName.trim() === '' ? t('contracts.allCompanies') : t('contracts.selectCompany')}
-                            </div>
-                          )}
-                          
-                          {/* Existing companies */}
-                          {filteredCompanies.map((company, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm group"
-                              onClick={() => {
-                                setFilters(prev => ({ ...prev, companyName: company }));
-                                setShowCompanyDropdown(false);
-                              }}
-                            >
-                              <span className="text-gray-700">{company}</span>
-                            </div>
-                          ))}
-                          
-                          {/* No results message */}
-                          {filteredCompanies.length === 0 && (
-                            <div className="px-3 py-2 text-sm text-gray-500">
-                              {t('contracts.noResults')}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Contract Number Filter */}
-            <div className="space-y-2">
-              <Label>{t('contracts.contractNumber')}</Label>
-              <Input
-                placeholder={t('contracts.enterContractNumber')}
-                value={filters.contractNumber}
-                onChange={(e) => setFilters(prev => ({ ...prev, contractNumber: e.target.value }))}
-              />
-            </div>
+            {/* Second Row - 4 Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Winning Bid Decision Number Filter */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('contracts.bidDecisionNumber')}</Label>
+                <Input
+                  placeholder={t('contracts.enterBidDecision')}
+                  value={filters.winningBidDecisionNumber}
+                  onChange={(e) => setFilters(prev => ({ ...prev, winningBidDecisionNumber: e.target.value }))}
+                  className="dark:bg-gray-800 dark:border-gray-600"
+                />
+              </div>
 
-            {/* Winning Bid Decision Number Filter */}
-            <div className="space-y-2">
-              <Label>{t('contracts.bidDecisionNumber')}</Label>
-              <Input
-                placeholder={t('contracts.enterBidDecision')}
-                value={filters.winningBidDecisionNumber}
-                onChange={(e) => setFilters(prev => ({ ...prev, winningBidDecisionNumber: e.target.value }))}
-              />
-            </div>
-
-            {/* Contract Value Range Filter */}
-            <div className="space-y-2">
-              <Label>{t('contracts.value')} ({currentLanguage === 'vi' ? 'VND' : 'USD'})</Label>
-              <div className="grid grid-cols-2 gap-2">
+              {/* Contract Value Min */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('contracts.minValue')} ({currentLanguage === 'vi' ? 'VND' : 'USD'})</Label>
                 <Input
                   type="number"
                   placeholder={t('contracts.minValue')}
                   value={filters.contractValueMin}
                   onChange={(e) => setFilters(prev => ({ ...prev, contractValueMin: e.target.value }))}
+                  className="dark:bg-gray-800 dark:border-gray-600"
                 />
+              </div>
+
+              {/* Contract Value Max */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('contracts.maxValue')} ({currentLanguage === 'vi' ? 'VND' : 'USD'})</Label>
                 <Input
                   type="number"
                   placeholder={t('contracts.maxValue')}
                   value={filters.contractValueMax}
                   onChange={(e) => setFilters(prev => ({ ...prev, contractValueMax: e.target.value }))}
+                  className="dark:bg-gray-800 dark:border-gray-600"
+                />
+              </div>
+
+              {/* Storage Unit Filter */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">{t('common.storage')}</Label>
+                <Input
+                  placeholder={t('contracts.enterStorageUnit')}
+                  value={filters.storageUnitId}
+                  onChange={(e) => setFilters(prev => ({ ...prev, storageUnitId: e.target.value }))}
+                  className="dark:bg-gray-800 dark:border-gray-600"
                 />
               </div>
             </div>
 
-            {/* Storage Unit Filter */}
-            <div className="space-y-2">
-              <Label>{t('common.storage')}</Label>
-              <Input
-                placeholder={t('contracts.enterStorageUnit')}
-                value={filters.storageUnitId}
-                onChange={(e) => setFilters(prev => ({ ...prev, storageUnitId: e.target.value }))}
-              />
-            </div>
+            {/* Options Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              {/* Include Files Option */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="includeFiles"
+                  checked={exportOptions.includeFiles}
+                  onCheckedChange={(checked) => 
+                    setExportOptions(prev => ({ ...prev, includeFiles: !!checked }))
+                  }
+                  className="dark:border-gray-600"
+                />
+                <Label htmlFor="includeFiles" className="text-sm dark:text-gray-200">
+                  {t('export.includeFiles')}
+                </Label>
+              </div>
 
-            {/* Clear Filters Button */}
-            <Button
-              variant="outline"
-              onClick={() => {
-                setContractTypeFilter('');
-                setFilters({
-                  companyName: '',
-                  contractNumber: '',
-                  winningBidDecisionNumber: '',
-                  contractValueMin: '',
-                  contractValueMax: '',
-                  storageUnitId: ''
-                });
-              }}
-              className="w-full"
-            >
-              {t('contracts.clear')}
-            </Button>
+              {/* Date Range Filter */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="dateRange"
+                    checked={dateRange.enabled}
+                    onCheckedChange={handleDateRangeToggle}
+                    className="dark:border-gray-600"
+                  />
+                  <Label htmlFor="dateRange" className="text-sm dark:text-gray-200">
+                    {t('export.customRange')}
+                  </Label>
+                </div>
+
+                {dateRange.enabled && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs dark:text-gray-200">{t('export.from')}</Label>
+                      <Input
+                        type="date"
+                        value={dateRange.from}
+                        onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                        className="dark:bg-gray-800 dark:border-gray-600"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs dark:text-gray-200">{t('export.to')}</Label>
+                      <Input
+                        type="date"
+                        value={dateRange.to}
+                        onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                        className="dark:bg-gray-800 dark:border-gray-600"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Clear Filters Button */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setContractTypeFilter('');
+                  setFilters({
+                    companyName: '',
+                    contractNumber: '',
+                    winningBidDecisionNumber: '',
+                    contractValueMin: '',
+                    contractValueMax: '',
+                    storageUnitId: ''
+                  });
+                }}
+                className="dark:border-gray-600 dark:hover:bg-gray-700"
+              >
+                {t('contracts.clear')}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {/* Right Column - Export Info */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
+            <CardTitle className="flex items-center space-x-2 dark:text-gray-100">
               <Download className="h-5 w-5" />
               <span>{t('export.info')}</span>
             </CardTitle>
@@ -490,27 +510,27 @@ export default function ContractExport() {
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">{t('export.format')}:</span>
-                <span className="font-medium uppercase">{exportOptions.format}</span>
+                <span className="text-gray-600 dark:text-gray-400">{t('export.format')}:</span>
+                <span className="font-medium uppercase dark:text-gray-200">{exportOptions.format}</span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">{t('export.includeFiles')}:</span>
-                <span className="font-medium">
+                <span className="text-gray-600 dark:text-gray-400">{t('export.includeFiles')}:</span>
+                <span className="font-medium dark:text-gray-200">
                   {exportOptions.includeFiles ? t('common.yes') : t('common.no')}
                 </span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">{t('export.dateRange')}:</span>
-                <span className="font-medium">
+                <span className="text-gray-600 dark:text-gray-400">{t('export.dateRange')}:</span>
+                <span className="font-medium dark:text-gray-200">
                   {dateRange.enabled ? t('export.customRange') : t('export.allData')}
                 </span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">{t('export.contractType_')}:</span>
-                <span className="font-medium">
+                <span className="text-gray-600 dark:text-gray-400">{t('export.contractType_')}:</span>
+                <span className="font-medium dark:text-gray-200">
                   {contractTypeFilter 
                     ? (contractTypes.find(ct => ct.value === contractTypeFilter)?.label || contractTypeFilter)
                     : t('export.allTypes')}
@@ -520,9 +540,9 @@ export default function ContractExport() {
               {/* Active Filters Summary */}
               {(filters.companyName || filters.contractNumber || filters.winningBidDecisionNumber || 
                 filters.contractValueMin || filters.contractValueMax || filters.storageUnitId) && (
-                <div className="border-t pt-3 mt-3">
-                  <div className="text-sm font-medium text-gray-700 mb-2">{t('export.activeFilters')}</div>
-                  <div className="space-y-1 text-xs text-gray-600">
+                <div className="border-t dark:border-gray-600 pt-3 mt-3">
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('export.activeFilters')}</div>
+                  <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
                     {filters.companyName && (
                       <div>• {t('contracts.companyName')}: {filters.companyName}</div>
                     )}
@@ -568,7 +588,7 @@ export default function ContractExport() {
             </Button>
 
             {/* Format Info */}
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
               {exportOptions.format === 'csv' ? (
                 <>
                   <p>{t('export.formatInfoCsv1')}</p>
@@ -588,29 +608,29 @@ export default function ContractExport() {
         </TabsContent>
 
         <TabsContent value="import" className="space-y-6">
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold">{t('import.title')}</CardTitle>
+              <CardTitle className="text-xl font-semibold dark:text-gray-100">{t('import.title')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Import Format Selection */}
               <div className="space-y-2">
-                <Label>{t('import.formatLabel')}</Label>
+                <Label className="dark:text-gray-200">{t('import.formatLabel')}</Label>
                 <Select
                   value={importFormat}
                   onValueChange={(value) => setImportFormat(value as 'csv' | 'json')}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-600">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="csv">
+                  <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+                    <SelectItem value="csv" className="dark:hover:bg-gray-700">
                       <div className="flex items-center space-x-2">
                         <FileSpreadsheet className="h-4 w-4" />
                         <span>{t('export.csv')}</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value="json">
+                    <SelectItem value="json" className="dark:hover:bg-gray-700">
                       <div className="flex items-center space-x-2">
                         <FileText className="h-4 w-4" />
                         <span>{t('export.json')}</span>
@@ -622,16 +642,16 @@ export default function ContractExport() {
 
               {/* File Upload */}
               <div className="space-y-2">
-                <Label htmlFor="import-file-input">{t('import.selectFile')}</Label>
+                <Label htmlFor="import-file-input" className="dark:text-gray-200">{t('import.selectFile')}</Label>
                 <Input
                   id="import-file-input"
                   type="file"
                   accept={importFormat === 'csv' ? '.csv,text/csv' : '.json,application/json'}
                   onChange={handleFileSelect}
-                  className="cursor-pointer"
+                  className="cursor-pointer dark:bg-gray-800 dark:border-gray-600"
                 />
                 {selectedFile && (
-                  <div className="text-sm text-gray-600 mt-2">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     {t('import.selected')} {selectedFile.name} ({formatFileSize(selectedFile.size)})
                   </div>
                 )}
@@ -657,8 +677,8 @@ export default function ContractExport() {
               </Button>
 
               {/* Import Guidelines */}
-              <div className="text-xs text-gray-500 space-y-2 mt-4">
-                <p className="font-semibold">{t('import.guidelines')}</p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 space-y-2 mt-4">
+                <p className="font-semibold dark:text-gray-300">{t('import.guidelines')}</p>
                 {importFormat === 'csv' ? (
                   <div className="space-y-1">
                     <p>{t('import.guidelinesCsv1')}</p>

@@ -86,7 +86,7 @@ export default function ContractManagementLoginPage() {
       }
     } catch (error) {
       console.error("Login error:", error);
-      setError("An unexpected error occurred");
+      setError(t('auth.unexpectedError'));
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +94,7 @@ export default function ContractManagementLoginPage() {
 
   const handleResendVerification = async () => {
     if (!resendEmail) {
-      setError("Please enter your email address to resend verification");
+      setError(t('auth.enterEmailToResend'));
       return;
     }
 
@@ -105,14 +105,14 @@ export default function ContractManagementLoginPage() {
       const response = await contractManagementAuthService.resendVerificationEmail(resendEmail);
       
       if (response.success) {
-        setResendMessage(response.message || "Verification email sent successfully! Please check your inbox.");
+        setResendMessage(response.message || t('auth.verificationEmailSent'));
         setError(""); // Clear the login error
       } else {
-        setResendMessage(response.error || "Failed to send verification email. Please try again.");
+        setResendMessage(response.error || t('auth.failedSendVerification'));
       }
     } catch (error) {
       console.error("Resend verification error:", error);
-      setResendMessage("Network error. Please try again.");
+      setResendMessage(t('auth.networkError'));
     } finally {
       setResendLoading(false);
     }
@@ -215,21 +215,21 @@ export default function ContractManagementLoginPage() {
                         <Mail className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                         <div className="flex-1">
                           <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
-                            Email Verification Required
+                            {t('auth.emailVerificationRequired')}
                           </h4>
                           <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                            Your account needs email verification before you can log in. Enter your email address to receive a new verification link.
+                            {t('auth.emailVerificationDescription')}
                           </p>
                           
                           <div className="space-y-3">
                             <div>
-                              <Label htmlFor="resendEmail" className="text-yellow-800 dark:text-yellow-200">Email Address</Label>
+                              <Label htmlFor="resendEmail" className="text-yellow-800 dark:text-yellow-200">{t('auth.emailAddress')}</Label>
                               <Input
                                 id="resendEmail"
                                 type="email"
                                 value={resendEmail}
                                 onChange={(e) => setResendEmail(e.target.value)}
-                                placeholder="Enter your email address"
+                                placeholder={t('auth.enterEmailAddress')}
                                 className="mt-1"
                                 disabled={resendLoading}
                               />
@@ -246,12 +246,12 @@ export default function ContractManagementLoginPage() {
                               {resendLoading ? (
                                 <div className="flex items-center space-x-2">
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
-                                  <span>Sending...</span>
+                                  <span>{t('auth.sending')}</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center space-x-2">
                                   <Mail className="h-4 w-4" />
-                                  <span>Send Verification Email</span>
+                                  <span>{t('auth.sendVerificationEmail')}</span>
                                 </div>
                               )}
                             </Button>
@@ -341,7 +341,7 @@ export default function ContractManagementLoginPage() {
                           href="/contract-management/resend-verification" 
                           className="text-blue-600 hover:text-blue-800 font-medium"
                         >
-                          Resend Email Verification
+                          {t('auth.resendEmailVerification')}
                         </Link>
                       </p>
                     </div>

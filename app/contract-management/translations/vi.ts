@@ -43,12 +43,47 @@ export const viTranslations = {
     sendResetLink: 'Gửi liên kết đặt lại',
     resetLinkSent: 'Liên kết đặt lại mật khẩu đã được gửi',
     checkEmail: 'Vui lòng kiểm tra email của bạn để biết hướng dẫn đặt lại mật khẩu',
-    backToLogin: 'Quay lại đăng nhập',
     emailNotFound: 'Không tìm thấy email này trong hệ thống',
     
     // Navigation
     dontHaveAccount: 'Chưa có tài khoản?',
-    forgotPasswordLink: 'Quên mật khẩu?'
+    forgotPasswordLink: 'Quên mật khẩu?',
+    backToLogin: 'Quay lại đăng nhập',
+    
+    // Email Verification
+    emailVerificationRequired: 'Yêu cầu Xác thực Email',
+    emailVerificationDescription: 'Tài khoản của bạn cần xác thực email trước khi có thể đăng nhập. Nhập địa chỉ email để nhận liên kết xác thực mới.',
+    emailAddress: 'Địa chỉ Email',
+    enterEmailAddress: 'Nhập địa chỉ email của bạn',
+    sendVerificationEmail: 'Gửi Email Xác thực',
+    sending: 'Đang gửi...',
+    sendingEmail: 'Đang gửi Email...',
+    verificationEmailSent: 'Email xác thực đã được gửi thành công! Vui lòng kiểm tra hộp thư đến.',
+    networkError: 'Lỗi mạng. Vui lòng thử lại.',
+    pleaseEnterEmail: 'Vui lòng nhập địa chỉ email của bạn',
+    resendEmailVerification: 'Gửi lại Email Xác thực',
+    
+    // Resend Verification Page
+    resendVerificationTitle: 'Gửi lại Email Xác thực',
+    resendVerificationDescription: 'Nhập địa chỉ email để nhận liên kết xác thực mới',
+    dontHaveAccountSignUp: 'Chưa có tài khoản?',
+    signUpLink: 'Đăng ký',
+    
+    // Success Messages
+    whatsNext: 'Bước tiếp theo?',
+    checkEmailInbox: '• Kiểm tra hộp thư đến để tìm liên kết xác thực',
+    checkSpamFolder: '• Đừng quên kiểm tra thư mục spam/rác',
+    clickVerificationLink: '• Nhấp vào liên kết xác thực để kích hoạt tài khoản',
+    returnToLogin: '• Quay lại trang đăng nhập để truy cập tài khoản',
+    
+    // Help Text
+    troubleSupport: 'Vẫn gặp khó khăn? Liên hệ đội ngũ hỗ trợ để được trợ giúp.',
+    dontRememberEmail: 'Không nhớ email? Liên hệ quản trị viên hệ thống để được hỗ trợ.',
+    
+    // Loading States
+    unexpectedError: 'Đã xảy ra lỗi không mong muốn',
+    failedSendVerification: 'Không thể gửi email xác thực. Vui lòng thử lại.',
+    enterEmailToResend: 'Vui lòng nhập địa chỉ email để gửi lại xác thực'
   },
 
   // Contract Management System

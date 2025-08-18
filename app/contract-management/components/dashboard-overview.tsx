@@ -211,54 +211,54 @@ export default function DashboardOverview() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Contracts */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium dark:text-gray-200">
               {t('dashboard.totalContracts')}
             </CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <FileText className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalContracts || 0}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold dark:text-gray-100">{stats.totalContracts || 0}</div>
+            <p className="text-xs text-muted-foreground dark:text-gray-400">
               {stats.activeContracts || 0} {t('dashboard.active')}
             </p>
           </CardContent>
         </Card>
 
         {/* Total Value */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium dark:text-gray-200">
               {t('dashboard.totalValue')}
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold dark:text-gray-100">
               {formatCurrency(stats.totalValue || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground dark:text-gray-400">
               {t('dashboard.average')}: {formatCurrency(stats.averageValue || 0)}
             </p>
           </CardContent>
         </Card>
 
         {/* Storage Utilization */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium dark:text-gray-200">
               {t('dashboard.storageUtilization')}
             </CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
+            <Database className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold dark:text-gray-100">
               {(stats.storageUtilization || 0).toFixed(1)}%
             </div>
             <div className="mt-2 space-y-1">
               <Progress value={stats.storageUtilization || 0} className="h-2" />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground dark:text-gray-400">
                 {stats.storageUnitsUsed || 0} {t('dashboard.of')} {stats.totalStorageUnits || 0} {t('dashboard.units')}
               </p>
             </div>
@@ -266,18 +266,18 @@ export default function DashboardOverview() {
         </Card>
 
         {/* Upcoming Expirations */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-medium dark:text-gray-200">
               {t('dashboard.upcomingExpirations')}
             </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
               {stats.upcomingExpirations?.length || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground dark:text-gray-400">
               {t('dashboard.next30Days')}
             </p>
           </CardContent>
@@ -287,10 +287,10 @@ export default function DashboardOverview() {
       {/* Charts and Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contract Types Distribution */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Package className="h-5 w-5" />
+            <CardTitle className="flex items-center space-x-2 dark:text-gray-100">
+              <Package className="h-5 w-5 dark:text-gray-300" />
               <span>{t('dashboard.contractsByType')}</span>
             </CardTitle>
           </CardHeader>
@@ -302,10 +302,10 @@ export default function DashboardOverview() {
                 return (
                   <div key={type} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{translatedType}</span>
+                      <span className="font-medium dark:text-gray-200">{translatedType}</span>
                       <div className="flex items-center space-x-2">
-                        <span>{count}</span>
-                        <Badge variant="outline">{percentage}%</Badge>
+                        <span className="dark:text-gray-300">{count}</span>
+                        <Badge variant="outline" className="dark:border-gray-600 dark:text-gray-300">{percentage}%</Badge>
                       </div>
                     </div>
                     <Progress value={parseFloat(percentage)} className="h-2" />
@@ -317,10 +317,10 @@ export default function DashboardOverview() {
         </Card>
 
         {/* Contract Status Distribution */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5" />
+            <CardTitle className="flex items-center space-x-2 dark:text-gray-100">
+              <TrendingUp className="h-5 w-5 dark:text-gray-300" />
               <span>{t('dashboard.contractsByStatus')}</span>
             </CardTitle>
           </CardHeader>
@@ -334,11 +334,11 @@ export default function DashboardOverview() {
                   <div key={status} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${statusColor}`}></div>
-                      <span className="text-sm font-medium">{translatedStatus}</span>
+                      <span className="text-sm font-medium dark:text-gray-200">{translatedStatus}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm">{count}</span>
-                      <Badge variant="outline">{percentage}%</Badge>
+                      <span className="text-sm dark:text-gray-300">{count}</span>
+                      <Badge variant="outline" className="dark:border-gray-600 dark:text-gray-300">{percentage}%</Badge>
                     </div>
                   </div>
                 );
@@ -351,10 +351,10 @@ export default function DashboardOverview() {
       {/* Monthly Trend and Upcoming Expirations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trend */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
+            <CardTitle className="flex items-center space-x-2 dark:text-gray-100">
+              <Calendar className="h-5 w-5 dark:text-gray-300" />
               <span>{t('dashboard.monthlyTrend')}</span>
             </CardTitle>
           </CardHeader>
@@ -371,10 +371,10 @@ export default function DashboardOverview() {
                 return (
                   <div key={trend.month} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{monthName}</span>
+                      <span className="font-medium dark:text-gray-200">{monthName}</span>
                       <div className="flex items-center space-x-2">
-                        <span>{trend.count} {t('dashboard.contractsLabel')}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="dark:text-gray-300">{trend.count} {t('dashboard.contractsLabel')}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {formatCurrency(trend.value)}
                         </span>
                       </div>
@@ -388,16 +388,16 @@ export default function DashboardOverview() {
         </Card>
 
         {/* Upcoming Expirations Detail */}
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <CardTitle className="flex items-center space-x-2 dark:text-gray-100">
+              <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               <span>{t('dashboard.expiringContracts')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {(stats.upcomingExpirations?.length || 0) === 0 ? (
-              <div className="text-center py-6 text-gray-500">
+              <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                 <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>{t('dashboard.noExpiringNext30Days')}</p>
               </div>
@@ -410,16 +410,16 @@ export default function DashboardOverview() {
                   );
                   
                   return (
-                    <div key={contract.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                    <div key={contract.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-gray-700 rounded-lg">
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{contract.companyName}</p>
-                        <p className="text-xs text-gray-600">{contract.contractNumber}</p>
+                        <p className="font-medium text-sm dark:text-gray-200">{contract.companyName}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{contract.contractNumber}</p>
                       </div>
                       <div className="text-right">
-                        <Badge variant={daysToExpiry <= 7 ? 'destructive' : 'secondary'}>
+                        <Badge variant={daysToExpiry <= 7 ? 'destructive' : 'secondary'} className="dark:border-gray-600">
                           {daysToExpiry} {t('common.days')}
                         </Badge>
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                           {formatDate(contract.contractEndDate)}
                         </p>
                       </div>
@@ -429,7 +429,7 @@ export default function DashboardOverview() {
                 
                 {(stats.upcomingExpirations?.length || 0) > 5 && (
                   <div className="text-center pt-2">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       +{(stats.upcomingExpirations?.length || 0) - 5} {t('dashboard.moreExpiring')}
                     </p>
                   </div>
@@ -442,10 +442,10 @@ export default function DashboardOverview() {
 
 
       {/* Recent Contracts */}
-      <Card>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="h-5 w-5" />
+          <CardTitle className="flex items-center space-x-2 dark:text-gray-100">
+            <FileText className="h-5 w-5 dark:text-gray-300" />
             <span>{t('dashboard.recentContracts')}</span>
           </CardTitle>
         </CardHeader>
@@ -456,8 +456,8 @@ export default function DashboardOverview() {
             </div>
           ) : contracts.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">{t('contracts.noResults')}</p>
+              <FileText className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">{t('contracts.noResults')}</p>
             </div>
           ) : (
             <ContractTable
