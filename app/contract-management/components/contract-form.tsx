@@ -13,7 +13,7 @@ import { contractManagementService, contractManagementAuthService, ContractFormD
 import { useLanguage } from '../contexts/language-context';
 
 export default function ContractForm() {
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -43,11 +43,11 @@ export default function ContractForm() {
   ];
 
   const contractStatuses = [
-    { value: 'Draft', label: 'Draft' },
-    { value: 'Active', label: 'Active' },
-    { value: 'Pending', label: 'Pending' },
-    { value: 'Expired', label: 'Expired' },
-    { value: 'Cancelled', label: 'Cancelled' }
+    { value: 'Draft', label: t('contractStatus.draft') },
+    { value: 'Active', label: t('contractStatus.active') },
+    { value: 'Pending', label: t('contractStatus.pending') },
+    { value: 'Expired', label: t('contractStatus.expired') },
+    { value: 'Cancelled', label: t('contractStatus.cancelled') }
   ];
 
   // Load company names on component mount
@@ -89,7 +89,7 @@ export default function ContractForm() {
       const startDate = new Date(formData.contractStartDate);
       const endDate = new Date(formData.contractEndDate);
       if (endDate <= startDate) {
-        newErrors.contractEndDate = 'End date must be after start date';
+        newErrors.contractEndDate = t('contracts.endDateAfterStart');
       }
     }
 
@@ -173,7 +173,7 @@ export default function ContractForm() {
       if (!supportedTypes.includes(file.type)) {
         setErrors(prev => ({ 
           ...prev, 
-          files: `File type "${file.type}" is not supported for file "${file.name}"` 
+          files: t('contracts.invalidFileType')
         }));
         return;
       }
@@ -182,7 +182,7 @@ export default function ContractForm() {
       if (file.size > 25 * 1024 * 1024) {
         setErrors(prev => ({ 
           ...prev, 
-          files: `File "${file.name}" exceeds 25MB limit` 
+          files: t('contracts.fileTooLarge')
         }));
         return;
       }
@@ -192,7 +192,7 @@ export default function ContractForm() {
     if (files.length > 10) {
       setErrors(prev => ({ 
         ...prev, 
-        files: 'Maximum 10 files can be uploaded at once' 
+        files: t('contracts.maxFiles')
       }));
       return;
     }
@@ -215,7 +215,7 @@ export default function ContractForm() {
       // Get current user
       const currentUser = contractManagementAuthService.getCurrentUser();
       if (!currentUser) {
-        setErrors({ general: 'Authentication required. Please log in again.' });
+        setErrors({ general: t('auth.loginRequired') });
         return;
       }
 
@@ -331,7 +331,7 @@ export default function ContractForm() {
               }}
               onFocus={() => setShowCompanyDropdown(true)}
               onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
-              placeholder="Enter or select company name"
+              placeholder={t('contracts.enterOrSelectCompany')}
               className={errors.companyName ? 'border-red-500' : ''}
               autoComplete="off"
             />
@@ -352,7 +352,7 @@ export default function ContractForm() {
                     <>
                       {formData.companyName.length > 0 && (
                         <div className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
-                          Select an option or create one
+                          {t('contracts.selectOptionOrCreate')}
                         </div>
                       )}
                       
@@ -379,7 +379,7 @@ export default function ContractForm() {
                           }}
                         >
                           <div className="flex items-center mr-3">
-                            <span className="text-gray-500 text-xs font-medium">Create</span>
+                            <span className="text-gray-500 text-xs font-medium">{t('common.create')}</span>
                           </div>
                           <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
                             {formData.companyName}
@@ -390,7 +390,7 @@ export default function ContractForm() {
                       {/* No results message */}
                       {formData.companyName.length > 0 && filteredCompanies.length === 0 && hasExactMatch && (
                         <div className="px-3 py-2 text-sm text-gray-500">
-                          No other companies found
+                          {t('contracts.noOtherCompanies')}
                         </div>
                       )}
                     </>
@@ -413,7 +413,7 @@ export default function ContractForm() {
             id="contractNumber"
             value={formData.contractNumber}
             onChange={(e) => handleInputChange('contractNumber', e.target.value)}
-            placeholder="Enter contract/addendum number"
+            placeholder={t('contracts.enterContractAddendumNumber')}
             className={errors.contractNumber ? 'border-red-500' : ''}
           />
           {errors.contractNumber && (
@@ -476,7 +476,7 @@ export default function ContractForm() {
         {/* Contract Value */}
         <div className="space-y-2">
           <Label htmlFor="value">
-            {t('contracts.value')} (VND) <span className="text-red-500">*</span>
+            {t('contracts.value')} ({currentLanguage === 'vi' ? 'VND' : 'USD'}) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="value"
@@ -501,7 +501,7 @@ export default function ContractForm() {
             id="bidDecision"
             value={formData.winningBidDecisionNumber}
             onChange={(e) => handleInputChange('winningBidDecisionNumber', e.target.value)}
-            placeholder="Enter winning bid decision number"
+            placeholder={t('contracts.enterWinningBidDecisionNumber')}
             className={errors.winningBidDecisionNumber ? 'border-red-500' : ''}
           />
           {errors.winningBidDecisionNumber && (
@@ -519,7 +519,7 @@ export default function ContractForm() {
             onValueChange={(value) => handleInputChange('contractType', value)}
           >
             <SelectTrigger className={errors.contractType ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Select contract type" />
+              <SelectValue placeholder={t('contracts.selectContractType')} />
             </SelectTrigger>
             <SelectContent>
               {contractTypes.map((type) => (
@@ -537,14 +537,14 @@ export default function ContractForm() {
         {/* Contract Status */}
         <div className="space-y-2">
           <Label htmlFor="status">
-            Contract Status <span className="text-red-500">*</span>
+            {t('common.status')} <span className="text-red-500">*</span>
           </Label>
           <Select
             value={formData.status}
             onValueChange={(value) => handleInputChange('status', value)}
           >
             <SelectTrigger className={errors.status ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Select contract status" />
+              <SelectValue placeholder={t('contracts.selectContractStatus')} />
             </SelectTrigger>
             <SelectContent>
               {contractStatuses.map((status) => (
@@ -563,7 +563,7 @@ export default function ContractForm() {
       {/* File Upload */}
       <div className="space-y-2">
         <Label htmlFor="files">
-          Upload Files (Optional)
+          {t('contracts.uploadFilesOptional')}
         </Label>
         <div className="space-y-3">
           <Input
@@ -576,7 +576,7 @@ export default function ContractForm() {
           />
           {selectedFiles.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">Selected files ({selectedFiles.length}):</p>
+              <p className="text-sm font-medium text-gray-700">{t('common.selectedFiles')} ({selectedFiles.length}):</p>
               <div className="space-y-1">
                 {selectedFiles.map((file, index) => (
                   <div key={index} className="flex items-center space-x-2 text-sm text-green-600 bg-green-50 p-2 rounded">
@@ -611,21 +611,21 @@ export default function ContractForm() {
         )}
         {selectedFiles.length === 0 && (
           <div className="text-sm text-gray-500 space-y-1">
-            <p>No files selected. Supported formats:</p>
-            <p className="text-xs">PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), Text (.txt, .csv), Images (.jpg, .png, .gif, .bmp, .webp, .svg)</p>
-            <p className="text-xs">Max 10 files, 25MB per file</p>
+            <p>{t('contracts.noFilesSelectedInfo')}</p>
+            <p className="text-xs">{t('contracts.supportedFormatsList')}</p>
+            <p className="text-xs">{t('contracts.fileLimits')}</p>
           </div>
         )}
       </div>
 
       {/* Notes */}
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes (Optional)</Label>
+        <Label htmlFor="notes">{t('contracts.notesOptional')}</Label>
         <Textarea
           id="notes"
           value={formData.notes || ''}
           onChange={(e) => handleInputChange('notes', e.target.value)}
-          placeholder="Additional notes or comments"
+          placeholder={t('contracts.enterNotes')}
           rows={3}
         />
       </div>
@@ -652,7 +652,7 @@ export default function ContractForm() {
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          {isLoading ? 'Saving...' : t('contracts.save')}
+          {isLoading ? t('common.saving') : t('contracts.save')}
         </Button>
       </div>
     </form>

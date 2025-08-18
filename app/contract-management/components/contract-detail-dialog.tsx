@@ -41,11 +41,11 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
       if (response.success && response.data) {
         setContract(response.data);
       } else {
-        setError(response.error || 'Failed to load contract details');
+        setError(response.error || t('contracts.errorLoadingDetails'));
       }
     } catch (error) {
       console.error('Error fetching contract:', error);
-      setError('Failed to load contract details');
+      setError(t('contracts.errorLoadingDetails'));
     } finally {
       setIsLoading(false);
     }
@@ -78,11 +78,11 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
         console.log('File download completed successfully');
       } else {
         console.error('Download failed:', response.error);
-        alert(`Download failed: ${response.error || 'Unknown error'}`);
+        alert(`${t('contracts.downloadFailed')}: ${response.error || t('common.error')}`);
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      alert(`Error downloading file: ${error}`);
+      alert(`${t('contracts.errorDownloadingFile')}: ${error}`);
     } finally {
       // Remove fileId from downloading set
       setDownloadingFiles(prev => {
@@ -115,12 +115,23 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'Active': return t('contractStatus.active');
+      case 'Expired': return t('contractStatus.expired');
+      case 'Pending': return t('contractStatus.pending');
+      case 'Cancelled': return t('contractStatus.cancelled');
+      case 'Draft': return t('contractStatus.draft');
+      default: return status;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[80vw] max-w-none max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            Contract Details
+            {t('contracts.detailsTitle')}
           </DialogTitle>
         </DialogHeader>
 
@@ -145,7 +156,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <p className="text-lg text-gray-600">{contract.contractNumber}</p>
               </div>
               <Badge className={getStatusColor(contract.status)}>
-                {contract.status}
+                {getStatusLabel(contract.status)}
               </Badge>
             </div>
 
@@ -157,23 +168,23 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="h-5 w-5 text-blue-600" />
-                    <h3 className="font-semibold">Contract Information</h3>
+                    <h3 className="font-semibold">{t('contracts.contractInformation')}</h3>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Company:</span>
+                      <span className="text-gray-600">{t('contracts.companyName')}:</span>
                       <span className="font-medium">{contract.companyName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Contract Number:</span>
+                      <span className="text-gray-600">{t('contracts.contractNumber')}:</span>
                       <span className="font-medium">{contract.contractNumber}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Contract Type:</span>
+                      <span className="text-gray-600">{t('contracts.contractType')}:</span>
                       <span className="font-medium">{contract.contractType}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
+                      <span className="text-gray-600">{t('common.status')}:</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         contract.status === 'Active' ? 'bg-green-100 text-green-800' :
                         contract.status === 'Draft' ? 'bg-gray-100 text-gray-800' :
@@ -182,7 +193,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                         contract.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {contract.status}
+                        {getStatusLabel(contract.status)}
                       </span>
                     </div>
                   </div>
@@ -193,11 +204,11 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <DollarSign className="h-5 w-5 text-green-600" />
-                    <h3 className="font-semibold">Financial Details</h3>
+                    <h3 className="font-semibold">{t('contracts.financialDetails')}</h3>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Contract Value:</span>
+                      <span className="text-gray-600">{t('contracts.value')}:</span>
                       <span className="font-semibold text-green-700">
                         {formatCurrency(contract.contractValue)}
                       </span>
@@ -210,15 +221,15 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Calendar className="h-5 w-5 text-purple-600" />
-                    <h3 className="font-semibold">Timeline</h3>
+                    <h3 className="font-semibold">{t('contracts.timeline')}</h3>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Start Date:</span>
+                      <span className="text-gray-600">{t('contracts.startDate')}:</span>
                       <span className="font-medium">{formatDate(contract.contractStartDate)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">End Date:</span>
+                      <span className="text-gray-600">{t('contracts.endDate')}:</span>
                       <span className="font-medium">{formatDate(contract.contractEndDate)}</span>
                     </div>
                   </div>
@@ -232,11 +243,11 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Hash className="h-5 w-5 text-orange-600" />
-                    <h3 className="font-semibold">Storage Location</h3>
+                    <h3 className="font-semibold">{t('contracts.storageLocation')}</h3>
                   </div>
                   <div className="text-sm">
                     <span className="text-gray-600">
-                      Unit {contract.storageUnitId?.split('-')[1]} - Position {contract.positionInUnit}
+                      {t('contracts.unit')} {contract.storageUnitId?.split('-')[1]} - {t('contracts.position')} {contract.positionInUnit}
                     </span>
                   </div>
                 </CardContent>
@@ -247,7 +258,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <FileText className="h-5 w-5 text-gray-600" />
-                      <h3 className="font-semibold">Notes</h3>
+                      <h3 className="font-semibold">{t('common.notes')}</h3>
                     </div>
                     <div className="text-sm text-gray-700">
                       {contract.notes}
@@ -264,7 +275,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="h-5 w-5 text-blue-600" />
-                    <h3 className="font-semibold">Contract Files</h3>
+                    <h3 className="font-semibold">{t('contracts.contractFiles')}</h3>
                   </div>
                   <div className="space-y-2">
                     {(contract as any).contractFiles.map((file: any, index: number) => (
@@ -274,7 +285,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                           <div>
                             <p className="font-medium text-sm">{file.originalFileName || file.fileName}</p>
                             <p className="text-xs text-gray-500">
-                              {file.fileSize && `${Math.round(parseInt(file.fileSize) / 1024)} KB`}
+                              {file.fileSize && `${Math.round(parseInt(file.fileSize) / 1024)} ${t('common.kb')}`}
                             </p>
                           </div>
                         </div>
@@ -287,12 +298,12 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                           {downloadingFiles.has(file.id || file.fileName) ? (
                             <>
                               <div className="animate-spin h-3 w-3 mr-2 border border-gray-300 border-t-gray-600 rounded-full"></div>
-                              Downloading...
+                              {t('common.downloading')}
                             </>
                           ) : (
                             <>
                               <Download className="h-3 w-3 mr-2" />
-                              Download
+                              {t('common.download')}
                             </>
                           )}
                         </Button>
@@ -309,7 +320,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="h-5 w-5 text-gray-600" />
-                    <h3 className="font-semibold">Notes</h3>
+                    <h3 className="font-semibold">{t('common.notes')}</h3>
                   </div>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{contract.notes}</p>
                 </CardContent>
@@ -321,7 +332,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">Created: {formatDate(contract.createdAt)}</span>
+                  <span className="text-sm text-gray-600">{t('contracts.created')}: {formatDate(contract.createdAt)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -330,7 +341,7 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
 
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="outline" onClick={onClose}>
-            Close
+            {t('common.close')}
           </Button>
         </div>
       </DialogContent>

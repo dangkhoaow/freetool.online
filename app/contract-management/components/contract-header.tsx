@@ -53,7 +53,7 @@ export default function ContractHeader() {
               className="flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <Home className="h-4 w-4" />
-              <span className="hidden sm:inline">FreeTool</span>
+              <span className="hidden sm:inline">{t('cms.subtitle')}</span>
             </Button>
             
             <div className="border-l border-gray-300 dark:border-gray-600 h-6"></div>
@@ -61,7 +61,7 @@ export default function ContractHeader() {
             <div className="flex items-center space-x-2">
               <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Contract Management
+                {t('dashboard.title')}
               </h1>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function ContractHeader() {
               onClick={handleProfile}
             >
               <User className="h-4 w-4" />
-              <span className="hidden lg:inline ml-2">Profile</span>
+              <span className="hidden lg:inline ml-2">{t('nav.profile')}</span>
             </Button>
 
             {/* Theme Toggle */}

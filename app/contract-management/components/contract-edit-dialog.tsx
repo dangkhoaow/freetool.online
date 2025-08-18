@@ -215,11 +215,11 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       } else {
-        setError(response.error || 'Failed to download file');
+        setError(response.error || t('contracts.errorDownloadingFile'));
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      setError('Failed to download file');
+      setError(t('contracts.errorDownloadingFile'));
     } finally {
       setDownloadingFiles(prev => {
         const newSet = new Set(prev);
@@ -248,7 +248,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
       <DialogContent className="w-[80vw] max-w-none max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            Edit Contract
+            {t('contracts.editContract')}
           </DialogTitle>
         </DialogHeader>
 
@@ -268,7 +268,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName">{t('contracts.companyName')}</Label>
                 <Input
                   id="companyName"
                   value={formData.companyName || ''}
@@ -278,7 +278,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div>
-                <Label htmlFor="contractNumber">Contract Number</Label>
+                <Label htmlFor="contractNumber">{t('contracts.contractNumber')}</Label>
                 <Input
                   id="contractNumber"
                   value={formData.contractNumber || ''}
@@ -288,7 +288,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div>
-                <Label htmlFor="contractStartDate">Start Date</Label>
+                <Label htmlFor="contractStartDate">{t('contracts.startDate')}</Label>
                 <Input
                   id="contractStartDate"
                   type="date"
@@ -299,7 +299,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div>
-                <Label htmlFor="contractEndDate">End Date</Label>
+                <Label htmlFor="contractEndDate">{t('contracts.endDate')}</Label>
                 <Input
                   id="contractEndDate"
                   type="date"
@@ -310,7 +310,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div>
-                <Label htmlFor="contractDurationMonths">Duration (Months)</Label>
+                <Label htmlFor="contractDurationMonths">{t('contracts.duration')}</Label>
                 <Input
                   id="contractDurationMonths"
                   type="number"
@@ -321,7 +321,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div>
-                <Label htmlFor="contractValue">Contract Value</Label>
+                <Label htmlFor="contractValue">{t('contracts.value')}</Label>
                 <Input
                   id="contractValue"
                   type="number"
@@ -332,7 +332,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div>
-                <Label htmlFor="winningBidDecisionNumber">Decision Number</Label>
+                <Label htmlFor="winningBidDecisionNumber">{t('contracts.bidDecisionNumber')}</Label>
                 <Input
                   id="winningBidDecisionNumber"
                   value={formData.winningBidDecisionNumber || ''}
@@ -342,52 +342,52 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="contractType">Contract Type <span className="text-red-500">*</span></Label>
+                <Label htmlFor="contractType">{t('contracts.contractType')} <span className="text-red-500">*</span></Label>
                 <Select
                   value={formData.contractType}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, contractType: value as any }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select contract type" />
+                    <SelectValue placeholder={t('contracts.selectContractType')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pharmaceuticals">Pharmaceuticals</SelectItem>
-                    <SelectItem value="MedicalEquipment">Medical Equipment</SelectItem>
-                    <SelectItem value="Services">Services</SelectItem>
-                    <SelectItem value="Consulting">Consulting</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="Pharmaceuticals">{t('contractTypes.pharmaceuticals')}</SelectItem>
+                    <SelectItem value="MedicalEquipment">{t('contractTypes.medicalEquipment')}</SelectItem>
+                    <SelectItem value="Services">{t('contractTypes.services')}</SelectItem>
+                    <SelectItem value="Consulting">{t('contractTypes.consulting')}</SelectItem>
+                    <SelectItem value="Other">{t('contractTypes.other')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Contract Status <span className="text-red-500">*</span></Label>
+                <Label htmlFor="status">{t('common.status')} <span className="text-red-500">*</span></Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select contract status" />
+                    <SelectValue placeholder={t('contracts.selectContractStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Draft">Draft</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Expired">Expired</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    <SelectItem value="Draft">{t('contractStatus.draft')}</SelectItem>
+                    <SelectItem value="Active">{t('contractStatus.active')}</SelectItem>
+                    <SelectItem value="Pending">{t('contractStatus.pending')}</SelectItem>
+                    <SelectItem value="Expired">{t('contractStatus.expired')}</SelectItem>
+                    <SelectItem value="Cancelled">{t('contractStatus.cancelled')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div>
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">{t('common.notes')}</Label>
               <Textarea
                 id="notes"
                 value={formData.notes || ''}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 rows={3}
-                placeholder="Enter additional notes..."
+                placeholder={t('contracts.enterNotes')}
               />
             </div>
 
@@ -396,7 +396,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Contract Files
+                  {t('common.files')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -479,7 +479,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                           <div>
                             <p className="font-medium text-sm">{file.originalFileName || file.fileName}</p>
                             <p className="text-xs text-gray-500">
-                              {file.fileSize && `${Math.round(parseInt(file.fileSize) / 1024)} KB`}
+                              {file.fileSize && `${Math.round(parseInt(file.fileSize) / 1024)} ${t('common.kb')}`}
                             </p>
                           </div>
                         </div>
@@ -494,12 +494,12 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                             {downloadingFiles.has(file.id || file.fileName) ? (
                               <>
                                 <div className="animate-spin h-3 w-3 mr-2 border border-gray-300 border-t-gray-600 rounded-full"></div>
-                                Downloading...
+                                {t('common.downloading')}
                               </>
                             ) : (
                               <>
                                 <Download className="h-3 w-3 mr-2" />
-                                Download
+                                {t('common.download')}
                               </>
                             )}
                           </Button>
@@ -533,16 +533,16 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
+                    {t('common.loading')}
                   </>
                 ) : (
-                  "Update Contract"
+                  t('contracts.updateContract')
                 )}
               </Button>
             </div>

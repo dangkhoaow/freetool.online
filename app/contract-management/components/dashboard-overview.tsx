@@ -37,7 +37,7 @@ import ContractDeleteDialog from './contract-delete-dialog';
 import ContractTable from './contract-table';
 
 export default function DashboardOverview() {
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -164,16 +164,19 @@ export default function DashboardOverview() {
   }, []);
 
   const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
+    const locale = currentLanguage === 'vi' ? 'vi-VN' : 'en-US';
+    const currency = currentLanguage === 'vi' ? 'VND' : 'USD';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'VND',
+      currency: currency,
       notation: value >= 1000000000 ? 'compact' : 'standard',
       maximumFractionDigits: 1
     }).format(value);
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
+    const locale = currentLanguage === 'vi' ? 'vi-VN' : 'en-US';
+    return new Date(dateString).toLocaleDateString(locale);
   };
 
   const getStatusColor = (status: string): string => {
@@ -198,7 +201,7 @@ export default function DashboardOverview() {
   if (!stats) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Unable to load dashboard data</p>
+        <p className="text-gray-500">{t('dashboard.unableToLoad')}</p>
       </div>
     );
   }
@@ -295,10 +298,11 @@ export default function DashboardOverview() {
             <div className="space-y-3">
               {Object.entries(stats.contractsByType || {}).map(([type, count]) => {
                 const percentage = ((count / (stats.totalContracts || 1)) * 100).toFixed(1);
+                const translatedType = t(`contractTypes.${type.toLowerCase()}` as any) || type;
                 return (
                   <div key={type} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{type}</span>
+                      <span className="font-medium">{translatedType}</span>
                       <div className="flex items-center space-x-2">
                         <span>{count}</span>
                         <Badge variant="outline">{percentage}%</Badge>
@@ -325,11 +329,12 @@ export default function DashboardOverview() {
               {Object.entries(stats.contractsByStatus || {}).map(([status, count]) => {
                 const percentage = ((count / (stats.totalContracts || 1)) * 100).toFixed(1);
                 const statusColor = getStatusColor(status);
+                const translatedStatus = t(`contractStatus.${status.toLowerCase()}` as any) || status;
                 return (
                   <div key={status} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${statusColor}`}></div>
-                      <span className="text-sm font-medium">{status}</span>
+                      <span className="text-sm font-medium">{translatedStatus}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm">{count}</span>
@@ -350,7 +355,7 @@ export default function DashboardOverview() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Calendar className="h-5 w-5" />
-              <span>Monthly Contract Trend</span>
+              <span>{t('dashboard.monthlyTrend')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -358,7 +363,7 @@ export default function DashboardOverview() {
               {(stats.monthlyContractTrend || []).slice(-6).map((trend) => {
                 const maxValue = Math.max(...(stats.monthlyContractTrend || []).map(t => t.count));
                 const percentage = (trend.count / maxValue) * 100;
-                const monthName = new Date(trend.month + '-01').toLocaleDateString('vi-VN', { 
+                const monthName = new Date(trend.month + '-01').toLocaleDateString(currentLanguage === 'vi' ? 'vi-VN' : 'en-US', { 
                   year: 'numeric', 
                   month: 'short' 
                 });
@@ -368,7 +373,7 @@ export default function DashboardOverview() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{monthName}</span>
                       <div className="flex items-center space-x-2">
-                        <span>{trend.count} contracts</span>
+                        <span>{trend.count} {t('dashboard.contractsLabel')}</span>
                         <span className="text-xs text-gray-500">
                           {formatCurrency(trend.value)}
                         </span>
@@ -394,7 +399,7 @@ export default function DashboardOverview() {
             {(stats.upcomingExpirations?.length || 0) === 0 ? (
               <div className="text-center py-6 text-gray-500">
                 <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No contracts expiring in the next 30 days</p>
+                <p>{t('dashboard.noExpiringNext30Days')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -412,7 +417,7 @@ export default function DashboardOverview() {
                       </div>
                       <div className="text-right">
                         <Badge variant={daysToExpiry <= 7 ? 'destructive' : 'secondary'}>
-                          {daysToExpiry} days
+                          {daysToExpiry} {t('common.days')}
                         </Badge>
                         <p className="text-xs text-gray-600 mt-1">
                           {formatDate(contract.contractEndDate)}
@@ -425,7 +430,7 @@ export default function DashboardOverview() {
                 {(stats.upcomingExpirations?.length || 0) > 5 && (
                   <div className="text-center pt-2">
                     <p className="text-sm text-gray-500">
-                      +{(stats.upcomingExpirations?.length || 0) - 5} more contracts expiring soon
+                      +{(stats.upcomingExpirations?.length || 0) - 5} {t('dashboard.moreExpiring')}
                     </p>
                   </div>
                 )}
@@ -482,7 +487,7 @@ export default function DashboardOverview() {
       {contracts.length > itemsPerPage && (
         <div className="flex items-center justify-between px-6 py-4">
           <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, sortedContracts.length)} of {sortedContracts.length} contracts
+            {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, sortedContracts.length)} {t('common.of')} {sortedContracts.length} {t('contracts.items')}
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -492,7 +497,7 @@ export default function DashboardOverview() {
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              {t('common.previous')}
             </Button>
             
             <div className="flex items-center space-x-1">
@@ -534,7 +539,7 @@ export default function DashboardOverview() {
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
-              Next
+              {t('common.next')}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

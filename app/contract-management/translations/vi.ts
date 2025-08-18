@@ -87,6 +87,7 @@ export const viTranslations = {
     upcomingExpirations: 'Sắp hết hạn',
     contractsByType: 'Hợp đồng theo loại',
     contractsByStatus: 'Hợp đồng theo trạng thái',
+    monthlyTrend: 'Xu hướng theo tháng',
     recentContracts: 'Hợp đồng gần đây',
     active: 'đang hoạt động',
     average: 'Trung bình',
@@ -100,7 +101,11 @@ export const viTranslations = {
     utilizationRate: 'Tỷ lệ sử dụng',
     contractsThisMonth: 'Hợp đồng tháng này',
     newThisMonth: 'mới trong tháng',
-    expiringContracts: 'Hợp đồng sắp hết hạn'
+    expiringContracts: 'Hợp đồng sắp hết hạn',
+    unableToLoad: 'Không thể tải dữ liệu bảng điều khiển',
+    contractsLabel: 'hợp đồng',
+    noExpiringNext30Days: 'Không có hợp đồng nào hết hạn trong 30 ngày tới',
+    moreExpiring: 'hợp đồng khác sắp hết hạn'
   },
 
   // Tabs
@@ -136,7 +141,61 @@ export const viTranslations = {
     results: 'Kết quả tìm kiếm',
     noResults: 'Không tìm thấy kết quả',
     contractSaved: 'Hợp đồng đã được lưu thành công',
-    errorSaving: 'Lỗi khi lưu hợp đồng'
+    errorSaving: 'Lỗi khi lưu hợp đồng',
+    // Search placeholders
+    searchCompanyPlaceholder: 'Tìm kiếm theo tên công ty...',
+    searchBidNumberPlaceholder: 'Tìm kiếm theo số quyết định...',
+    allTypes: 'Tất cả loại',
+    allStatuses: 'Tất cả trạng thái',
+    // Table and UI
+    searchResults: 'Kết quả tìm kiếm',
+    showHideColumns: 'Hiện/Ẩn cột',
+    columns: 'Cột',
+    // Edit dialog
+    editContract: 'Chỉnh sửa hợp đồng',
+    selectContractType: 'Chọn loại hợp đồng',
+    selectContractStatus: 'Chọn trạng thái hợp đồng',
+    enterNotes: 'Nhập ghi chú thêm...',
+    updateContract: 'Cập nhật hợp đồng',
+    // Export placeholders
+    enterCompanyFilter: 'Nhập tên công ty để lọc...',
+    enterContractNumber: 'Nhập số hợp đồng để lọc...',
+    enterBidDecision: 'Nhập số quyết định để lọc...',
+    minValue: 'Giá trị tối thiểu',
+    maxValue: 'Giá trị tối đa',
+    enterStorageUnit: 'Nhập mã đơn vị lưu trữ...',
+    items: 'hợp đồng',
+    allCompanies: 'Tất cả công ty',
+    selectCompany: 'Chọn công ty',
+    // Form placeholders and messages
+    endDateAfterStart: 'Ngày kết thúc phải sau ngày bắt đầu',
+    enterOrSelectCompany: 'Nhập hoặc chọn tên công ty',
+    selectOptionOrCreate: 'Chọn một tùy chọn hoặc tạo mới',
+    noOtherCompanies: 'Không có công ty khác',
+    enterContractAddendumNumber: 'Nhập số hợp đồng/phụ lục',
+    enterContractValue: 'Nhập giá trị hợp đồng',
+    uploadFilesOptional: 'Tải lên tệp (Tùy chọn)',
+    noFilesSelectedInfo: 'Chưa chọn tệp. Định dạng hỗ trợ:',
+    supportedFormatsList: 'PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), Văn bản (.txt, .csv), Hình ảnh (.jpg, .png, .gif, .bmp, .webp, .svg)',
+    fileLimits: 'Tối đa 10 tệp, 25MB mỗi tệp',
+    notesOptional: 'Ghi chú (Tùy chọn)',
+    fileTooLarge: 'Tệp vượt quá giới hạn dung lượng (25MB)',
+    maxFiles: 'Chỉ có thể tải lên tối đa 10 tệp cùng lúc',
+    invalidFileType: 'Định dạng tệp không hợp lệ',
+    enterWinningBidDecisionNumber: 'Nhập số quyết định trúng thầu',
+    // Details dialog
+    detailsTitle: 'Chi tiết hợp đồng',
+    contractInformation: 'Thông tin hợp đồng',
+    financialDetails: 'Chi tiết tài chính',
+    timeline: 'Thời gian thực hiện',
+    storageLocation: 'Vị trí lưu trữ',
+    unit: 'Đơn vị',
+    position: 'Vị trí',
+    contractFiles: 'Tệp hợp đồng',
+    created: 'Được tạo',
+    errorLoadingDetails: 'Không thể tải chi tiết hợp đồng',
+    downloadFailed: 'Tải xuống thất bại',
+    errorDownloadingFile: 'Lỗi khi tải tệp'
   },
 
   // Export
@@ -157,18 +216,78 @@ export const viTranslations = {
     exportData: 'Xuất dữ liệu',
     exporting: 'Đang xuất...',
     exported: 'Đã xuất thành công',
-    errorExporting: 'Lỗi khi xuất dữ liệu'
+    errorExporting: 'Lỗi khi xuất dữ liệu',
+    tabExport: 'Xuất dữ liệu',
+    tabImport: 'Nhập dữ liệu',
+    info: 'Thông tin xuất dữ liệu',
+    activeFilters: 'Bộ lọc đang áp dụng:',
+    downloadAgain: 'Tải xuống lại',
+    // Format info bullets
+    formatInfoCsv1: '• Tệp CSV có thể mở bằng Excel',
+    formatInfoCsv2: '• Tương thích với các ứng dụng bảng tính',
+    formatInfoCsv3: '• Phù hợp cho phân tích dữ liệu và báo cáo',
+    formatInfoJson1: '• Định dạng JSON cho truy cập lập trình',
+    formatInfoJson2: '• Bao gồm đầy đủ cấu trúc dữ liệu',
+    formatInfoJson3: '• Phù hợp cho tích hợp API',
+    // Export result labels
+    fileLabel: 'Tệp:',
+    sizeLabel: 'Kích thước:',
+    recordsLabel: 'Bản ghi:',
+    exportedAtLabel: 'Thời gian xuất:'
+  },
+
+  // Import
+  import: {
+    title: 'Nhập hợp đồng',
+    formatLabel: 'Định dạng nhập',
+    selectFile: 'Chọn tệp',
+    importing: 'Đang nhập...',
+    cta: 'Nhập hợp đồng',
+    guidelines: 'Hướng dẫn nhập liệu',
+    selectFileRequired: 'Vui lòng chọn tệp để nhập',
+    invalidFileType: 'Tệp không đúng định dạng',
+    fileTooLarge: 'Tệp không được vượt quá 10MB',
+    failed: 'Nhập dữ liệu thất bại',
+    errorImporting: 'Lỗi khi nhập dữ liệu',
+    // Import result labels
+    successTitle: 'Nhập dữ liệu thành công!',
+    totalRecords: 'Tổng số bản ghi đã xử lý:',
+    successCount: 'Nhập thành công:',
+    failureCount: 'Bản ghi thất bại:',
+    duplicates: 'Bỏ qua bản trùng:',
+    errorsTitle: 'Lỗi nhập liệu:',
+    row: 'Dòng',
+    selected: 'Đã chọn:',
+    // Guidelines bullets
+    guidelinesCsv1: '• Tệp CSV cần có tiêu đề: companyName, contractNumber, contractStartDate, contractEndDate, contractValue, v.v.',
+    guidelinesCsv2: '• Định dạng ngày: YYYY-MM-DD hoặc DD/MM/YYYY',
+    guidelinesCsv3: '• Giá trị hợp đồng là số, không có ký hiệu tiền tệ',
+    guidelinesCsv4: '• Kích thước tệp tối đa: 10MB',
+    guidelinesJson1: '• Tệp JSON phải chứa mảng các đối tượng hợp đồng',
+    guidelinesJson2: '• Mỗi hợp đồng cần có các trường bắt buộc: companyName, contractNumber, v.v.',
+    guidelinesJson3: '• Định dạng ngày: ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)',
+    guidelinesJson4: '• Kích thước tệp tối đa: 10MB'
   },
 
   // Contract Types
   contractTypes: {
     pharmaceuticals: 'Dược phẩm',
     medicalEquipment: 'Thiết bị y tế',
+    medicalequipment: 'Thiết bị y tế',
     services: 'Dịch vụ',
     construction: 'Xây dựng',
     consulting: 'Tư vấn',
     maintenance: 'Bảo trì',
     other: 'Khác'
+  },
+
+  // Contract Status
+  contractStatus: {
+    active: 'Đang hoạt động',
+    expired: 'Đã hết hạn',
+    pending: 'Chờ xử lý',
+    cancelled: 'Đã hủy',
+    draft: 'Bản nháp'
   },
 
   // Navigation
@@ -177,7 +296,8 @@ export const viTranslations = {
     searchContracts: 'Tìm kiếm hợp đồng',
     exportData: 'Xuất dữ liệu',
     viewCalendar: 'Xem lịch',
-    settings: 'Cài đặt'
+    settings: 'Cài đặt',
+    profile: 'Hồ sơ'
   },
 
   // Common
@@ -194,10 +314,27 @@ export const viTranslations = {
     filter: 'Lọc',
     export: 'Xuất',
     import: 'Nhập',
+    create: 'Tạo',
+    selectedFiles: 'Tệp đã chọn',
+    saving: 'Đang lưu...',
     yes: 'Có',
     no: 'Không',
     confirm: 'Xác nhận',
-    close: 'Đóng'
+    close: 'Đóng',
+    notes: 'Ghi chú',
+    files: 'Tệp tin',
+    status: 'Trạng thái',
+    storage: 'Lưu trữ',
+    showing: 'Hiển thị',
+    to: 'đến',
+    of: 'trên tổng',
+    previous: 'Trước',
+    next: 'Sau',
+    days: 'ngày',
+    actions: 'Hành động',
+    download: 'Tải xuống',
+    downloading: 'Đang tải xuống...',
+    kb: 'KB'
   },
 
   // Language Support

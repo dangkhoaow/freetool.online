@@ -98,11 +98,11 @@ export default function ContractSearch() {
   ];
 
   const statusOptions = [
-    { value: 'Active', label: 'Active' },
-    { value: 'Expired', label: 'Expired' },
-    { value: 'Pending', label: 'Pending' },
-    { value: 'Cancelled', label: 'Cancelled' },
-    { value: 'Draft', label: 'Draft' }
+    { value: 'Active', label: t('contractStatus.active') },
+    { value: 'Expired', label: t('contractStatus.expired') },
+    { value: 'Pending', label: t('contractStatus.pending') },
+    { value: 'Cancelled', label: t('contractStatus.cancelled') },
+    { value: 'Draft', label: t('contractStatus.draft') }
   ];
 
   const handleSearch = async () => {
@@ -230,15 +230,15 @@ export default function ContractSearch() {
   };
 
   const columnLabels = {
-    companyName: 'Tên Công Ty',
-    contractNumber: 'Số Hợp Đồng',
-    contractDurationMonths: 'Thời Hạn',
-    contractValue: 'Giá Trị',
-    winningBidDecisionNumber: 'Số QĐ Trúng Thầu',
-    contractType: 'Loại',
-    storage: 'Lưu Trữ',
-    notes: 'Ghi Chú',
-    actions: 'Thao Tác'
+    companyName: t('contracts.companyName'),
+    contractNumber: t('contracts.contractNumber'),
+    contractDurationMonths: t('contracts.duration'),
+    contractValue: t('contracts.value'),
+    winningBidDecisionNumber: t('contracts.bidDecisionNumber'),
+    contractType: t('contracts.contractType'),
+    storage: t('common.storage'),
+    notes: t('common.notes'),
+    actions: t('common.actions')
   };
 
   const handleClearFilters = () => {
@@ -335,7 +335,7 @@ export default function ContractSearch() {
         <div className="space-y-2">
           <Label>{t('contracts.companyName')}</Label>
           <Input
-            placeholder="Search company name..."
+            placeholder={t('contracts.searchCompanyPlaceholder')}
             value={filterValues.companyName || ''}
             onChange={(e) => handleFilterChange('companyName', e.target.value)}
           />
@@ -344,7 +344,7 @@ export default function ContractSearch() {
         <div className="space-y-2">
           <Label>{t('contracts.bidDecisionNumber')}</Label>
           <Input
-            placeholder="Search bid decision number..."
+            placeholder={t('contracts.searchBidNumberPlaceholder')}
             value={filterValues.winningBidDecisionNumber || ''}
             onChange={(e) => handleFilterChange('winningBidDecisionNumber', e.target.value)}
           />
@@ -357,10 +357,10 @@ export default function ContractSearch() {
             onValueChange={(value) => handleFilterChange('contractType', value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="All types" />
+              <SelectValue placeholder={t('contracts.allTypes')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="all">{t('contracts.allTypes')}</SelectItem>
               {contractTypes.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
@@ -371,16 +371,16 @@ export default function ContractSearch() {
         </div>
 
         <div className="space-y-2">
-          <Label>Status</Label>
+          <Label>{t('common.status')}</Label>
           <Select
             value={filterValues.status || 'all'}
             onValueChange={(value) => handleFilterChange('status', value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="All statuses" />
+              <SelectValue placeholder={t('contracts.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">{t('contracts.allStatuses')}</SelectItem>
               {statusOptions.map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   {status.label}
@@ -401,16 +401,16 @@ export default function ContractSearch() {
       <Card>
         <CardHeader className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Search Results</CardTitle>
+            <CardTitle className="text-lg font-semibold">{t('contracts.searchResults')}</CardTitle>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-2" />
-                  Columns
+                  {t('contracts.columns')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <div className="px-3 py-2 text-sm font-medium">Show/Hide Columns</div>
+                <div className="px-3 py-2 text-sm font-medium">{t('contracts.showHideColumns')}</div>
                 <DropdownMenuSeparator />
                 {Object.entries(columnLabels).map(([key, label]) => (
                   <DropdownMenuCheckboxItem
@@ -465,7 +465,7 @@ export default function ContractSearch() {
       {contracts.length > itemsPerPage && (
         <div className="flex items-center justify-between px-6 py-4">
           <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, sortedContracts.length)} of {sortedContracts.length} contracts
+            {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, sortedContracts.length)} {t('common.of')} {sortedContracts.length} {t('contracts.items')}
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -475,7 +475,7 @@ export default function ContractSearch() {
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              {t('common.previous')}
             </Button>
             
             <div className="flex items-center space-x-1">
@@ -517,7 +517,7 @@ export default function ContractSearch() {
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
-              Next
+              {t('common.next')}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

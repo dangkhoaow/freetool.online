@@ -14,7 +14,7 @@ import { contractManagementExportService, contractManagementService, ExportOptio
 import { useLanguage } from '../contexts/language-context';
 
 export default function ContractExport() {
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const [exportResult, setExportResult] = useState<any>(null);
   const [error, setError] = useState('');
@@ -86,7 +86,7 @@ export default function ContractExport() {
 
   const handleImport = async () => {
     if (!selectedFile) {
-      setImportError('Vui lòng chọn file để import');
+      setImportError(t('import.selectFileRequired'));
       return;
     }
 
@@ -122,11 +122,11 @@ export default function ContractExport() {
           fileInput.value = '';
         }
       } else {
-        setImportError(result.message || 'Import thất bại');
+        setImportError(result.message || t('import.failed'));
       }
     } catch (error) {
       console.error('[ContractImport] Import error:', error);
-      setImportError('Lỗi khi import dữ liệu');
+      setImportError(t('import.errorImporting'));
     } finally {
       setIsImporting(false);
     }
@@ -142,12 +142,12 @@ export default function ContractExport() {
       );
 
       if (!isValidType) {
-        setImportError(`File phải có định dạng ${importFormat.toUpperCase()}`);
+        setImportError(t('import.invalidFileType'));
         return;
       }
 
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        setImportError('File không được vượt quá 10MB');
+        setImportError(t('import.fileTooLarge'));
         return;
       }
 
@@ -226,8 +226,11 @@ export default function ContractExport() {
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString('vi-VN');
+    const locale = currentLanguage === 'vi' ? 'vi-VN' : 'en-US';
+    return new Date(dateString).toLocaleString(locale);
   };
+
+  const numberLocale = currentLanguage === 'vi' ? 'vi-VN' : 'en-US';
 
   return (
     <div className="space-y-6">
@@ -235,18 +238,18 @@ export default function ContractExport() {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="export" className="flex items-center gap-2">
             <Download className="w-4 h-4" />
-            Export Contracts
+            {t('export.tabExport')}
           </TabsTrigger>
           <TabsTrigger value="import" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />
-            Import Contracts
+            {t('export.tabImport')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="export" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl font-semibold">Export Contracts</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t('export.tabExport')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
             {/* Format Selection */}
@@ -327,31 +330,29 @@ export default function ContractExport() {
 
             {/* Contract Type Filter */}
             <div className="space-y-2">
-              <Label>Loại Hợp Đồng</Label>
+              <Label>{t('export.contractType_')}</Label>
               <Select
                 value={contractTypeFilter || 'all'}
                 onValueChange={(value) => setContractTypeFilter(value === 'all' ? '' : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Tất cả loại" />
+                  <SelectValue placeholder={t('contracts.allTypes')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả loại</SelectItem>
-                  <SelectItem value="Pharmaceuticals">Dược Phẩm</SelectItem>
-                  <SelectItem value="MedicalEquipment">Thiết Bị Y Tế</SelectItem>
-                  <SelectItem value="Services">Dịch Vụ</SelectItem>
-                  <SelectItem value="Consulting">Tư Vấn</SelectItem>
-                  <SelectItem value="Other">Khác</SelectItem>
+                  <SelectItem value="all">{t('export.allTypes')}</SelectItem>
+                  {contractTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Company Name Filter */}
             <div className="space-y-2">
-              <Label>Tên Công Ty</Label>
+              <Label>{t('contracts.companyName')}</Label>
               <div className="relative">
                 <Input
-                  placeholder="Nhập tên công ty để lọc..."
+                  placeholder={t('contracts.enterCompanyFilter')}
                   value={filters.companyName}
                   onChange={(e) => {
                     setFilters(prev => ({ ...prev, companyName: e.target.value }));
@@ -376,7 +377,7 @@ export default function ContractExport() {
                         <>
                           {filteredCompanies.length > 0 && (
                             <div className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
-                              {filters.companyName.trim() === '' ? 'Tất cả công ty' : 'Chọn công ty'}
+                              {filters.companyName.trim() === '' ? t('contracts.allCompanies') : t('contracts.selectCompany')}
                             </div>
                           )}
                           
@@ -397,7 +398,7 @@ export default function ContractExport() {
                           {/* No results message */}
                           {filteredCompanies.length === 0 && (
                             <div className="px-3 py-2 text-sm text-gray-500">
-                              Không tìm thấy công ty nào
+                              {t('contracts.noResults')}
                             </div>
                           )}
                         </>
@@ -410,9 +411,9 @@ export default function ContractExport() {
 
             {/* Contract Number Filter */}
             <div className="space-y-2">
-              <Label>Số Hợp Đồng</Label>
+              <Label>{t('contracts.contractNumber')}</Label>
               <Input
-                placeholder="Nhập số hợp đồng để lọc..."
+                placeholder={t('contracts.enterContractNumber')}
                 value={filters.contractNumber}
                 onChange={(e) => setFilters(prev => ({ ...prev, contractNumber: e.target.value }))}
               />
@@ -420,9 +421,9 @@ export default function ContractExport() {
 
             {/* Winning Bid Decision Number Filter */}
             <div className="space-y-2">
-              <Label>Số Quyết Định Trúng Thầu</Label>
+              <Label>{t('contracts.bidDecisionNumber')}</Label>
               <Input
-                placeholder="Nhập số quyết định để lọc..."
+                placeholder={t('contracts.enterBidDecision')}
                 value={filters.winningBidDecisionNumber}
                 onChange={(e) => setFilters(prev => ({ ...prev, winningBidDecisionNumber: e.target.value }))}
               />
@@ -430,17 +431,17 @@ export default function ContractExport() {
 
             {/* Contract Value Range Filter */}
             <div className="space-y-2">
-              <Label>Khoảng Giá Trị Hợp Đồng (VND)</Label>
+              <Label>{t('contracts.value')} ({currentLanguage === 'vi' ? 'VND' : 'USD'})</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="number"
-                  placeholder="Giá trị tối thiểu"
+                  placeholder={t('contracts.minValue')}
                   value={filters.contractValueMin}
                   onChange={(e) => setFilters(prev => ({ ...prev, contractValueMin: e.target.value }))}
                 />
                 <Input
                   type="number"
-                  placeholder="Giá trị tối đa"
+                  placeholder={t('contracts.maxValue')}
                   value={filters.contractValueMax}
                   onChange={(e) => setFilters(prev => ({ ...prev, contractValueMax: e.target.value }))}
                 />
@@ -449,9 +450,9 @@ export default function ContractExport() {
 
             {/* Storage Unit Filter */}
             <div className="space-y-2">
-              <Label>Đơn Vị Lưu Trữ</Label>
+              <Label>{t('common.storage')}</Label>
               <Input
-                placeholder="Nhập mã đơn vị lưu trữ..."
+                placeholder={t('contracts.enterStorageUnit')}
                 value={filters.storageUnitId}
                 onChange={(e) => setFilters(prev => ({ ...prev, storageUnitId: e.target.value }))}
               />
@@ -473,7 +474,7 @@ export default function ContractExport() {
               }}
               className="w-full"
             >
-              Xóa Tất Cả Bộ Lọc
+              {t('contracts.clear')}
             </Button>
           </CardContent>
         </Card>
@@ -483,37 +484,36 @@ export default function ContractExport() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Download className="h-5 w-5" />
-              <span>Export Information</span>
+              <span>{t('export.info')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Format:</span>
+                <span className="text-gray-600">{t('export.format')}:</span>
                 <span className="font-medium uppercase">{exportOptions.format}</span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">Include Files:</span>
+                <span className="text-gray-600">{t('export.includeFiles')}:</span>
                 <span className="font-medium">
-                  {exportOptions.includeFiles ? 'Yes' : 'No'}
+                  {exportOptions.includeFiles ? t('common.yes') : t('common.no')}
                 </span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">Date Filter:</span>
+                <span className="text-gray-600">{t('export.dateRange')}:</span>
                 <span className="font-medium">
-                  {dateRange.enabled ? 'Custom Range' : 'All Data'}
+                  {dateRange.enabled ? t('export.customRange') : t('export.allData')}
                 </span>
               </div>
               
               <div className="flex justify-between">
-                <span className="text-gray-600">Type Filter:</span>
+                <span className="text-gray-600">{t('export.contractType_')}:</span>
                 <span className="font-medium">
-                  {contractTypeFilter ? (contractTypeFilter === 'Pharmaceuticals' ? 'Dược Phẩm' :
-                   contractTypeFilter === 'MedicalEquipment' ? 'Thiết Bị Y Tế' :
-                   contractTypeFilter === 'Services' ? 'Dịch Vụ' :
-                   contractTypeFilter === 'Consulting' ? 'Tư Vấn' : contractTypeFilter) : 'Tất cả loại'}
+                  {contractTypeFilter 
+                    ? (contractTypes.find(ct => ct.value === contractTypeFilter)?.label || contractTypeFilter)
+                    : t('export.allTypes')}
                 </span>
               </div>
               
@@ -521,22 +521,26 @@ export default function ContractExport() {
               {(filters.companyName || filters.contractNumber || filters.winningBidDecisionNumber || 
                 filters.contractValueMin || filters.contractValueMax || filters.storageUnitId) && (
                 <div className="border-t pt-3 mt-3">
-                  <div className="text-sm font-medium text-gray-700 mb-2">Bộ lọc đang áp dụng:</div>
+                  <div className="text-sm font-medium text-gray-700 mb-2">{t('export.activeFilters')}</div>
                   <div className="space-y-1 text-xs text-gray-600">
                     {filters.companyName && (
-                      <div>• Tên công ty: {filters.companyName}</div>
+                      <div>• {t('contracts.companyName')}: {filters.companyName}</div>
                     )}
                     {filters.contractNumber && (
-                      <div>• Số hợp đồng: {filters.contractNumber}</div>
+                      <div>• {t('contracts.contractNumber')}: {filters.contractNumber}</div>
                     )}
                     {filters.winningBidDecisionNumber && (
-                      <div>• Số QĐ trúng thầu: {filters.winningBidDecisionNumber}</div>
+                      <div>• {t('contracts.bidDecisionNumber')}: {filters.winningBidDecisionNumber}</div>
                     )}
                     {(filters.contractValueMin || filters.contractValueMax) && (
-                      <div>• Giá trị: {filters.contractValueMin ? `≥${parseInt(filters.contractValueMin).toLocaleString('vi-VN')}` : ''}{filters.contractValueMin && filters.contractValueMax ? ' và ' : ''}{filters.contractValueMax ? `≤${parseInt(filters.contractValueMax).toLocaleString('vi-VN')}` : ''} VND</div>
+                      <div>• {t('contracts.value')}: {filters.contractValueMin && filters.contractValueMax
+                        ? `${parseInt(filters.contractValueMin).toLocaleString(numberLocale)} - ${parseInt(filters.contractValueMax).toLocaleString(numberLocale)} VND`
+                        : filters.contractValueMin
+                          ? `≥${parseInt(filters.contractValueMin).toLocaleString(numberLocale)} VND`
+                          : `≤${parseInt(filters.contractValueMax as string).toLocaleString(numberLocale)} VND`}</div>
                     )}
                     {filters.storageUnitId && (
-                      <div>• Đơn vị lưu trữ: {filters.storageUnitId}</div>
+                      <div>• {t('common.storage')}: {filters.storageUnitId}</div>
                     )}
                   </div>
                 </div>
@@ -567,15 +571,15 @@ export default function ContractExport() {
             <div className="text-xs text-gray-500 space-y-1">
               {exportOptions.format === 'csv' ? (
                 <>
-                  <p>• CSV files can be opened in Excel</p>
-                  <p>• Compatible with spreadsheet applications</p>
-                  <p>• Best for data analysis and reporting</p>
+                  <p>{t('export.formatInfoCsv1')}</p>
+                  <p>{t('export.formatInfoCsv2')}</p>
+                  <p>{t('export.formatInfoCsv3')}</p>
                 </>
               ) : (
                 <>
-                  <p>• JSON format for programmatic access</p>
-                  <p>• Includes complete data structure</p>
-                  <p>• Best for API integrations</p>
+                  <p>{t('export.formatInfoJson1')}</p>
+                  <p>{t('export.formatInfoJson2')}</p>
+                  <p>{t('export.formatInfoJson3')}</p>
                 </>
               )}
             </div>
@@ -586,12 +590,12 @@ export default function ContractExport() {
         <TabsContent value="import" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl font-semibold">Import Contracts</CardTitle>
+              <CardTitle className="text-xl font-semibold">{t('import.title')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Import Format Selection */}
               <div className="space-y-2">
-                <Label>Import Format</Label>
+                <Label>{t('import.formatLabel')}</Label>
                 <Select
                   value={importFormat}
                   onValueChange={(value) => setImportFormat(value as 'csv' | 'json')}
@@ -603,13 +607,13 @@ export default function ContractExport() {
                     <SelectItem value="csv">
                       <div className="flex items-center space-x-2">
                         <FileSpreadsheet className="h-4 w-4" />
-                        <span>CSV File</span>
+                        <span>{t('export.csv')}</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="json">
                       <div className="flex items-center space-x-2">
                         <FileText className="h-4 w-4" />
-                        <span>JSON File</span>
+                        <span>{t('export.json')}</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -618,7 +622,7 @@ export default function ContractExport() {
 
               {/* File Upload */}
               <div className="space-y-2">
-                <Label htmlFor="import-file-input">Select File</Label>
+                <Label htmlFor="import-file-input">{t('import.selectFile')}</Label>
                 <Input
                   id="import-file-input"
                   type="file"
@@ -628,7 +632,7 @@ export default function ContractExport() {
                 />
                 {selectedFile && (
                   <div className="text-sm text-gray-600 mt-2">
-                    Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                    {t('import.selected')} {selectedFile.name} ({formatFileSize(selectedFile.size)})
                   </div>
                 )}
               </div>
@@ -642,32 +646,32 @@ export default function ContractExport() {
                 {isImporting ? (
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Importing...</span>
+                    <span>{t('import.importing')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">
                     <Upload className="h-4 w-4" />
-                    <span>Import Contracts</span>
+                    <span>{t('import.cta')}</span>
                   </div>
                 )}
               </Button>
 
               {/* Import Guidelines */}
               <div className="text-xs text-gray-500 space-y-2 mt-4">
-                <p className="font-semibold">Import Guidelines:</p>
+                <p className="font-semibold">{t('import.guidelines')}</p>
                 {importFormat === 'csv' ? (
                   <div className="space-y-1">
-                    <p>• CSV file should have headers: companyName, contractNumber, contractStartDate, contractEndDate, contractValue, etc.</p>
-                    <p>• Date format: YYYY-MM-DD or DD/MM/YYYY</p>
-                    <p>• Contract values should be numbers without currency symbols</p>
-                    <p>• Maximum file size: 10MB</p>
+                    <p>{t('import.guidelinesCsv1')}</p>
+                    <p>{t('import.guidelinesCsv2')}</p>
+                    <p>{t('import.guidelinesCsv3')}</p>
+                    <p>{t('import.guidelinesCsv4')}</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <p>• JSON file should contain an array of contract objects</p>
-                    <p>• Each contract should have required fields: companyName, contractNumber, etc.</p>
-                    <p>• Date format: ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)</p>
-                    <p>• Maximum file size: 10MB</p>
+                    <p>{t('import.guidelinesJson1')}</p>
+                    <p>{t('import.guidelinesJson2')}</p>
+                    <p>{t('import.guidelinesJson3')}</p>
+                    <p>{t('import.guidelinesJson4')}</p>
                   </div>
                 )}
               </div>
@@ -687,22 +691,22 @@ export default function ContractExport() {
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
                 <div className="space-y-2">
-                  <p className="font-medium">Import Completed Successfully!</p>
+                  <p className="font-medium">{t('import.successTitle')}</p>
                   <div className="text-sm space-y-1">
-                    <div>Total records processed: {importResult.totalRecords}</div>
-                    <div>Successfully imported: {importResult.successCount}</div>
-                    <div>Failed records: {importResult.failureCount}</div>
+                    <div>{t('import.totalRecords')} {importResult.totalRecords}</div>
+                    <div>{t('import.successCount')} {importResult.successCount}</div>
+                    <div>{t('import.failureCount')} {importResult.failureCount}</div>
                     {importResult.duplicates > 0 && (
-                      <div>Duplicates skipped: {importResult.duplicates}</div>
+                      <div>{t('import.duplicates')} {importResult.duplicates}</div>
                     )}
                   </div>
                   {importResult.errors && importResult.errors.length > 0 && (
                     <div className="mt-3">
-                      <p className="font-medium text-sm">Import Errors:</p>
+                      <p className="font-medium text-sm">{t('import.errorsTitle')}</p>
                       <div className="max-h-32 overflow-y-auto bg-red-50 p-2 rounded text-xs">
                         {importResult.errors.map((error: any, index: number) => (
                           <div key={index} className="mb-1">
-                            Row {error.row}: {error.message}
+                            {t('import.row')} {error.row}: {error.message}
                           </div>
                         ))}
                       </div>
@@ -730,10 +734,10 @@ export default function ContractExport() {
             <div className="space-y-2">
               <p className="font-medium">{t('export.exported')}</p>
               <div className="text-sm space-y-1">
-                <div>File: {exportResult.fileName}</div>
-                <div>Size: {formatFileSize(exportResult.fileSize)}</div>
-                <div>Records: {exportResult.recordCount}</div>
-                <div>Exported: {formatDate(exportResult.exportedAt)}</div>
+                <div>{t('export.fileLabel')} {exportResult.fileName}</div>
+                <div>{t('export.sizeLabel')} {formatFileSize(exportResult.fileSize)}</div>
+                <div>{t('export.recordsLabel')} {exportResult.recordCount}</div>
+                <div>{t('export.exportedAtLabel')} {formatDate(exportResult.exportedAt)}</div>
               </div>
               {exportResult.downloadUrl && (
                 <Button
@@ -750,7 +754,7 @@ export default function ContractExport() {
                   className="mt-2"
                 >
                   <Download className="h-3 w-3 mr-1" />
-                  Download Again
+                  {t('export.downloadAgain')}
                 </Button>
               )}
             </div>
