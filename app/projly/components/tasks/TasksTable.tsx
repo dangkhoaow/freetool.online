@@ -865,6 +865,26 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     setCollapsedTasks(newSet);
   };
 
+  // Collapse/Expand all parent tasks
+  const toggleCollapseAll = () => {
+    const parentTaskIds = Array.from(taskRelationships.keys());
+    const allCollapsed = parentTaskIds.every(id => collapsedTasks.has(id));
+    
+    if (allCollapsed) {
+      // If all are collapsed, expand all
+      setCollapsedTasks(new Set());
+    } else {
+      // If some are expanded, collapse all
+      setCollapsedTasks(new Set(parentTaskIds));
+    }
+  };
+
+  // Check if all parent tasks are collapsed
+  const areAllCollapsed = useMemo(() => {
+    const parentTaskIds = Array.from(taskRelationships.keys());
+    return parentTaskIds.length > 0 && parentTaskIds.every(id => collapsedTasks.has(id));
+  }, [taskRelationships, collapsedTasks]);
+
   // Handle task reordering via drag and drop
   const handleTaskReorder = async (
     draggedTaskId: string,
@@ -955,6 +975,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
           
           <Separator />
           
+          
           {/* Tasks table */}
           <Table>
           <TableCaption>
@@ -965,10 +986,27 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
           <TableHeader>
             <TableRow>
               <TableHead 
-                className="cursor-pointer w-[300px] whitespace-nowrap"
+                className="cursor-pointer w-[300px] whitespace-nowrap px-3"
                 onClick={() => toggleSort("title")}
               >
                 <div className="flex items-center">
+                  {/* Collapse/Expand All Button */}
+                  {taskRelationships.size > 0 && (
+                    <button
+                      className="p-2 mr-2 rounded-md bg-orange-400 hover:bg-orange-600 text-white transition-colors duration-200 ease-in-out"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCollapseAll();
+                      }}
+                      title={areAllCollapsed ? "Expand All" : "Collapse All"}
+                    >
+                      {areAllCollapsed ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                   Title
                   {renderSortIndicator("title")}
                 </div>
@@ -1035,7 +1073,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                     {/* Collapse/expand toggle */}
                     {taskRelationships.has(task.id) && task._meta?.level === 0 && (!hideParentRow || context !== 'main') ? (
                       <button
-                        className="p-0 mr-2"
+                        className="p-2 mr-2 rounded-md hover:bg-orange-500 hover:text-white transition-colors duration-200 ease-in-out"
                         title="Collapse/Expand"
                         onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
                       >
