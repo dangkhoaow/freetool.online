@@ -13,6 +13,7 @@ import { projlyAuthService, projlyTasksService, projlyProjectsService } from '@/
 import { useProjectMembers } from '@/lib/services/projly/use-projects';
 import { useToast } from "@/components/ui/use-toast";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/app/projly/components/ui/breadcrumb";
+import { useAccessibleProjectMembers } from '@/lib/services/projly/use-members';
 
 // Import reusable components for task details
 import {
@@ -28,6 +29,10 @@ import {
 // Import task comments component
 import { TaskCommentsSection } from "@/app/projly/components/tasks/comments/TaskCommentsSection";
 import { useTaskComments } from "@/lib/services/projly/use-task-comments";
+
+// Import edit form components
+import { TaskEditFormInline } from "@/app/projly/components/tasks/TaskEditFormInline";
+import { SubTaskCreateForm } from "@/app/projly/components/tasks/SubTaskCreateForm";
 
 // Fix for type error with related tasks
 // This matches the props for AdditionalInfoContent component
@@ -64,49 +69,36 @@ type ProjlyTaskData = {
   percentProgress?: number | null;
   label?: string | null;
   relatedTasks?: string[] | Array<{id: string; title: string}>;
-  relatedToTasks?: Array<{relatedTask: {id: string; title: string}}>;
-  relatedFromTasks?: Array<{task: {id: string; title: string}}>;
+  relatedToTasks?: Array<{relatedTaskId?: string; relatedTask?: {id?: string; title?: string}}>;
+  relatedFromTasks?: Array<{taskId?: string; task?: {id?: string; title?: string}}>;
   [key: string]: any; // Allow any additional properties
 };
 
 // Import the Task type just for reference, but we'll use our custom type for actual work
 import { Task } from "@/app/projly/components/tasks/TasksTable";
-import { CreateTaskForm } from "@/app/projly/components/tasks/CreateTaskForm";
-import { TasksContainer } from "@/app/projly/components/tasks/TasksContainer";
-import { TaskNotFoundUI } from "@/app/projly/components/tasks/TaskNotFoundUI";
 
 interface TaskDetailsPageProps {
-  // Optional id for direct usage in dialog mode
-  id?: string;
-  // Flag to indicate if component is being used in dialog mode
+  id: string;
   inDialogMode?: boolean;
-  // Optional callback for when dialog is closed
   onDialogClose?: () => void;
+  onTaskUpdated?: () => void;
 }
 
-// Utility function to get all descendant tasks for a given parent taskId
-function getTaskSubtree(tasks: ProjlyTaskData[], parentId: string, log: (msg: string, data?: any) => void): ProjlyTaskData[] {
-  const subtree: ProjlyTaskData[] = [];
-  log(`Getting subtree for parentId: ${parentId}`);
-  
-  // Find direct children
-  const children = tasks.filter(task => task.parentTaskId === parentId);
-  log(`Found ${children.length} direct children for parentId: ${parentId}`);
-  
-  // Add each child and recursively get their children
-  children.forEach(child => {
-    subtree.push(child);
-    log(`Added child task to subtree: ${child.id}`);
-    const grandChildren = getTaskSubtree(tasks, child.id, log);
-    log(`Found ${grandChildren.length} descendants for child: ${child.id}`);
-    subtree.push(...grandChildren);
-  });
-  
-  log(`Returning subtree with ${subtree.length} total tasks for parentId: ${parentId}`);
-  return subtree;
-}
+// Define type for project members
+type ProjectMember = {
+  id: string;
+  teamId: string;
+  userId: string;
+  role?: string;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+};
 
-export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose }: TaskDetailsPageProps) {
+export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose, onTaskUpdated }: TaskDetailsPageProps) {
   // Use useParams to get the route parameters if not in dialog mode
   const params = useParams();
   const taskId = id || (params?.id as string);
@@ -119,15 +111,14 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("details");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [subTasks, setSubTasks] = useState<ProjlyTaskData[]>([]);
   const [isCreateSubTaskOpen, setIsCreateSubTaskOpen] = useState(false);
   const [isRefreshingSubTasks, setIsRefreshingSubTasks] = useState(false);
   const [parentTask, setParentTask] = useState<ProjlyTaskData | null>(null);
-  // Add state for task not found error
   const [taskNotFound, setTaskNotFound] = useState(false);
   const [taskError, setTaskError] = useState<string | null>(null);
   
@@ -148,26 +139,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   };
   
   // Task form state
-  const [taskForm, setTaskForm] = useState<{
-    id: string;
-    title: string;
-    description: string;
-    projectId: string;
-    status: string;
-    priority: string;
-    assignedTo: string;
-    startDate: Date | null;
-    dueDate: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-    project: any;
-    assignee: any;
-    parentTaskId?: string | null;
-    percentProgress: number | null;
-    label: string | null;
-    relatedTasks: string[];
-    _rawData?: any;
-  }>({
+  const [taskForm, setTaskForm] = useState<ProjlyTaskData>({
     id: '',
     title: '',
     description: '',
@@ -187,12 +159,14 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     relatedTasks: []
   });
   
+  const [projects, setProjects] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  
   // Use the useProjectMembers hook to get members for the selected project
-  const { data: projectMembers = [], isLoading: isLoadingMembers } = 
-    useProjectMembers(taskForm.projectId || undefined) as { 
-      data: any[], 
-      isLoading: boolean 
-    };
+  const { data: projectMembers = [], isLoading: isLoadingMembers } = useProjectMembers(taskForm?.projectId || '');
+  
+  // Add edit form state management
+  const { data: accessibleMembers = [] } = useAccessibleProjectMembers(taskForm?.projectId || '');
   
   // Function to handle logging
   const log = (message: string, data?: any) => {
@@ -200,6 +174,45 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
       console.log(`[PROJLY:TASK_DETAILS:${taskId}] ${message}`, data);
     } else {
       console.log(`[PROJLY:TASK_DETAILS:${taskId}] ${message}`);
+    }
+  };
+
+  // Handle save edit function
+  const handleSaveEdit = async (updatedTask: any) => {
+    try {
+      // Update the task form with the new data
+      setTaskForm(updatedTask);
+      setIsEditMode(false);
+      setEditFormData(null);
+      
+      // Call the refresh callback to update the parent table
+      if (onTaskUpdated) {
+        onTaskUpdated();
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Task updated successfully',
+      });
+    } catch (error) {
+      console.error('[TASK_DETAILS] Error handling save edit:', error);
+    }
+  };
+
+  // Handle sub-task creation success
+  const handleSubTaskSuccess = async (newSubTask: any) => {
+    try {
+      setIsCreateSubTaskOpen(false);
+      
+      // Refresh sub-tasks list
+      await refreshSubTasks();
+      
+      toast({
+        title: 'Success',
+        description: 'Sub-task created successfully',
+      });
+    } catch (error) {
+      console.error('[TASK_DETAILS] Error handling sub-task creation:', error);
     }
   };
   
@@ -453,9 +466,23 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
       const allTasks = await projlyTasksService.getTasks();
       log('Fetched all tasks for subtask refresh', allTasks);
 
-      // Find current task and its descendant subtree
-      const subtree = getTaskSubtree(allTasks, taskId, log);
-      log('Filtered subtree for current task', subtree);
+      // Build a recursive function to get all descendants
+      const getAllDescendants = (parentId: string, tasks: ProjlyTaskData[]): ProjlyTaskData[] => {
+        const directChildren = tasks.filter(t => t.parentTaskId === parentId);
+        let allDescendants = [...directChildren];
+        
+        // Recursively get descendants of each child
+        directChildren.forEach(child => {
+          const childDescendants = getAllDescendants(child.id, tasks);
+          allDescendants = allDescendants.concat(childDescendants);
+        });
+        
+        return allDescendants;
+      };
+
+      // Get all nested sub-tasks (full hierarchy)
+      const subtree = getAllDescendants(taskId, allTasks);
+      log('Filtered nested subtree for current task', subtree);
 
       // Directly update state with a deep copy for React change detection
       const subtreeCopy = JSON.parse(JSON.stringify(subtree));
@@ -625,7 +652,12 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     log('Showing task not found UI');
     return (
       <DashboardLayout>
-        <TaskNotFoundUI errorMessage={taskError || undefined} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Task Not Found</h2>
+            <p className="text-muted-foreground">Task with ID {taskId} could not be found.</p>
+          </div>
+        </div>
       </DashboardLayout>
     );
   }
@@ -673,7 +705,14 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
             <div className="ml-auto flex items-center space-x-2">
               <TaskActionButtons
                 onBackClick={handleBackClick}
-                onEditClick={() => router.push(`/projly/tasks/${taskId}/edit`)}
+                onEditClick={() => {
+                  if (inDialogMode) {
+                    setIsEditMode(true);
+                    setEditFormData(taskForm);
+                  } else {
+                    router.push(`/projly/tasks/${taskId}/edit`);
+                  }
+                }}
                 onDeleteClick={() => setIsDeleteDialogOpen(true)}
                 canDelete={canDeleteTask()}
                 isSubmitting={isSubmitting}
@@ -689,13 +728,23 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
               <CardDescription>View task information</CardDescription>
             </CardHeader>
             <CardContent>
-              <TaskDetailsContent 
-                task={taskForm}
-                projects={projects}
-                projectMembers={projectMembers}
-                parentTask={parentTask}
-                isLoadingMembers={isLoadingMembers}
-              />
+              {isEditMode && inDialogMode ? (
+                <TaskEditFormInline 
+                  taskData={editFormData}
+                  onSave={handleSaveEdit}
+                  onCancel={() => setIsEditMode(false)}
+                  projects={projects}
+                  projectMembers={accessibleMembers}
+                />
+              ) : (
+                <TaskDetailsContent 
+                  task={taskForm}
+                  projects={projects}
+                  projectMembers={projectMembers}
+                  parentTask={parentTask}
+                  isLoadingMembers={isLoadingMembers}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -852,12 +901,11 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
               Add a new sub-task to "{taskForm.title}"
             </DialogDescription>
           </DialogHeader>
-          <CreateTaskForm
-            initialData={{
-              projectId: taskForm.projectId,
-              parentTaskId: taskId // Set current task as parent
-            }}
-            onSuccess={handleSubTaskCreated}
+          <SubTaskCreateForm
+            parentTask={taskForm}
+            projects={projects}
+            projectMembers={accessibleMembers}
+            onSuccess={handleSubTaskSuccess}
             onCancel={() => setIsCreateSubTaskOpen(false)}
           />
         </DialogContent>

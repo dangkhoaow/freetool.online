@@ -37,6 +37,7 @@ interface TaskDetailDialogProps {
   taskId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  onTaskUpdated?: () => void;
 }
 
 /**
@@ -45,7 +46,7 @@ interface TaskDetailDialogProps {
  * This dialog reuses the TaskDetailsPage component to display task details
  * in a popup dialog when a task is clicked in the ResourceTimelineView.
  */
-export function TaskDetailDialog({ taskId, isOpen, onClose }: TaskDetailDialogProps) {
+export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated }: TaskDetailDialogProps) {
   // Add responsive state detection
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isTablet = useMediaQuery("(min-width: 769px) and (max-width: 1024px)");
@@ -120,9 +121,8 @@ export function TaskDetailDialog({ taskId, isOpen, onClose }: TaskDetailDialogPr
             <TaskDetailsPage 
               id={taskId} 
               inDialogMode={true} 
-              onDialogClose={handleClose} 
-              // This prop would need to be added to TaskDetailsPage interface
-              // to pass the device type information
+              onDialogClose={handleClose}
+              onTaskUpdated={onTaskUpdated}
             />
           </div>
         )}

@@ -868,22 +868,51 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // Collapse/Expand all parent tasks
   const toggleCollapseAll = () => {
     const parentTaskIds = Array.from(taskRelationships.keys());
-    const allCollapsed = parentTaskIds.every(id => collapsedTasks.has(id));
+    
+    // In dialog context (task detail), only collapse/expand top-level parents
+    // In main context, collapse/expand all parents
+    let targetParentIds = parentTaskIds;
+    
+    if (context === 'task' && parentTaskId) {
+      // For sub-task context, only target direct children of the parent task
+      targetParentIds = parentTaskIds.filter(id => {
+        const task = tasks.find(t => t.id === id);
+        return task && task.parentTaskId === parentTaskId;
+      });
+    }
+    
+    const allCollapsed = targetParentIds.every(id => collapsedTasks.has(id));
     
     if (allCollapsed) {
-      // If all are collapsed, expand all
-      setCollapsedTasks(new Set());
+      // If all target parents are collapsed, expand them
+      const newSet = new Set(collapsedTasks);
+      targetParentIds.forEach(id => newSet.delete(id));
+      setCollapsedTasks(newSet);
     } else {
-      // If some are expanded, collapse all
-      setCollapsedTasks(new Set(parentTaskIds));
+      // If some are expanded, collapse all target parents
+      const newSet = new Set(collapsedTasks);
+      targetParentIds.forEach(id => newSet.add(id));
+      setCollapsedTasks(newSet);
     }
   };
 
   // Check if all parent tasks are collapsed
   const areAllCollapsed = useMemo(() => {
     const parentTaskIds = Array.from(taskRelationships.keys());
-    return parentTaskIds.length > 0 && parentTaskIds.every(id => collapsedTasks.has(id));
-  }, [taskRelationships, collapsedTasks]);
+    
+    // In dialog context (task detail), only check top-level parents
+    let targetParentIds = parentTaskIds;
+    
+    if (context === 'task' && parentTaskId) {
+      // For sub-task context, only check direct children of the parent task
+      targetParentIds = parentTaskIds.filter(id => {
+        const task = tasks.find(t => t.id === id);
+        return task && task.parentTaskId === parentTaskId;
+      });
+    }
+    
+    return targetParentIds.length > 0 && targetParentIds.every(id => collapsedTasks.has(id));
+  }, [taskRelationships, collapsedTasks, context, parentTaskId, tasks]);
 
   // Handle task reordering via drag and drop
   const handleTaskReorder = async (
@@ -993,7 +1022,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   {/* Collapse/Expand All Button */}
                   {taskRelationships.size > 0 && (
                     <button
-                      className="p-2 mr-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white transition-colors duration-200 ease-in-out"
+                      className="p-2 mr-2 rounded-md bg-primary hover:bg-primary/90 text-white transition-colors duration-200 ease-in-out"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleCollapseAll();
@@ -1073,7 +1102,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                     {/* Collapse/expand toggle */}
                     {taskRelationships.has(task.id) && task._meta?.level === 0 && (!hideParentRow || context !== 'main') ? (
                       <button
-                        className="p-2 mr-2 rounded-md hover:bg-orange-500 hover:text-white transition-colors duration-200 ease-in-out"
+                        className="p-2 mr-2 rounded-md hover:bg-primary hover:text-white transition-colors duration-200 ease-in-out"
                         title="Collapse/Expand"
                         onClick={e => { e.stopPropagation(); toggleCollapse(task.id); }}
                       >
@@ -1202,6 +1231,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
         taskId={selectedTaskId || ""}
         isOpen={isTaskDetailOpen && !!selectedTaskId}
         onClose={handleTaskDetailClose}
+        onTaskUpdated={() => onOperationComplete && onOperationComplete(filters)}
       />
 
       {/* Delete task confirmation */}
