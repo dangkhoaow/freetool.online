@@ -993,7 +993,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                   {/* Collapse/Expand All Button */}
                   {taskRelationships.size > 0 && (
                     <button
-                      className="p-2 mr-2 rounded-md bg-orange-400 hover:bg-orange-600 text-white transition-colors duration-200 ease-in-out"
+                      className="p-2 mr-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white transition-colors duration-200 ease-in-out"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleCollapseAll();
