@@ -19,7 +19,8 @@ import {
   Camera,
   Pen,
   Layout,
-  Briefcase
+  Briefcase,
+  FileText
 } from "lucide-react";
 import React from "react";
 
@@ -253,5 +254,16 @@ export const tools: ToolConfig[] = [
     textColor: "text-purple-600",
     category: "utility",
     href: "/client-site-builder"
+  },
+  {
+    id: "contract-management",
+    title: "Contract Management",
+    description: "Streamline your contract lifecycle with comprehensive management tools. Create, track, and manage contracts with multi-language support.",
+    icon: <FileText className="h-16 w-16" stroke="#059669" />,
+    color: "from-emerald-50 to-teal-50",
+    textColor: "text-emerald-600",
+    category: "utility",
+    href: "/contract-management",
+    isNew: true,
   },
 ];
