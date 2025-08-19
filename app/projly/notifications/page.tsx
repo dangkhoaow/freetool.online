@@ -29,8 +29,9 @@ import {
 // Fix timezone offset using user's profile timezone preference
 const fixTimezone = (utcDateString: string, userTimezone: number = 7): Date => {
   const dbDate = new Date(utcDateString);
-  // Database stores local time as UTC, so subtract the timezone offset to get correct time
-  return new Date(dbDate.getTime() - (userTimezone * 60 * 60 * 1000));
+  // Database stores UTC time, convert to local time by creating a new Date
+  // The Date constructor already handles timezone conversion, so we just return the UTC date
+  return dbDate;
 };
 
 export default function NotificationsPage() {

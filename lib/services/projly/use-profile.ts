@@ -32,7 +32,7 @@ export function useUserProfile() {
       
       console.log("[HOOK:PROFILE] Fetching profile for user ID:", user.id);
       // Call API endpoint with the correct path including leading slash
-      const response: ApiResponse = await apiClient.get('http://localhost:3001/api/projly/auth/me');
+      const response: ApiResponse = await apiClient.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/projly/auth/me`);
       console.log("[HOOK:PROFILE] API response received for user profile:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
