@@ -197,48 +197,40 @@ export function useProjectStatusAnalytics() {
 }
 
 // Resources analytics - analyze resource types and allocation
-export function useResourcesAnalytics() {
+export const useResourcesAnalytics = () => {
   const { data: session } = useSession();
-  const userId = session?.user?.id;
-  
-  logAnalytics("Fetching resources analytics");
   
   return useQuery({
-    queryKey: ["analytics", "resources", userId],
+    queryKey: ['analytics', 'resources'],
     queryFn: async () => {
-      logAnalytics("Executing resources analytics query");
-      
-      if (!userId) {
-        logAnalytics("No user ID provided for resources analytics");
-        return [];
-      }
-      
-      try {
-        const response = await projlyClient.get('analytics/resources');
-        logAnalytics("Resources analytics response:", response);
-        
-        // Check if we have valid data in the response
-        if (response.error) {
-          throw new Error(response.error || 'Failed to fetch resources analytics');
-        }
-        
-        // Transform the data to match the chart format
-        const transformedData = transformToChartData(response.data || [], 'type', 'count');
-        logAnalytics("Transformed resources data:", transformedData);
-        return transformedData;
-      } catch (error: any) {
-        console.error("[ANALYTICS] Error fetching resources analytics:", error);
-        toast({
-          title: "Error fetching analytics",
-          description: error.message || "Failed to fetch resources analytics",
-          variant: "destructive"
-        });
-        return [];
-      }
+      logAnalytics('Fetching resources analytics data');
+      const data = await projlyClient.get('api/projly/analytics/resources');
+      logAnalytics('Resources analytics data received:', data);
+      return data;
     },
-    enabled: !!userId
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1
   });
-}
+};
+
+// Hook for team member roles analytics
+export const useTeamMemberRolesAnalytics = () => {
+  const { data: session } = useSession();
+  
+  return useQuery({
+    queryKey: ['analytics', 'team-member-roles'],
+    queryFn: async () => {
+      logAnalytics('Fetching team member roles analytics data');
+      const data = await projlyClient.get('analytics/team-member-roles');
+      logAnalytics('Team member roles analytics data received:', data);
+      return data;
+    },
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1
+  });
+};
 
 // Team task distribution analytics - analyze how tasks are distributed among team members
 export function useTeamTaskDistributionAnalytics() {
@@ -331,6 +323,130 @@ export function useTaskTimelineAnalytics() {
           variant: "destructive"
         });
         return [];
+      }
+    },
+    enabled: !!userId
+  });
+}
+
+// Recent updates analytics - latest activities across user's teams
+export function useRecentUpdatesAnalytics(limit: number = 20) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching recent updates analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "recent-updates", userId, limit],
+    queryFn: async () => {
+      logAnalytics("Executing recent updates analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for recent updates analytics");
+        return [];
+      }
+      
+      try {
+        const response = await projlyClient.get(`analytics/recent-updates?limit=${limit}`);
+        logAnalytics("Recent updates analytics response:", response);
+        
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch recent updates analytics');
+        }
+        
+        return response.data || [];
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching recent updates analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch recent updates analytics",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: !!userId,
+    refetchInterval: 30000 // Refetch every 30 seconds for real-time updates
+  });
+}
+
+// Member activity analytics - team members with last access and task update times
+export function useMemberActivityAnalytics() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching member activity analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "member-activity", userId],
+    queryFn: async () => {
+      logAnalytics("Executing member activity analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for member activity analytics");
+        return [];
+      }
+      
+      try {
+        const response = await projlyClient.get('analytics/member-activity');
+        logAnalytics("Member activity analytics response:", response);
+        
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch member activity analytics');
+        }
+        
+        return response.data || [];
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching member activity analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch member activity analytics",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: !!userId
+  });
+}
+
+// My tasks status analytics - current user's overdue, due soon, and in progress tasks
+export function useMyTasksStatusAnalytics() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching my tasks status analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "my-tasks-status", userId],
+    queryFn: async () => {
+      logAnalytics("Executing my tasks status analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for my tasks status analytics");
+        return null;
+      }
+      
+      try {
+        const response = await projlyClient.get('analytics/my-tasks-status');
+        logAnalytics("My tasks status analytics response:", response);
+        
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch my tasks status analytics');
+        }
+        
+        return response.data || null;
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching my tasks status analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch my tasks status analytics",
+          variant: "destructive"
+        });
+        return null;
       }
     },
     enabled: !!userId

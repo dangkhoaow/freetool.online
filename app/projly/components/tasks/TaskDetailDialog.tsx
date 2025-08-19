@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { X } from "lucide-react";
+import { X, ExternalLink, Maximize2 } from "lucide-react";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
 // Define the log prefix for consistent logging
@@ -78,16 +78,34 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated }: Tas
         )}
         {...props}
       >
-        {/* Close button */}
-        <DialogPrimitive.Close asChild>
+        {/* Action buttons */}
+        <div className="absolute top-2 right-2 flex gap-1">
+          {/* Full task detail view button */}
           <button
             type="button"
-            className="absolute top-2 right-2 rounded-sm p-1 opacity-70 hover:opacity-100 focus:outline-none"
-            aria-label="Close"
+            className="rounded-sm p-1 opacity-70 hover:opacity-100 focus:outline-none hover:bg-primary hover:text-white transition-colors"
+            aria-label="Open full task detail in new tab"
+            title="Open full task detail in new tab"
+            onClick={() => {
+              if (taskId) {
+                window.open(`/projly/tasks/${taskId}`, '_blank');
+              }
+            }}
           >
-            <X className="h-4 w-4" />
+            <Maximize2 className="h-4 w-4" />
           </button>
-        </DialogPrimitive.Close>
+          
+          {/* Close button */}
+          <DialogPrimitive.Close asChild>
+            <button
+              type="button"
+              className="rounded-sm p-1 opacity-70 hover:opacity-100 focus:outline-none"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </DialogPrimitive.Close>
+        </div>
         {/* Required DialogTitle for accessibility */}
         <VisuallyHidden.Root>
           <DialogPrimitive.Title>Task Details</DialogPrimitive.Title>

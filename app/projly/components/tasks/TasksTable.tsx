@@ -1096,7 +1096,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 <TableCell 
                   className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'} cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`} 
                   title={task.title || "-"}
-                  onClick={() => handleViewTaskDetails(task)}
+                  onClick={() => openTaskDetailDialog(task.id)}
                 >
                   <div className="flex items-center">
                     {/* Collapse/expand toggle */}
@@ -1115,27 +1115,23 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                     ) : (
                       <div className="w-4 h-4 mr-2 hidden" />
                     )}
-                    {/* Wrap title in Link for new-tab support */}
-                    <Link
-                      href={`/projly/tasks/${task.id}`}
-                      className="block flex-1"
-                      onClick={e => e.stopPropagation()}
-                    >
+                    {/* Task title - no longer wrapped in Link */}
+                    <div className="block flex-1">
                       <TaskTitleCell
                         task={task}
                         level={task._meta?.level}
                         hasSubtasks={task._meta?.level === 0 && taskRelationships.has(task.id) && !hideParentRow}
                         subtaskCount={taskRelationships.get(task.id)?.length || 0}
                       />
-                    </Link>
+                    </div>
                     {/* Detail icon - appears on hover */}
                     <button
                       type="button"
-                      title="View Task details dialog"
-                      className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Quick edit"
+                      className="ml-2 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-2 rounded-md"
                       onClick={(e) => { e.stopPropagation(); openTaskDetailDialog(task.id); }}
                     >
-                      <ExternalLink className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      <ExternalLink className="h-4 w-4" />
                     </button>
                   </div>
                 </TableCell>

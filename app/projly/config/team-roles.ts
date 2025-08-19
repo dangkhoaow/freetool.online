@@ -15,6 +15,56 @@ export interface TeamRole {
 // Define the available team roles
 export const TEAM_ROLES: TeamRole[] = [
   {
+    value: "Frontend Developer",
+    label: "Frontend Developer",
+    description: "Responsible for building and maintaining the frontend of the application"
+  },
+  {
+    value: "Web Developer",
+    label: "Web Developer",
+    description: "Responsible for building and maintaining the web application"
+  },
+  {
+    value: "Backend Developer",
+    label: "Backend Developer",
+    description: "Responsible for building and maintaining the backend of the application"
+  },
+  {
+    value: "Fullstack Developer",
+    label: "Fullstack Developer",
+    description: "Responsible for building and maintaining the fullstack of the application"
+  },
+  {
+    value: "Mobile Developer",
+    label: "Mobile Developer",
+    description: "Responsible for building and maintaining the mobile application"
+  },
+  {
+    value: "UI/UX Designer",
+    label: "UI/UX Designer",
+    description: "Responsible for designing the user interface and user experience of the application"
+  },
+  {
+    value: "QA Engineer",
+    label: "QA Engineer",
+    description: "Responsible for testing the application to ensure it works as expected"
+  },
+  {
+    value: "DevOps Engineer",
+    label: "DevOps Engineer",
+    description: "Responsible for maintaining the infrastructure and ensuring the application is running smoothly"
+  },
+  {
+    value: "Security Engineer",
+    label: "Security Engineer",
+    description: "Responsible for ensuring the application is secure and protected from attacks"
+  },
+  {
+    value: "Business Analyst",
+    label: "Business Analyst",
+    description: "Responsible for analyzing business processes and requirements to ensure the application meets the needs of the business"
+  },
+  {
     value: "Member",
     label: "Member",
     description: "Regular team member with basic access"

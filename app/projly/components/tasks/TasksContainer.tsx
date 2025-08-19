@@ -46,6 +46,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { projlyProjectsService } from '@/lib/services/projly';
 import { TaskFilters as TaskFiltersComponent } from './TaskFilters';
+import { useURLFilters } from '@/app/projly/hooks/use-url-filters';
 
 // Create a detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksContainer]', ...args);
@@ -173,7 +174,21 @@ export function TasksContainer({
   const [loading, setLoading] = useState<boolean>(autoLoad && !initialTasks);
   const [error, setError] = useState<string | null>(null);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState<boolean>(false);
-  const [currentFilters, setCurrentFilters] = useState<UIFilters>({
+  
+  // Use URL filters hook for filter state management
+  const {
+    filters: currentFilters,
+    updateProjectFilter,
+    updateStatusFilter,
+    updateLabelFilter,
+    updateAssigneeFilter,
+    updateHierarchyFilter,
+    updateExcludeStatusesFilter,
+    updateExcludeChildStatusesFilter,
+    updateSearchFilter,
+    clearAllFilters,
+    isInitialized: filtersInitialized
+  } = useURLFilters({
     ...initialFilters,
     excludeStatuses: initialFilters.excludeStatuses || ['Completed', 'Golive'] // Default to exclude 'Completed' and 'Golive' tasks
   });
@@ -326,80 +341,53 @@ export function TasksContainer({
   // Functions to handle filter changes
   const handleProjectFilterChange = (value: string) => {
     log('[TASKS CONTAINER] Project filter changed:', value);
-    const updatedFilters = { 
-      ...currentFilters, 
-      projectId: value === 'all' ? undefined : value 
-    };
-    setCurrentFilters(updatedFilters);
+    updateProjectFilter(value);
     
-    // Apply filters immediately if callback provided
-    loadTasks(toApiFilters(updatedFilters));
+    // Reload tasks with new filters (will be triggered by useEffect when currentFilters changes)
   };
-  
+
   const handleStatusFilterChange = (value: string) => {
     log('[TASKS CONTAINER] Status filter changed:', value);
-    const updatedFilters = { 
-      ...currentFilters, 
-      status: value === 'all' ? undefined : value 
-    };
-    setCurrentFilters(updatedFilters);
+    updateStatusFilter(value);
     
-    // Apply filters immediately if callback provided
-    loadTasks(toApiFilters(updatedFilters));
+    // Reload tasks with new filters (will be triggered by useEffect when currentFilters changes)
   };
-  
-  const handleAssigneeChange = (value: string) => {
+
+  const handleAssigneeFilterChange = (value: string) => {
     log('[TASKS CONTAINER] Assignee filter changed:', value);
+    updateAssigneeFilter(value);
     
-    // Update UI filters (this keeps 'current' as the value for the dropdown)
-    const updatedFilters = { 
-      ...currentFilters, 
-      assignedTo: value === 'all' ? undefined : value 
-    };
-    setCurrentFilters(updatedFilters);
-    
-    // Let toApiFilters handle the 'current' user conversion
-    const apiFilters = toApiFilters(updatedFilters);
-    
-    log('[TASKS CONTAINER] Applying API filters:', apiFilters);
-    // Apply filters immediately
-    loadTasks(apiFilters);
+    // Reload tasks with new filters (will be triggered by useEffect when currentFilters changes)
   };
-  
+
   const handleTaskHierarchyFilterChange = (value: string) => {
     log('[TASKS CONTAINER] Task hierarchy filter changed:', value);
-    const updatedFilters = { 
-      ...currentFilters, 
-      taskHierarchy: value === 'all' ? undefined : value 
-    };
-    setCurrentFilters(updatedFilters);
+    updateHierarchyFilter(value);
     
-    // Apply filters immediately if callback provided
-    loadTasks(toApiFilters(updatedFilters));
+    // Reload tasks with new filters (will be triggered by useEffect when currentFilters changes)
   };
-  
+
   const handleLabelFilterChange = (value: string) => {
     log('[TASKS CONTAINER] Label filter changed:', value);
-    const updatedFilters = { 
-      ...currentFilters, 
-      label: value === 'all' ? undefined : value 
-    };
-    setCurrentFilters(updatedFilters);
+    updateLabelFilter(value);
     
-    // Apply filters immediately if callback provided
-    loadTasks(toApiFilters(updatedFilters));
+    // Reload tasks with new filters (will be triggered by useEffect when currentFilters changes)
   };
 
   const handleExcludeStatusesFilterChange = (statuses: string[]) => {
     log('[TASKS CONTAINER] Exclude statuses filter changed:', statuses);
-    const updatedFilters = { 
-      ...currentFilters, 
-      excludeStatuses: statuses 
-    };
-    setCurrentFilters(updatedFilters);
+    updateExcludeStatusesFilter(statuses);
     
     // This is client-side filtering only, no need to reload tasks from server
     log('Updated exclude statuses filter:', statuses);
+  };
+
+  const handleExcludeChildStatusesFilterChange = (statuses: string[]) => {
+    log('[TASKS CONTAINER] Exclude child statuses filter changed:', statuses);
+    updateExcludeChildStatusesFilter(statuses);
+    
+    // This is client-side filtering only, no need to reload tasks from server
+    log('Updated exclude child statuses filter:', statuses);
   };
   
   // Handle search filter changes
@@ -505,9 +493,8 @@ export function TasksContainer({
       } as UIFilters));
       
       // For search, we NEVER make an API call - always filter client-side
-      // However, we still update the currentFilters state for consistency
-      const updatedFilters = { ...currentFilters, search: value };
-      setCurrentFilters(updatedFilters);
+      // Update the search filter in URL
+      updateSearchFilter(value);
       
       // Log for debugging
       log(`[TASKS CONTAINER] Applied client-side search filter: "${value}" to ${rawTasks.length} tasks`);
@@ -600,13 +587,35 @@ export function TasksContainer({
     });
   }, [searchFilteredTasks, currentFilters.excludeStatuses]);
 
+  // Apply child status exclusion filter
+  const childStatusFilteredTasks = useMemo(() => {
+    const excludeChildStatuses = currentFilters.excludeChildStatuses || [];
+    
+    if (excludeChildStatuses.length === 0) {
+      return clientSideFilteredTasks;
+    }
+    
+    log('[TASKS CONTAINER] Applying child status exclusion filter:', excludeChildStatuses);
+    
+    return clientSideFilteredTasks.filter(task => {
+      // If this is a child task (has parentTaskId), exclude it if its status is in the excluded list
+      if (task.parentTaskId && excludeChildStatuses.includes(task.status)) {
+        log(`[TASKS CONTAINER] Excluding child task "${task.title}" with status "${task.status}"`);
+        return false;
+      }
+      
+      // Keep all parent tasks and child tasks that don't match excluded statuses
+      return true;
+    });
+  }, [clientSideFilteredTasks, currentFilters.excludeChildStatuses]);
+
   // Use the task hierarchy hook with filtered tasks
   const {
     tasks: filteredTasks,
     getTaskDepth,
     isParentTask,
     getSubtaskCount
-  } = useTaskHierarchy(clientSideFilteredTasks, effectiveHierarchyOptions);
+  } = useTaskHierarchy(childStatusFilteredTasks, effectiveHierarchyOptions);
   
   // Context-specific title
   const getContextTitle = () => {
@@ -734,14 +743,22 @@ export function TasksContainer({
     if (initialTasks) {
       log('Using initial tasks:', initialTasks.length);
       setRawTasks(initialTasks);
-    } else if (autoLoad) {
+    } else if (autoLoad && filtersInitialized) {
       log('Auto-loading tasks with initial filters:', initialFilters);
-      // Update current filters with initial filters
-      setCurrentFilters(initialFilters);
-      loadTasks(initialFilters);
+      // Filters are already initialized via URL hook, just load tasks
+      loadTasks(currentFilters);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLoad, parentId, context, initialTasks]); // Removed initialFilters from dependency array to prevent infinite loops
+
+  // Reload tasks when filters change (only for server-side filters)
+  useEffect(() => {
+    if (filtersInitialized && !initialTasks) {
+      log('Filters changed, reloading tasks:', currentFilters);
+      loadTasks(currentFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFilters, filtersInitialized]); // Only reload when filters actually change
   
   // Refresh data after operations
   const handleOperationComplete = (updatedFilters?: TaskFilters) => {
@@ -769,9 +786,8 @@ export function TasksContainer({
     if (updatedFilters) {
       const hasFilterChanges = JSON.stringify(updatedFilters) !== JSON.stringify(currentFilters);
       if (hasFilterChanges) {
-        log('Filters have changed, updating and reloading tasks');
-        setCurrentFilters(updatedFilters);
-        // Reload tasks with updated filters
+        log('Filters have changed, reloading tasks');
+        // Note: URL filters are managed by the hook, just reload tasks
         loadTasks(updatedFilters);
       } else {
         log('No filter changes detected, reloading with current filters');
@@ -883,9 +899,10 @@ export function TasksContainer({
                   onProjectChange={handleProjectFilterChange}
                   onStatusChange={handleStatusFilterChange}
                   onLabelChange={handleLabelFilterChange}
-                  onAssigneeChange={handleAssigneeChange}
+                  onAssigneeChange={handleAssigneeFilterChange}
                   onTaskHierarchyChange={handleTaskHierarchyFilterChange}
                   onExcludeStatusesChange={handleExcludeStatusesFilterChange}
+                  onExcludeChildStatusesChange={handleExcludeChildStatusesFilterChange}
                 />
               )}
             </div>

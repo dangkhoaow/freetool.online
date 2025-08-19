@@ -11,6 +11,7 @@ export interface TaskFiltersUI {
   assignedTo?: string;
   taskHierarchy?: string;
   excludeStatuses?: string[];
+  excludeChildStatuses?: string[];
 }
 
 interface TaskFiltersProps {
@@ -28,6 +29,7 @@ interface TaskFiltersProps {
   onAssigneeChange: (value: string) => void;
   onTaskHierarchyChange: (value: string) => void;
   onExcludeStatusesChange: (statuses: string[]) => void;
+  onExcludeChildStatusesChange: (statuses: string[]) => void;
 }
 
 export function TaskFilters({
@@ -42,6 +44,7 @@ export function TaskFilters({
   onAssigneeChange,
   onTaskHierarchyChange,
   onExcludeStatusesChange,
+  onExcludeChildStatusesChange,
 }: TaskFiltersProps) {
   return (
     <Card className="mt-4 mb-4">
@@ -195,6 +198,37 @@ export function TaskFilters({
                           ? [...currentExcluded, status]
                           : currentExcluded.filter(s => s !== status);
                         onExcludeStatusesChange(newExcluded);
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {status}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Exclude Child Statuses Filter */}
+          <div className="mt-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="exclude-child-statuses-filter" className="text-sm font-medium">
+                Hide Child/Subtasks by Status
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Hides individual child/subtasks that have the selected status (parent tasks remain visible)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {uniqueStatuses.map((status) => (
+                  <label key={`child-${status}`} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={filters.excludeChildStatuses?.includes(status) || false}
+                      onChange={(e) => {
+                        const currentExcluded = filters.excludeChildStatuses || [];
+                        const newExcluded = e.target.checked
+                          ? [...currentExcluded, status]
+                          : currentExcluded.filter(s => s !== status);
+                        onExcludeChildStatusesChange(newExcluded);
                       }}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />

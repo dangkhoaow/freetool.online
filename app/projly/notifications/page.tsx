@@ -11,8 +11,13 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Badge } from '@/components/ui/badge';
 import { Bell, Filter, Eye, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useNotifications } from '@/lib/services/projly/use-notifications';
+import { useRecentUpdatesAnalytics } from '@/lib/services/projly/use-analytics';
+import { useProfile } from '@/lib/services/projly/use-profile';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Activity, MessageSquare, Edit3, Plus, ExternalLink } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -21,9 +26,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Fix timezone offset using user's profile timezone preference
+const fixTimezone = (utcDateString: string, userTimezone: number = 7): Date => {
+  const dbDate = new Date(utcDateString);
+  // Database stores local time as UTC, so subtract the timezone offset to get correct time
+  return new Date(dbDate.getTime() - (userTimezone * 60 * 60 * 1000));
+};
+
 export default function NotificationsPage() {
   const router = useRouter();
   const { notifications, isLoading, markAsRead, markAllAsRead, refetch } = useNotifications();
+  const { data: activities, isLoading: activitiesLoading } = useRecentUpdatesAnalytics(500);
+  const { data: profile } = useProfile();
+  const [activeTab, setActiveTab] = useState('notifications');
   const [search, setSearch] = useState('');
   const [readFilter, setReadFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -152,7 +167,48 @@ export default function NotificationsPage() {
     }
   };
   
-  if (isLoading) {
+  // Helper functions for team activities
+  const getActivityMessage = (activity: any) => {
+    const taskTitle = activity.entityDetails?.title || 'a task';
+    switch (activity.action) {
+      case 'created':
+        return `created task "${taskTitle}"`;
+      case 'updated':
+        const changes = activity.changedFields;
+        if (changes?.title) return `updated title of "${taskTitle}"`;
+        if (changes?.status) return `changed status of "${taskTitle}" to ${changes.status.new}`;
+        if (changes?.description) return `updated description of "${taskTitle}"`;
+        return `updated "${taskTitle}"`;
+      case 'status_changed':
+        return `changed status of "${taskTitle}" to ${activity.changedFields?.status?.new}`;
+      case 'commented':
+        return `commented on "${taskTitle}"`;
+      default:
+        return `performed ${activity.action} on "${taskTitle}"`;
+    }
+  };
+
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case 'created': return Plus;
+      case 'updated': return Edit3;
+      case 'status_changed': return Activity;
+      case 'commented': return MessageSquare;
+      default: return Activity;
+    }
+  };
+
+  const getActivityIconColor = (action: string) => {
+    switch (action) {
+      case 'created': return 'text-green-600';
+      case 'updated': return 'text-blue-600';
+      case 'status_changed': return 'text-purple-600';
+      case 'commented': return 'text-yellow-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  if (isLoading || activitiesLoading) {
     log('Showing notifications loading spinner');
     return <PageLoading logContext="PROJLY:NOTIFICATIONS_PAGE" />;
   }
@@ -162,21 +218,34 @@ export default function NotificationsPage() {
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-            <p className="text-muted-foreground">View and manage your notifications</p>
+            <h1 className="text-3xl font-bold tracking-tight">Notifications & Activities</h1>
+            <p className="text-muted-foreground">View your notifications and team activities</p>
           </div>
-          {filteredNotifications.some(notification => !notification.isRead) && (
+          {activeTab === 'notifications' && filteredNotifications.some(notification => !notification.isRead) && (
             <Button onClick={handleMarkAllAsRead}>
               <CheckCircle className="mr-2 h-4 w-4" />
               Mark all as read
             </Button>
           )}
         </div>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>All Notifications</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              My Notifications
+            </TabsTrigger>
+            <TabsTrigger value="activities" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Team Activity
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="notifications" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Notifications</CardTitle>
+              </CardHeader>
+              <CardContent>
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <div className="w-[200px]">
                 <Input
@@ -235,7 +304,7 @@ export default function NotificationsPage() {
                     )}
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer"
+                    className="cursor-pointer whitespace-nowrap"
                     onClick={() => toggleSort('type')}
                   >
                     Type
@@ -286,7 +355,7 @@ export default function NotificationsPage() {
                         </div>
                       </Link>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge className={getNotificationBadgeClass(notification.type)}>
                         {formatNotificationType(notification.type)}
                       </Badge>
@@ -333,8 +402,88 @@ export default function NotificationsPage() {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activities" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {activities && activities.length > 0 ? (
+                  <div className="space-y-4">
+                    {activities.map((activity: any) => {
+                      const actorName = activity.actor 
+                        ? `${activity.actor.firstName || ''} ${activity.actor.lastName || ''}`.trim() || activity.actor.email
+                        : 'Unknown User';
+                      const message = getActivityMessage(activity);
+                      const IconComponent = getActivityIcon(activity.action);
+                      const iconColor = getActivityIconColor(activity.action);
+                      const initials = activity.actor 
+                        ? `${activity.actor.firstName?.[0] || ''}${activity.actor.lastName?.[0] || ''}` || activity.actor.email[0].toUpperCase()
+                        : 'U';
+
+                      // Create link if task exists
+                      const link = activity.entityType === 'task' && activity.entityDetails?.project?.id
+                        ? `/projly/projects/${activity.entityDetails.project.id}/tasks/${activity.entityId}`
+                        : null;
+
+                      return (
+                        <div key={activity.id} className="flex items-start space-x-3 p-4 hover:bg-gray-50 rounded-lg transition-colors border">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback>{initials}</AvatarFallback>
+                          </Avatar>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm">
+                                  <span className="font-medium">{actorName}</span>{' '}
+                                  <span className="text-muted-foreground">{message}</span>
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <IconComponent className={`h-4 w-4 ${iconColor}`} />
+                                  <span className="text-sm text-muted-foreground">
+                                    {formatDistanceToNow(fixTimezone(activity.createdAt, profile?.timezone || 7), { addSuffix: true })}
+                                  </span>
+                                  {activity.action === 'status_changed' && activity.changedFields?.status && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {activity.changedFields.status.new}
+                                    </Badge>
+                                  )}
+                                  {activity.entityDetails?.project && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {activity.entityDetails.project.name}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {link && (
+                                <Link href={link}>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Activity className="h-12 w-12 text-gray-400 mb-4" />
+                    <p className="text-sm text-muted-foreground">No team activities found</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

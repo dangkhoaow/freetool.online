@@ -354,9 +354,9 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
             <h2 className="mb-2 text-lg font-semibold tracking-tight">Dashboard</h2>
             <div className="space-y-1">
               <SidebarItem icon={<LayoutDashboard className="h-4 w-4" />} label="Overview" href="/projly/dashboard" active={pathname === "/projly/dashboard"} />
-              {hasAnalyticsAccess && (
+              {/* {hasAnalyticsAccess && (
                 <SidebarItem icon={<BarChart2 className="h-4 w-4" />} label="Analytics" href="/projly/dashboard/analytics" active={pathname === "/projly/dashboard/analytics"} />
-              )}
+              )} */}
             </div>
           </div>
           <div className="px-3 py-2">
