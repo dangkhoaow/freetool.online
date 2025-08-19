@@ -83,7 +83,28 @@ export const viTranslations = {
     // Loading States
     unexpectedError: 'Đã xảy ra lỗi không mong muốn',
     failedSendVerification: 'Không thể gửi email xác thực. Vui lòng thử lại.',
-    enterEmailToResend: 'Vui lòng nhập địa chỉ email để gửi lại xác thực'
+    enterEmailToResend: 'Vui lòng nhập địa chỉ email để gửi lại xác thực',
+    
+    // Email Verification Page
+    verifyingEmail: 'Đang xác thực Email...',
+    emailVerified: 'Email đã được xác thực',
+    verificationFailed: 'Xác thực thất bại',
+    pleaseWaitVerifying: 'Vui lòng đợi trong khi chúng tôi xác thực địa chỉ email của bạn',
+    emailSuccessfullyVerified: 'Email của bạn đã được xác thực thành công',
+    issueVerifyingEmail: 'Đã có vấn đề khi xác thực email của bạn',
+    emailVerifiedSuccessfully: 'Email đã được xác thực thành công',
+    emailVerificationFailedGeneric: 'Xác thực email thất bại',
+    networkErrorDuringVerification: 'Lỗi mạng trong quá trình xác thực',
+    verificationTokenMissing: 'Thiếu mã xác thực',
+    canNowLogin: 'Bây giờ bạn có thể đăng nhập vào tài khoản và bắt đầu quản lý hợp đồng.',
+    continueToLogin: 'Tiếp tục đến Đăng nhập',
+    thisCouldHappen: 'Điều này có thể xảy ra nếu:',
+    linkExpired: '• Liên kết xác thực đã hết hạn',
+    linkAlreadyUsed: '• Liên kết đã được sử dụng',
+    linkInvalidCorrupted: '• Liên kết không hợp lệ hoặc bị hỏng',
+    trySigningUpAgain: 'Thử đăng ký lại',
+    needHelpQuestion: 'Cần trợ giúp?',
+    contactSupport: 'Liên hệ hỗ trợ'
   },
 
   // Contract Management System

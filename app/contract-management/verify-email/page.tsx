@@ -25,7 +25,7 @@ export default function VerifyEmailPage() {
       const token = searchParams.get('token');
       
       if (!token) {
-        setError('Verification token is missing');
+        setError(t('auth.verificationTokenMissing'));
         setIsLoading(false);
         return;
       }
@@ -35,13 +35,13 @@ export default function VerifyEmailPage() {
         
         if (response.success) {
           setIsVerified(true);
-          setMessage(response.message || 'Email verified successfully');
+          setMessage(response.message || t('auth.emailVerifiedSuccessfully'));
         } else {
-          setError(response.error || 'Email verification failed');
+          setError(response.error || t('auth.emailVerificationFailedGeneric'));
         }
       } catch (error) {
         console.error('Email verification error:', error);
-        setError('Network error during verification');
+        setError(t('auth.networkErrorDuringVerification'));
       } finally {
         setIsLoading(false);
       }
@@ -77,14 +77,14 @@ export default function VerifyEmailPage() {
         <Card className="w-full">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">
-              {isLoading ? 'Verifying Email...' : isVerified ? 'Email Verified' : 'Verification Failed'}
+              {isLoading ? t('auth.verifyingEmail') : isVerified ? t('auth.emailVerified') : t('auth.verificationFailed')}
             </CardTitle>
             <CardDescription>
               {isLoading 
-                ? 'Please wait while we verify your email address'
+                ? t('auth.pleaseWaitVerifying')
                 : isVerified 
-                  ? 'Your email has been successfully verified'
-                  : 'There was an issue verifying your email'
+                  ? t('auth.emailSuccessfullyVerified')
+                  : t('auth.issueVerifyingEmail')
               }
             </CardDescription>
           </CardHeader>
@@ -108,18 +108,18 @@ export default function VerifyEmailPage() {
                   </AlertDescription>
                 </Alert>
                 <p className="text-sm text-gray-600">
-                  You can now log in to your account and start managing contracts.
+                  {t('auth.canNowLogin')}
                 </p>
                 <Button 
                   onClick={handleContinueToLogin}
                   className="w-full"
                 >
-                  Continue to Login
+                  {t('auth.continueToLogin')}
                 </Button>
               </>
             )}
 
-            {error && !isLoading && (
+            {error && !isLoading && !isVerified && (
               <>
                 <div className="flex justify-center">
                   <AlertCircle className="h-16 w-16 text-red-600" />
@@ -130,25 +130,25 @@ export default function VerifyEmailPage() {
                 </Alert>
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">
-                    This could happen if:
+                    {t('auth.thisCouldHappen')}
                   </p>
                   <ul className="text-sm text-gray-600 text-left space-y-1">
-                    <li>• The verification link has expired</li>
-                    <li>• The link has already been used</li>
-                    <li>• The link is invalid or corrupted</li>
+                    <li>{t('auth.linkExpired')}</li>
+                    <li>{t('auth.linkAlreadyUsed')}</li>
+                    <li>{t('auth.linkInvalidCorrupted')}</li>
                   </ul>
                   <div className="flex flex-col space-y-2">
                     <Button 
                       variant="outline"
                       onClick={() => router.push('/contract-management/signup')}
                     >
-                      Try Signing Up Again
+                      {t('auth.trySigningUpAgain')}
                     </Button>
                     <Button 
                       variant="ghost"
                       onClick={() => router.push('/contract-management/login')}
                     >
-                      Back to Login
+                      {t('auth.backToLogin')}
                     </Button>
                   </div>
                 </div>
@@ -160,12 +160,12 @@ export default function VerifyEmailPage() {
         {/* Footer Links */}
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-600">
-            Need help?{' '}
+            {t('auth.needHelpQuestion')}{' '}
             <Link 
               href="/contract-management/login" 
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
-              Contact Support
+              {t('auth.contactSupport')}
             </Link>
           </p>
         </div>

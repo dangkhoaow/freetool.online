@@ -83,7 +83,28 @@ export const enTranslations = {
     // Loading States
     unexpectedError: 'An unexpected error occurred',
     failedSendVerification: 'Failed to send verification email. Please try again.',
-    enterEmailToResend: 'Please enter your email address to resend verification'
+    enterEmailToResend: 'Please enter your email address to resend verification',
+    
+    // Email Verification Page
+    verifyingEmail: 'Verifying Email...',
+    emailVerified: 'Email Verified',
+    verificationFailed: 'Verification Failed',
+    pleaseWaitVerifying: 'Please wait while we verify your email address',
+    emailSuccessfullyVerified: 'Your email has been successfully verified',
+    issueVerifyingEmail: 'There was an issue verifying your email',
+    emailVerifiedSuccessfully: 'Email verified successfully',
+    emailVerificationFailedGeneric: 'Email verification failed',
+    networkErrorDuringVerification: 'Network error during verification',
+    verificationTokenMissing: 'Verification token is missing',
+    canNowLogin: 'You can now log in to your account and start managing contracts.',
+    continueToLogin: 'Continue to Login',
+    thisCouldHappen: 'This could happen if:',
+    linkExpired: '• The verification link has expired',
+    linkAlreadyUsed: '• The link has already been used',
+    linkInvalidCorrupted: '• The link is invalid or corrupted',
+    trySigningUpAgain: 'Try Signing Up Again',
+    needHelpQuestion: 'Need help?',
+    contactSupport: 'Contact Support'
   },
 
   // Contract Management System
