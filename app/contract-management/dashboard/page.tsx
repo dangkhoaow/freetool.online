@@ -65,12 +65,14 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="dashboard">{t('tabs.dashboard')}</TabsTrigger>
-            <TabsTrigger value="add-contract">{t('tabs.addContract')}</TabsTrigger>
-            <TabsTrigger value="search">{t('tabs.search')}</TabsTrigger>
-            <TabsTrigger value="export">{t('tabs.export')}</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto scrollbar-hide pb-2 -mx-2 px-2">
+            <TabsList className="inline-flex w-auto md:grid md:w-full md:grid-cols-4 min-w-max md:min-w-full">
+              <TabsTrigger value="dashboard" className="flex-shrink-0 whitespace-nowrap">{t('tabs.dashboard')}</TabsTrigger>
+              <TabsTrigger value="add-contract" className="flex-shrink-0 whitespace-nowrap">{t('tabs.addContract')}</TabsTrigger>
+              <TabsTrigger value="search" className="flex-shrink-0 whitespace-nowrap">{t('tabs.search')}</TabsTrigger>
+              <TabsTrigger value="export" className="flex-shrink-0 whitespace-nowrap">{t('tabs.export')}</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="dashboard" className="mt-6">
             <DashboardOverview />

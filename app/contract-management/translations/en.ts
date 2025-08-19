@@ -11,7 +11,7 @@ export const enTranslations = {
     invalidCredentials: 'Invalid email or password',
     loginRequired: 'Please login to continue',
     welcome: 'Welcome',
-    signIn: 'Sign in to contract management system',
+    signIn: 'Sign in',
     enterCredentials: 'Enter your credentials to access the system',
     username: 'Username',
     enterUsername: 'Enter your username',

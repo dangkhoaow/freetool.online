@@ -60,7 +60,7 @@ export default function ContractHeader() {
             
             <div className="flex items-center space-x-2">
               <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white hidden md:block">
                 {t('dashboard.title')}
               </h1>
             </div>

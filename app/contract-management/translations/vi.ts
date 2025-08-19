@@ -11,7 +11,7 @@ export const viTranslations = {
     invalidCredentials: 'Email hoặc mật khẩu không đúng',
     loginRequired: 'Vui lòng đăng nhập để tiếp tục',
     welcome: 'Chào mừng',
-    signIn: 'Đăng nhập vào hệ thống quản lý hợp đồng',
+    signIn: 'Đăng nhập',
     enterCredentials: 'Nhập thông tin đăng nhập của bạn để truy cập',
     username: 'Tên đăng nhập',
     enterUsername: 'Nhập tên đăng nhập',

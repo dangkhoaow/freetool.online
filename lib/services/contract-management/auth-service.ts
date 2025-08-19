@@ -326,9 +326,9 @@ class ContractManagementAuthService {
   }
 
   /**
-   * Logout current user
+   * Logout current user with automatic redirect
    */
-  public async logout(): Promise<ApiResponse<void>> {
+  public async logout(redirectPath?: string): Promise<ApiResponse<void>> {
     try {
       // Call logout endpoint to clear server-side session
       try {
@@ -350,6 +350,15 @@ class ContractManagementAuthService {
       this.currentUser = null;
       this.authToken = null;
       this.clearAuthState();
+
+      // Determine redirect path based on current location or provided path
+      const finalRedirectPath = redirectPath || this.getAppropriateLoginPath();
+      
+      // Redirect to appropriate login page
+      if (typeof window !== 'undefined') {
+        console.log(`[ContractManagementAuth] Redirecting to: ${finalRedirectPath}`);
+        window.location.replace(finalRedirectPath);
+      }
 
       return {
         success: true,
@@ -403,7 +412,45 @@ class ContractManagementAuthService {
   }
 
   /**
-   * Verify token validity
+   * Handle session expiration with automatic redirect
+   */
+  public handleSessionExpiration(): void {
+    console.log('[ContractManagementAuth] Session expired, clearing state and redirecting');
+    
+    // Clear authentication state
+    this.currentUser = null;
+    this.authToken = null;
+    this.clearAuthState();
+    
+    // Redirect to appropriate login page
+    if (typeof window !== 'undefined') {
+      const redirectPath = this.getAppropriateLoginPath();
+      console.log(`[ContractManagementAuth] Session expired, redirecting to: ${redirectPath}`);
+      window.location.replace(redirectPath);
+    }
+  }
+
+  /**
+   * Determine appropriate login path based on current URL
+   */
+  private getAppropriateLoginPath(): string {
+    if (typeof window === 'undefined') {
+      return '/contract-management/login'; // Default for SSR
+    }
+    
+    const currentPath = window.location.pathname;
+    
+    // Check if we're in Projly context
+    if (currentPath.startsWith('/projly')) {
+      return '/projly/login';
+    }
+    
+    // Default to contract management login
+    return '/contract-management/login';
+  }
+
+  /**
+   * Verify token validity with automatic session expiration handling
    */
   public async verifyToken(token: string): Promise<ApiResponse<User>> {
     try {
@@ -411,6 +458,7 @@ class ContractManagementAuthService {
       await this.simulateDelay(200);
 
       if (!token || !token.startsWith('cm_token_')) {
+        this.handleSessionExpiration();
         return {
           success: false,
           error: 'Invalid token format'
@@ -422,6 +470,7 @@ class ContractManagementAuthService {
       const user = MOCK_USERS.find(u => u.id === userId);
 
       if (!user || !user.isActive) {
+        this.handleSessionExpiration();
         return {
           success: false,
           error: 'Invalid or expired token'
@@ -435,6 +484,7 @@ class ContractManagementAuthService {
 
     } catch (error) {
       console.error('[ContractManagementAuth] Token verification error:', error);
+      this.handleSessionExpiration();
       return {
         success: false,
         error: 'Token verification failed'
@@ -546,6 +596,7 @@ class ContractManagementAuthService {
   public async refreshToken(): Promise<AuthResponse> {
     try {
       if (!this.currentUser) {
+        this.handleSessionExpiration();
         return {
           success: false,
           error: 'No user to refresh token for'
@@ -570,11 +621,40 @@ class ContractManagementAuthService {
 
     } catch (error) {
       console.error('[ContractManagementAuth] Token refresh error:', error);
+      this.handleSessionExpiration();
       return {
         success: false,
         error: 'Token refresh failed'
       };
     }
+  }
+
+  /**
+   * Handle API response and check for authentication errors
+   */
+  public handleApiResponse<T>(response: Response, data: any): ApiResponse<T> {
+    // Check for authentication-related errors
+    if (response.status === 401 || response.status === 403) {
+      console.log('[ContractManagementAuth] Authentication error detected, handling session expiration');
+      this.handleSessionExpiration();
+      return {
+        success: false,
+        error: 'Session expired. Please log in again.'
+      };
+    }
+
+    // Check for other error responses
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || `Request failed with status ${response.status}`
+      };
+    }
+
+    return {
+      success: true,
+      data: data
+    };
   }
 
   // Private helper methods

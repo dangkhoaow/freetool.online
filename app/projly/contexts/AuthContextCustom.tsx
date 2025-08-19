@@ -22,6 +22,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>; // For backward compatibility
   updateUser: (updates: Partial<User>) => Promise<void>;
+  handleSessionExpiration: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -144,6 +145,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('user');
         localStorage.removeItem('profile');
         localStorage.removeItem('authState');
+        localStorage.removeItem('contractManagementToken');
+        localStorage.removeItem('contractManagementUser');
         
         // Clear any session storage items related to authentication
         sessionStorage.removeItem('user');
@@ -152,8 +155,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         console.log('[AUTH_CONTEXT] Logout successful, session cleared');
         
-        // Redirect to login page with correct path
-        window.location.replace('/projly/login');
+        // Determine redirect path based on current location
+        const currentPath = window.location.pathname;
+        const redirectPath = currentPath.startsWith('/contract-management') 
+          ? '/contract-management/login' 
+          : '/projly/login';
+        
+        // Redirect to appropriate login page
+        window.location.replace(redirectPath);
       } catch (error) {
         console.error('[AUTH_CONTEXT] Logout error:', error);
         throw error;
@@ -174,6 +183,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('user');
       localStorage.removeItem('profile');
       localStorage.removeItem('authState');
+      localStorage.removeItem('contractManagementToken');
+      localStorage.removeItem('contractManagementUser');
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('profile');
       sessionStorage.removeItem('authState');
@@ -184,8 +195,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Reset React Query cache
       queryClient.clear();
       
-      // Redirect to login page with correct path
-      window.location.replace('/projly/login');
+      // Determine redirect path based on current location
+      const currentPath = window.location.pathname;
+      const redirectPath = currentPath.startsWith('/contract-management') 
+        ? '/contract-management/login' 
+        : '/projly/login';
+      
+      // Redirect to appropriate login page
+      window.location.replace(redirectPath);
     } catch (error) {
       console.error('[AUTH_CONTEXT] Logout error:', error);
     }
@@ -226,6 +243,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return queryClient.invalidateQueries({ queryKey: ['me'] });
   };
 
+  // Handle session expiration with automatic redirect
+  const handleSessionExpiration = useCallback(() => {
+    console.log('[AUTH_CONTEXT] Session expired, clearing state and redirecting');
+    
+    // Clear auth tokens using our centralized utility
+    clearAuthToken();
+    
+    // Clear other user data from storage
+    localStorage.removeItem('user');
+    localStorage.removeItem('profile');
+    localStorage.removeItem('authState');
+    localStorage.removeItem('contractManagementToken');
+    localStorage.removeItem('contractManagementUser');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('profile');
+    sessionStorage.removeItem('authState');
+    
+    // Reset React Query cache
+    queryClient.clear();
+    
+    // Determine redirect path based on current location
+    const currentPath = window.location.pathname;
+    const redirectPath = currentPath.startsWith('/contract-management') 
+      ? '/contract-management/login' 
+      : '/projly/login';
+    
+    console.log(`[AUTH_CONTEXT] Session expired, redirecting to: ${redirectPath}`);
+    window.location.replace(redirectPath);
+  }, [queryClient]);
+
   // Expose AuthContext instance globally for direct updates
   // This allows other parts of the app to directly update the context
   const authContextValue = {
@@ -237,7 +284,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout: () => logoutMutation.mutateAsync(),
     signOut,
     refreshSession,
-    updateUser
+    updateUser,
+    handleSessionExpiration
   };
   
   // Store context instance globally for direct access
