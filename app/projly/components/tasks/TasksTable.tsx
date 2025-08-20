@@ -415,7 +415,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
     
     // Remove isDragActive since we're using isDragging instead
     
-    return `${baseClasses} cursor-grab hover:bg-gray-50/50`;
+    return `${baseClasses} cursor-grab hover:bg-gray-100/80 dark:hover:bg-gray-700/60 hover:shadow-sm`;
   };
 
   return (
@@ -1094,7 +1094,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 isDragDisabled={false}
               >
                 <TableCell 
-                  className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'} cursor-pointer hover:bg-muted/50 ${task.parentTaskId ? 'sub-task' : ''} group`} 
+                  className={`font-medium whitespace-nowrap min-w-[90vw] ${context === 'project' ? 'md:min-w-[33vw]' : 'md:min-w-[500px]'} cursor-pointer hover:bg-gray-100/80 dark:hover:bg-gray-700/60 hover:shadow-sm transition-colors duration-200 ${task.parentTaskId ? 'sub-task' : ''} group`} 
                   title={task.title || "-"}
                   onClick={() => openTaskDetailDialog(task.id)}
                 >

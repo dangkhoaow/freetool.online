@@ -38,7 +38,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
-import { PlusCircle, List, LayoutGrid, Filter } from 'lucide-react';
+import { Filter, List, LayoutGrid, Search, Circle, PlusCircle } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -190,7 +190,7 @@ export function TasksContainer({
     isInitialized: filtersInitialized
   } = useURLFilters({
     ...initialFilters,
-    excludeStatuses: initialFilters.excludeStatuses || ['Completed', 'Golive'] // Default to exclude 'Completed' and 'Golive' tasks
+    excludeStatuses: initialFilters.excludeStatuses || [] // Allow empty array - no default exclusions
   });
   
   // State for client-side filtering
@@ -262,15 +262,27 @@ export function TasksContainer({
   
   // Function to toggle filter visibility
   const toggleFilters = () => {
-    const newState = !showFilters;
-    setShowFilters(newState);
-    
-    // Store in localStorage for persistence
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('projly_tasks_show_filters', newState.toString());
-    }
-    log(`Toggled filters visibility to: ${newState}`);
+    setShowFilters(!showFilters);
+    log(`Toggled filters visibility to: ${!showFilters}`);
   };
+
+  // Check if any filters are currently active
+  const hasActiveFilters = useMemo(() => {
+    if (!currentFilters) return false;
+    
+    // Check for non-default filter values
+    const hasProjectFilter = currentFilters.projectId && currentFilters.projectId !== 'all';
+    const hasStatusFilter = currentFilters.status && currentFilters.status !== 'all';
+    const hasLabelFilter = currentFilters.label && currentFilters.label !== 'all';
+    const hasAssigneeFilter = currentFilters.assignedTo && currentFilters.assignedTo !== 'all';
+    const hasHierarchyFilter = currentFilters.taskHierarchy && currentFilters.taskHierarchy !== 'all';
+    const hasExcludeStatuses = currentFilters.excludeStatuses && currentFilters.excludeStatuses.length > 0;
+    const hasExcludeChildStatuses = currentFilters.excludeChildStatuses && currentFilters.excludeChildStatuses.length > 0;
+    const hasSearchFilter = (currentFilters as any).search && (currentFilters as any).search.trim() !== '';
+    
+    return hasProjectFilter || hasStatusFilter || hasLabelFilter || hasAssigneeFilter || 
+           hasHierarchyFilter || hasExcludeStatuses || hasExcludeChildStatuses || hasSearchFilter;
+  }, [currentFilters]);
   
   // View mode state (list or board)
   const [viewMode, setViewMode] = useState<'list' | 'board'>(() => {
@@ -880,10 +892,13 @@ export function TasksContainer({
                     variant="outline"
                     size="sm"
                     onClick={toggleFilters}
-                    className="flex items-center justify-end gap-1 flex-shrink-0"
+                    className="flex items-center justify-end gap-1 flex-shrink-0 relative"
                   >
                     <Filter className="h-4 w-4" />
                     Filters
+                    {hasActiveFilters && (
+                      <Circle className="h-2 w-2 fill-blue-500 text-blue-500 absolute -top-1 -right-1" />
+                    )}
                   </Button>
                 </div>
               </div>

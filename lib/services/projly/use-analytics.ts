@@ -330,24 +330,48 @@ export function useTaskTimelineAnalytics() {
 }
 
 // Recent updates analytics - latest activities across user's teams
-export function useRecentUpdatesAnalytics(limit: number = 20) {
+export function useRecentUpdatesAnalytics(
+  limit: number = 20,
+  page: number = 1,
+  filters?: {
+    activityType?: string;
+    entityType?: string;
+    actorId?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   
   logAnalytics("Fetching recent updates analytics");
   
   return useQuery({
-    queryKey: ["analytics", "recent-updates", userId, limit],
+    queryKey: ["analytics", "recent-updates", userId, limit, page, filters],
     queryFn: async () => {
       logAnalytics("Executing recent updates analytics query");
       
       if (!userId) {
         logAnalytics("No user ID provided for recent updates analytics");
-        return [];
+        return { activities: [], pagination: { page: 1, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } };
       }
       
       try {
-        const response = await projlyClient.get(`analytics/recent-updates?limit=${limit}`);
+        // Build query parameters
+        const params = new URLSearchParams({
+          limit: limit.toString(),
+          page: page.toString()
+        });
+
+        if (filters) {
+          if (filters.activityType) params.append('activityType', filters.activityType);
+          if (filters.entityType) params.append('entityType', filters.entityType);
+          if (filters.actorId) params.append('actorId', filters.actorId);
+          if (filters.startDate) params.append('startDate', filters.startDate);
+          if (filters.endDate) params.append('endDate', filters.endDate);
+        }
+
+        const response = await projlyClient.get(`analytics/recent-updates?${params.toString()}`);
         logAnalytics("Recent updates analytics response:", response);
         
         // Check if we have valid data in the response
@@ -355,7 +379,7 @@ export function useRecentUpdatesAnalytics(limit: number = 20) {
           throw new Error(response.error || 'Failed to fetch recent updates analytics');
         }
         
-        return response.data || [];
+        return response.data || { activities: [], pagination: { page: 1, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } };
       } catch (error: any) {
         console.error("[ANALYTICS] Error fetching recent updates analytics:", error);
         toast({
@@ -363,11 +387,52 @@ export function useRecentUpdatesAnalytics(limit: number = 20) {
           description: error.message || "Failed to fetch recent updates analytics",
           variant: "destructive"
         });
-        return [];
+        return { activities: [], pagination: { page: 1, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } };
       }
     },
     enabled: !!userId,
     refetchInterval: 30000 // Refetch every 30 seconds for real-time updates
+  });
+}
+
+// Activity filters - get available filter options
+export function useActivityFilters() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching activity filters");
+  
+  return useQuery({
+    queryKey: ["analytics", "activity-filters", userId],
+    queryFn: async () => {
+      logAnalytics("Executing activity filters query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for activity filters");
+        return { activityTypes: [], entityTypes: [], users: [] };
+      }
+      
+      try {
+        const response = await projlyClient.get('analytics/activity-filters');
+        logAnalytics("Activity filters response:", response);
+        
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch activity filters');
+        }
+        
+        return response.data || { activityTypes: [], entityTypes: [], users: [] };
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching activity filters:", error);
+        toast({
+          title: "Error fetching filters",
+          description: error.message || "Failed to fetch activity filters",
+          variant: "destructive"
+        });
+        return { activityTypes: [], entityTypes: [], users: [] };
+      }
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - filters don't change often
   });
 }
 

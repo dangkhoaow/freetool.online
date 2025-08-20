@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Activity, MessageSquare, Edit3, Plus, ExternalLink } from "lucide-react";
 import { useRecentUpdatesAnalytics } from "@/lib/services/projly/use-analytics";
 import { useProfile } from "@/lib/services/projly/use-profile";
+import { ActivityDetailDialog } from "@/app/projly/components/ActivityDetailDialog";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
@@ -36,8 +38,16 @@ interface ActivityItem {
 }
 
 export function TeamActivityFeed() {
-  const { data: activities, isLoading, error } = useRecentUpdatesAnalytics(50);
+  const { data: activitiesData, isLoading, error } = useRecentUpdatesAnalytics(50);
+  const activities = activitiesData?.activities || [];
   const { data: profile } = useProfile();
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleActivityClick = (activityId: string) => {
+    setSelectedActivityId(activityId);
+    setDialogOpen(true);
+  };
 
   // Helper function to determine badge color based on task status
   const getStatusBadgeClass = (status: string) => {
@@ -207,7 +217,11 @@ export function TeamActivityFeed() {
               const initials = actorName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
               return (
-                <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <div 
+                  key={activity.id} 
+                  className="flex items-start space-x-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm dark:hover:shadow-gray-900/20 cursor-pointer"
+                  onClick={() => handleActivityClick(activity.id)}
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                   </Avatar>
@@ -235,7 +249,7 @@ export function TeamActivityFeed() {
                       </div>
                       
                       {link && (
-                        <Link href={link}>
+                        <Link target="_blank" href={link} onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                             <ExternalLink className="h-3 w-3" />
                           </Button>
@@ -251,7 +265,7 @@ export function TeamActivityFeed() {
         
         {activities.length > 0 && (
           <div className="pt-4 border-t">
-            <Link href="/projly/notifications">
+            <Link href="/projly/notifications?tab=activities">
               <Button variant="outline" size="sm" className="w-full">
                 View All Activities
               </Button>
@@ -259,6 +273,12 @@ export function TeamActivityFeed() {
           </div>
         )}
       </CardContent>
+      
+      <ActivityDetailDialog 
+        activityId={selectedActivityId}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </Card>
   );
 }

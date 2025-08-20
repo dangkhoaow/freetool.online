@@ -171,7 +171,7 @@ export function MemberActivityTable() {
           <div className="space-y-4">
             {/* Alert for inactive members */}
             {inactiveMembers.length > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <span className="text-sm text-amber-800">
                   {inactiveMembers.length} member{inactiveMembers.length > 1 ? 's' : ''} {inactiveMembers.length > 1 ? 'have' : 'has'} low activity
@@ -231,7 +231,10 @@ export function MemberActivityTable() {
                   const activityStatus = getActivityStatus(member);
 
                   return (
-                    <TableRow key={member.userId}>
+                    <TableRow 
+                      key={member.userId}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 cursor-pointer hover:shadow-sm dark:hover:shadow-gray-900/20"
+                    >
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">

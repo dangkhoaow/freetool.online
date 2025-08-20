@@ -66,6 +66,20 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
   const [userRole, setUserRole] = useState<string>('user');
   const [isProjectOwner, setIsProjectOwner] = useState<boolean>(false);
   
+  // Create tasks URL with current user filter
+  const getTasksUrl = () => {
+    const userId = user?.userId || user?.id;
+    if (!userId) return '/projly/tasks';
+    
+    const params = new URLSearchParams({
+      assignedTo: userId,
+      exclude: 'Completed,Golive',
+      excludeChild: 'Completed,Golive'
+    });
+    
+    return `/projly/tasks?${params.toString()}`;
+  };
+  
   // Use the dedicated hook for project ownership
   const projectOwnership = useProjectOwnership();
   
@@ -363,7 +377,7 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
             <h2 className="mb-2 text-lg font-semibold tracking-tight">Projects</h2>
             <div className="space-y-1">
               <SidebarItem icon={<FolderOpen className="h-4 w-4" />} label="All Projects" href="/projly/projects" active={pathname === "/projly/projects"} />
-              <SidebarItem icon={<ClipboardList className="h-4 w-4" />} label="Tasks" href="/projly/tasks" active={pathname === "/projly/tasks"} />
+              <SidebarItem icon={<ClipboardList className="h-4 w-4" />} label="Tasks" href={getTasksUrl()} active={pathname === "/projly/tasks"} />
             </div>
           </div>
           {showTeamSection && (

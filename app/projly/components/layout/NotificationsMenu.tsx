@@ -111,7 +111,7 @@ export const NotificationsMenu = () => {
           className="cursor-pointer flex justify-center p-2 text-center border-t"
           onClick={() => {
             setOpen(false);
-            router.push('/projly/notifications');
+            router.push('/projly/notifications?tab=notifications');
           }}
         >
           View All Notifications
