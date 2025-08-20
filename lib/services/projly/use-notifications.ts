@@ -69,18 +69,19 @@ export interface Notification {
   timeAgo?: string; // Calculated field on the frontend
 }
 
-export function useNotifications() {
+export function useNotifications(limit?: number) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
   // Add detailed logging to show user authentication state
   console.log('[NOTIFICATIONS] Auth user data:', user ? `User ID: ${user?.id}` : 'Not authenticated');
+  console.log('[NOTIFICATIONS] Limit parameter:', limit);
   
   // Fetch notifications from the backend
   const { data: fetchedNotifications = [], isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications', limit], // Include limit in query key for proper caching
     queryFn: async () => {
-      console.log('[NOTIFICATIONS] Fetching notifications from backend');
+      console.log('[NOTIFICATIONS] Fetching notifications from backend with limit:', limit);
       
       if (!user) {
         console.log('[NOTIFICATIONS] No user, returning empty array');
@@ -88,7 +89,9 @@ export function useNotifications() {
       }
       
       try {
-        const response = await projlyFetch('/api/projly/notifications');
+        // Add limit parameter to the URL if provided
+        const url = limit ? `/api/projly/notifications?limit=${limit}` : '/api/projly/notifications';
+        const response = await projlyFetch(url);
         if (!response.ok) {
           const errorData = await response.json();
           console.error('[NOTIFICATIONS] Error fetching notifications:', errorData);
@@ -96,7 +99,7 @@ export function useNotifications() {
         }
         
         const data = await response.json();
-        console.log(`[NOTIFICATIONS] Successfully fetched ${data.length} notifications`);
+        console.log(`[NOTIFICATIONS] Successfully fetched ${data.length} notifications ${limit ? `(limited to ${limit})` : '(no limit)'}`);
         return data;
       } catch (error) {
         console.error('[NOTIFICATIONS] Error in notifications fetch:', error);
