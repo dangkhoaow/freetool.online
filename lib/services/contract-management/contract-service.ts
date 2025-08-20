@@ -12,7 +12,7 @@ import {
   PaginationConfig,
   FileUploadResult
 } from './types';
-import { CONTRACT_MANAGEMENT_CONFIG } from './config';
+import { CONTRACT_MANAGEMENT_CONFIG, handleAuthError } from './config';
 
 // Mock storage for contracts and storage units
 let MOCK_CONTRACTS: Contract[] = [];
@@ -128,6 +128,8 @@ class ContractManagementService {
       const apiData = {
         companyName: contractData.companyName,
         contractNumber: contractData.contractNumber,
+        contractNumberAppendix: contractData.contractNumberAppendix,
+        phisicalStorageUnit: contractData.phisicalStorageUnit,
         contractStartDate: contractData.contractStartDate,
         contractEndDate: contractData.contractEndDate,
         contractDurationMonths: contractData.contractDurationMonths,
@@ -347,6 +349,8 @@ class ContractManagementService {
       
       if (updates.companyName) apiData.companyName = updates.companyName;
       if (updates.contractNumber) apiData.contractNumber = updates.contractNumber;
+      if (updates.contractNumberAppendix !== undefined) apiData.contractNumberAppendix = updates.contractNumberAppendix;
+      if (updates.phisicalStorageUnit !== undefined) apiData.phisicalStorageUnit = updates.phisicalStorageUnit;
       if (updates.contractStartDate) apiData.contractStartDate = updates.contractStartDate;
       if (updates.contractEndDate) apiData.contractEndDate = updates.contractEndDate;
       if (updates.contractDurationMonths) apiData.contractDurationMonths = updates.contractDurationMonths;
@@ -438,6 +442,12 @@ class ContractManagementService {
       if (filters.companyName) {
         searchParams.append('companyName', filters.companyName);
       }
+      if (filters.contractNumber) {
+        searchParams.append('contractNumber', filters.contractNumber);
+      }
+      if (filters.contractNumberAppendix) {
+        searchParams.append('contractNumberAppendix', filters.contractNumberAppendix);
+      }
       if (filters.winningBidDecisionNumber) {
         searchParams.append('winningBidDecisionNumber', filters.winningBidDecisionNumber);
       }
@@ -478,6 +488,15 @@ class ContractManagementService {
         headers: this.getAuthHeaders(),
         credentials: 'include'
       });
+
+      // Handle authentication errors
+      if (response.status === 401) {
+        handleAuthError(response);
+        return {
+          success: false,
+          error: 'Authentication required'
+        };
+      }
 
       const data = await response.json();
 

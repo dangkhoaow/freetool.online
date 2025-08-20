@@ -126,10 +126,8 @@ export default function SignupPage() {
         const successMsg = response.message || 'Account created successfully! Please check your email for verification instructions.';
         setSuccessMessage(successMsg);
         
-        // Redirect to login after successful signup
-        setTimeout(() => {
-          router.push('/contract-management/login');
-        }, 3000); // Give a bit more time to read the email verification message
+        // No auto-redirect - let user stay on the page to read the success message
+        // User can manually navigate to login when ready
       } else {
         setErrors({ general: response.error || 'Failed to create account. Please try again.' });
       }

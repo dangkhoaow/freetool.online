@@ -66,6 +66,19 @@ export const getDefaultHeaders = (): Record<string, string> => {
 };
 
 /**
+ * Handle authentication errors by redirecting to login
+ */
+export const handleAuthError = (response: Response): void => {
+  if (response.status === 401) {
+    // Clear any stored authentication tokens
+    localStorage.removeItem('contractManagementToken');
+    
+    // Redirect to login page
+    window.location.href = '/contract-management/login';
+  }
+};
+
+/**
  * Get authorization headers with token
  */
 export const getAuthHeaders = (token?: string): Record<string, string> => {

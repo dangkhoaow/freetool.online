@@ -179,6 +179,18 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                       <span className="text-gray-600">{t('contracts.contractNumber')}:</span>
                       <span className="font-medium">{contract.contractNumber}</span>
                     </div>
+                    {(contract as any).contractNumberAppendix && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{t('contracts.contractNumberAppendix')}:</span>
+                        <span className="font-medium">{(contract as any).contractNumberAppendix}</span>
+                      </div>
+                    )}
+                    {(contract as any).phisicalStorageUnit && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{t('contracts.phisicalStorageUnit')}:</span>
+                        <span className="font-medium">{(contract as any).phisicalStorageUnit}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-600">{t('contracts.contractType')}:</span>
                       <span className="font-medium">{contract.contractType}</span>
@@ -237,8 +249,8 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
               </Card>
             </div>
 
-            {/* Storage Location & Notes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Storage Location & Physical Storage */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -252,6 +264,22 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                   </div>
                 </CardContent>
               </Card>
+
+              {(contract as any).phisicalStorageUnit && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building2 className="h-5 w-5 text-purple-600" />
+                      <h3 className="font-semibold">{t('contracts.physicalStorageLocation')}</h3>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-600">
+                        {(contract as any).phisicalStorageUnit}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {contract.notes && (
                 <Card>

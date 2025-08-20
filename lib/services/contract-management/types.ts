@@ -4,6 +4,8 @@ export interface Contract {
   id: string;
   companyName: string;
   contractNumber: string;
+  contractNumberAppendix?: string;
+  phisicalStorageUnit?: string;
   contractStartDate: string; // ISO date string
   contractEndDate: string; // ISO date string
   contractDurationMonths: number;
@@ -39,6 +41,8 @@ export interface StorageUnit {
 export interface ContractFormData {
   companyName: string;
   contractNumber: string;
+  contractNumberAppendix?: string;
+  phisicalStorageUnit?: string;
   contractStartDate: string;
   contractEndDate: string;
   contractDurationMonths: number;
@@ -53,6 +57,8 @@ export interface ContractFormData {
 
 export interface ContractSearchFilters {
   companyName?: string;
+  contractNumber?: string;
+  contractNumberAppendix?: string;
   winningBidDecisionNumber?: string;
   contractType?: ContractType;
   status?: ContractStatus;
@@ -83,6 +89,8 @@ export interface DashboardStats {
   storageUnitsUsed: number;
   totalStorageUnits: number;
   storageUtilization: number; // percentage
+  physicalStorageUnitsUsed: number;
+  physicalStorageUtilization: number; // percentage
   contractsByType: Record<ContractType, number>;
   contractsByStatus: Record<ContractStatus, number>;
   monthlyContractTrend: MonthlyTrend[];

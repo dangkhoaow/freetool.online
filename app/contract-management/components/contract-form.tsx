@@ -24,6 +24,8 @@ export default function ContractForm() {
   const [formData, setFormData] = useState<ContractFormData>({
     companyName: '',
     contractNumber: '',
+    contractNumberAppendix: '',
+    phisicalStorageUnit: '',
     contractStartDate: '',
     contractEndDate: '',
     contractDurationMonths: 0,
@@ -105,6 +107,10 @@ export default function ContractForm() {
       newErrors.winningBidDecisionNumber = t('contracts.required');
     }
 
+    if (!formData.phisicalStorageUnit?.trim()) {
+      newErrors.phisicalStorageUnit = t('contracts.required');
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -115,21 +121,50 @@ export default function ContractForm() {
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (end <= start) return 0;
     
-    return Math.ceil(diffDays / 30); // Approximate months
+    // Calculate months more accurately
+    let months = (end.getFullYear() - start.getFullYear()) * 12;
+    months -= start.getMonth();
+    months += end.getMonth();
+    
+    // Adjust for partial months
+    if (end.getDate() < start.getDate()) {
+      months--;
+    }
+    
+    return Math.max(1, months); // Minimum 1 month
+  };
+
+  const getAutoStatus = (endDate: string): 'Active' | 'Expired' | 'Draft' => {
+    if (!endDate) return 'Draft';
+    
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
+    end.setHours(0, 0, 0, 0);
+    
+    if (end < today) {
+      return 'Expired';
+    } else {
+      return 'Active';
+    }
   };
 
   const handleInputChange = (field: keyof ContractFormData, value: any) => {
     const updatedData = { ...formData, [field]: value };
     
-    // Auto-calculate duration when dates change
+    // Auto-calculate duration and status when dates change
     if (field === 'contractStartDate' || field === 'contractEndDate') {
       updatedData.contractDurationMonths = calculateDuration(
         updatedData.contractStartDate,
         updatedData.contractEndDate
       );
+      
+      // Auto-update status based on end date
+      if (field === 'contractEndDate' && updatedData.contractEndDate) {
+        updatedData.status = getAutoStatus(updatedData.contractEndDate);
+      }
     }
     
     console.log(`Updating ${field} to:`, value);
@@ -236,6 +271,8 @@ export default function ContractForm() {
         setFormData({
           companyName: '',
           contractNumber: '',
+          contractNumberAppendix: '',
+          phisicalStorageUnit: '',
           contractStartDate: '',
           contractEndDate: '',
           contractDurationMonths: 0,
@@ -278,6 +315,8 @@ export default function ContractForm() {
     setFormData({
       companyName: '',
       contractNumber: '',
+      contractNumberAppendix: '',
+      phisicalStorageUnit: '',
       contractStartDate: '',
       contractEndDate: '',
       contractDurationMonths: 0,
@@ -315,7 +354,7 @@ export default function ContractForm() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Company Name with Autocomplete */}
         <div className="space-y-2 relative">
           <Label htmlFor="companyName" className="dark:text-gray-200">
@@ -419,6 +458,20 @@ export default function ContractForm() {
           {errors.contractNumber && (
             <p className="text-sm text-red-500 dark:text-red-400">{errors.contractNumber}</p>
           )}
+        </div>
+
+        {/* Contract Number Appendix */}
+        <div className="space-y-2">
+          <Label htmlFor="contractNumberAppendix" className="dark:text-gray-200">
+            {t('contracts.contractNumberAppendix')}
+          </Label>
+          <Input
+            id="contractNumberAppendix"
+            value={formData.contractNumberAppendix || ''}
+            onChange={(e) => handleInputChange('contractNumberAppendix', e.target.value)}
+            placeholder={t('contracts.enterContractNumberAppendix')}
+            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+          />
         </div>
 
         {/* Start Date */}
@@ -556,6 +609,25 @@ export default function ContractForm() {
           </Select>
           {errors.status && (
             <p className="text-sm text-red-500 dark:text-red-400">{errors.status}</p>
+          )}
+        </div>
+
+        {/* Physical Storage Unit */}
+        <div className="space-y-2">
+          <Label htmlFor="phisicalStorageUnit" className="dark:text-gray-200">
+            {t('contracts.phisicalStorageUnit')} <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="phisicalStorageUnit"
+            value={formData.phisicalStorageUnit || ''}
+            onChange={(e) => handleInputChange('phisicalStorageUnit', e.target.value)}
+            placeholder={t('contracts.enterPhisicalStorageUnit')}
+            className={`dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 ${
+              errors.phisicalStorageUnit ? 'border-red-500 dark:border-red-500' : ''
+            }`}
+          />
+          {errors.phisicalStorageUnit && (
+            <p className="text-sm text-red-500 dark:text-red-400">{errors.phisicalStorageUnit}</p>
           )}
         </div>
       </div>

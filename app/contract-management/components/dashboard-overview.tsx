@@ -244,22 +244,22 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
 
-        {/* Storage Utilization */}
+        {/* Physical Storage Usage */}
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium dark:text-gray-200">
-              {t('dashboard.storageUtilization')}
+              Sử dụng kho lưu trữ vật lý
             </CardTitle>
             <Database className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold dark:text-gray-100">
-              {(stats.storageUtilization || 0).toFixed(1)}%
+              {stats.physicalStorageUnitsUsed || 0}/{stats.totalContracts || 0}
             </div>
             <div className="mt-2 space-y-1">
-              <Progress value={stats.storageUtilization || 0} className="h-2" />
+              <Progress value={stats.physicalStorageUtilization || 0} className="h-2" />
               <p className="text-xs text-muted-foreground dark:text-gray-400">
-                {stats.storageUnitsUsed || 0} {t('dashboard.of')} {stats.totalStorageUnits || 0} {t('dashboard.units')}
+                {(stats.physicalStorageUtilization || 0).toFixed(1)}% hợp đồng sử dụng kho lưu trữ riêng biệt
               </p>
             </div>
           </CardContent>

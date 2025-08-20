@@ -38,10 +38,11 @@ export default function ContractExport() {
   const [filters, setFilters] = useState({
     companyName: '',
     contractNumber: '',
+    contractNumberAppendix: '',
     winningBidDecisionNumber: '',
     contractValueMin: '',
     contractValueMax: '',
-    storageUnitId: ''
+    phisicalStorageUnit: ''
   });
 
   // Company autocomplete states
@@ -174,10 +175,11 @@ export default function ContractExport() {
           ...(contractTypeFilter && { contractType: contractTypeFilter as any }),
           ...(filters.companyName && { companyName: filters.companyName }),
           ...(filters.contractNumber && { contractNumber: filters.contractNumber }),
+          ...(filters.contractNumberAppendix && { contractNumberAppendix: filters.contractNumberAppendix }),
           ...(filters.winningBidDecisionNumber && { winningBidDecisionNumber: filters.winningBidDecisionNumber }),
           ...(filters.contractValueMin && { contractValueMin: parseFloat(filters.contractValueMin) }),
           ...(filters.contractValueMax && { contractValueMax: parseFloat(filters.contractValueMax) }),
-          ...(filters.storageUnitId && { storageUnitId: filters.storageUnitId })
+          ...(filters.phisicalStorageUnit && { phisicalStorageUnit: filters.phisicalStorageUnit })
         }
       };
 
@@ -373,15 +375,17 @@ export default function ContractExport() {
               </div>
             </div>
 
-            {/* Second Row - 4 Columns */}
+            {/* First Row - 4 Fields matching create form order */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Winning Bid Decision Number Filter */}
+              {/* Contract Number Appendix Filter */}
               <div className="space-y-2">
-                <Label className="dark:text-gray-200">{t('contracts.bidDecisionNumber')}</Label>
+                <Label className="dark:text-gray-200">
+                  {currentLanguage === 'vi' ? 'Số Phụ lục hợp đồng' : 'Contract Number Appendix'}
+                </Label>
                 <Input
-                  placeholder={t('contracts.enterBidDecision')}
-                  value={filters.winningBidDecisionNumber}
-                  onChange={(e) => setFilters(prev => ({ ...prev, winningBidDecisionNumber: e.target.value }))}
+                  placeholder={currentLanguage === 'vi' ? 'Nhập số Phụ lục hợp đồng' : 'Enter contract number appendix'}
+                  value={filters.contractNumberAppendix}
+                  onChange={(e) => setFilters(prev => ({ ...prev, contractNumberAppendix: e.target.value }))}
                   className="dark:bg-gray-800 dark:border-gray-600"
                 />
               </div>
@@ -410,35 +414,41 @@ export default function ContractExport() {
                 />
               </div>
 
-              {/* Storage Unit Filter */}
+              {/* Winning Bid Decision Number Filter */}
               <div className="space-y-2">
-                <Label className="dark:text-gray-200">{t('common.storage')}</Label>
+                <Label className="dark:text-gray-200">{t('contracts.bidDecisionNumber')}</Label>
                 <Input
-                  placeholder={t('contracts.enterStorageUnit')}
-                  value={filters.storageUnitId}
-                  onChange={(e) => setFilters(prev => ({ ...prev, storageUnitId: e.target.value }))}
+                  placeholder={t('contracts.enterBidDecision')}
+                  value={filters.winningBidDecisionNumber}
+                  onChange={(e) => setFilters(prev => ({ ...prev, winningBidDecisionNumber: e.target.value }))}
                   className="dark:bg-gray-800 dark:border-gray-600"
                 />
               </div>
             </div>
 
-            {/* Options Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              {/* Include Files Option */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="includeFiles"
-                  checked={exportOptions.includeFiles}
-                  onCheckedChange={(checked) => 
-                    setExportOptions(prev => ({ ...prev, includeFiles: !!checked }))
-                  }
-                  className="dark:border-gray-600"
-                />
-                <Label htmlFor="includeFiles" className="text-sm dark:text-gray-200">
-                  {t('export.includeFiles')}
+            {/* Second Row - 4 Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Physical Storage Unit Filter */}
+              <div className="space-y-2">
+                <Label className="dark:text-gray-200">
+                  {currentLanguage === 'vi' ? 'Đơn vị lưu trữ vật lý' : 'Physical Storage Unit'}
                 </Label>
+                <Input
+                  placeholder={currentLanguage === 'vi' ? 'Nhập đơn vị lưu trữ vật lý' : 'Enter physical storage unit'}
+                  value={filters.phisicalStorageUnit}
+                  onChange={(e) => setFilters(prev => ({ ...prev, phisicalStorageUnit: e.target.value }))}
+                  className="dark:bg-gray-800 dark:border-gray-600"
+                />
               </div>
 
+              {/* Empty placeholder for future fields */}
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+
+            {/* Options Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
               {/* Date Range Filter */}
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
@@ -485,10 +495,11 @@ export default function ContractExport() {
                   setFilters({
                     companyName: '',
                     contractNumber: '',
+                    contractNumberAppendix: '',
                     winningBidDecisionNumber: '',
                     contractValueMin: '',
                     contractValueMax: '',
-                    storageUnitId: ''
+                    phisicalStorageUnit: ''
                   });
                 }}
                 className="dark:border-gray-600 dark:hover:bg-gray-700"
@@ -538,8 +549,8 @@ export default function ContractExport() {
               </div>
               
               {/* Active Filters Summary */}
-              {(filters.companyName || filters.contractNumber || filters.winningBidDecisionNumber || 
-                filters.contractValueMin || filters.contractValueMax || filters.storageUnitId) && (
+              {(filters.companyName || filters.contractNumber || filters.contractNumberAppendix || filters.winningBidDecisionNumber || 
+                filters.contractValueMin || filters.contractValueMax || filters.phisicalStorageUnit) && (
                 <div className="border-t dark:border-gray-600 pt-3 mt-3">
                   <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('export.activeFilters')}</div>
                   <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
@@ -548,6 +559,9 @@ export default function ContractExport() {
                     )}
                     {filters.contractNumber && (
                       <div>• {t('contracts.contractNumber')}: {filters.contractNumber}</div>
+                    )}
+                    {filters.contractNumberAppendix && (
+                      <div>• {currentLanguage === 'vi' ? 'Số Phụ lục hợp đồng' : 'Contract Number Appendix'}: {filters.contractNumberAppendix}</div>
                     )}
                     {filters.winningBidDecisionNumber && (
                       <div>• {t('contracts.bidDecisionNumber')}: {filters.winningBidDecisionNumber}</div>
@@ -559,8 +573,8 @@ export default function ContractExport() {
                           ? `≥${parseInt(filters.contractValueMin).toLocaleString(numberLocale)} VND`
                           : `≤${parseInt(filters.contractValueMax as string).toLocaleString(numberLocale)} VND`}</div>
                     )}
-                    {filters.storageUnitId && (
-                      <div>• {t('common.storage')}: {filters.storageUnitId}</div>
+                    {filters.phisicalStorageUnit && (
+                      <div>• {currentLanguage === 'vi' ? 'Đơn vị lưu trữ vật lý' : 'Physical Storage Unit'}: {filters.phisicalStorageUnit}</div>
                     )}
                   </div>
                 </div>

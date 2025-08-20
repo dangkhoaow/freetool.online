@@ -73,6 +73,8 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
         setFormData({
           companyName: response.data.companyName || '',
           contractNumber: response.data.contractNumber || '',
+          contractNumberAppendix: (response.data as any).contractNumberAppendix || '',
+          phisicalStorageUnit: (response.data as any).phisicalStorageUnit || '',
           contractStartDate: response.data.contractStartDate ? response.data.contractStartDate.split('T')[0] : '',
           contractEndDate: response.data.contractEndDate ? response.data.contractEndDate.split('T')[0] : '',
           contractDurationMonths: response.data.contractDurationMonths || 0,
@@ -93,11 +95,59 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
     }
   };
 
+  const calculateDuration = (startDate: string, endDate: string): number => {
+    if (!startDate || !endDate) return 0;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (end <= start) return 0;
+    
+    // Calculate months more accurately
+    let months = (end.getFullYear() - start.getFullYear()) * 12;
+    months -= start.getMonth();
+    months += end.getMonth();
+    
+    // Adjust for partial months
+    if (end.getDate() < start.getDate()) {
+      months--;
+    }
+    
+    return Math.max(1, months); // Minimum 1 month
+  };
+
+  const getAutoStatus = (endDate: string): 'Active' | 'Expired' | 'Draft' => {
+    if (!endDate) return 'Draft';
+    
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
+    end.setHours(0, 0, 0, 0);
+    
+    if (end < today) {
+      return 'Expired';
+    } else {
+      return 'Active';
+    }
+  };
+
   const handleInputChange = (field: keyof ContractFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    const updatedData = { ...formData, [field]: value };
+    
+    // Auto-calculate duration and status when dates change
+    if (field === 'contractStartDate' || field === 'contractEndDate') {
+      updatedData.contractDurationMonths = calculateDuration(
+        updatedData.contractStartDate || '',
+        updatedData.contractEndDate || ''
+      );
+      
+      // Auto-update status based on end date
+      if (field === 'contractEndDate' && updatedData.contractEndDate) {
+        updatedData.status = getAutoStatus(updatedData.contractEndDate);
+      }
+    }
+    
+    setFormData(updatedData);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -266,9 +316,10 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
 
         {contract && !isLoading && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Company Name */}
               <div>
-                <Label htmlFor="companyName">{t('contracts.companyName')}</Label>
+                <Label htmlFor="companyName">{t('contracts.companyName')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="companyName"
                   value={formData.companyName || ''}
@@ -277,8 +328,9 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* Contract Number */}
               <div>
-                <Label htmlFor="contractNumber">{t('contracts.contractNumber')}</Label>
+                <Label htmlFor="contractNumber">{t('contracts.contractNumber')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="contractNumber"
                   value={formData.contractNumber || ''}
@@ -287,8 +339,20 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* Contract Number Appendix */}
               <div>
-                <Label htmlFor="contractStartDate">{t('contracts.startDate')}</Label>
+                <Label htmlFor="contractNumberAppendix">{t('contracts.contractNumberAppendix')}</Label>
+                <Input
+                  id="contractNumberAppendix"
+                  value={formData.contractNumberAppendix || ''}
+                  onChange={(e) => handleInputChange('contractNumberAppendix', e.target.value)}
+                  placeholder={t('contracts.enterContractNumberAppendix')}
+                />
+              </div>
+
+              {/* Start Date */}
+              <div>
+                <Label htmlFor="contractStartDate">{t('contracts.startDate')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="contractStartDate"
                   type="date"
@@ -298,8 +362,9 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* End Date */}
               <div>
-                <Label htmlFor="contractEndDate">{t('contracts.endDate')}</Label>
+                <Label htmlFor="contractEndDate">{t('contracts.endDate')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="contractEndDate"
                   type="date"
@@ -309,8 +374,9 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* Duration */}
               <div>
-                <Label htmlFor="contractDurationMonths">{t('contracts.duration')}</Label>
+                <Label htmlFor="contractDurationMonths">{t('contracts.duration')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="contractDurationMonths"
                   type="number"
@@ -320,8 +386,9 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* Contract Value */}
               <div>
-                <Label htmlFor="contractValue">{t('contracts.value')}</Label>
+                <Label htmlFor="contractValue">{t('contracts.value')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="contractValue"
                   type="number"
@@ -331,8 +398,9 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* Bid Decision Number */}
               <div>
-                <Label htmlFor="winningBidDecisionNumber">{t('contracts.bidDecisionNumber')}</Label>
+                <Label htmlFor="winningBidDecisionNumber">{t('contracts.bidDecisionNumber')} <span className="text-red-500">*</span></Label>
                 <Input
                   id="winningBidDecisionNumber"
                   value={formData.winningBidDecisionNumber || ''}
@@ -341,6 +409,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 />
               </div>
 
+              {/* Contract Type */}
               <div className="space-y-2">
                 <Label htmlFor="contractType">{t('contracts.contractType')} <span className="text-red-500">*</span></Label>
                 <Select
@@ -360,6 +429,7 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                 </Select>
               </div>
 
+              {/* Contract Status */}
               <div className="space-y-2">
                 <Label htmlFor="status">{t('common.status')} <span className="text-red-500">*</span></Label>
                 <Select
@@ -377,6 +447,18 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                     <SelectItem value="Cancelled">{t('contractStatus.cancelled')}</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Physical Storage Unit */}
+              <div>
+                <Label htmlFor="phisicalStorageUnit">{t('contracts.phisicalStorageUnit')} <span className="text-red-500">*</span></Label>
+                <Input
+                  id="phisicalStorageUnit"
+                  value={formData.phisicalStorageUnit || ''}
+                  onChange={(e) => handleInputChange('phisicalStorageUnit', e.target.value)}
+                  placeholder={t('contracts.enterPhisicalStorageUnit')}
+                  required
+                />
               </div>
             </div>
 

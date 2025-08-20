@@ -25,6 +25,9 @@ export default function ContractSearch() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const hasInitiallyLoadedRef = useRef(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,12 +45,17 @@ export default function ContractSearch() {
     const defaultColumns = {
       companyName: true,
       contractNumber: true,
+      contractNumberAppendix: true,
+      phisicalStorageUnit: true,
+      contractStartDate: true,
+      contractEndDate: true,
       contractDurationMonths: true,
       contractValue: true,
       winningBidDecisionNumber: true,
       contractType: true,
-      storage: true,
+      status: true,
       notes: true,
+      createdAt: true,
       actions: true
     };
 
@@ -76,6 +84,8 @@ export default function ContractSearch() {
 
   const [filterValues, setFilterValues] = useState({
     companyName: '',
+    contractNumber: '',
+    contractNumberAppendix: '',
     winningBidDecisionNumber: '',
     contractType: undefined as string | undefined,
     status: undefined as string | undefined
@@ -84,10 +94,12 @@ export default function ContractSearch() {
   // Memoize filters object to prevent recreations
   const filters = useMemo(() => ({
     companyName: filterValues.companyName,
+    contractNumber: filterValues.contractNumber,
+    contractNumberAppendix: filterValues.contractNumberAppendix,
     winningBidDecisionNumber: filterValues.winningBidDecisionNumber,
     contractType: filterValues.contractType as ContractType | undefined,
     status: filterValues.status as ContractStatus | undefined
-  }), [filterValues.companyName, filterValues.winningBidDecisionNumber, filterValues.contractType, filterValues.status]);
+  }), [filterValues.companyName, filterValues.contractNumber, filterValues.contractNumberAppendix, filterValues.winningBidDecisionNumber, filterValues.contractType, filterValues.status]);
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
@@ -119,21 +131,30 @@ export default function ContractSearch() {
     try {
       const response = await contractManagementService.searchContracts(
         filters as ContractSearchFilters,
-        { field: 'createdAt', direction: 'desc' },
-        { page: 1, limit: 100 } // load more for client-side sorting/paging
+        { field: sortField, direction: sortDirection },
+        { page: currentPage, limit: itemsPerPage }
       );
 
       if (response.success && response.data) {
         setContracts(response.data.contracts);
         setTotalCount(response.data.totalCount);
+        setTotalPages(response.data.pageCount);
+        setHasNextPage(response.data.hasNextPage);
+        setHasPreviousPage(response.data.hasPreviousPage);
       } else {
         setContracts([]);
         setTotalCount(0);
+        setTotalPages(1);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
       }
     } catch (error) {
       console.error('Error searching contracts:', error);
       setContracts([]);
       setTotalCount(0);
+      setTotalPages(1);
+      setHasNextPage(false);
+      setHasPreviousPage(false);
     } finally {
       setIsLoading(false);
       isSearchingRef.current = false;
@@ -160,7 +181,7 @@ export default function ContractSearch() {
     handleSearch();
   };
 
-  // Sorting functionality
+  // Sorting functionality - triggers new API call
   const handleSort = (field: keyof Contract) => {
     if (field === sortField) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -169,6 +190,7 @@ export default function ContractSearch() {
       setSortDirection('asc');
     }
     setCurrentPage(1); // Reset to first page when sorting
+    // Note: useEffect will trigger search when sort changes
   };
 
   const getSortIcon = (field: keyof Contract) => {
@@ -176,36 +198,12 @@ export default function ContractSearch() {
     return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
 
-  // Sort contracts based on current sort field and direction
-  const sortedContracts = [...contracts].sort((a, b) => {
-    const aValue = a[sortField];
-    const bValue = b[sortField];
-    
-    // Handle different data types
-    let comparison = 0;
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      comparison = aValue.localeCompare(bValue);
-    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-      comparison = aValue - bValue;
-    } else if (sortField.includes('Date') || sortField === 'createdAt' || sortField === 'updatedAt') {
-      const aDate = new Date(aValue as string);
-      const bDate = new Date(bValue as string);
-      comparison = aDate.getTime() - bDate.getTime();
-    } else {
-      comparison = String(aValue).localeCompare(String(bValue));
-    }
-    
-    return sortDirection === 'asc' ? comparison : -comparison;
-  });
-
-  // Pagination logic
-  const totalPages = Math.ceil(sortedContracts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentContracts = sortedContracts.slice(startIndex, endIndex);
+  // Use contracts directly from API (already sorted and paginated)
+  const currentContracts = contracts;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    // Note: useEffect will trigger search when page changes
   };
 
   // Column visibility functions
@@ -232,18 +230,25 @@ export default function ContractSearch() {
   const columnLabels = {
     companyName: t('contracts.companyName'),
     contractNumber: t('contracts.contractNumber'),
+    contractNumberAppendix: t('contracts.contractNumberAppendix'),
+    phisicalStorageUnit: t('contracts.phisicalStorageUnit'),
+    contractStartDate: t('contracts.startDate'),
+    contractEndDate: t('contracts.endDate'),
     contractDurationMonths: t('contracts.duration'),
     contractValue: t('contracts.value'),
     winningBidDecisionNumber: t('contracts.bidDecisionNumber'),
     contractType: t('contracts.contractType'),
-    storage: t('common.storage'),
+    status: t('common.status'),
     notes: t('common.notes'),
+    createdAt: t('contracts.created'),
     actions: t('common.actions')
   };
 
   const handleClearFilters = () => {
     setFilterValues({
       companyName: '',
+      contractNumber: '',
+      contractNumberAppendix: '',
       winningBidDecisionNumber: '',
       contractType: undefined,
       status: undefined
@@ -310,92 +315,126 @@ export default function ContractSearch() {
     }
   };
 
-  // Single useEffect ONLY for initial load
+  // Search effect - trigger search when filters, pagination, or sorting change
   useEffect(() => {
-    if (!hasInitiallyLoadedRef.current) {
-      hasInitiallyLoadedRef.current = true;
-      console.log('[ContractSearch] Component mounted - initial search');
-      triggerSearch(true);
+    const filtersString = JSON.stringify(filters);
+    
+    // Skip if filters haven't changed and it's not initial load
+    if (filtersString === lastFiltersRef.current && hasInitiallyLoadedRef.current) {
+      console.log('[ContractSearch] Filters unchanged, skipping search');
+      return;
     }
-  }, []); // Empty dependency array - only runs once on mount
+    
+    lastFiltersRef.current = filtersString;
+    
+    // Skip initial load if we haven't loaded yet
+    if (!hasInitiallyLoadedRef.current) {
+      console.log('[ContractSearch] Initial load, triggering immediate search');
+      hasInitiallyLoadedRef.current = true;
+      triggerSearch(true); // immediate search on mount
+    } else {
+      console.log('[ContractSearch] Filters changed, triggering delayed search');
+      triggerSearch(); // delayed search for filter changes
+    }
+  }, [filters]);
 
-  // useEffect to trigger search when filters change
+  // Trigger search when pagination or sorting changes
   useEffect(() => {
     if (hasInitiallyLoadedRef.current) {
-      console.log('[ContractSearch] Filters changed - triggering search:', filters);
-      triggerSearch(false); // Use delayed search for filter changes
+      console.log('[ContractSearch] Pagination/sorting changed, triggering search');
+      triggerSearch(true);
     }
-  }, [filters]); // Re-run when memoized filters object changes
+  }, [currentPage, sortField, sortDirection]); // Re-run when memoized filters object changes
 
   return (
     <div className="space-y-6">
 
       {/* Search Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
-        <div className="space-y-2">
-          <Label className="dark:text-gray-200">{t('contracts.companyName')}</Label>
-          <Input
-            placeholder={t('contracts.searchCompanyPlaceholder')}
-            value={filterValues.companyName || ''}
-            onChange={(e) => handleFilterChange('companyName', e.target.value)}
-            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-          />
+      <div className="space-y-4">
+        {/* First Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label className="dark:text-gray-200">{t('contracts.companyName')}</Label>
+            <Input
+              placeholder={t('contracts.searchCompanyPlaceholder')}
+              value={filterValues.companyName || ''}
+              onChange={(e) => handleFilterChange('companyName', e.target.value)}
+              className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="dark:text-gray-200">{t('contracts.contractNumber')}</Label>
+            <Input
+              placeholder={t('contracts.enterContractNumber')}
+              value={filterValues.contractNumber || ''}
+              onChange={(e) => handleFilterChange('contractNumber', e.target.value)}
+              className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="dark:text-gray-200">{t('contracts.contractNumberAppendix')}</Label>
+            <Input
+              placeholder={t('contracts.enterContractNumberAppendix')}
+              value={filterValues.contractNumberAppendix || ''}
+              onChange={(e) => handleFilterChange('contractNumberAppendix', e.target.value)}
+              className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+            />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label className="dark:text-gray-200">{t('contracts.bidDecisionNumber')}</Label>
-          <Input
-            placeholder={t('contracts.searchBidNumberPlaceholder')}
-            value={filterValues.winningBidDecisionNumber || ''}
-            onChange={(e) => handleFilterChange('winningBidDecisionNumber', e.target.value)}
-            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-          />
-        </div>
+        {/* Second Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label className="dark:text-gray-200">{t('contracts.bidDecisionNumber')}</Label>
+            <Input
+              placeholder={t('contracts.searchBidNumberPlaceholder')}
+              value={filterValues.winningBidDecisionNumber || ''}
+              onChange={(e) => handleFilterChange('winningBidDecisionNumber', e.target.value)}
+              className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+            />
+          </div>
 
-        <div className="space-y-2">
-          <Label className="dark:text-gray-200">{t('contracts.contractType')}</Label>
-          <Select
-            value={filterValues.contractType || 'all'}
-            onValueChange={(value) => handleFilterChange('contractType', value)}
-          >
-            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-              <SelectValue placeholder={t('contracts.allTypes')} className="dark:text-gray-400" />
-            </SelectTrigger>
-            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
-              <SelectItem value="all" className="dark:text-gray-200 dark:hover:bg-gray-700">{t('contracts.allTypes')}</SelectItem>
-              {contractTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="space-y-2">
+            <Label className="dark:text-gray-200">{t('contracts.contractType')}</Label>
+            <Select
+              value={filterValues.contractType || 'all'}
+              onValueChange={(value) => handleFilterChange('contractType', value)}
+            >
+              <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                <SelectValue placeholder={t('contracts.allTypes')} className="dark:text-gray-400" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+                <SelectItem value="all" className="dark:text-gray-200 dark:hover:bg-gray-700">{t('contracts.allTypes')}</SelectItem>
+                {contractTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-2">
-          <Label className="dark:text-gray-200">{t('common.status')}</Label>
-          <Select
-            value={filterValues.status || 'all'}
-            onValueChange={(value) => handleFilterChange('status', value)}
-          >
-            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-              <SelectValue placeholder={t('contracts.allStatuses')} className="dark:text-gray-400" />
-            </SelectTrigger>
-            <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
-              <SelectItem value="all" className="dark:text-gray-200 dark:hover:bg-gray-700">{t('contracts.allStatuses')}</SelectItem>
-              {statusOptions.map((status) => (
-                <SelectItem key={status.value} value={status.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex justify-end items-end">
-          <Button variant="outline" onClick={handleClearFilters} className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-            <X className="h-4 w-4 mr-2" />
-            {t('contracts.clear')}
-          </Button>
+          <div className="space-y-2">
+            <Label className="dark:text-gray-200">{t('common.status')}</Label>
+            <Select
+              value={filterValues.status || 'all'}
+              onValueChange={(value) => handleFilterChange('status', value)}
+            >
+              <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                <SelectValue placeholder={t('contracts.allStatuses')} className="dark:text-gray-400" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
+                <SelectItem value="all" className="dark:text-gray-200 dark:hover:bg-gray-700">{t('contracts.allStatuses')}</SelectItem>
+                {statusOptions.map((status) => (
+                  <SelectItem key={status.value} value={status.value} className="dark:text-gray-200 dark:hover:bg-gray-700">
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -450,12 +489,17 @@ export default function ContractSearch() {
               visibleColumns={{
                 companyName: visibleColumns.companyName,
                 contractNumber: visibleColumns.contractNumber,
+                contractNumberAppendix: visibleColumns.contractNumberAppendix,
+                phisicalStorageUnit: visibleColumns.phisicalStorageUnit,
+                contractStartDate: visibleColumns.contractStartDate,
+                contractEndDate: visibleColumns.contractEndDate,
                 contractDurationMonths: visibleColumns.contractDurationMonths,
                 contractValue: visibleColumns.contractValue,
                 winningBidDecisionNumber: visibleColumns.winningBidDecisionNumber,
                 contractType: visibleColumns.contractType,
-                storage: visibleColumns.storage,
+                status: visibleColumns.status,
                 notes: visibleColumns.notes,
+                createdAt: visibleColumns.createdAt,
                 actions: visibleColumns.actions
               }}
               showColumnControls={false}
@@ -465,17 +509,17 @@ export default function ContractSearch() {
       </Card>
       
       {/* Pagination */}
-      {contracts.length > itemsPerPage && (
+      {totalCount > itemsPerPage && (
         <div className="flex items-center justify-between px-6 py-4">
           <div className="text-sm text-gray-700 dark:text-gray-300">
-            {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, sortedContracts.length)} {t('common.of')} {sortedContracts.length} {t('contracts.items')}
+            {t('common.showing')} {((currentPage - 1) * itemsPerPage) + 1} {t('common.to')} {Math.min(currentPage * itemsPerPage, totalCount)} {t('common.of')} {totalCount} {t('contracts.items')}
           </div>
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
+              disabled={!hasPreviousPage}
               className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -519,7 +563,7 @@ export default function ContractSearch() {
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              disabled={!hasNextPage}
               className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               {t('common.next')}

@@ -20,12 +20,17 @@ interface ContractTableProps {
   visibleColumns?: {
     companyName?: boolean;
     contractNumber?: boolean;
+    contractNumberAppendix?: boolean;
+    phisicalStorageUnit?: boolean;
+    contractStartDate?: boolean;
+    contractEndDate?: boolean;
     contractDurationMonths?: boolean;
     contractValue?: boolean;
     winningBidDecisionNumber?: boolean;
     contractType?: boolean;
-    storage?: boolean;
+    status?: boolean;
     notes?: boolean;
+    createdAt?: boolean;
     actions?: boolean;
   };
   showColumnControls?: boolean;
@@ -42,12 +47,17 @@ export default function ContractTable({
   visibleColumns = {
     companyName: true,
     contractNumber: true,
+    contractNumberAppendix: true,
+    phisicalStorageUnit: true,
+    contractStartDate: true,
+    contractEndDate: true,
     contractDurationMonths: true,
     contractValue: true,
     winningBidDecisionNumber: true,
     contractType: true,
-    storage: true,
+    status: true,
     notes: true,
+    createdAt: true,
     actions: true
   },
   showColumnControls = false
@@ -117,6 +127,58 @@ export default function ContractTable({
                 </Button>
               </TableHead>
             )}
+            {visibleColumns.contractNumberAppendix && (
+              <TableHead className="whitespace-nowrap dark:text-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
+                  onClick={() => handleSort('contractNumberAppendix')}
+                >
+                  Số Phụ lục Hợp Đồng
+                  {getSortIcon('contractNumberAppendix')}
+                </Button>
+              </TableHead>
+            )}
+            {visibleColumns.phisicalStorageUnit && (
+              <TableHead className="whitespace-nowrap dark:text-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
+                  onClick={() => handleSort('phisicalStorageUnit')}
+                >
+                  Vị trí lưu trữ
+                  {getSortIcon('phisicalStorageUnit')}
+                </Button>
+              </TableHead>
+            )}
+            {visibleColumns.contractStartDate && (
+              <TableHead className="whitespace-nowrap dark:text-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
+                  onClick={() => handleSort('contractStartDate')}
+                >
+                  Ngày Bắt Đầu
+                  {getSortIcon('contractStartDate')}
+                </Button>
+              </TableHead>
+            )}
+            {visibleColumns.contractEndDate && (
+              <TableHead className="whitespace-nowrap dark:text-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
+                  onClick={() => handleSort('contractEndDate')}
+                >
+                  Ngày Kết Thúc
+                  {getSortIcon('contractEndDate')}
+                </Button>
+              </TableHead>
+            )}
             {visibleColumns.contractDurationMonths && (
               <TableHead className="whitespace-nowrap dark:text-gray-200">
                 <Button
@@ -125,7 +187,7 @@ export default function ContractTable({
                   className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
                   onClick={() => handleSort('contractDurationMonths')}
                 >
-                  Thời Hạn
+                  Thời Hạn (Tháng)
                   {getSortIcon('contractDurationMonths')}
                 </Button>
               </TableHead>
@@ -164,21 +226,21 @@ export default function ContractTable({
                   className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
                   onClick={() => handleSort('contractType')}
                 >
-                  Loại
+                  Loại Hợp Đồng
                   {getSortIcon('contractType')}
                 </Button>
               </TableHead>
             )}
-            {visibleColumns.storage && (
+            {visibleColumns.status && (
               <TableHead className="whitespace-nowrap dark:text-gray-200">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
-                  onClick={() => handleSort('storageUnitId')}
+                  onClick={() => handleSort('status')}
                 >
-                  Lưu Trữ
-                  {getSortIcon('storageUnitId')}
+                  Trạng Thái
+                  {getSortIcon('status')}
                 </Button>
               </TableHead>
             )}
@@ -192,6 +254,19 @@ export default function ContractTable({
                 >
                   Ghi Chú
                   {getSortIcon('notes')}
+                </Button>
+              </TableHead>
+            )}
+            {visibleColumns.createdAt && (
+              <TableHead className="whitespace-nowrap dark:text-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 font-semibold hover:bg-transparent dark:text-gray-200 dark:hover:text-gray-100"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  Ngày Tạo
+                  {getSortIcon('createdAt')}
                 </Button>
               </TableHead>
             )}
@@ -215,12 +290,21 @@ export default function ContractTable({
               {visibleColumns.contractNumber && (
                 <TableCell className="whitespace-nowrap dark:text-gray-200">{contract.contractNumber}</TableCell>
               )}
+              {visibleColumns.contractNumberAppendix && (
+                <TableCell className="whitespace-nowrap dark:text-gray-200">{contract.contractNumberAppendix || '-'}</TableCell>
+              )}
+              {visibleColumns.phisicalStorageUnit && (
+                <TableCell className="whitespace-nowrap dark:text-gray-200">{contract.phisicalStorageUnit || '-'}</TableCell>
+              )}
+              {visibleColumns.contractStartDate && (
+                <TableCell className="whitespace-nowrap dark:text-gray-200">{formatDate(contract.contractStartDate)}</TableCell>
+              )}
+              {visibleColumns.contractEndDate && (
+                <TableCell className="whitespace-nowrap dark:text-gray-200">{formatDate(contract.contractEndDate)}</TableCell>
+              )}
               {visibleColumns.contractDurationMonths && (
                 <TableCell className="whitespace-nowrap">
                   <div className="text-sm font-medium dark:text-gray-100">{contract.contractDurationMonths} tháng</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {formatDate(contract.contractStartDate)} - {formatDate(contract.contractEndDate)}
-                  </div>
                 </TableCell>
               )}
               {visibleColumns.contractValue && (
@@ -247,14 +331,22 @@ export default function ContractTable({
                   </Badge>
                 </TableCell>
               )}
-              {visibleColumns.storage && (
+              {visibleColumns.status && (
                 <TableCell className="whitespace-nowrap">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
-                    Đơn Vị {contract.storageUnitId?.split('-')?.[1] || '1'}
-                  </span>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Vị Trí {contract.positionInUnit}
-                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className={contract.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-700' : 
+                             contract.status === 'Expired' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-200 dark:border-red-700' : 
+                             contract.status === 'Pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200 dark:border-yellow-700' : 
+                             'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}
+                  >
+                    {contract.status === 'Active' ? 'Hoạt Động' :
+                     contract.status === 'Expired' ? 'Hết Hạn' :
+                     contract.status === 'Pending' ? 'Chờ Duyệt' :
+                     contract.status === 'Cancelled' ? 'Đã Hủy' :
+                     contract.status === 'Draft' ? 'Bản Nháp' :
+                     contract.status}
+                  </Badge>
                 </TableCell>
               )}
               {visibleColumns.notes && (
@@ -263,6 +355,9 @@ export default function ContractTable({
                     {contract.notes || '-'}
                   </div>
                 </TableCell>
+              )}
+              {visibleColumns.createdAt && (
+                <TableCell className="whitespace-nowrap dark:text-gray-200">{formatDate(contract.createdAt)}</TableCell>
               )}
               {visibleColumns.actions && (
                 <TableCell className="whitespace-nowrap">

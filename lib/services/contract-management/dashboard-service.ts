@@ -8,7 +8,7 @@ import {
   ApiResponse
 } from './types';
 import { contractManagementService } from './contract-service';
-import { CONTRACT_MANAGEMENT_CONFIG } from './config';
+import { CONTRACT_MANAGEMENT_CONFIG, handleAuthError } from './config';
 
 class ContractManagementDashboardService {
   private static instance: ContractManagementDashboardService;
@@ -45,6 +45,15 @@ class ContractManagementDashboardService {
         headers: this.getAuthHeaders(),
         credentials: 'include'
       });
+
+      // Handle authentication errors
+      if (response.status === 401) {
+        handleAuthError(response);
+        return {
+          success: false,
+          error: 'Authentication required'
+        };
+      }
 
       const data = await response.json();
 
