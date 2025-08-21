@@ -456,15 +456,15 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   }, [taskId, router, toast]);
   
   
-  // Refactored: Fetch all tasks and filter for the current task and its subtree
+  // Simplified: Fetch sub-tasks without problematic caching to prevent infinite loops
   const refreshSubTasks = async () => {
     try {
       setIsRefreshingSubTasks(true);
-      log('Refreshing sub-tasks using main task list API');
+      log('Refreshing sub-tasks using simple approach');
 
-      // Fetch fresh data from the API
+      // Fetch all tasks once and filter locally
       const allTasks = await projlyTasksService.getTasks();
-      log('Fetched all tasks for subtask refresh', allTasks);
+      log('Fetched all tasks for subtask filtering', { count: allTasks.length });
 
       // Build a recursive function to get all descendants
       const getAllDescendants = (parentId: string, tasks: ProjlyTaskData[]): ProjlyTaskData[] => {
@@ -482,11 +482,10 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
 
       // Get all nested sub-tasks (full hierarchy)
       const subtree = getAllDescendants(taskId, allTasks);
-      log('Filtered nested subtree for current task', subtree);
+      log('Filtered subtask hierarchy', { count: subtree.length, taskId });
 
-      // Directly update state with a deep copy for React change detection
-      const subtreeCopy = JSON.parse(JSON.stringify(subtree));
-      setSubTasks(subtreeCopy as ProjlyTaskData[]);
+      // Update state with the fetched sub-tasks
+      setSubTasks(subtree as ProjlyTaskData[]);
     } catch (error) {
       console.error(`[PROJLY:TASK_DETAILS] Error refreshing sub-tasks:`, error);
       toast({
