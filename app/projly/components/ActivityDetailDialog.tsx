@@ -107,7 +107,7 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
   };
 
   const renderFieldChange = (fieldName: string, change: any) => {
-    if (typeof change === 'object' && change.old !== undefined && change.new !== undefined) {
+    if (typeof change === 'object' && change !== null && change.old !== undefined && change.new !== undefined) {
       // Handle description field with HTML content
       if (fieldName === 'description') {
         return (
