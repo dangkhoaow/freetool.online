@@ -29,6 +29,11 @@ interface ActivityDetail {
     email: string;
   };
   entityDetails: any;
+  lookupData?: {
+    users?: Record<string, { id: string; firstName: string; lastName: string; email: string }>;
+    projects?: Record<string, { id: string; name: string }>;
+    tasks?: Record<string, { id: string; title: string }>;
+  };
 }
 
 // Fix timezone offset using user's profile timezone preference
@@ -106,6 +111,116 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
       .trim();
   };
 
+  const getStatusBadgeProps = (status: string) => {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let customClass = "";
+    
+    switch (status) {
+      case "Completed":
+        variant = "default";
+        customClass = "bg-green-600 text-white hover:bg-green-700 border-green-600";
+        break;
+      case "In Progress":
+        variant = "secondary";
+        customClass = "bg-blue-600 text-white hover:bg-blue-700 border-blue-600";
+        break;
+      case "In Review":
+        variant = "outline";
+        customClass = "bg-purple-500 text-white hover:bg-purple-600 border-purple-500";
+        break;
+      case "Golive":
+        variant = "default";
+        customClass = "bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500";
+        break;
+      case "Not Started":
+        variant = "outline";
+        customClass = "bg-gray-500 text-white hover:bg-gray-600 border-gray-500";
+        break;
+      case "On Hold":
+        variant = "outline";
+        customClass = "bg-orange-500 text-white hover:bg-orange-600 border-orange-500";
+        break;
+      case "Pending":
+        variant = "destructive";
+        customClass = "bg-amber-500 text-white hover:bg-amber-600 border-amber-500";
+        break;
+      case "Cancelled":
+        variant = "destructive";
+        customClass = "bg-red-500 text-white hover:bg-red-600 border-red-500";
+        break;
+      default:
+        variant = "outline";
+        customClass = "bg-gray-400 text-white hover:bg-gray-500 border-gray-400";
+    }
+    
+    return { variant, customClass };
+  };
+
+  const getReadableValue = (fieldName: string, value: any): string => {
+    if (!value) return 'Empty';
+    
+    // Handle specific field mappings to human-readable names
+    switch (fieldName) {
+      case 'projectId':
+        // First try lookup data, then fallback to entity details
+        if (activity?.lookupData?.projects?.[value]) {
+          return activity.lookupData.projects[value].name;
+        }
+        if (activity?.entityDetails?.project?.name && activity.entityDetails.project.id === value) {
+          return activity.entityDetails.project.name;
+        }
+        break;
+      case 'assigneeId':
+        // First try lookup data, then fallback to entity details
+        if (activity?.lookupData?.users?.[value]) {
+          const user = activity.lookupData.users[value];
+          return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+        }
+        if (activity?.entityDetails?.assignee && activity.entityDetails.assignee.id === value) {
+          const assignee = activity.entityDetails.assignee;
+          return `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email;
+        }
+        break;
+      case 'parentTaskId':
+        // Use lookup data for parent task names
+        if (activity?.lookupData?.tasks?.[value]) {
+          return activity.lookupData.tasks[value].title;
+        }
+        if (activity?.entityDetails?.parentTask && activity.entityDetails.parentTask.id === value) {
+          return activity.entityDetails.parentTask.title;
+        }
+        // Fallback to shortened ID format
+        if (typeof value === 'string' && value.length > 20) {
+          return `Parent Task (${value.substring(0, 8)}...)`;
+        }
+        break;
+      case 'status':
+        return value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+      case 'priority':
+        return value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+      case 'dueDate':
+      case 'startDate':
+      case 'endDate':
+        // Format date fields as DD/MM/YYYY
+        if (typeof value === 'string' && (value.includes('T') || value.includes('-'))) {
+          try {
+            const date = new Date(value);
+            return format(date, 'dd/MM/yyyy');
+          } catch (error) {
+            return String(value);
+          }
+        }
+        break;
+    }
+    
+    // For UUID-like strings, show a shortened version
+    if (typeof value === 'string' && value.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      return `ID: ${value.substring(0, 8)}...`;
+    }
+    
+    return String(value);
+  };
+
   const renderFieldChange = (fieldName: string, change: any) => {
     if (typeof change === 'object' && change !== null && change.old !== undefined && change.new !== undefined) {
       // Handle description field with HTML content
@@ -153,11 +268,11 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="px-2 py-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded">
-              {change.old || 'Empty'}
+              {getReadableValue(fieldName, change.old)}
             </span>
             <ArrowRight className="h-4 w-4 text-gray-500" />
             <span className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded">
-              {change.new || 'Empty'}
+              {getReadableValue(fieldName, change.new)}
             </span>
           </div>
         </div>
@@ -167,7 +282,7 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
     return (
       <div key={fieldName} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
         <span className="font-medium text-sm">{formatFieldName(fieldName)}:</span>
-        <span className="text-sm">{JSON.stringify(change)}</span>
+        <span className="text-sm">{getReadableValue(fieldName, change)}</span>
       </div>
     );
   };
@@ -191,7 +306,10 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
             </div>
             <div className="flex justify-between">
               <span className="font-medium text-xs">Status:</span>
-              <Badge variant="outline" className="text-xs h-5">{activity.entityDetails.status}</Badge>
+              {(() => {
+                const { variant, customClass } = getStatusBadgeProps(activity.entityDetails.status);
+                return <Badge variant={variant} className={`text-xs h-5 ${customClass}`}>{activity.entityDetails.status}</Badge>;
+              })()}
             </div>
             <div className="flex justify-between">
               <span className="font-medium text-xs">Priority:</span>
@@ -306,7 +424,7 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                   <Clock className="h-4 w-4" />
-                  {format(fixTimezone(activity.createdAt, profile?.timezone || 7), 'MMM dd, yyyy HH:mm:ss')}
+                  {format(fixTimezone(activity.createdAt, profile?.timezone || 7), 'dd/MM/yyyy')}
                 </div>
               </div>
             </div>

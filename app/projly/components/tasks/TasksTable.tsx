@@ -18,6 +18,7 @@ import {
   Trash,
   Plus,
   ExternalLink,
+  Maximize2,
   Calendar,
   CheckCircle,
   Clock,
@@ -1124,14 +1125,26 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                         subtaskCount={taskRelationships.get(task.id)?.length || 0}
                       />
                     </div>
-                    {/* Detail icon - appears on hover */}
+                    {/* Full task detail in new tab icon - appears on hover */}
                     <button
                       type="button"
-                      title="Quick edit"
-                      className="ml-2 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-2 rounded-md"
+                      title="Open full task detail in new tab"
+                      className="ml-2 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-1 rounded-sm"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        window.open(`/projly/tasks/${task.id}`, '_blank');
+                      }}
+                    >
+                      <Maximize2 className="h-3 w-3" />
+                    </button>
+                    {/* Quick view detail icon - appears on hover */}
+                    <button
+                      type="button"
+                      title="Quick view task detail"
+                      className="ml-1 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-1 rounded-sm"
                       onClick={(e) => { e.stopPropagation(); openTaskDetailDialog(task.id); }}
                     >
-                      <ExternalLink className="h-4 w-4" />
+                      <ExternalLink className="h-3 w-3" />
                     </button>
                   </div>
                 </TableCell>
@@ -1195,6 +1208,9 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => window.open(`/projly/tasks/${task.id}`, '_blank')}>
+                        <Maximize2 className="mr-2 h-4 w-4" /> Open in new tab
+                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => openTaskDetailDialog(task.id)}>
                         <ExternalLink className="mr-2 h-4 w-4" /> View Details
                       </DropdownMenuItem>

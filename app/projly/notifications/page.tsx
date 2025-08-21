@@ -698,20 +698,36 @@ export default function NotificationsPage() {
                             Previous
                           </Button>
                           <div className="flex items-center space-x-1">
-                            {Array.from({ length: Math.min(5, activityPagination.totalPages) }, (_, i) => {
-                              const pageNum = i + 1;
-                              return (
+                            {(() => {
+                              const currentPage = activityPagination.page;
+                              const totalPages = activityPagination.totalPages;
+                              const maxVisiblePages = 5;
+                              
+                              let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                              let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                              
+                              // Adjust start page if we're near the end
+                              if (endPage - startPage + 1 < maxVisiblePages) {
+                                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                              }
+                              
+                              const pages = [];
+                              for (let i = startPage; i <= endPage; i++) {
+                                pages.push(i);
+                              }
+                              
+                              return pages.map(pageNum => (
                                 <Button
                                   key={pageNum}
-                                  variant={pageNum === activityPagination.page ? "default" : "outline"}
+                                  variant={pageNum === currentPage ? "default" : "outline"}
                                   size="sm"
                                   onClick={() => setActivityPage(pageNum)}
                                   className="w-8 h-8 p-0"
                                 >
                                   {pageNum}
                                 </Button>
-                              );
-                            })}
+                              ));
+                            })()}
                           </div>
                           <Button
                             variant="outline"
