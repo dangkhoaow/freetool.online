@@ -55,6 +55,11 @@ export default function ContractExport() {
   const [importError, setImportError] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importFormat, setImportFormat] = useState<'csv' | 'json'>('csv');
+  
+  // Delete all states
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [deleteAllResult, setDeleteAllResult] = useState<any>(null);
+  const [deleteAllError, setDeleteAllError] = useState('');
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
@@ -84,6 +89,45 @@ export default function ContractExport() {
 
     loadCompanyNames();
   }, []);
+
+  const handleDeleteAll = async () => {
+    if (!confirm('Are you sure you want to delete all your contracts? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeletingAll(true);
+    setDeleteAllError('');
+    setDeleteAllResult(null);
+
+    try {
+      console.log('[ContractDeleteAll] Starting delete all contracts...');
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contract-management/contracts`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('contractManagementToken')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      const result = await response.json();
+      console.log('[ContractDeleteAll] Delete all response:', result);
+
+      if (response.ok && result.success) {
+        setDeleteAllResult(result.data);
+        // Clear any previous import results since we've deleted everything
+        setImportResult(null);
+      } else {
+        setDeleteAllError(result.message || 'Failed to delete all contracts');
+      }
+    } catch (error) {
+      console.error('[ContractDeleteAll] Delete all error:', error);
+      setDeleteAllError('Error occurred while deleting contracts');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
 
   const handleImport = async () => {
     if (!selectedFile) {
@@ -671,24 +715,47 @@ export default function ContractExport() {
                 )}
               </div>
 
-              {/* Import Button */}
-              <Button
-                onClick={handleImport}
-                disabled={isImporting || !selectedFile}
-                className="w-full"
-              >
-                {isImporting ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>{t('import.importing')}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Upload className="h-4 w-4" />
-                    <span>{t('import.cta')}</span>
-                  </div>
-                )}
-              </Button>
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                {/* Delete All Button */}
+                <Button
+                  onClick={handleDeleteAll}
+                  disabled={isDeletingAll}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  {isDeletingAll ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Deleting All Contracts...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Delete All Contracts</span>
+                    </div>
+                  )}
+                </Button>
+
+                {/* Import Button */}
+                <Button
+                  onClick={handleImport}
+                  disabled={isImporting || !selectedFile}
+                  className="w-full"
+                >
+                  {isImporting ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>{t('import.importing')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Upload className="h-4 w-4" />
+                      <span>{t('import.cta')}</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
 
               {/* Import Guidelines */}
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-2 mt-4">
@@ -711,6 +778,28 @@ export default function ContractExport() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Delete All Status Messages */}
+          {deleteAllError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{deleteAllError}</AlertDescription>
+            </Alert>
+          )}
+
+          {deleteAllResult && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <div className="space-y-2">
+                  <p className="font-medium">All Contracts Deleted Successfully</p>
+                  <div className="text-sm">
+                    <div>Deleted {deleteAllResult.deletedCount} contract(s)</div>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Import Status Messages */}
           {importError && (

@@ -17,7 +17,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TasksTable } from '@/app/projly/components/tasks/TasksTable';
@@ -135,6 +135,67 @@ export function TasksHubContainer() {
   // Track if this is the initial load to control loading indicator
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   
+  // Router + URL params
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [didInitFromUrl, setDidInitFromUrl] = useState(false);
+  
+  // Helpers: parse filters from URL and build URL from filters
+  const parseFiltersFromUrl = useCallback((): Partial<HubFilters> => {
+    const params = searchParams;
+    if (!params) return {};
+    const getList = (key: string): string[] | undefined => {
+      const raw = params.get(key);
+      if (!raw) return undefined;
+      const arr = raw.split(',').map(s => s.trim()).filter(Boolean);
+      return arr.length ? arr : undefined;
+    };
+    const parsed: Partial<HubFilters> = {};
+    const q = params.get('q') || undefined;
+    const status = params.get('status') || undefined;
+    const projectId = params.get('projectId') || undefined;
+    const assignedTo = params.get('assignedTo') || undefined;
+    const label = params.get('label') || undefined;
+    const parentOnly = params.get('parentOnly');
+    const includeSubTasks = params.get('includeSubTasks');
+    const page = params.get('page');
+    const pageSize = params.get('pageSize');
+    const hideParent = getList('hideParentStatuses');
+    const hideChild = getList('hideChildStatuses');
+    if (q) parsed.q = q;
+    if (status && status !== 'all') parsed.status = status;
+    if (projectId && projectId !== 'all') parsed.projectId = projectId;
+    if (assignedTo && assignedTo !== 'all') parsed.assignedTo = assignedTo;
+    if (label && label !== 'all') parsed.label = label;
+    if (parentOnly != null) parsed.parentOnly = parentOnly === '1' || parentOnly === 'true';
+    if (includeSubTasks != null) parsed.includeSubTasks = includeSubTasks === '1' || includeSubTasks === 'true';
+    if (page) parsed.page = Number(page) || 1;
+    if (pageSize) parsed.pageSize = Number(pageSize) || 50;
+    if (hideParent) parsed.hideParentTasksByStatus = hideParent;
+    if (hideChild) parsed.hideChildTasksByStatus = hideChild;
+    return parsed;
+  }, [searchParams]);
+  
+  const buildUrlFromFilters = useCallback((f: HubFilters, currentView: 'list' | 'board') => {
+    const params = new URLSearchParams();
+    if (f.q) params.set('q', f.q);
+    if (f.status) params.set('status', f.status);
+    if (f.projectId) params.set('projectId', f.projectId);
+    if (f.assignedTo) params.set('assignedTo', f.assignedTo);
+    if (f.label) params.set('label', f.label);
+    if (typeof f.parentOnly === 'boolean') params.set('parentOnly', f.parentOnly ? '1' : '0');
+    if (typeof f.includeSubTasks === 'boolean') params.set('includeSubTasks', f.includeSubTasks ? '1' : '0');
+    if (f.hideParentTasksByStatus && f.hideParentTasksByStatus.length)
+      params.set('hideParentStatuses', f.hideParentTasksByStatus.join(','));
+    if (f.hideChildTasksByStatus && f.hideChildTasksByStatus.length)
+      params.set('hideChildStatuses', f.hideChildTasksByStatus.join(','));
+    if (f.page) params.set('page', String(f.page));
+    if (f.pageSize) params.set('pageSize', String(f.pageSize));
+    if (currentView) params.set('view', currentView);
+    return `${pathname}?${params.toString()}`;
+  }, [pathname]);
+  
   // React Query for server-side data fetching with caching
   const {
     data: serverResponse,
@@ -157,6 +218,27 @@ export function TasksHubContainer() {
       setHasInitiallyLoaded(true);
     }
   }, [serverResponse, hasInitiallyLoaded]);
+
+  // Initialize filters and view from URL on first render, and react to URL changes (back/forward)
+  useEffect(() => {
+    const parsed = parseFiltersFromUrl();
+    const urlView = searchParams?.get('view');
+    if (!didInitFromUrl) {
+      // First-time init
+      setFilters(prev => ({
+        ...prev,
+        ...parsed,
+      }));
+      if (parsed.q) setSearchInput(parsed.q);
+      if (urlView === 'list' || urlView === 'board') setViewMode(urlView);
+      setDidInitFromUrl(true);
+      return;
+    }
+    // Subsequent URL changes (e.g., browser navigation) should update state
+    setFilters(prev => ({ ...prev, ...parsed }));
+    if (parsed.q !== undefined) setSearchInput(parsed.q || '');
+    if (urlView === 'list' || urlView === 'board') setViewMode(urlView);
+  }, [parseFiltersFromUrl, searchParams, didInitFromUrl]);
   
   // Extract tasks and pagination meta from server response
   const tasks = serverResponse?.tasks || [];
@@ -285,6 +367,9 @@ export function TasksHubContainer() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('projly_tasks_hub_view_mode', value);
       }
+      // Update URL view param
+      const url = buildUrlFromFilters(filters, value);
+      router.replace(url, { scroll: false });
     }
   };
   
@@ -395,6 +480,17 @@ export function TasksHubContainer() {
       page: 1 // Reset to first page
     }));
   };
+
+  // Sync filters to URL whenever they change (after initial URL -> state sync)
+  useEffect(() => {
+    if (!didInitFromUrl) return; // wait until initial URL load applied
+    const url = buildUrlFromFilters(filters, viewMode);
+    // Avoid redundant replace if URL already matches
+    const current = `${pathname}?${searchParams?.toString() || ''}`;
+    if (current !== url) {
+      router.replace(url, { scroll: false });
+    }
+  }, [filters, viewMode, didInitFromUrl, buildUrlFromFilters, pathname, router, searchParams]);
   
   // React Query client for cache invalidation
   const queryClient = useQueryClient();
@@ -409,7 +505,7 @@ export function TasksHubContainer() {
   }, [queryClient, refetch]);
   
   // Router for navigation
-  const router = useRouter();
+  // (router defined above with URL params)
   
   // Handle adding a new task
   const handleAddTask = () => {

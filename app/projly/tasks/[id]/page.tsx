@@ -109,6 +109,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(true);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
@@ -448,6 +449,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
         });
       } finally {
         setIsLoading(false);
+        setHasInitiallyLoaded(true);
         log('Page initialization completed');
       }
     };
@@ -729,7 +731,16 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
               <CardDescription>View task information</CardDescription>
             </CardHeader>
             <CardContent>
-              {isEditMode && inDialogMode ? (
+              {isLoading && !hasInitiallyLoaded ? (
+                <div className="flex items-center justify-center py-8">
+                  <PageLoading 
+                    standalone={true} 
+                    height="200px" 
+                    size={6} 
+                    logContext="PROJLY:TASK_DETAILS:Loading"
+                  />
+                </div>
+              ) : isEditMode && inDialogMode ? (
                 <TaskEditFormInline 
                   taskData={editFormData}
                   onSave={handleSaveEdit}
