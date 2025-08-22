@@ -54,7 +54,7 @@ async function projlyFetch(endpoint: string, options: RequestInit = {}): Promise
 }
 
 // Add debugging logs to track initialization
-console.log('[NOTIFICATIONS] Loading notifications hook');
+//console.log('[NOTIFICATIONS] Loading notifications hook');
 
 export interface Notification {
   id: string;
@@ -74,17 +74,17 @@ export function useNotifications(limit?: number) {
   const queryClient = useQueryClient();
   
   // Add detailed logging to show user authentication state
-  console.log('[NOTIFICATIONS] Auth user data:', user ? `User ID: ${user?.id}` : 'Not authenticated');
-  console.log('[NOTIFICATIONS] Limit parameter:', limit);
+  //console.log('[NOTIFICATIONS] Auth user data:', user ? `User ID: ${user?.id}` : 'Not authenticated');
+  //console.log('[NOTIFICATIONS] Limit parameter:', limit);
   
   // Fetch notifications from the backend
   const { data: fetchedNotifications = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['notifications', limit], // Include limit in query key for proper caching
     queryFn: async () => {
-      console.log('[NOTIFICATIONS] Fetching notifications from backend with limit:', limit);
+      //console.log('[NOTIFICATIONS] Fetching notifications from backend with limit:', limit);
       
       if (!user) {
-        console.log('[NOTIFICATIONS] No user, returning empty array');
+        //console.log('[NOTIFICATIONS] No user, returning empty array');
         return [];
       }
       
@@ -125,10 +125,10 @@ export function useNotifications(limit?: number) {
     const correctedDate = new Date(utcDate);
     correctedDate.setHours(correctedDate.getHours() - 7); // Subtract 7 hours to fix the timezone issue
     
-    console.log('[NOTIFICATIONS] Original date from server:', notification.createdAt, 
-      '→ UTC interpreted date:', utcDate.toLocaleString(), 
-      '→ Corrected local date:', correctedDate.toLocaleString(),
-      '→ Current time:', new Date().toLocaleString());
+    //console.log('[NOTIFICATIONS] Original date from server:', notification.createdAt, 
+    //  '→ UTC interpreted date:', utcDate.toLocaleString(), 
+    //  '→ Corrected local date:', correctedDate.toLocaleString(),
+    //  '→ Current time:', new Date().toLocaleString());
     
     return {
       ...notification,
@@ -143,7 +143,7 @@ export function useNotifications(limit?: number) {
   // Mark a single notification as read
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log('[NOTIFICATIONS] Marking notification as read:', id);
+      //console.log('[NOTIFICATIONS] Marking notification as read:', id);
       try {
         const response = await projlyFetch(`/api/projly/notifications/${id}/read`, {
           method: 'PUT'
@@ -156,7 +156,7 @@ export function useNotifications(limit?: number) {
         }
         
         const data = await response.json();
-        console.log('[NOTIFICATIONS] Successfully marked notification as read:', id);
+        //console.log('[NOTIFICATIONS] Successfully marked notification as read:', id);
         return data;
       } catch (error) {
         console.error('[NOTIFICATIONS] Error in mark as read:', error);
@@ -172,7 +172,7 @@ export function useNotifications(limit?: number) {
   // Mark all notifications as read
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      console.log('[NOTIFICATIONS] Marking all notifications as read');
+      //console.log('[NOTIFICATIONS] Marking all notifications as read');
       try {
         const response = await projlyFetch('/api/projly/notifications/read', {
           method: 'PUT'
@@ -210,7 +210,7 @@ export function useNotifications(limit?: number) {
   // Refetch notifications when navigating between pages
   useEffect(() => {
     const handleRouteChange = () => {
-      console.log('[NOTIFICATIONS] Route changed, refetching notifications');
+      //console.log('[NOTIFICATIONS] Route changed, refetching notifications');
       refetch();
     };
     

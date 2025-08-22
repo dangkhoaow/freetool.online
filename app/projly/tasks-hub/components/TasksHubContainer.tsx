@@ -94,6 +94,14 @@ interface HubFilters {
   sort?: string;
 }
 
+// Interface for pagination metadata
+interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export function TasksHubContainer() {
   // Get current user from AuthContext
   const { user } = useAuth();
@@ -110,6 +118,10 @@ export function TasksHubContainer() {
   
   // Additional state for UI
   const [availableLabels, setAvailableLabels] = useState<string[]>([]);
+  
+  // Local state for assignee popover to prevent uncontrollable behavior during refetches
+  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
+  const [localAssigneeSelection, setLocalAssigneeSelection] = useState<string[]>([]);
   
   const [searchInput, setSearchInput] = useState<string>('');
   const [isAddTaskOpen, setIsAddTaskOpen] = useState<boolean>(false);
@@ -211,7 +223,7 @@ export function TasksHubContainer() {
     refetch
   } = useQuery({
     queryKey: ['tasks-hub', filters],
-    queryFn: () => tasksHubService.getTasks(filters),
+    queryFn: () => tasksHubService.getTasks(filters as any), // Service expects flexible object
     staleTime: 1 * 60 * 1000, // 1 minute - data won't refetch until stale
     gcTime: 5 * 60 * 1000, // 5 minutes cache time
   });
@@ -249,7 +261,7 @@ export function TasksHubContainer() {
   
   // Extract tasks and pagination meta from server response
   const tasks = serverResponse?.tasks || [];
-  const meta = serverResponse?.meta || { page: 1, pageSize: 50, total: 0, totalPages: 0 };
+  const meta: PaginationMeta = (serverResponse?.meta as PaginationMeta) || { page: 1, pageSize: 50, total: 0, totalPages: 0 };
   
   // React Query for projects data with caching
   const { data: projects = [] } = useQuery({
@@ -270,32 +282,40 @@ export function TasksHubContainer() {
   });
 
   // React Query for labels data with caching
-  const { data: labelsData } = useQuery({
-    queryKey: ['labels'],
+  const { data: labelsData, error: labelsError, isLoading: labelsLoading } = useQuery({
+    queryKey: ['labels', user?.id],
     queryFn: async () => {
       log('Loading labels for filter dropdown via React Query');
       try {
         const labels = await tasksHubService.getLabels();
-        log(`Loaded ${labels.length} labels for filter`);
-        return labels;
+        log(`Loaded ${labels?.length || 0} labels for filter:`, labels);
+        return Array.isArray(labels) ? labels : [];
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load labels';
         log('Error loading labels:', errorMessage);
+        console.error('[TasksHubContainer] Labels fetch error:', err);
         return [];
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    retry: 2
   });
   
   // Set available labels from React Query
   useEffect(() => {
     if (Array.isArray(labelsData)) {
+      log(`Setting available labels from React Query:`, labelsData);
       setAvailableLabels(labelsData);
     } else {
+      log('No labels data or invalid format, setting empty array:', labelsData);
       setAvailableLabels([]);
     }
-  }, [labelsData]);
+    
+    if (labelsError) {
+      log('Labels query error:', labelsError);
+    }
+  }, [labelsData, labelsError]);
   
   // Get unique values for filter dropdowns - use all possible statuses to prevent disappearing checkboxes
   const uniqueStatuses = useMemo(() => {
@@ -410,38 +430,71 @@ export function TasksHubContainer() {
     }));
   };
 
+  // Initialize local assignee selection from filters
+  useEffect(() => {
+    const currentAssignees = Array.isArray(filters.assignedTo) 
+      ? filters.assignedTo 
+      : filters.assignedTo 
+        ? [filters.assignedTo] 
+        : [];
+    setLocalAssigneeSelection(currentAssignees);
+  }, [filters.assignedTo]);
+
   const handleAssigneeFilterChange = useCallback((value: string | string[]) => {
+    console.log('[TasksHubContainer] DEBUG: handleAssigneeFilterChange called with:', value);
+    console.log('[TasksHubContainer] DEBUG: Current assignedTo filter:', filters.assignedTo);
+    
     let assignedToValue: string | string[] | undefined;
     
     if (Array.isArray(value)) {
-      // Multi-select array
-      assignedToValue = value.length === 0 ? undefined : value;
+      // Multi-select array - filter out empty values
+      const cleanedValue = value.filter(v => v && v.trim() !== '');
+      assignedToValue = cleanedValue.length === 0 ? undefined : cleanedValue;
+      console.log('[TasksHubContainer] DEBUG: Array input processed to:', assignedToValue);
+      
+      // Update local state immediately for UI responsiveness
+      setLocalAssigneeSelection(cleanedValue);
     } else {
       // Single value from select
-      if (value === 'all') {
+      if (value === 'all' || value === '' || !value) {
         assignedToValue = undefined;
+        setLocalAssigneeSelection([]);
+        console.log('[TasksHubContainer] DEBUG: Clearing filter (all/empty)');
       } else {
         // Always work with arrays for multi-selection
-        const currentValues = Array.isArray(filters.assignedTo) ? filters.assignedTo : 
-                              (filters.assignedTo ? [filters.assignedTo] : []);
+        const currentValues = localAssigneeSelection.length > 0 
+          ? localAssigneeSelection
+          : (Array.isArray(filters.assignedTo) 
+              ? filters.assignedTo 
+              : (filters.assignedTo ? [filters.assignedTo] : []));
         
         if (currentValues.includes(value)) {
           // Remove from selection
-          assignedToValue = currentValues.filter(v => v !== value);
-          if (assignedToValue.length === 0) assignedToValue = undefined;
+          const newValues = currentValues.filter(v => v !== value);
+          assignedToValue = newValues.length === 0 ? undefined : newValues;
+          setLocalAssigneeSelection(newValues);
+          console.log('[TasksHubContainer] DEBUG: Removed from selection, new value:', assignedToValue);
         } else {
           // Add to selection
-          assignedToValue = [...currentValues, value];
+          const newValues = [...currentValues, value];
+          assignedToValue = newValues;
+          setLocalAssigneeSelection(newValues);
+          console.log('[TasksHubContainer] DEBUG: Added to selection, new value:', assignedToValue);
         }
       }
     }
     
-    setFilters(prev => ({
-      ...prev,
-      assignedTo: assignedToValue,
-      page: 1 // reset page when filter changes
-    }));
-  }, [filters.assignedTo]);
+    console.log('[TasksHubContainer] DEBUG: Final assignedTo value:', assignedToValue);
+    
+    // Debounce the actual filter update to prevent too frequent refetches
+    setTimeout(() => {
+      setFilters(prev => ({
+        ...prev,
+        assignedTo: assignedToValue,
+        page: 1 // reset page when filter changes
+      }));
+    }, 100); // Small delay to batch rapid changes
+  }, [filters.assignedTo, localAssigneeSelection]);
 
   const handleTaskHierarchyFilterChange = (value: string) => {
     log('Task hierarchy filter changed:', value);
@@ -576,12 +629,8 @@ export function TasksHubContainer() {
     setIsAddTaskOpen(true);
   };
 
-  // Handle task row click to open detail dialog
-  const handleTaskClick = (task: Task) => {
-    log('Opening task detail dialog for:', task.id);
-    setSelectedTaskId(task.id);
-    setIsTaskDetailOpen(true);
-  };
+  // Note: Task click handling is done internally by TasksTable and TasksBoard components
+  // The TaskDetailDialogHub is rendered separately for specialized task detail functionality
   
   // Context-specific title
   const getTitle = () => {
@@ -706,15 +755,27 @@ export function TasksHubContainer() {
                       <label className="text-sm font-medium">Label</label>
                       <Select value={filters.label || 'all'} onValueChange={handleLabelFilterChange}>
                         <SelectTrigger>
-                          <SelectValue placeholder="All Labels" />
+                          <SelectValue placeholder={labelsLoading ? "Loading labels..." : "All Labels"} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Labels</SelectItem>
-                          {Array.isArray(availableLabels) && availableLabels.map(label => (
-                            <SelectItem key={label} value={label}>
-                              {label}
+                          {labelsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Loading labels...
                             </SelectItem>
-                          ))}
+                          ) : (
+                            // Use availableLabels from React Query, fallback to uniqueLabels from current tasks if needed
+                            (availableLabels.length > 0 ? availableLabels : uniqueLabels).map(label => (
+                              <SelectItem key={label} value={label}>
+                                {label}
+                              </SelectItem>
+                            ))
+                          )}
+                          {labelsError && (
+                            <SelectItem value="error" disabled className="text-red-500">
+                              Error loading labels
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -723,18 +784,18 @@ export function TasksHubContainer() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Assigned To</label>
                       <div className="relative">
-                        <Popover>
+                        <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
                           <PopoverTrigger asChild>
                             <Button
                               variant="outline"
                               role="combobox"
                               className="w-full justify-between text-left font-normal"
                             >
-                              {!filters.assignedTo || (Array.isArray(filters.assignedTo) && filters.assignedTo.length === 0) ? (
+                              {localAssigneeSelection.length === 0 ? (
                                 'All Members'
-                              ) : Array.isArray(filters.assignedTo) ? (
+                              ) : (
                                 <div className="flex flex-wrap gap-1 max-w-full">
-                                  {filters.assignedTo.slice(0, 2).map(userId => {
+                                  {localAssigneeSelection.slice(0, 2).map(userId => {
                                     const user = availableMembers.find(u => u.id === userId) || 
                                                  uniqueUsers.find(u => u.id === userId);
                                     const displayName = userId === 'current' ? 'My Tasks' : (user?.name || userId);
@@ -745,9 +806,8 @@ export function TasksHubContainer() {
                                           onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            const currentAssignees = Array.isArray(filters.assignedTo) ? filters.assignedTo : [];
-                                            const newValues = currentAssignees.filter((id: string) => id !== userId);
-                                            handleAssigneeFilterChange(newValues.length === 0 ? undefined : newValues);
+                                            const newValues = localAssigneeSelection.filter((id: string) => id !== userId);
+                                            handleAssigneeFilterChange(newValues.length === 0 ? [] : newValues);
                                           }}
                                           className="ml-1 hover:text-blue-600"
                                         >
@@ -756,17 +816,12 @@ export function TasksHubContainer() {
                                       </span>
                                     );
                                   })}
-                                  {filters.assignedTo.length > 2 && (
+                                  {localAssigneeSelection.length > 2 && (
                                     <span className="text-xs text-muted-foreground">
-                                      +{filters.assignedTo.length - 2} more
+                                      +{localAssigneeSelection.length - 2} more
                                     </span>
                                   )}
                                 </div>
-                              ) : (
-                                filters.assignedTo === 'current' ? 'My Tasks' : 
-                                (availableMembers.find(u => u.id === filters.assignedTo)?.name || 
-                                 uniqueUsers.find(u => u.id === filters.assignedTo)?.name || 
-                                 filters.assignedTo)
                               )}
                               <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -780,40 +835,38 @@ export function TasksHubContainer() {
                                        handleAssigneeFilterChange([]);
                                      }}>
                                   <Checkbox
-                                    checked={!filters.assignedTo || (Array.isArray(filters.assignedTo) && filters.assignedTo.length === 0)}
+                                    checked={localAssigneeSelection.length === 0}
                                   />
                                   <span className="text-sm">All Members</span>
                                 </div>
                                 <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
                                      onClick={(e) => {
                                        e.stopPropagation();
-                                       const currentAssignees = Array.isArray(filters.assignedTo) ? filters.assignedTo : [];
-                                       if (currentAssignees.includes('current')) {
-                                         const newValues = currentAssignees.filter(id => id !== 'current');
+                                       if (localAssigneeSelection.includes('current')) {
+                                         const newValues = localAssigneeSelection.filter(id => id !== 'current');
                                          handleAssigneeFilterChange(newValues);
                                        } else {
-                                         handleAssigneeFilterChange([...currentAssignees, 'current']);
+                                         handleAssigneeFilterChange([...localAssigneeSelection, 'current']);
                                        }
                                      }}>
                                   <Checkbox
-                                    checked={Array.isArray(filters.assignedTo) && filters.assignedTo.includes('current')}
+                                    checked={localAssigneeSelection.includes('current')}
                                   />
                                   <span className="text-sm">My Tasks</span>
                                 </div>
                                 {(availableMembers.length > 0 ? availableMembers : uniqueUsers).map(user => {
-                                  const isSelected = Array.isArray(filters.assignedTo) && filters.assignedTo.includes(user.id);
+                                  const isSelected = localAssigneeSelection.includes(user.id);
                                   return (
                                     <div 
                                       key={user.id}
                                       className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        const currentAssignees = Array.isArray(filters.assignedTo) ? filters.assignedTo : [];
                                         if (isSelected) {
-                                          const newValues = currentAssignees.filter(id => id !== user.id);
-                                          handleAssigneeFilterChange(newValues.length === 0 ? undefined : newValues);
+                                          const newValues = localAssigneeSelection.filter(id => id !== user.id);
+                                          handleAssigneeFilterChange(newValues.length === 0 ? [] : newValues);
                                         } else {
-                                          handleAssigneeFilterChange([...currentAssignees, user.id]);
+                                          handleAssigneeFilterChange([...localAssigneeSelection, user.id]);
                                         }
                                       }}
                                     >
@@ -937,7 +990,6 @@ export function TasksHubContainer() {
                 compact={false}
                 context="main"
                 hideFilterUI={true}
-                onTaskClick={handleTaskClick}
               />
             ) : (
               <TasksBoard
@@ -946,7 +998,6 @@ export function TasksHubContainer() {
                 onOperationComplete={handleOperationComplete}
                 compact={false}
                 context="main"
-                onTaskClick={handleTaskClick}
               />
             )}
 
@@ -985,7 +1036,10 @@ export function TasksHubContainer() {
             open={isAddTaskOpen}
             onOpenChange={setIsAddTaskOpen}
             projectId=""
-            onTaskChange={handleOperationComplete}
+            onTaskChange={() => {
+              handleOperationComplete();
+              return Promise.resolve();
+            }}
           />
         )}
 
