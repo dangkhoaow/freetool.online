@@ -28,11 +28,13 @@ import { tasksHubService } from '@/lib/services/projly/tasks/hub/new-task-servic
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
-import { Filter, List, LayoutGrid, Search, Circle, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, List, LayoutGrid, Search, Circle, PlusCircle, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { projlyProjectsService } from '@/lib/services/projly';
 import { TaskFilters as TaskFiltersComponent } from '@/app/projly/components/tasks/TaskFilters';
@@ -81,7 +83,7 @@ interface HubFilters {
   q?: string; // search query
   status?: string;
   projectId?: string;
-  assignedTo?: string;
+  assignedTo?: string | string[];
   label?: string;
   parentOnly?: boolean;
   includeSubTasks?: boolean;
@@ -124,13 +126,9 @@ export function TasksHubContainer() {
   });
   
   // View mode state (list or board)
-  const [viewMode, setViewMode] = useState<'list' | 'board'>(() => {
-    if (typeof window !== 'undefined') {
-      const storedValue = localStorage.getItem('projly_tasks_hub_view_mode');
-      return (storedValue === 'board') ? 'board' : 'list';
-    }
-    return 'list';
-  });
+  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+  const [availableMembers, setAvailableMembers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   
   // Track if this is the initial load to control loading indicator
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
@@ -155,7 +153,13 @@ export function TasksHubContainer() {
     const q = params.get('q') || undefined;
     const status = params.get('status') || undefined;
     const projectId = params.get('projectId') || undefined;
-    const assignedTo = params.get('assignedTo') || undefined;
+    const assignedTo = params.get('assignedTo');
+    let assignedToParsed: string | string[] | undefined;
+    if (assignedTo) {
+      assignedToParsed = assignedTo.includes(',') 
+        ? assignedTo.split(',').map(s => s.trim()).filter(Boolean)
+        : assignedTo;
+    }
     const label = params.get('label') || undefined;
     const parentOnly = params.get('parentOnly');
     const includeSubTasks = params.get('includeSubTasks');
@@ -166,7 +170,7 @@ export function TasksHubContainer() {
     if (q) parsed.q = q;
     if (status && status !== 'all') parsed.status = status;
     if (projectId && projectId !== 'all') parsed.projectId = projectId;
-    if (assignedTo && assignedTo !== 'all') parsed.assignedTo = assignedTo;
+    if (assignedToParsed && assignedToParsed !== 'all') parsed.assignedTo = assignedToParsed;
     if (label && label !== 'all') parsed.label = label;
     if (parentOnly != null) parsed.parentOnly = parentOnly === '1' || parentOnly === 'true';
     if (includeSubTasks != null) parsed.includeSubTasks = includeSubTasks === '1' || includeSubTasks === 'true';
@@ -182,7 +186,10 @@ export function TasksHubContainer() {
     if (f.q) params.set('q', f.q);
     if (f.status) params.set('status', f.status);
     if (f.projectId) params.set('projectId', f.projectId);
-    if (f.assignedTo) params.set('assignedTo', f.assignedTo);
+    if (f.assignedTo) {
+      const assignedToStr = Array.isArray(f.assignedTo) ? f.assignedTo.join(',') : f.assignedTo;
+      params.set('assignedTo', assignedToStr);
+    }
     if (f.label) params.set('label', f.label);
     if (typeof f.parentOnly === 'boolean') params.set('parentOnly', f.parentOnly ? '1' : '0');
     if (typeof f.includeSubTasks === 'boolean') params.set('includeSubTasks', f.includeSubTasks ? '1' : '0');
@@ -283,8 +290,10 @@ export function TasksHubContainer() {
   
   // Set available labels from React Query
   useEffect(() => {
-    if (labelsData) {
+    if (Array.isArray(labelsData)) {
       setAvailableLabels(labelsData);
+    } else {
+      setAvailableLabels([]);
     }
   }, [labelsData]);
   
@@ -401,14 +410,38 @@ export function TasksHubContainer() {
     }));
   };
 
-  const handleAssigneeFilterChange = (value: string) => {
-    log('Assignee filter changed:', value);
+  const handleAssigneeFilterChange = useCallback((value: string | string[]) => {
+    let assignedToValue: string | string[] | undefined;
+    
+    if (Array.isArray(value)) {
+      // Multi-select array
+      assignedToValue = value.length === 0 ? undefined : value;
+    } else {
+      // Single value from select
+      if (value === 'all') {
+        assignedToValue = undefined;
+      } else {
+        // Always work with arrays for multi-selection
+        const currentValues = Array.isArray(filters.assignedTo) ? filters.assignedTo : 
+                              (filters.assignedTo ? [filters.assignedTo] : []);
+        
+        if (currentValues.includes(value)) {
+          // Remove from selection
+          assignedToValue = currentValues.filter(v => v !== value);
+          if (assignedToValue.length === 0) assignedToValue = undefined;
+        } else {
+          // Add to selection
+          assignedToValue = [...currentValues, value];
+        }
+      }
+    }
+    
     setFilters(prev => ({
       ...prev,
-      assignedTo: value === 'all' ? undefined : value,
-      page: 1
+      assignedTo: assignedToValue,
+      page: 1 // reset page when filter changes
     }));
-  };
+  }, [filters.assignedTo]);
 
   const handleTaskHierarchyFilterChange = (value: string) => {
     log('Task hierarchy filter changed:', value);
@@ -491,7 +524,37 @@ export function TasksHubContainer() {
       router.replace(url, { scroll: false });
     }
   }, [filters, viewMode, didInitFromUrl, buildUrlFromFilters, pathname, router, searchParams]);
-  
+
+  // Additional effect to sync URL with current filters/view when they change
+  useEffect(() => {
+    if (didInitFromUrl && hasInitiallyLoaded) {
+      const newUrl = buildUrlFromFilters(filters, viewMode);
+      if (newUrl !== `${pathname}${searchParams ? '?' + searchParams.toString() : ''}`) {
+        router.push(newUrl, { scroll: false });
+      }
+    }
+  }, [filters, viewMode, buildUrlFromFilters, router, pathname, searchParams, didInitFromUrl, hasInitiallyLoaded]);
+
+  // Fetch available members when component mounts
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const response = await tasksHubService.getMembers();
+        if (response && 'data' in response && Array.isArray(response.data)) {
+          setAvailableMembers(response.data);
+        } else if (Array.isArray(response)) {
+          setAvailableMembers(response);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+      }
+    };
+    
+    if (user) {
+      fetchMembers();
+    }
+  }, [user]);
+
   // React Query client for cache invalidation
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -647,7 +710,7 @@ export function TasksHubContainer() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Labels</SelectItem>
-                          {availableLabels.map(label => (
+                          {Array.isArray(availableLabels) && availableLabels.map(label => (
                             <SelectItem key={label} value={label}>
                               {label}
                             </SelectItem>
@@ -656,23 +719,114 @@ export function TasksHubContainer() {
                       </Select>
                     </div>
 
-                    {/* Assigned To Filter */}
+                    {/* Assigned To Filter - Multi-select */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Assigned To</label>
-                      <Select value={filters.assignedTo || 'all'} onValueChange={handleAssigneeFilterChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All Members" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Members</SelectItem>
-                          <SelectItem value="current">My Tasks</SelectItem>
-                          {uniqueUsers.map(user => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className="w-full justify-between text-left font-normal"
+                            >
+                              {!filters.assignedTo || (Array.isArray(filters.assignedTo) && filters.assignedTo.length === 0) ? (
+                                'All Members'
+                              ) : Array.isArray(filters.assignedTo) ? (
+                                <div className="flex flex-wrap gap-1 max-w-full">
+                                  {filters.assignedTo.slice(0, 2).map(userId => {
+                                    const user = availableMembers.find(u => u.id === userId) || 
+                                                 uniqueUsers.find(u => u.id === userId);
+                                    const displayName = userId === 'current' ? 'My Tasks' : (user?.name || userId);
+                                    return (
+                                      <span key={userId} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs">
+                                        {displayName}
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            const currentAssignees = Array.isArray(filters.assignedTo) ? filters.assignedTo : [];
+                                            const newValues = currentAssignees.filter((id: string) => id !== userId);
+                                            handleAssigneeFilterChange(newValues.length === 0 ? undefined : newValues);
+                                          }}
+                                          className="ml-1 hover:text-blue-600"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    );
+                                  })}
+                                  {filters.assignedTo.length > 2 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      +{filters.assignedTo.length - 2} more
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                filters.assignedTo === 'current' ? 'My Tasks' : 
+                                (availableMembers.find(u => u.id === filters.assignedTo)?.name || 
+                                 uniqueUsers.find(u => u.id === filters.assignedTo)?.name || 
+                                 filters.assignedTo)
+                              )}
+                              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <div className="max-h-60 overflow-y-auto">
+                              <div className="p-2">
+                                <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleAssigneeFilterChange([]);
+                                     }}>
+                                  <Checkbox
+                                    checked={!filters.assignedTo || (Array.isArray(filters.assignedTo) && filters.assignedTo.length === 0)}
+                                  />
+                                  <span className="text-sm">All Members</span>
+                                </div>
+                                <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       const currentAssignees = Array.isArray(filters.assignedTo) ? filters.assignedTo : [];
+                                       if (currentAssignees.includes('current')) {
+                                         const newValues = currentAssignees.filter(id => id !== 'current');
+                                         handleAssigneeFilterChange(newValues);
+                                       } else {
+                                         handleAssigneeFilterChange([...currentAssignees, 'current']);
+                                       }
+                                     }}>
+                                  <Checkbox
+                                    checked={Array.isArray(filters.assignedTo) && filters.assignedTo.includes('current')}
+                                  />
+                                  <span className="text-sm">My Tasks</span>
+                                </div>
+                                {(availableMembers.length > 0 ? availableMembers : uniqueUsers).map(user => {
+                                  const isSelected = Array.isArray(filters.assignedTo) && filters.assignedTo.includes(user.id);
+                                  return (
+                                    <div 
+                                      key={user.id}
+                                      className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const currentAssignees = Array.isArray(filters.assignedTo) ? filters.assignedTo : [];
+                                        if (isSelected) {
+                                          const newValues = currentAssignees.filter(id => id !== user.id);
+                                          handleAssigneeFilterChange(newValues.length === 0 ? undefined : newValues);
+                                        } else {
+                                          handleAssigneeFilterChange([...currentAssignees, user.id]);
+                                        }
+                                      }}
+                                    >
+                                      <Checkbox checked={isSelected} />
+                                      <span className="text-sm">{user.name}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
 
                     {/* Task Hierarchy Filter */}
