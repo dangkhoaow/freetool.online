@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Fragment } from "react";
+import React, { useState, useEffect, useRef, Fragment, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
@@ -453,7 +453,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     };
     
     initPage();
-  }, [taskId, router, toast]);
+  }, [taskId]);
   
   
   // Simplified: Fetch sub-tasks without problematic caching to prevent infinite loops
@@ -640,12 +640,12 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     direction: "asc"
   });
   
-  // Show loading state using the centralized PageLoading component
-  if (isLoading) {
-    log('Showing loading state');
-    return <PageLoading logContext="PROJLY:TASK_DETAILS" />;
-  }
-  
+  // Completely disable loading component
+  // if (isLoading) {
+  //   log('Showing loading state');
+  //   return <PageLoading logContext="PROJLY:TASK_DETAILS" />;
+  // }
+
   // Show task not found UI if the task doesn't exist
   if (taskNotFound) {
     log('Showing task not found UI');

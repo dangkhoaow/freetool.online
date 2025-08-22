@@ -228,12 +228,21 @@ export function TasksContainer({
   
   // Get unique statuses from tasks for status filter
   const uniqueStatuses = useMemo(() => {
-    const statuses = new Set<string>();
-    rawTasks.forEach(task => {
-      if (task.status) statuses.add(task.status);
-    });
-    return Array.from(statuses).sort();
-  }, [rawTasks]);
+    // Always include these common statuses to prevent checkboxes from disappearing
+    // Don't depend on current tasks to ensure all statuses are always available
+    const allPossibleStatuses = new Set<string>([
+      'Not Started',
+      'In Progress',
+      'In Review',
+      'Completed',
+      'Golive',
+      'On Hold',
+      'Pending',
+      'Cancelled'
+    ]);
+    
+    return Array.from(allPossibleStatuses).sort();
+  }, []); // Remove rawTasks dependency to always show all statuses
   
   // Get unique users from tasks for assignee filter
   const uniqueUsers = useMemo(() => {

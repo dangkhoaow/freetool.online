@@ -132,10 +132,13 @@ export function TasksHubContainer() {
     return 'list';
   });
   
+  // Track if this is the initial load to control loading indicator
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  
   // React Query for server-side data fetching with caching
   const {
     data: serverResponse,
-    isLoading,
+    isLoading: isQueryLoading,
     error,
     refetch
   } = useQuery({
@@ -144,6 +147,16 @@ export function TasksHubContainer() {
     staleTime: 1 * 60 * 1000, // 1 minute - data won't refetch until stale
     gcTime: 5 * 60 * 1000, // 5 minutes cache time
   });
+  
+  // Only show loading indicator on initial load, not on filter changes
+  const isLoading = isQueryLoading && !hasInitiallyLoaded;
+  
+  // Track when we've loaded data for the first time
+  useEffect(() => {
+    if (serverResponse && !hasInitiallyLoaded) {
+      setHasInitiallyLoaded(true);
+    }
+  }, [serverResponse, hasInitiallyLoaded]);
   
   // Extract tasks and pagination meta from server response
   const tasks = serverResponse?.tasks || [];
@@ -193,14 +206,23 @@ export function TasksHubContainer() {
     }
   }, [labelsData]);
   
-  // Get unique values for filter dropdowns from current tasks
+  // Get unique values for filter dropdowns - use all possible statuses to prevent disappearing checkboxes
   const uniqueStatuses = useMemo(() => {
-    const statuses = new Set<string>();
-    tasks.forEach(task => {
-      if (task.status) statuses.add(task.status);
-    });
-    return Array.from(statuses).sort();
-  }, [tasks]);
+    // Always include these common statuses to prevent checkboxes from disappearing
+    // Don't depend on current tasks to ensure all statuses are always available
+    const allPossibleStatuses = new Set<string>([
+      'Not Started',
+      'In Progress',
+      'In Review',
+      'Completed',
+      'Golive',
+      'On Hold',
+      'Pending',
+      'Cancelled'
+    ]);
+    
+    return Array.from(allPossibleStatuses).sort();
+  }, []); // Remove tasks dependency to always show all statuses
   
   const uniqueUsers = useMemo(() => {
     const users = new Map<string, any>();

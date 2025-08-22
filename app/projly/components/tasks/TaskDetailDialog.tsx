@@ -1,36 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
-import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { X, ExternalLink, Maximize2 } from "lucide-react";
+import { X, Maximize2 } from "lucide-react";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
-// Define the log prefix for consistent logging
-const LOG_PREFIX = "[PROJLY:TASK_DETAIL_DIALOG]";
-
-// Dynamically import the TaskDetailsPage component to avoid SSR issues
-// and to keep the bundle size manageable
+// Dynamically import the TaskDetailsPage component without loading component
 const TaskDetailsPage = dynamic(
-  () => import('@/app/projly/tasks/[id]/page').then(mod => {
-    console.log(`${LOG_PREFIX} TaskDetailsPage component loaded dynamically`);
-    return mod.default;
-  }),
-  { 
-    loading: () => (
-      <PageLoading 
-        standalone={true} 
-        height="300px" 
-        size={8} 
-        logContext="PROJLY:TASK_DETAIL_DIALOG:Loading"
-      />
-    ),
-    ssr: false 
-  }
+  () => import('@/app/projly/tasks/[id]/page').then(mod => mod.default),
+  { ssr: false }
 );
 
 interface TaskDetailDialogProps {
@@ -47,18 +29,21 @@ interface TaskDetailDialogProps {
  * in a popup dialog when a task is clicked in the ResourceTimelineView.
  */
 export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated }: TaskDetailDialogProps) {
-  // Add responsive state detection
+  // Memoize media query results to prevent unnecessary re-renders
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isTablet = useMediaQuery("(min-width: 769px) and (max-width: 1024px)");
   
-  // Log component rendering with device type
-  console.log(`${LOG_PREFIX} Rendering with taskId: ${taskId}, isOpen: ${isOpen}, isMobile: ${isMobile}, isTablet: ${isTablet}`);
+  // Memoize responsive classes to prevent recalculation
+  const responsiveClasses = useMemo(() => ({
+    contentClass: isMobile ? "p-2 w-full" : "p-4",
+    viewMode: isMobile ? "mobile" : isTablet ? "tablet" : "desktop",
+    containerClass: isMobile ? "p-1" : "p-2"
+  }), [isMobile, isTablet]);
 
-  // Handle dialog close
-  const handleClose = () => {
-    console.log(`${LOG_PREFIX} Dialog closed`);
+  // Handle dialog close - memoized to prevent recreation
+  const handleClose = React.useCallback(() => {
     onClose();
-  };
+  }, [onClose]);
 
   // Custom DialogContent without close button - with enhanced responsive behavior
   const CustomDialogContent = React.forwardRef<
@@ -119,22 +104,17 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated }: Tas
   return (
     <Dialog open={isOpen && !!taskId} onOpenChange={handleClose}>
       <CustomDialogContent 
-        // Adjust content padding and size based on device
         className={cn(
           "overflow-y-auto",
-          isMobile ? "p-2 w-full" : "p-4",
-          // Pass responsive info via data attributes for styling child components
-          isMobile ? "data-view-mode=mobile" : isTablet ? "data-view-mode=tablet" : "data-view-mode=desktop"
+          responsiveClasses.contentClass,
+          `data-view-mode=${responsiveClasses.viewMode}`
         )}
       >
         {/* Render the TaskDetailsPage component if we have a taskId */}
         {taskId && (
           <div className={cn(
-            "w-full", 
-            // Add responsive padding to the TaskDetailsPage container
-            isMobile ? "p-1" : "p-2",
-            // Add responsive classes for handling content overflow
-            "overflow-x-auto"
+            "w-full overflow-x-auto",
+            responsiveClasses.containerClass
           )}>
             <TaskDetailsPage 
               id={taskId} 
