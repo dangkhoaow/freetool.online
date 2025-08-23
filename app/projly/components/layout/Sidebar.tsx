@@ -73,8 +73,8 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
     
     const params = new URLSearchParams({
       assignedTo: userId,
-      exclude: 'Completed,Golive',
-      excludeChild: 'Completed,Golive'
+      hideParentStatuses: 'Completed,Golive',
+      hideChildStatuses: 'Completed,Golive'
     });
     
     return `/projly/tasks-hub?${params.toString()}`;

@@ -155,6 +155,13 @@ export function TasksHubContainer() {
   const parseFiltersFromUrl = useCallback((): Partial<HubFilters> => {
     const params = searchParams;
     if (!params) return {};
+    
+    // Debug: Log all URL parameters
+    log('Parsing filters from URL. All URL params:');
+    for (const [key, value] of params.entries()) {
+      log(`  ${key}: ${value}`);
+    }
+    
     const getList = (key: string): string[] | undefined => {
       const raw = params.get(key);
       if (!raw) return undefined;
@@ -177,6 +184,7 @@ export function TasksHubContainer() {
     const includeSubTasks = params.get('includeSubTasks');
     const page = params.get('page');
     const pageSize = params.get('pageSize');
+    const sort = params.get('sort');
     const hideParent = getList('hideParentStatuses');
     const hideChild = getList('hideChildStatuses');
     if (q) parsed.q = q;
@@ -188,8 +196,15 @@ export function TasksHubContainer() {
     if (includeSubTasks != null) parsed.includeSubTasks = includeSubTasks === '1' || includeSubTasks === 'true';
     if (page) parsed.page = Number(page) || 1;
     if (pageSize) parsed.pageSize = Number(pageSize) || 50;
+    if (sort) parsed.sort = sort;
     if (hideParent) parsed.hideParentTasksByStatus = hideParent;
     if (hideChild) parsed.hideChildTasksByStatus = hideChild;
+    
+    // Debug: Log parsed filters
+    log('Parsed filters from URL:', parsed);
+    log('hideParent from URL:', hideParent);
+    log('hideChild from URL:', hideChild);
+    
     return parsed;
   }, [searchParams]);
   
@@ -211,6 +226,7 @@ export function TasksHubContainer() {
       params.set('hideChildStatuses', f.hideChildTasksByStatus.join(','));
     if (f.page) params.set('page', String(f.page));
     if (f.pageSize) params.set('pageSize', String(f.pageSize));
+    if (f.sort) params.set('sort', f.sort);
     if (currentView) params.set('view', currentView);
     return `${pathname}?${params.toString()}`;
   }, [pathname]);
@@ -244,17 +260,27 @@ export function TasksHubContainer() {
     const urlView = searchParams?.get('view');
     if (!didInitFromUrl) {
       // First-time init
-      setFilters(prev => ({
-        ...prev,
-        ...parsed,
-      }));
+      log('First-time URL init. Parsed filters:', parsed);
+      setFilters(prev => {
+        const newFilters = {
+          ...prev,
+          ...parsed,
+        };
+        log('Setting initial filters:', newFilters);
+        return newFilters;
+      });
       if (parsed.q) setSearchInput(parsed.q);
       if (urlView === 'list' || urlView === 'board') setViewMode(urlView);
       setDidInitFromUrl(true);
       return;
     }
     // Subsequent URL changes (e.g., browser navigation) should update state
-    setFilters(prev => ({ ...prev, ...parsed }));
+    log('Subsequent URL change. Parsed filters:', parsed);
+    setFilters(prev => {
+      const newFilters = { ...prev, ...parsed };
+      log('Updating filters from URL:', newFilters);
+      return newFilters;
+    });
     if (parsed.q !== undefined) setSearchInput(parsed.q || '');
     if (urlView === 'list' || urlView === 'board') setViewMode(urlView);
   }, [parseFiltersFromUrl, searchParams, didInitFromUrl]);

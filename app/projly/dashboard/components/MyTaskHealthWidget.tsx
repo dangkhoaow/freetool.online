@@ -146,7 +146,7 @@ export function MyTaskHealthWidget() {
 
         {/* Action Button */}
         <div className="pt-2">
-          <Link href={`/projly/tasks-hub?assignedTo=${user?.id || 'current'}&exclude=Completed%2CGolive&excludeChild=Completed%2CGolive`}>
+          <Link href={`/projly/tasks-hub?assignedTo=${user?.id || 'current'}&hideParentStatuses=Completed%2CGolive&hideChildStatuses=Completed%2CGolive`}>
             <Button variant="outline" size="sm" className="w-full">
               <ExternalLink className="h-4 w-4 mr-2" />
               View All My Tasks
