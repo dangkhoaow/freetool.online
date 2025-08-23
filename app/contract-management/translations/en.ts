@@ -140,6 +140,7 @@ export const enTranslations = {
     totalContracts: 'Total Contracts',
     totalValue: 'Total Value',
     storageUtilization: 'Storage Utilization',
+    physicalStorageUsage: 'Physical Storage Usage',
     upcomingExpirations: 'Upcoming Expirations',
     contractsByType: 'Contracts by Type',
     contractsByStatus: 'Contracts by Status',
@@ -161,7 +162,8 @@ export const enTranslations = {
     unableToLoad: 'Unable to load dashboard data',
     contractsLabel: 'contracts',
     noExpiringNext30Days: 'No contracts expiring in the next 30 days',
-    moreExpiring: 'more expiring'
+    moreExpiring: 'more expiring',
+    contractsUsingSeparateStorage: 'contracts using separate storage'
   },
 
   // Tabs

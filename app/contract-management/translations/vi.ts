@@ -140,6 +140,7 @@ export const viTranslations = {
     totalContracts: 'Tổng số hợp đồng',
     totalValue: 'Tổng giá trị',
     storageUtilization: 'Sử dụng lưu trữ',
+    physicalStorageUsage: 'Sử dụng kho lưu trữ vật lý',
     upcomingExpirations: 'Sắp hết hạn',
     contractsByType: 'Hợp đồng theo loại',
     contractsByStatus: 'Hợp đồng theo trạng thái',
@@ -161,7 +162,8 @@ export const viTranslations = {
     unableToLoad: 'Không thể tải dữ liệu bảng điều khiển',
     contractsLabel: 'hợp đồng',
     noExpiringNext30Days: 'Không có hợp đồng nào hết hạn trong 30 ngày tới',
-    moreExpiring: 'hợp đồng khác sắp hết hạn'
+    moreExpiring: 'hợp đồng khác sắp hết hạn',
+    contractsUsingSeparateStorage: 'hợp đồng sử dụng kho lưu trữ riêng biệt'
   },
 
   // Tabs
