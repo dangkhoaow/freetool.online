@@ -38,9 +38,17 @@ export default function ContractForm() {
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
+    { value: 'OrientalMedicine', label: t('contractTypes.orientalMedicine') },
     { value: 'MedicalEquipment', label: t('contractTypes.medicalEquipment') },
+    { value: 'Vaccines', label: t('contractTypes.vaccines') },
+    { value: 'Biological', label: t('contractTypes.biological') },
+    { value: 'Lao', label: t('contractTypes.lao') },
+    { value: 'ARV', label: t('contractTypes.arv') },
+    { value: 'Chemical', label: t('contractTypes.chemical') },
     { value: 'Services', label: t('contractTypes.services') },
+    { value: 'Construction', label: t('contractTypes.construction') },
     { value: 'Consulting', label: t('contractTypes.consulting') },
+    { value: 'Maintenance', label: t('contractTypes.maintenance') },
     { value: 'Other', label: t('contractTypes.other') }
   ];
 

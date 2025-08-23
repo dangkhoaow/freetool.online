@@ -24,7 +24,7 @@ export interface Contract {
   notes?: string;
 }
 
-export type ContractType = 'Pharmaceuticals' | 'MedicalEquipment' | 'Services' | 'Consulting' | 'Other';
+export type ContractType = 'Pharmaceuticals' | 'OrientalMedicine' | 'MedicalEquipment' | 'Vaccines' | 'Biological' | 'Lao' | 'ARV' | 'Chemical' | 'Services' | 'Construction' | 'Consulting' | 'Maintenance' | 'Other';
 
 export type ContractStatus = 'Active' | 'Expired' | 'Pending' | 'Cancelled' | 'Draft';
 

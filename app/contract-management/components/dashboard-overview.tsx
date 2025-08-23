@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -42,6 +42,8 @@ export default function DashboardOverview() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   
   // Pagination and sorting states
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,56 +94,35 @@ export default function DashboardOverview() {
     return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
 
-  // Sort contracts based on current sort field and direction
-  const sortedContracts = [...contracts].sort((a, b) => {
-    const aValue = a[sortField];
-    const bValue = b[sortField];
-    
-    // Handle different data types
-    let comparison = 0;
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      comparison = aValue.localeCompare(bValue);
-    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-      comparison = aValue - bValue;
-    } else if (sortField.includes('Date') || sortField === 'createdAt' || sortField === 'updatedAt') {
-      const aDate = new Date(aValue as string);
-      const bDate = new Date(bValue as string);
-      comparison = aDate.getTime() - bDate.getTime();
-    } else {
-      comparison = String(aValue).localeCompare(String(bValue));
-    }
-    
-    return sortDirection === 'asc' ? comparison : -comparison;
-  });
-
-  // Pagination logic
-  const totalPages = Math.ceil(sortedContracts.length / itemsPerPage);
+  // Use contracts directly from server (already sorted and paginated)
+  const currentContracts = contracts;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentContracts = sortedContracts.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const loadContracts = async () => {
+  const loadContracts = useCallback(async () => {
     try {
       setIsLoadingContracts(true);
       const response = await contractManagementService.searchContracts(
         {}, // empty filters to get all contracts
-        { field: 'createdAt', direction: 'desc' },
-        { page: 1, limit: 100 } // load more contracts for client-side sorting/paging
+        { field: sortField, direction: sortDirection },
+        { page: currentPage, limit: itemsPerPage }
       );
 
       if (response.success && response.data) {
         setContracts(response.data.contracts);
+        setTotalCount(response.data.totalCount);
+        setTotalPages(Math.ceil(response.data.totalCount / itemsPerPage));
       }
     } catch (error) {
       console.error('Error loading contracts:', error);
     } finally {
       setIsLoadingContracts(false);
     }
-  };
+  }, [currentPage, sortField, sortDirection, itemsPerPage]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -160,8 +141,12 @@ export default function DashboardOverview() {
     };
 
     loadDashboardData();
-    loadContracts();
   }, []);
+
+  // Load contracts when page, sort, or pagination changes
+  useEffect(() => {
+    loadContracts();
+  }, [loadContracts]);
 
   const formatCurrency = (value: number): string => {
     const locale = currentLanguage === 'vi' ? 'vi-VN' : 'en-US';
@@ -471,12 +456,18 @@ export default function DashboardOverview() {
               visibleColumns={{
                 companyName: true,
                 contractNumber: true,
+                contractNumberAppendix: true,
+                phisicalStorageUnit: true,
+                contractStartDate: true,
+                contractEndDate: true,
                 contractDurationMonths: true,
                 contractValue: true,
                 winningBidDecisionNumber: true,
                 contractType: true,
-                storage: true,
-                notes: true
+                status: true,
+                notes: true,
+                createdAt: true,
+                actions: true
               }}
             />
           )}
@@ -484,10 +475,10 @@ export default function DashboardOverview() {
       </Card>
 
       {/* Pagination */}
-      {contracts.length > itemsPerPage && (
+      {totalCount > itemsPerPage && (
         <div className="flex items-center justify-between px-6 py-4">
-          <div className="text-sm text-gray-700">
-            {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, sortedContracts.length)} {t('common.of')} {sortedContracts.length} {t('contracts.items')}
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, totalCount)} {t('common.of')} {totalCount} {t('contracts.items')}
           </div>
           <div className="flex items-center space-x-2">
             <Button

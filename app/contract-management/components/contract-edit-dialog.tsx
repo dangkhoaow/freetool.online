@@ -37,9 +37,17 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
 
   const contractTypes = [
     { value: 'Pharmaceuticals', label: t('contractTypes.pharmaceuticals') },
+    { value: 'OrientalMedicine', label: t('contractTypes.orientalMedicine') },
     { value: 'MedicalEquipment', label: t('contractTypes.medicalEquipment') },
+    { value: 'Vaccines', label: t('contractTypes.vaccines') },
+    { value: 'Biological', label: t('contractTypes.biological') },
+    { value: 'Lao', label: t('contractTypes.lao') },
+    { value: 'ARV', label: t('contractTypes.arv') },
+    { value: 'Chemical', label: t('contractTypes.chemical') },
     { value: 'Services', label: t('contractTypes.services') },
+    { value: 'Construction', label: t('contractTypes.construction') },
     { value: 'Consulting', label: t('contractTypes.consulting') },
+    { value: 'Maintenance', label: t('contractTypes.maintenance') },
     { value: 'Other', label: t('contractTypes.other') }
   ];
 
@@ -421,9 +429,17 @@ export default function ContractEditDialog({ contractId, isOpen, onClose, onSucc
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pharmaceuticals">{t('contractTypes.pharmaceuticals')}</SelectItem>
+                    <SelectItem value="OrientalMedicine">{t('contractTypes.orientalMedicine')}</SelectItem>
                     <SelectItem value="MedicalEquipment">{t('contractTypes.medicalEquipment')}</SelectItem>
+                    <SelectItem value="Vaccines">{t('contractTypes.vaccines')}</SelectItem>
+                    <SelectItem value="Biological">{t('contractTypes.biological')}</SelectItem>
+                    <SelectItem value="Lao">{t('contractTypes.lao')}</SelectItem>
+                    <SelectItem value="ARV">{t('contractTypes.arv')}</SelectItem>
+                    <SelectItem value="Chemical">{t('contractTypes.chemical')}</SelectItem>
                     <SelectItem value="Services">{t('contractTypes.services')}</SelectItem>
+                    <SelectItem value="Construction">{t('contractTypes.construction')}</SelectItem>
                     <SelectItem value="Consulting">{t('contractTypes.consulting')}</SelectItem>
+                    <SelectItem value="Maintenance">{t('contractTypes.maintenance')}</SelectItem>
                     <SelectItem value="Other">{t('contractTypes.other')}</SelectItem>
                   </SelectContent>
                 </Select>

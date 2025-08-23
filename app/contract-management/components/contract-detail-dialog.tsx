@@ -17,7 +17,7 @@ interface ContractDetailDialogProps {
 }
 
 export default function ContractDetailDialog({ contractId, isOpen, onClose }: ContractDetailDialogProps) {
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const [contract, setContract] = useState<Contract | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,7 +193,22 @@ export default function ContractDetailDialog({ contractId, isOpen, onClose }: Co
                     )}
                     <div className="flex justify-between">
                       <span className="text-gray-600">{t('contracts.contractType')}:</span>
-                      <span className="font-medium">{contract.contractType}</span>
+                      <span className="font-medium">
+                        {contract.contractType === 'Pharmaceuticals' ? t('contractTypes.pharmaceuticals') :
+                         contract.contractType === 'OrientalMedicine' ? t('contractTypes.orientalMedicine') :
+                         contract.contractType === 'MedicalEquipment' ? t('contractTypes.medicalEquipment') :
+                         contract.contractType === 'Vaccines' ? t('contractTypes.vaccines') :
+                         contract.contractType === 'Biological' ? t('contractTypes.biological') :
+                         contract.contractType === 'Lao' ? t('contractTypes.lao') :
+                         contract.contractType === 'ARV' ? t('contractTypes.arv') :
+                         contract.contractType === 'Chemical' ? t('contractTypes.chemical') :
+                         contract.contractType === 'Services' ? t('contractTypes.services') :
+                         contract.contractType === 'Construction' ? t('contractTypes.construction') :
+                         contract.contractType === 'Consulting' ? t('contractTypes.consulting') :
+                         contract.contractType === 'Maintenance' ? t('contractTypes.maintenance') :
+                         contract.contractType === 'Other' ? t('contractTypes.other') :
+                         contract.contractType}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">{t('common.status')}:</span>

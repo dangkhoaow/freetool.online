@@ -332,9 +332,14 @@ export const viTranslations = {
 
   // Contract Types
   contractTypes: {
-    pharmaceuticals: 'Dược phẩm',
+    pharmaceuticals: 'Tân dược',
+    orientalMedicine: 'Đông y',
     medicalEquipment: 'Vật tư y tế',
-    medicalequipment: 'Vật tư y tế',
+    vaccines: 'Vắc xin',
+    biological: 'Sinh phẩm',
+    lao: 'Lao',
+    arv: 'ARV',
+    chemical: 'Hoá chất',
     services: 'Dịch vụ',
     construction: 'Xây dựng',
     consulting: 'Tư vấn',

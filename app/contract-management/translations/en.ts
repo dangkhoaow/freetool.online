@@ -333,8 +333,14 @@ export const enTranslations = {
   // Contract Types
   contractTypes: {
     pharmaceuticals: 'Pharmaceuticals',
+    orientalMedicine: 'Oriental Medicine',
     medicalEquipment: 'Medical Equipment',
     medicalequipment: 'Medical Equipment',
+    vaccines: 'Vaccines',
+    biological: 'Biological',
+    lao: 'Lao',
+    arv: 'ARV',
+    chemical: 'Chemical',
     services: 'Services',
     construction: 'Construction',
     consulting: 'Consulting',

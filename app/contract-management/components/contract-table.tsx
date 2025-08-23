@@ -63,7 +63,7 @@ export default function ContractTable({
   showColumnControls = false
 }: ContractTableProps) {
 
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, t } = useLanguage();
 
   const handleSort = (field: keyof Contract) => {
     if (onSort) {
@@ -319,14 +319,35 @@ export default function ContractTable({
                 <TableCell className="whitespace-nowrap">
                   <Badge 
                     variant="outline" 
-                    className={contract.contractType === 'Pharmaceuticals' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700' : 
-                             contract.contractType === 'MedicalEquipment' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-700' : 
-                             'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}
+                    className={
+                      contract.contractType === 'Pharmaceuticals' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700' :
+                      contract.contractType === 'OrientalMedicine' ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-200 dark:border-purple-700' :
+                      contract.contractType === 'MedicalEquipment' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-700' :
+                      contract.contractType === 'Vaccines' ? 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900 dark:text-teal-200 dark:border-teal-700' :
+                      contract.contractType === 'Biological' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900 dark:text-emerald-200 dark:border-emerald-700' :
+                      contract.contractType === 'Lao' ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900 dark:text-rose-200 dark:border-rose-700' :
+                      contract.contractType === 'ARV' ? 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900 dark:text-pink-200 dark:border-pink-700' :
+                      contract.contractType === 'Chemical' ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900 dark:text-orange-200 dark:border-orange-700' :
+                      contract.contractType === 'Services' ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-200 dark:border-cyan-700' :
+                      contract.contractType === 'Construction' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-700' :
+                      contract.contractType === 'Consulting' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900 dark:text-indigo-200 dark:border-indigo-700' :
+                      contract.contractType === 'Maintenance' ? 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700' :
+                      'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
+                    }
                   >
-                    {contract.contractType === 'Pharmaceuticals' ? 'Dược Phẩm' :
-                     contract.contractType === 'MedicalEquipment' ? 'Thiết Bị Y Tế' :
-                     contract.contractType === 'Services' ? 'Dịch Vụ' :
-                     contract.contractType === 'Consulting' ? 'Tư Vấn' : 
+                    {contract.contractType === 'Pharmaceuticals' ? t('contractTypes.pharmaceuticals') :
+                     contract.contractType === 'OrientalMedicine' ? t('contractTypes.orientalMedicine') :
+                     contract.contractType === 'MedicalEquipment' ? t('contractTypes.medicalEquipment') :
+                     contract.contractType === 'Vaccines' ? t('contractTypes.vaccines') :
+                     contract.contractType === 'Biological' ? t('contractTypes.biological') :
+                     contract.contractType === 'Lao' ? t('contractTypes.lao') :
+                     contract.contractType === 'ARV' ? t('contractTypes.arv') :
+                     contract.contractType === 'Chemical' ? t('contractTypes.chemical') :
+                     contract.contractType === 'Services' ? t('contractTypes.services') :
+                     contract.contractType === 'Construction' ? t('contractTypes.construction') :
+                     contract.contractType === 'Consulting' ? t('contractTypes.consulting') :
+                     contract.contractType === 'Maintenance' ? t('contractTypes.maintenance') :
+                     contract.contractType === 'Other' ? t('contractTypes.other') :
                      contract.contractType}
                   </Badge>
                 </TableCell>
