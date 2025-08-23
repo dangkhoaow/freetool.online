@@ -267,7 +267,7 @@ export default function NewTaskPage() {
       });
       
       // Navigate back to tasks list
-      router.push('/projly/tasks');
+      router.push('/projly/tasks-hub');
     } catch (error) {
       console.error('[PROJLY:NEW_TASK] Error creating task:', error);
       toast({
@@ -292,7 +292,7 @@ export default function NewTaskPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push('/projly/tasks')}
+            onClick={() => router.push('/projly/tasks-hub')}
             className="mr-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -393,7 +393,7 @@ export default function NewTaskPage() {
               {/* Form buttons component */}
               <FormButtons 
                 isSubmitting={isSubmitting}
-                onCancel={() => router.push('/projly/tasks')}
+                onCancel={() => router.push('/projly/tasks-hub')}
               />
             </CardFooter>
           </Card>

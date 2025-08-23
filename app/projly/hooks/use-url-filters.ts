@@ -27,9 +27,12 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
   const parseFiltersFromURL = useCallback((): URLFilterParams => {
     const filters: URLFilterParams = {};
     
-    // Simple string parameters
-    const projectId = searchParams.get('project');
-    if (projectId && projectId !== 'all') filters.projectId = projectId;
+    // Simple string parameters - check both parameter names for compatibility
+    const projectId = searchParams.get('project') || searchParams.get('projectId');
+    if (projectId && projectId !== 'all') {
+      filters.projectId = projectId;
+      console.log('[USE_URL_FILTERS] Parsed projectId from URL:', projectId);
+    }
     
     const status = searchParams.get('status');
     if (status && status !== 'all') filters.status = status;
@@ -56,24 +59,47 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
       }
     }
     
+    // Task hierarchy - check both parameter formats for compatibility
     const taskHierarchy = searchParams.get('hierarchy');
-    if (taskHierarchy && taskHierarchy !== 'all') filters.taskHierarchy = taskHierarchy;
+    const parentOnly = searchParams.get('parentOnly');
+    const includeSubTasks = searchParams.get('includeSubTasks');
+    
+    if (taskHierarchy && taskHierarchy !== 'all') {
+      filters.taskHierarchy = taskHierarchy;
+      console.log('[USE_URL_FILTERS] Parsed taskHierarchy from URL:', taskHierarchy);
+    } else if (parentOnly !== null || includeSubTasks !== null) {
+      // Convert boolean parameters from main task hub to string format
+      const isParentOnly = parentOnly === '1' || parentOnly === 'true';
+      const isIncludeSubTasks = includeSubTasks === '1' || includeSubTasks === 'true';
+      
+      if (isParentOnly && !isIncludeSubTasks) {
+        filters.taskHierarchy = 'parent_only';
+      } else if (!isParentOnly && isIncludeSubTasks) {
+        filters.taskHierarchy = 'include_subtasks';
+      } else {
+        filters.taskHierarchy = 'all';
+      }
+      console.log('[USE_URL_FILTERS] Converted parentOnly/includeSubTasks to taskHierarchy:', filters.taskHierarchy);
+    }
     
     const search = searchParams.get('search');
     if (search) filters.search = search;
     
-    // Array parameter for excludeStatuses
-    const excludeStatuses = searchParams.get('exclude');
+    // Array parameter for excludeStatuses - check both parameter names for compatibility
+    const excludeStatuses = searchParams.get('exclude') || searchParams.get('hideParentStatuses');
     if (excludeStatuses) {
       filters.excludeStatuses = excludeStatuses.split(',').filter(s => s.trim());
+      console.log('[USE_URL_FILTERS] Parsed excludeStatuses from URL:', filters.excludeStatuses);
     }
     
-    // Array parameter for excludeChildStatuses
-    const excludeChildStatuses = searchParams.get('excludeChild');
+    // Array parameter for excludeChildStatuses - check both parameter names for compatibility
+    const excludeChildStatuses = searchParams.get('excludeChild') || searchParams.get('hideChildStatuses');
     if (excludeChildStatuses) {
       filters.excludeChildStatuses = excludeChildStatuses.split(',').filter(s => s.trim());
+      console.log('[USE_URL_FILTERS] Parsed excludeChildStatuses from URL:', filters.excludeChildStatuses);
     }
     
+    console.log('[USE_URL_FILTERS] Final parsed filters:', filters);
     return filters;
   }, [searchParams, user]);
 
@@ -89,9 +115,9 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
   const updateURL = useCallback((newFilters: URLFilterParams) => {
     const params = new URLSearchParams();
     
-    // Add non-empty filter values to URL
+    // Add non-empty filter values to URL - use consistent parameter names
     if (newFilters.projectId && newFilters.projectId !== 'all') {
-      params.set('project', newFilters.projectId);
+      params.set('projectId', newFilters.projectId);
     }
     
     if (newFilters.status && newFilters.status !== 'all') {
@@ -118,8 +144,17 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
       }
     }
     
+    // Task hierarchy - convert string format to boolean parameters for consistency with main task hub
     if (newFilters.taskHierarchy && newFilters.taskHierarchy !== 'all') {
-      params.set('hierarchy', newFilters.taskHierarchy);
+      if (newFilters.taskHierarchy === 'parent_only') {
+        params.set('parentOnly', '1');
+        params.set('includeSubTasks', '0');
+      } else if (newFilters.taskHierarchy === 'include_subtasks') {
+        params.set('parentOnly', '0');
+        params.set('includeSubTasks', '1');
+      }
+      // For other values, we could set hierarchy parameter as fallback
+      // params.set('hierarchy', newFilters.taskHierarchy);
     }
     
     if (newFilters.search) {
@@ -127,11 +162,11 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
     }
     
     if (newFilters.excludeStatuses && newFilters.excludeStatuses.length > 0) {
-      params.set('exclude', newFilters.excludeStatuses.join(','));
+      params.set('hideParentStatuses', newFilters.excludeStatuses.join(','));
     }
     
     if (newFilters.excludeChildStatuses && newFilters.excludeChildStatuses.length > 0) {
-      params.set('excludeChild', newFilters.excludeChildStatuses.join(','));
+      params.set('hideChildStatuses', newFilters.excludeChildStatuses.join(','));
     }
     
     // Build the new URL

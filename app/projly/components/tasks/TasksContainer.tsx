@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { projlyProjectsService } from '@/lib/services/projly';
 import { TaskFilters as TaskFiltersComponent } from './TaskFilters';
-import { useURLFilters } from '@/app/projly/hooks/use-url-filters';
+import { useURLFilters, URLFilterParams } from '@/app/projly/hooks/use-url-filters';
 
 // Create a detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksContainer]', ...args);
@@ -193,6 +193,38 @@ export function TasksContainer({
     excludeStatuses: initialFilters.excludeStatuses || [] // Allow empty array - no default exclusions
   });
   
+  // Debug: Log initial filters and current filters
+  console.log('[TASKS_CONTAINER] Initial filters passed:', initialFilters);
+  console.log('[TASKS_CONTAINER] Current filters from useURLFilters:', currentFilters);
+  console.log('[TASKS_CONTAINER] Filters initialized:', filtersInitialized);
+  
+  // Helper function to convert URLFilterParams to TaskFilters for API calls
+  const convertToTaskFilters = (urlFilters: URLFilterParams): TaskFilters => {
+    const taskFilters: TaskFilters = {
+      projectId: urlFilters.projectId,
+      status: urlFilters.status,
+      excludeStatuses: urlFilters.excludeStatuses,
+    };
+    
+    // Handle assignedTo conversion from string|string[] to string
+    if (urlFilters.assignedTo) {
+      if (Array.isArray(urlFilters.assignedTo)) {
+        // For API calls, we'll use the first assignee if multiple are selected
+        // The multi-select filtering will be handled client-side
+        taskFilters.assignedTo = urlFilters.assignedTo[0];
+      } else {
+        taskFilters.assignedTo = urlFilters.assignedTo;
+      }
+      
+      // Convert 'current' to actual user ID
+      if (taskFilters.assignedTo === 'current' && user?.id) {
+        taskFilters.assignedTo = user.id;
+      }
+    }
+    
+    return taskFilters;
+  };
+  
   // State for client-side filtering
   const [clientSideFilters, setClientSideFilters] = useState<UIFilters>({});
   const [lastNavigationTime, setLastNavigationTime] = useState<number>(Date.now());
@@ -337,7 +369,7 @@ export function TasksContainer({
     if (apiFilters.assignedTo) {
       if (Array.isArray(apiFilters.assignedTo)) {
         // Multi-select: handle array of assignee IDs
-        const resolvedAssignees = apiFilters.assignedTo.map(id => {
+        const resolvedAssignees = apiFilters.assignedTo.map((id: string) => {
           if (id === 'current' && user?.id) {
             log(`[TASKS CONTAINER] Replacing 'current' assignee with actual user ID: ${user.id}`);
             return user.id;
@@ -394,7 +426,7 @@ export function TasksContainer({
     // Reload tasks with new filters (will be triggered by useEffect when currentFilters changes)
   };
 
-  const handleAssigneeFilterChange = (value: string) => {
+  const handleAssigneeFilterChange = (value: string | string[]) => {
     log('[TASKS CONTAINER] Assignee filter changed:', value);
     updateAssigneeFilter(value);
     
@@ -787,7 +819,7 @@ export function TasksContainer({
     } else if (autoLoad && filtersInitialized) {
       log('Auto-loading tasks with initial filters:', initialFilters);
       // Filters are already initialized via URL hook, just load tasks
-      loadTasks(currentFilters);
+      loadTasks(convertToTaskFilters(currentFilters));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLoad, parentId, context, initialTasks]); // Removed initialFilters from dependency array to prevent infinite loops
@@ -796,7 +828,7 @@ export function TasksContainer({
   useEffect(() => {
     if (filtersInitialized && !initialTasks) {
       log('Filters changed, reloading tasks:', currentFilters);
-      loadTasks(currentFilters);
+      loadTasks(convertToTaskFilters(currentFilters));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFilters, filtersInitialized]); // Only reload when filters actually change
@@ -832,11 +864,11 @@ export function TasksContainer({
         loadTasks(updatedFilters);
       } else {
         log('No filter changes detected, reloading with current filters');
-        loadTasks(currentFilters);
+        loadTasks(convertToTaskFilters(currentFilters));
       }
     } else {
       log('No filters provided, reloading with current filters');
-      loadTasks(currentFilters);
+      loadTasks(convertToTaskFilters(currentFilters));
     }
   };
   

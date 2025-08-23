@@ -27,6 +27,7 @@ interface TaskDetailDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdated?: () => void;
+  mainFilters?: any; // Filters from the main task hub to pass to subtasks
 }
 
 // Create a detailed log function for debugging
@@ -39,7 +40,7 @@ const log = (...args: any[]) => console.log('[TaskDetailDialog]', ...args);
  * in a popup dialog. Enhanced with React Query caching to prevent double loading
  * and flashing issues when tasks are updated.
  */
-export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated }: TaskDetailDialogProps) {
+export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainFilters }: TaskDetailDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogMounted, setIsDialogMounted] = useState(false);
@@ -266,6 +267,7 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated }: Tas
               inDialogMode={true} 
               onDialogClose={handleClose}
               onTaskUpdated={handleTaskUpdated}
+              mainFilters={mainFilters}
             />
           </div>
         )}

@@ -30,3 +30,4 @@ app/.DS_Store
 /public/ai-models/.DS_Store
 .DS_Store
 app/.DS_Store
+lib/static-resources.ts

@@ -10,6 +10,7 @@ interface SubTasksContentProps {
   parentProjectId: string;
   onCreateSubTaskClick: () => void;
   onSubTasksChange?: () => void;
+  mainFilters?: any; // Filters from the main task hub to pass to TasksContainer
 }
 
 /**
@@ -27,7 +28,8 @@ export function SubTasksContent({
   parentTaskId, 
   parentProjectId,
   onCreateSubTaskClick,
-  onSubTasksChange
+  onSubTasksChange,
+  mainFilters
 }: SubTasksContentProps) {
   console.log('[SUB_TASKS_CONTENT] Rendering sub-tasks list', subTasks);
   console.log('[SUB_TASKS_CONTENT] Parent task ID', parentTaskId);
@@ -68,6 +70,7 @@ export function SubTasksContent({
         context="task"
         initialTasks={subTasks}
         autoLoad={false}
+        initialFilters={mainFilters} // Pass main filters to sync with main task hub
         displayOptions={{
           showHeader: false,
           showAddButton: false,

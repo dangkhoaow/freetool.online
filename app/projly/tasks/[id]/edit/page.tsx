@@ -169,7 +169,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
             description: 'Task not found or you do not have permission to view it',
             variant: 'destructive'
           });
-          router.push('/projly/tasks');
+          router.push('/projly/tasks-hub');
           return;
         }
         
@@ -379,7 +379,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/projly/tasks">Tasks</BreadcrumbLink>
+              <BreadcrumbLink href="/projly/tasks-hub">Tasks</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>

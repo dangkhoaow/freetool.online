@@ -33,7 +33,7 @@ export function TaskNotFoundUI({ errorMessage }: TaskNotFoundUIProps) {
           size="sm" 
           onClick={() => {
             log('Back to tasks clicked');
-            router.push('/projly/tasks');
+            router.push('/projly/tasks-hub');
           }}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -54,7 +54,7 @@ export function TaskNotFoundUI({ errorMessage }: TaskNotFoundUIProps) {
               {errorMessage || 'The task you are trying to access does not exist or you do not have permission to view it.'}
             </p>
             <div className="flex gap-4">
-              <Button variant="outline" onClick={() => router.push('/projly/tasks')}>
+              <Button variant="outline" onClick={() => router.push('/projly/tasks-hub')}>
                 View All Tasks
               </Button>
               <Button onClick={() => router.push('/projly/tasks/new')}>

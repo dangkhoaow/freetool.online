@@ -50,6 +50,13 @@ export function TaskFilters({
   onExcludeStatusesChange,
   onExcludeChildStatusesChange,
 }: TaskFiltersProps) {
+  
+  // Debug: Log received filters
+  console.log('[TASK_FILTERS] Received filters:', filters);
+  console.log('[TASK_FILTERS] projectId:', filters.projectId);
+  console.log('[TASK_FILTERS] taskHierarchy:', filters.taskHierarchy);
+  console.log('[TASK_FILTERS] excludeStatuses:', filters.excludeStatuses);
+  console.log('[TASK_FILTERS] excludeChildStatuses:', filters.excludeChildStatuses);
   // Local state for assignee popover to prevent uncontrollable behavior
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   const [localAssigneeSelection, setLocalAssigneeSelection] = useState<string[]>([]);

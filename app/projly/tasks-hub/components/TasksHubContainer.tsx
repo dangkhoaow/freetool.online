@@ -38,7 +38,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 import { projlyProjectsService } from '@/lib/services/projly';
 import { TaskFilters as TaskFiltersComponent } from '@/app/projly/components/tasks/TaskFilters';
-import { TaskDetailDialogHub } from './TaskDetailDialogHub';
+import { TaskDetailDialog } from '@/app/projly/components/tasks/TaskDetailDialog';
 
 // Create a detailed log function for debugging
 const log = (...args: any[]) => console.log('[TasksHubContainer]', ...args);
@@ -116,6 +116,13 @@ export function TasksHubContainer() {
     hideChildTasksByStatus: []
   });
   
+  // Debug: Log filters state changes
+  useEffect(() => {
+    console.log('🔄 [FILTERS STATE] Filters state changed:', filters);
+    console.log('🔄 [FILTERS STATE] hideParentTasksByStatus:', filters.hideParentTasksByStatus);
+    console.log('🔄 [FILTERS STATE] hideChildTasksByStatus:', filters.hideChildTasksByStatus);
+  }, [filters]);
+  
   // Additional state for UI
   const [availableLabels, setAvailableLabels] = useState<string[]>([]);
   
@@ -154,6 +161,7 @@ export function TasksHubContainer() {
   // Helpers: parse filters from URL and build URL from filters
   const parseFiltersFromUrl = useCallback((): Partial<HubFilters> => {
     const params = searchParams;
+    console.log('🔍 [TASKS HUB] parseFiltersFromUrl called with URL:', window.location.href);
     if (!params) return {};
     
     // Debug: Log all URL parameters
@@ -164,8 +172,10 @@ export function TasksHubContainer() {
     
     const getList = (key: string): string[] | undefined => {
       const raw = params.get(key);
+      log(`getList(${key}): raw value =`, raw);
       if (!raw) return undefined;
       const arr = raw.split(',').map(s => s.trim()).filter(Boolean);
+      log(`getList(${key}): parsed array =`, arr);
       return arr.length ? arr : undefined;
     };
     const parsed: Partial<HubFilters> = {};
@@ -256,28 +266,42 @@ export function TasksHubContainer() {
 
   // Initialize filters and view from URL on first render, and react to URL changes (back/forward)
   useEffect(() => {
+    console.log('🚀 [FILTER INIT] useEffect triggered. didInitFromUrl:', didInitFromUrl);
+    console.log('🚀 [FILTER INIT] Current filters state before parsing:', filters);
+    
     const parsed = parseFiltersFromUrl();
     const urlView = searchParams?.get('view');
+    
+    console.log('🚀 [FILTER INIT] Parsed from URL:', parsed);
+    console.log('🚀 [FILTER INIT] URL view:', urlView);
+    
     if (!didInitFromUrl) {
       // First-time init
       log('First-time URL init. Parsed filters:', parsed);
+      console.log('🚀 [FILTER INIT] About to call setFilters for first-time init');
       setFilters(prev => {
+        console.log('🚀 [FILTER INIT] setFilters callback - prev:', prev);
         const newFilters = {
           ...prev,
           ...parsed,
         };
+        console.log('🚀 [FILTER INIT] setFilters callback - newFilters:', newFilters);
         log('Setting initial filters:', newFilters);
         return newFilters;
       });
       if (parsed.q) setSearchInput(parsed.q);
       if (urlView === 'list' || urlView === 'board') setViewMode(urlView);
       setDidInitFromUrl(true);
+      console.log('🚀 [FILTER INIT] First-time init complete, setDidInitFromUrl(true)');
       return;
     }
     // Subsequent URL changes (e.g., browser navigation) should update state
     log('Subsequent URL change. Parsed filters:', parsed);
+    console.log('🚀 [FILTER INIT] About to call setFilters for subsequent URL change');
     setFilters(prev => {
+      console.log('🚀 [FILTER INIT] setFilters callback (subsequent) - prev:', prev);
       const newFilters = { ...prev, ...parsed };
+      console.log('🚀 [FILTER INIT] setFilters callback (subsequent) - newFilters:', newFilters);
       log('Updating filters from URL:', newFilters);
       return newFilters;
     });
@@ -937,7 +961,13 @@ export function TasksHubContainer() {
                         <label key={status} className="flex items-center space-x-2 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={filters.hideParentTasksByStatus?.includes(status) || false}
+                            checked={(() => {
+                              const isChecked = filters.hideParentTasksByStatus?.includes(status) || false;
+                              if (status === 'Completed' || status === 'Golive') {
+                                console.log(`🔲 [CHECKBOX] Parent status ${status} checked:`, isChecked, 'filters.hideParentTasksByStatus:', filters.hideParentTasksByStatus);
+                              }
+                              return isChecked;
+                            })()}
                             onChange={(e) => handleHideParentTasksByStatusChange(status, e.target.checked)}
                             className="rounded border-gray-300"
                           />
@@ -956,7 +986,13 @@ export function TasksHubContainer() {
                         <label key={status} className="flex items-center space-x-2 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={filters.hideChildTasksByStatus?.includes(status) || false}
+                            checked={(() => {
+                              const isChecked = filters.hideChildTasksByStatus?.includes(status) || false;
+                              if (status === 'Completed' || status === 'Golive') {
+                                console.log(`🔲 [CHECKBOX] Child status ${status} checked:`, isChecked, 'filters.hideChildTasksByStatus:', filters.hideChildTasksByStatus);
+                              }
+                              return isChecked;
+                            })()}
                             onChange={(e) => handleHideChildTasksByStatusChange(status, e.target.checked)}
                             className="rounded border-gray-300"
                           />
@@ -1011,7 +1047,7 @@ export function TasksHubContainer() {
             {viewMode === 'list' ? (
               <TasksTable
                 tasks={tasks as Task[]}
-                initialFilters={{}} // No client-side filters needed
+                initialFilters={filters} // Pass actual filters for checkbox state
                 onOperationComplete={handleOperationComplete}
                 compact={false}
                 context="main"
@@ -1021,7 +1057,7 @@ export function TasksHubContainer() {
             ) : (
               <TasksBoard
                 tasks={tasks as Task[]}
-                initialFilters={{}}
+                initialFilters={filters} // Pass actual filters for checkbox state
                 onOperationComplete={handleOperationComplete}
                 compact={false}
                 context="main"
@@ -1071,15 +1107,14 @@ export function TasksHubContainer() {
           />
         )}
 
-        {/* Task detail dialog - optimized for fast loading */}
-        {isTaskDetailOpen && selectedTaskId && (
-          <TaskDetailDialogHub
-            taskId={selectedTaskId}
-            open={isTaskDetailOpen}
-            onOpenChange={setIsTaskDetailOpen}
-            onTaskChange={handleOperationComplete}
-          />
-        )}
+        {/* Task detail dialog */}
+        <TaskDetailDialog
+          taskId={selectedTaskId}
+          isOpen={isTaskDetailOpen}
+          onClose={() => setIsTaskDetailOpen(false)}
+          onTaskUpdated={handleOperationComplete}
+          mainFilters={filters}
+        />
       </CardContent>
     </Card>
   );

@@ -82,6 +82,7 @@ interface TaskDetailsPageProps {
   inDialogMode?: boolean;
   onDialogClose?: () => void;
   onTaskUpdated?: () => void;
+  mainFilters?: any; // Filters from the main task hub to pass to subtasks
 }
 
 // Define type for project members
@@ -98,7 +99,7 @@ type ProjectMember = {
   };
 };
 
-export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose, onTaskUpdated }: TaskDetailsPageProps) {
+export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose, onTaskUpdated, mainFilters }: TaskDetailsPageProps) {
   // Use useParams to get the route parameters if not in dialog mode
   const params = useParams();
   const taskId = id || (params?.id as string);
@@ -135,7 +136,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     if (inDialogMode && onDialogClose) {
       onDialogClose();
     } else {
-      router.push('/projly/tasks');
+      router.push('/projly/tasks-hub');
     }
   };
   
@@ -623,7 +624,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
       });
       
       // Navigate back to tasks list
-      router.push('/projly/tasks');
+      router.push('/projly/tasks-hub');
       
     } catch (error) {
       console.error(`[PROJLY:TASK_DETAILS:${taskId}] Error deleting task:`, error);
@@ -871,6 +872,7 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
                   console.log('[TASK_DETAILS] Subtask deleted, refreshing list');
                   refreshSubTasks();
                 }}
+                mainFilters={mainFilters} // Pass main filters to sync with main task hub
               />
             </CardContent>
           </Card>
