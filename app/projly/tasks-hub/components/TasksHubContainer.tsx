@@ -879,7 +879,7 @@ export function TasksHubContainer() {
                           <PopoverContent className="w-full p-0" align="start">
                             <div className="max-h-60 overflow-y-auto">
                               <div className="p-2">
-                                <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                <div className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
                                      onClick={(e) => {
                                        e.stopPropagation();
                                        handleAssigneeFilterChange([]);
@@ -889,7 +889,7 @@ export function TasksHubContainer() {
                                   />
                                   <span className="text-sm">All Members</span>
                                 </div>
-                                <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                <div className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
                                      onClick={(e) => {
                                        e.stopPropagation();
                                        if (localAssigneeSelection.includes('current')) {
@@ -909,7 +909,7 @@ export function TasksHubContainer() {
                                   return (
                                     <div 
                                       key={user.id}
-                                      className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                      className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (isSelected) {
