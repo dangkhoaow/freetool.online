@@ -333,8 +333,8 @@ export const viTranslations = {
   // Contract Types
   contractTypes: {
     pharmaceuticals: 'Dược phẩm',
-    medicalEquipment: 'Thiết bị y tế',
-    medicalequipment: 'Thiết bị y tế',
+    medicalEquipment: 'Vật tư y tế',
+    medicalequipment: 'Vật tư y tế',
     services: 'Dịch vụ',
     construction: 'Xây dựng',
     consulting: 'Tư vấn',

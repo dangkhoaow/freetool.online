@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ChevronDown } from 'lucide-react';
 
 // Define UI filters interface matching currentFilters shape
 export interface TaskFiltersUI {
   projectId?: string;
   status?: string;
   label?: string;
-  assignedTo?: string;
+  assignedTo?: string | string[];
   taskHierarchy?: string;
   excludeStatuses?: string[];
   excludeChildStatuses?: string[];
@@ -26,7 +30,7 @@ interface TaskFiltersProps {
   onProjectChange: (value: string) => void;
   onStatusChange: (value: string) => void;
   onLabelChange: (value: string) => void;
-  onAssigneeChange: (value: string) => void;
+  onAssigneeChange: (value: string | string[]) => void;
   onTaskHierarchyChange: (value: string) => void;
   onExcludeStatusesChange: (statuses: string[]) => void;
   onExcludeChildStatusesChange: (statuses: string[]) => void;
@@ -46,6 +50,61 @@ export function TaskFilters({
   onExcludeStatusesChange,
   onExcludeChildStatusesChange,
 }: TaskFiltersProps) {
+  // Local state for assignee popover to prevent uncontrollable behavior
+  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
+  const [localAssigneeSelection, setLocalAssigneeSelection] = useState<string[]>([]);
+  
+  // Initialize local assignee selection from filters
+  useEffect(() => {
+    const currentAssignees = Array.isArray(filters.assignedTo) 
+      ? filters.assignedTo 
+      : filters.assignedTo 
+        ? [filters.assignedTo] 
+        : [];
+    console.log(`[TASK FILTERS] Received uniqueUsers:`, uniqueUsers);
+    console.log(`[TASK FILTERS] Current assignee selection:`, currentAssignees);
+    setLocalAssigneeSelection(currentAssignees);
+  }, [filters.assignedTo, uniqueUsers]);
+  
+  // Handle assignee filter changes with multi-select support
+  const handleAssigneeFilterChange = useCallback((value: string | string[]) => {
+    let assignedToValue: string | string[] | undefined;
+    
+    if (Array.isArray(value)) {
+      // Multi-select array - filter out empty values
+      const cleanedValue = value.filter(v => v && v.trim() !== '');
+      assignedToValue = cleanedValue.length === 0 ? undefined : cleanedValue;
+      setLocalAssigneeSelection(cleanedValue);
+    } else {
+      // Single value from select
+      if (value === 'all' || value === '' || !value) {
+        assignedToValue = undefined;
+        setLocalAssigneeSelection([]);
+      } else {
+        // Always work with arrays for multi-selection
+        const currentValues = localAssigneeSelection.length > 0 
+          ? localAssigneeSelection
+          : (Array.isArray(filters.assignedTo) 
+              ? filters.assignedTo 
+              : (filters.assignedTo ? [filters.assignedTo] : []));
+        
+        if (currentValues.includes(value)) {
+          // Remove from selection
+          const newValues = currentValues.filter(v => v !== value);
+          assignedToValue = newValues.length === 0 ? undefined : newValues;
+          setLocalAssigneeSelection(newValues);
+        } else {
+          // Add to selection
+          const newValues = [...currentValues, value];
+          assignedToValue = newValues;
+          setLocalAssigneeSelection(newValues);
+        }
+      }
+    }
+    
+    // Call the parent handler with the new value
+    onAssigneeChange(assignedToValue || 'all');
+  }, [filters.assignedTo, localAssigneeSelection, onAssigneeChange]);
   return (
     <Card className="mt-4 mb-4">
       <CardHeader className="pb-2">
@@ -123,35 +182,106 @@ export function TaskFilters({
               </Select>
             </div>
 
-            {/* Assigned To Filter */}
+            {/* Assigned To Filter - Multi-select */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="assigned-filter" className="text-sm font-medium">
-                Assigned To
-              </label>
-              <Select
-                value={filters.assignedTo || 'all'}
-                onValueChange={onAssigneeChange}
-              >
-                <SelectTrigger id="assigned-filter">
-                  <SelectValue placeholder="All Members" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Members</SelectItem>
-                  <SelectItem value="current">My Tasks</SelectItem>
-                  {uniqueUsers.length > 0 && (
-                    <>
-                      <SelectItem value="divider" disabled>
-                        <Separator className="my-1" />
-                      </SelectItem>
-                      {uniqueUsers.map((assignee) => (
-                        <SelectItem key={assignee.id} value={assignee.id}>
-                          {assignee.name}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Assigned To</label>
+              <div className="relative">
+                <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between text-left font-normal"
+                    >
+                      {localAssigneeSelection.length === 0 ? (
+                        'All Members'
+                      ) : (
+                        <div className="flex flex-wrap gap-1 max-w-full">
+                          {localAssigneeSelection.slice(0, 2).map(userId => {
+                            const user = uniqueUsers.find(u => u.id === userId);
+                            const displayName = userId === 'current' ? 'My Tasks' : (user?.name || userId);
+                            console.log(`[TASK FILTERS] Resolving user ${userId}: found user =`, user, `displayName = ${displayName}`);
+                            return (
+                              <span key={userId} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs">
+                                {displayName}
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const newValues = localAssigneeSelection.filter((id: string) => id !== userId);
+                                    handleAssigneeFilterChange(newValues.length === 0 ? [] : newValues);
+                                  }}
+                                  className="ml-1 hover:text-blue-600"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            );
+                          })}
+                          {localAssigneeSelection.length > 2 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{localAssigneeSelection.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <div className="max-h-60 overflow-y-auto">
+                      <div className="p-2">
+                        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleAssigneeFilterChange([]);
+                             }}>
+                          <Checkbox
+                            checked={localAssigneeSelection.length === 0}
+                          />
+                          <span className="text-sm">All Members</span>
+                        </div>
+                        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               if (localAssigneeSelection.includes('current')) {
+                                 const newValues = localAssigneeSelection.filter(id => id !== 'current');
+                                 handleAssigneeFilterChange(newValues);
+                               } else {
+                                 handleAssigneeFilterChange([...localAssigneeSelection, 'current']);
+                               }
+                             }}>
+                          <Checkbox
+                            checked={localAssigneeSelection.includes('current')}
+                          />
+                          <span className="text-sm">My Tasks</span>
+                        </div>
+                        {uniqueUsers.map(user => {
+                          const isSelected = localAssigneeSelection.includes(user.id);
+                          return (
+                            <div 
+                              key={user.id}
+                              className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSelected) {
+                                  const newValues = localAssigneeSelection.filter(id => id !== user.id);
+                                  handleAssigneeFilterChange(newValues.length === 0 ? [] : newValues);
+                                } else {
+                                  handleAssigneeFilterChange([...localAssigneeSelection, user.id]);
+                                }
+                              }}
+                            >
+                              <Checkbox checked={isSelected} />
+                              <span className="text-sm">{user.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             {/* Task Hierarchy Filter */}

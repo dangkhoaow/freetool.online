@@ -74,6 +74,7 @@ export interface TasksTableProps {
   parentTaskId?: string; // The parent task id for context (for detail view)
   hideParentRow?: boolean; // If true, hide the parent row (for sub-task tab)
   hideFilterUI?: boolean; // If true, hide the filter UI (for use with container-level filter)
+  loading?: boolean; // Whether the tasks are currently loading
 }
 import { TaskTitleCell } from "./TaskTitleCell";
 import { getAssigneeInitials, getLabelInitials } from "./TasksContainer";
@@ -440,7 +441,7 @@ const DraggableTaskRow: React.FC<DraggableTaskRowProps> = ({
   );
 };
 
-export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, compact, context, parentTaskId, hideParentRow, hideFilterUI }: TasksTableProps) {
+export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, compact, context, parentTaskId, hideParentRow, hideFilterUI, loading = false }: TasksTableProps) {
   // Function to handle logging
   const log = (message: string, data?: any) => {
     if (data !== undefined) {
@@ -647,25 +648,55 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     
     // Apply assignee filter - check both assignedTo and assignee.id
     if (filters.assignedTo) {
-      // Special handling for 'current' value - filter to current user's tasks
-      if (filters.assignedTo === 'current') {
-        if (!user?.id || (task.assignedTo !== user.id && task.assignee?.id !== user.id)) {
-          console.log(`[TASKS TABLE] Task ${task.id} doesn't match current user filter. User ID: ${user?.id}`);
+      if (Array.isArray(filters.assignedTo)) {
+        // Multi-select assignee filtering
+        let matchesAssignee = false;
+        
+        for (const assigneeFilter of filters.assignedTo) {
+          if (assigneeFilter === 'current') {
+            // Check if task is assigned to current user
+            if (user?.id && (task.assignedTo === user.id || task.assignee?.id === user.id)) {
+              matchesAssignee = true;
+              break;
+            }
+          } else {
+            // Check if task is assigned to this specific user
+            if (task.assignedTo === assigneeFilter || task.assignee?.id === assigneeFilter) {
+              matchesAssignee = true;
+              break;
+            }
+          }
+        }
+        
+        if (!matchesAssignee) {
+          console.log(`[TASKS TABLE] Task ${task.id} doesn't match any assignee in multi-select filter:`, filters.assignedTo);
           console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
           console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
           matchesBasicFilters = false;
         } else {
-          console.log(`[TASKS TABLE] Task ${task.id} MATCHES current user filter. User ID: ${user?.id}`);
+          console.log(`[TASKS TABLE] Task ${task.id} MATCHES multi-select assignee filter`);
         }
       } else {
-        // Normal assignee filtering
-        if (task.assignedTo !== filters.assignedTo && task.assignee?.id !== filters.assignedTo) {
-          console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
-          console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
-          console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
-          matchesBasicFilters = false;
+        // Single assignee filtering (backward compatibility)
+        if (filters.assignedTo === 'current') {
+          if (!user?.id || (task.assignedTo !== user.id && task.assignee?.id !== user.id)) {
+            console.log(`[TASKS TABLE] Task ${task.id} doesn't match current user filter. User ID: ${user?.id}`);
+            console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+            console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+            matchesBasicFilters = false;
+          } else {
+            console.log(`[TASKS TABLE] Task ${task.id} MATCHES current user filter. User ID: ${user?.id}`);
+          }
         } else {
-          console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
+          // Normal single assignee filtering
+          if (task.assignedTo !== filters.assignedTo && task.assignee?.id !== filters.assignedTo) {
+            console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
+            console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+            console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+            matchesBasicFilters = false;
+          } else {
+            console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
+          }
         }
       }
     }
@@ -1009,9 +1040,11 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
           {/* Tasks table */}
           <Table>
           <TableCaption>
-            {filteredTasks?.length === 0 
-              ? "No tasks found." 
-              : `Showing ${sortedTasks?.length} tasks`}
+            {loading 
+              ? "Loading tasks..." 
+              : filteredTasks?.length === 0 
+                ? "No tasks found." 
+                : `Showing ${sortedTasks?.length} tasks`}
           </TableCaption>
           <TableHeader>
             <TableRow>

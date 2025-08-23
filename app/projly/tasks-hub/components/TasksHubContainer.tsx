@@ -635,7 +635,7 @@ export function TasksHubContainer() {
   // Context-specific title
   const getTitle = () => {
     const taskCount = meta.total || 0;
-    return `Tasks Hub (${taskCount})`;
+    return `Current Tasks Count (${taskCount})`;
   };
   
   return (
@@ -990,6 +990,7 @@ export function TasksHubContainer() {
                 compact={false}
                 context="main"
                 hideFilterUI={true}
+                loading={isQueryLoading}
               />
             ) : (
               <TasksBoard
@@ -998,6 +999,7 @@ export function TasksHubContainer() {
                 onOperationComplete={handleOperationComplete}
                 compact={false}
                 context="main"
+                loading={isQueryLoading}
               />
             )}
 

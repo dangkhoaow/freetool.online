@@ -15,7 +15,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,10 +23,20 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { tasksHubService } from '@/lib/services/projly/tasks/hub/new-task-service';
-import { Calendar, Clock, User, Tag, BarChart3, FileText, Link, ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Clock, User, Tag, BarChart3, FileText, Link, ArrowLeft, Edit, Trash2, Filter, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TasksTable } from '@/app/projly/components/tasks/TasksTable';
+import { TasksBoard } from '@/app/projly/components/tasks/TasksBoard';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { List, LayoutGrid } from 'lucide-react';
+import { getAssigneeInitials } from './TasksHubContainer';
 
 // Log function for debugging
 const log = (...args: any[]) => console.log('[TaskDetailDialogHub]', ...args);
@@ -54,6 +64,21 @@ export function TaskDetailDialogHub({
   const [isFullLoading, setIsFullLoading] = useState(false);
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Subtask filtering state
+  const [subtaskFilters, setSubtaskFilters] = useState<any>({
+    search: '',
+    status: 'all',
+    assignedTo: [],
+    label: 'all'
+  });
+  const [subtaskViewMode, setSubtaskViewMode] = useState<'list' | 'board'>('list');
+  const [showSubtaskFilters, setShowSubtaskFilters] = useState(false);
+  const [availableMembers, setAvailableMembers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  
+  // Local state for assignee popover to prevent uncontrollable behavior
+  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
+  const [localAssigneeSelection, setLocalAssigneeSelection] = useState<string[]>([]);
   
   // Load light task data immediately when dialog opens
   useEffect(() => {
@@ -85,6 +110,35 @@ export function TaskDetailDialogHub({
     
     loadLightTask();
   }, [open, taskId, toast]);
+  
+  // Fetch available members when component mounts
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        log('Fetching available members for subtask dialog');
+        const response = await tasksHubService.getMembers();
+        log('Members API response:', response);
+        
+        if (response && 'data' in response && Array.isArray(response.data)) {
+          log(`Setting ${response.data.length} members from response.data`);
+          setAvailableMembers(response.data);
+        } else if (Array.isArray(response)) {
+          log(`Setting ${response.length} members from direct array response`);
+          setAvailableMembers(response);
+        } else {
+          log('Unexpected response format:', response);
+          setAvailableMembers([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+        setAvailableMembers([]);
+      }
+    };
+    
+    if (user && open) {
+      fetchMembers();
+    }
+  }, [user, open]);
   
   // Load full task data when user requests more details
   const loadFullDetails = async () => {
@@ -121,8 +175,27 @@ export function TaskDetailDialogHub({
       setIsFullLoading(false);
       setShowFullDetails(false);
       setError(null);
+      // Reset subtask filters
+      setSubtaskFilters({
+        search: '',
+        status: 'all',
+        assignedTo: [],
+        label: 'all'
+      });
+      setShowSubtaskFilters(false);
+      setLocalAssigneeSelection([]);
     }
   }, [open]);
+  
+  // Initialize local assignee selection from filters
+  useEffect(() => {
+    const currentAssignees = Array.isArray(subtaskFilters.assignedTo) 
+      ? subtaskFilters.assignedTo 
+      : subtaskFilters.assignedTo 
+        ? [subtaskFilters.assignedTo] 
+        : [];
+    setLocalAssigneeSelection(currentAssignees);
+  }, [subtaskFilters.assignedTo]);
   
   // Get the task data to display (full if available, light otherwise)
   const currentTask = fullTask || lightTask;
@@ -201,9 +274,166 @@ export function TaskDetailDialogHub({
     }
   };
   
+  // Filter subtasks based on current filters
+  const filteredSubtasks = useMemo(() => {
+    if (!fullTask?.subTasks) return [];
+    
+    let filtered = fullTask.subTasks;
+    
+    // Search filter
+    if (subtaskFilters.search) {
+      const searchTerm = subtaskFilters.search.toLowerCase();
+      filtered = filtered.filter((task: any) =>
+        task.title?.toLowerCase().includes(searchTerm) ||
+        task.id?.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Status filter
+    if (subtaskFilters.status && subtaskFilters.status !== 'all') {
+      filtered = filtered.filter((task: any) => task.status === subtaskFilters.status);
+    }
+    
+    // Label filter
+    if (subtaskFilters.label && subtaskFilters.label !== 'all') {
+      filtered = filtered.filter((task: any) => task.label === subtaskFilters.label);
+    }
+    
+    // Assignee filter
+    if (subtaskFilters.assignedTo && subtaskFilters.assignedTo.length > 0) {
+      filtered = filtered.filter((task: any) => {
+        if (subtaskFilters.assignedTo.includes('current')) {
+          return task.assigneeId === user?.id;
+        }
+        return subtaskFilters.assignedTo.includes(task.assigneeId);
+      });
+    }
+    
+    return filtered;
+  }, [fullTask?.subTasks, subtaskFilters, user?.id]);
+  
+  // Get unique values for subtask filter dropdowns
+  const subtaskUniqueStatuses = useMemo(() => {
+    if (!fullTask?.subTasks) return [];
+    const statuses = new Set<string>();
+    fullTask.subTasks.forEach((task: any) => {
+      if (task.status) statuses.add(task.status);
+    });
+    return Array.from(statuses).sort();
+  }, [fullTask?.subTasks]);
+  
+  const subtaskUniqueLabels = useMemo(() => {
+    if (!fullTask?.subTasks) return [];
+    const labels = new Set<string>();
+    fullTask.subTasks.forEach((task: any) => {
+      if (task.label) labels.add(task.label);
+    });
+    return Array.from(labels).sort();
+  }, [fullTask?.subTasks]);
+  
+  const subtaskUniqueUsers = useMemo(() => {
+    if (!fullTask?.subTasks) return [];
+    const users = new Map<string, any>();
+    fullTask.subTasks.forEach((task: any) => {
+      if (task.assignee && task.assignee.id) {
+        users.set(task.assignee.id, {
+          id: task.assignee.id,
+          name: task.assignee.firstName && task.assignee.lastName 
+            ? `${task.assignee.firstName} ${task.assignee.lastName}` 
+            : task.assignee.email || 'Unknown'
+        });
+      }
+    });
+    return Array.from(users.values());
+  }, [fullTask?.subTasks]);
+  
+  // Subtask filter handlers
+  const handleSubtaskAssigneeFilterChange = useCallback((value: string | string[]) => {
+    let assignedToValue: string | string[] | undefined;
+    
+    if (Array.isArray(value)) {
+      const cleanedValue = value.filter(v => v && v.trim() !== '');
+      assignedToValue = cleanedValue.length === 0 ? [] : cleanedValue;
+      setLocalAssigneeSelection(cleanedValue);
+    } else {
+      if (value === 'all' || value === '' || !value) {
+        assignedToValue = [];
+        setLocalAssigneeSelection([]);
+      } else {
+        const currentValues = localAssigneeSelection.length > 0 
+          ? localAssigneeSelection
+          : (Array.isArray(subtaskFilters.assignedTo) 
+              ? subtaskFilters.assignedTo 
+              : (subtaskFilters.assignedTo ? [subtaskFilters.assignedTo] : []));
+        
+        if (currentValues.includes(value)) {
+          const newValues = currentValues.filter(v => v !== value);
+          assignedToValue = newValues;
+          setLocalAssigneeSelection(newValues);
+        } else {
+          const newValues = [...currentValues, value];
+          assignedToValue = newValues;
+          setLocalAssigneeSelection(newValues);
+        }
+      }
+    }
+    
+    setSubtaskFilters(prev => ({
+      ...prev,
+      assignedTo: assignedToValue
+    }));
+  }, [subtaskFilters.assignedTo, localAssigneeSelection]);
+  
+  // Check if any subtask filters are active
+  const hasActiveSubtaskFilters = useMemo(() => {
+    return !!(subtaskFilters.search ||
+      (subtaskFilters.status && subtaskFilters.status !== 'all') ||
+      (subtaskFilters.assignedTo && subtaskFilters.assignedTo.length > 0) ||
+      (subtaskFilters.label && subtaskFilters.label !== 'all'));
+  }, [subtaskFilters]);
+  
+  // Helper function to resolve user ID to display name
+  const resolveUserDisplayName = useCallback((userId: string) => {
+    if (userId === 'current') {
+      return 'My Tasks';
+    }
+    
+    log(`Resolving display name for user ID: ${userId}`);
+    log(`Available members:`, availableMembers);
+    log(`Subtask unique users:`, subtaskUniqueUsers);
+    
+    // First try to find in availableMembers (from API)
+    const apiMember = availableMembers.find(u => u.id === userId);
+    if (apiMember) {
+      log(`Found in availableMembers: ${apiMember.name}`);
+      return apiMember.name;
+    }
+    
+    // Then try to find in subtaskUniqueUsers (from current subtasks)
+    const subtaskUser = subtaskUniqueUsers.find(u => u.id === userId);
+    if (subtaskUser) {
+      log(`Found in subtaskUniqueUsers: ${subtaskUser.name}`);
+      return subtaskUser.name;
+    }
+    
+    // If not found, try to get from current user context
+    if (user && userId === user.id) {
+      const currentUserName = user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : user.email || 'Current User';
+      log(`Found as current user: ${currentUserName}`);
+      return currentUserName;
+    }
+    
+    // Last resort: show a truncated version of the ID
+    const fallbackName = `User (${userId.substring(0, 8)}...)`;
+    log(`Using fallback name: ${fallbackName}`);
+    return fallbackName;
+  }, [availableMembers, subtaskUniqueUsers, user]);
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold">
@@ -386,38 +616,227 @@ export function TaskDetailDialogHub({
                   </Card>
                 )}
                 
-                {/* Subtasks */}
+                {/* Subtasks with enhanced filtering */}
                 {fullTask.subTasks && fullTask.subTasks.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5" />
-                        Subtasks ({fullTask.subTasks.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {fullTask.subTasks.map((subtask: any) => (
-                          <div key={subtask.id} className="flex items-center justify-between p-2 border rounded">
-                            <div className="flex items-center gap-2">
-                              <Badge className={getStatusColor(subtask.status)} variant="outline">
-                                {subtask.status}
-                              </Badge>
-                              <span className="text-sm">{subtask.title}</span>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5" />
+                          Subtasks ({fullTask.subTasks.length})
+                        </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowSubtaskFilters(!showSubtaskFilters)}
+                          className="flex items-center gap-1"
+                        >
+                          <Filter className="h-4 w-4" />
+                          Filters
+                          {hasActiveSubtaskFilters && (
+                            <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {/* Subtask Filters */}
+                      {showSubtaskFilters && (
+                        <div className="mt-4 p-4 border rounded-lg bg-muted/30">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            {/* Search */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Search</label>
+                              <Input
+                                placeholder="Search subtasks..."
+                                value={subtaskFilters.search}
+                                onChange={(e) => setSubtaskFilters(prev => ({ ...prev, search: e.target.value }))}
+                              />
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              {subtask.percentProgress && (
-                                <span>{subtask.percentProgress}%</span>
-                              )}
-                              {subtask.assignee && (
-                                <span>
-                                  {subtask.assignee.firstName} {subtask.assignee.lastName}
-                                </span>
-                              )}
+                            
+                            {/* Status Filter */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Status</label>
+                              <Select 
+                                value={subtaskFilters.status} 
+                                onValueChange={(value) => setSubtaskFilters(prev => ({ ...prev, status: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Statuses</SelectItem>
+                                  {subtaskUniqueStatuses.map(status => (
+                                    <SelectItem key={status} value={status}>
+                                      {status}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            {/* Label Filter */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Label</label>
+                              <Select 
+                                value={subtaskFilters.label} 
+                                onValueChange={(value) => setSubtaskFilters(prev => ({ ...prev, label: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="All Labels" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Labels</SelectItem>
+                                  {subtaskUniqueLabels.map(label => (
+                                    <SelectItem key={label} value={label}>
+                                      {label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            {/* Assigned To Filter - Multi-select */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Assigned To</label>
+                              <div className="relative">
+                                <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      className="w-full justify-between text-left font-normal"
+                                    >
+                                      {localAssigneeSelection.length === 0 ? (
+                                        'All Members'
+                                      ) : (
+                                        <div className="flex flex-wrap gap-1 max-w-full">
+                                          {localAssigneeSelection.slice(0, 2).map(userId => {
+                                            const displayName = resolveUserDisplayName(userId);
+                                            return (
+                                              <span key={userId} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs">
+                                                {displayName}
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    const newValues = localAssigneeSelection.filter((id: string) => id !== userId);
+                                                    handleSubtaskAssigneeFilterChange(newValues.length === 0 ? [] : newValues);
+                                                  }}
+                                                  className="ml-1 hover:text-blue-600"
+                                                >
+                                                  ×
+                                                </button>
+                                              </span>
+                                            );
+                                          })}
+                                          {localAssigneeSelection.length > 2 && (
+                                            <span className="text-xs text-muted-foreground">
+                                              +{localAssigneeSelection.length - 2} more
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-full p-0" align="start">
+                                    <div className="max-h-60 overflow-y-auto">
+                                      <div className="p-2">
+                                        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                             onClick={(e) => {
+                                               e.stopPropagation();
+                                               handleSubtaskAssigneeFilterChange([]);
+                                             }}>
+                                          <Checkbox
+                                            checked={localAssigneeSelection.length === 0}
+                                          />
+                                          <span className="text-sm">All Members</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                             onClick={(e) => {
+                                               e.stopPropagation();
+                                               if (localAssigneeSelection.includes('current')) {
+                                                 const newValues = localAssigneeSelection.filter(id => id !== 'current');
+                                                 handleSubtaskAssigneeFilterChange(newValues);
+                                               } else {
+                                                 handleSubtaskAssigneeFilterChange([...localAssigneeSelection, 'current']);
+                                               }
+                                             }}>
+                                          <Checkbox
+                                            checked={localAssigneeSelection.includes('current')}
+                                          />
+                                          <span className="text-sm">My Tasks</span>
+                                        </div>
+                                        {(availableMembers.length > 0 ? availableMembers : subtaskUniqueUsers).map(user => {
+                                          const isSelected = localAssigneeSelection.includes(user.id);
+                                          return (
+                                            <div 
+                                              key={user.id}
+                                              className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isSelected) {
+                                                  const newValues = localAssigneeSelection.filter(id => id !== user.id);
+                                                  handleSubtaskAssigneeFilterChange(newValues.length === 0 ? [] : newValues);
+                                                } else {
+                                                  handleSubtaskAssigneeFilterChange([...localAssigneeSelection, user.id]);
+                                                }
+                                              }}
+                                            >
+                                              <Checkbox checked={isSelected} />
+                                              <span className="text-sm">{user.name}</span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          
+                          {/* View Mode Toggle */}
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm text-muted-foreground">
+                              Showing {filteredSubtasks.length} of {fullTask.subTasks.length} subtasks
+                            </div>
+                            <ToggleGroup type="single" value={subtaskViewMode} onValueChange={(value) => value && setSubtaskViewMode(value as 'list' | 'board')}>
+                              <ToggleGroupItem value="list" aria-label="List view">
+                                <List className="h-4 w-4" />
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value="board" aria-label="Board view">
+                                <LayoutGrid className="h-4 w-4" />
+                              </ToggleGroupItem>
+                            </ToggleGroup>
+                          </div>
+                        </div>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      {filteredSubtasks.length === 0 ? (
+                        <div className="text-center text-muted-foreground py-8">
+                          {hasActiveSubtaskFilters ? 'No subtasks match the current filters.' : 'No subtasks found.'}
+                        </div>
+                      ) : subtaskViewMode === 'list' ? (
+                        <TasksTable
+                          tasks={filteredSubtasks}
+                          initialFilters={{}}
+                          onOperationComplete={onTaskChange}
+                          compact={true}
+                          context="task"
+                          hideFilterUI={true}
+                          loading={false}
+                        />
+                      ) : (
+                        <TasksBoard
+                          tasks={filteredSubtasks}
+                          initialFilters={{}}
+                          onOperationComplete={onTaskChange}
+                          compact={true}
+                          context="task"
+                        />
+                      )}
                     </CardContent>
                   </Card>
                 )}

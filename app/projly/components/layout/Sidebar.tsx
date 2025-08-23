@@ -69,7 +69,7 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
   // Create tasks URL with current user filter
   const getTasksUrl = () => {
     const userId = user?.userId || user?.id;
-    if (!userId) return '/projly/tasks';
+    if (!userId) return '/projly/tasks-hub';
     
     const params = new URLSearchParams({
       assignedTo: userId,
@@ -77,7 +77,7 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
       excludeChild: 'Completed,Golive'
     });
     
-    return `/projly/tasks?${params.toString()}`;
+    return `/projly/tasks-hub?${params.toString()}`;
   };
   
   // Use the dedicated hook for project ownership
@@ -377,7 +377,7 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
             <h2 className="mb-2 text-lg font-semibold tracking-tight">Projects</h2>
             <div className="space-y-1">
               <SidebarItem icon={<FolderOpen className="h-4 w-4" />} label="All Projects" href="/projly/projects" active={pathname === "/projly/projects"} />
-              <SidebarItem icon={<ClipboardList className="h-4 w-4" />} label="Tasks" href={getTasksUrl()} active={pathname === "/projly/tasks"} />
+              <SidebarItem icon={<ClipboardList className="h-4 w-4" />} label="Tasks" href={getTasksUrl()} active={pathname === "/projly/tasks-hub"} />
             </div>
           </div>
           {showTeamSection && (

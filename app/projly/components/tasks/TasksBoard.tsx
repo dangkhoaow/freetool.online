@@ -135,6 +135,7 @@ export interface TasksBoardProps {
   onOperationComplete?: (filters?: any) => void;
   compact?: boolean;
   context?: 'main' | 'project' | 'task';
+  loading?: boolean; // Whether the tasks are currently loading
 }
 
 // LabelColumn component
@@ -479,6 +480,7 @@ export function TasksBoard({
   onOperationComplete,
   compact = false,
   context = 'main',
+  loading = false,
 }: TasksBoardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -843,6 +845,17 @@ export function TasksBoard({
       setUpdatingTaskId(null);
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="w-full flex items-center justify-center py-8">
+        <div className="text-center">
+          <div className="text-lg text-muted-foreground">Loading tasks...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DndProvider backend={HTML5Backend}>

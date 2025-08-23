@@ -253,11 +253,13 @@ export function TasksContainer({
           id: task.assignee.id,
           name: task.assignee.firstName && task.assignee.lastName 
             ? `${task.assignee.firstName} ${task.assignee.lastName}` 
-            : task.assignee.email || 'Unknown'
+            : task.assignee.name || task.assignee.email || 'Unknown'
         });
       }
     });
-    return Array.from(users.values());
+    const result = Array.from(users.values());
+    console.log(`[TASKS CONTAINER] Built uniqueUsers for TaskFilters:`, result);
+    return result;
   }, [rawTasks]);
   
   // Get unique labels from tasks for label filter
@@ -332,13 +334,31 @@ export function TasksContainer({
     }
     
     // Handle special case for 'current' assignee - replace with actual user ID
-    if (apiFilters.assignedTo === 'current') {
-      if (user?.id) {
-        log(`[TASKS CONTAINER] Replacing 'current' assignee with actual user ID: ${user.id}`);
-        apiFilters.assignedTo = user.id;
-      } else {
-        log(`[TASKS CONTAINER] Warning: 'current' assignee specified but no user ID available`);
-        delete apiFilters.assignedTo; // Remove if we can't resolve the user ID
+    if (apiFilters.assignedTo) {
+      if (Array.isArray(apiFilters.assignedTo)) {
+        // Multi-select: handle array of assignee IDs
+        const resolvedAssignees = apiFilters.assignedTo.map(id => {
+          if (id === 'current' && user?.id) {
+            log(`[TASKS CONTAINER] Replacing 'current' assignee with actual user ID: ${user.id}`);
+            return user.id;
+          }
+          return id;
+        }).filter(Boolean); // Remove any undefined values
+        
+        if (resolvedAssignees.length === 0) {
+          delete apiFilters.assignedTo;
+        } else {
+          apiFilters.assignedTo = resolvedAssignees;
+        }
+      } else if (apiFilters.assignedTo === 'current') {
+        // Single value: replace 'current' with actual user ID
+        if (user?.id) {
+          log(`[TASKS CONTAINER] Replacing 'current' assignee with actual user ID: ${user.id}`);
+          apiFilters.assignedTo = user.id;
+        } else {
+          log(`[TASKS CONTAINER] Warning: 'current' assignee specified but no user ID available`);
+          delete apiFilters.assignedTo; // Remove if we can't resolve the user ID
+        }
       }
     }
     
@@ -942,6 +962,7 @@ export function TasksContainer({
                 parentTaskId={tableParentTaskId}
                 hideParentRow={context === 'task'}
                 hideFilterUI={true}
+                loading={loading}
               />
             ) : (
               <TasksBoard

@@ -6,7 +6,7 @@ export interface URLFilterParams {
   projectId?: string;
   status?: string;
   label?: string;
-  assignedTo?: string;
+  assignedTo?: string | string[];
   taskHierarchy?: string;
   excludeStatuses?: string[];
   excludeChildStatuses?: string[];
@@ -39,11 +39,20 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
     
     const assignedTo = searchParams.get('assignedTo');
     if (assignedTo && assignedTo !== 'all') {
-      // If assignedTo matches current user ID, convert to 'current' for UI display
-      if (user && assignedTo === user.id) {
-        filters.assignedTo = 'current';
+      // Handle comma-separated values for multi-select
+      if (assignedTo.includes(',')) {
+        const assigneeIds = assignedTo.split(',').map(s => s.trim()).filter(Boolean);
+        // Convert user IDs to 'current' for UI display if they match current user
+        filters.assignedTo = assigneeIds.map(id => 
+          user && id === user.id ? 'current' : id
+        );
       } else {
-        filters.assignedTo = assignedTo;
+        // Single value - convert to 'current' if it matches current user ID
+        if (user && assignedTo === user.id) {
+          filters.assignedTo = 'current';
+        } else {
+          filters.assignedTo = assignedTo;
+        }
       }
     }
     
@@ -94,11 +103,19 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
     }
     
     if (newFilters.assignedTo && newFilters.assignedTo !== 'all') {
-      // Convert 'current' to actual user ID for URL
-      const assignedToValue = newFilters.assignedTo === 'current' && user?.id 
-        ? user.id 
-        : newFilters.assignedTo;
-      params.set('assignedTo', assignedToValue);
+      if (Array.isArray(newFilters.assignedTo)) {
+        // Multi-select: convert array to comma-separated string
+        const assigneeIds = newFilters.assignedTo.map(id => 
+          id === 'current' && user?.id ? user.id : id
+        );
+        params.set('assignedTo', assigneeIds.join(','));
+      } else {
+        // Single value: convert 'current' to actual user ID for URL
+        const assignedToValue = newFilters.assignedTo === 'current' && user?.id 
+          ? user.id 
+          : newFilters.assignedTo;
+        params.set('assignedTo', assignedToValue);
+      }
     }
     
     if (newFilters.taskHierarchy && newFilters.taskHierarchy !== 'all') {
@@ -181,10 +198,21 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
     updateFilters(newFilters);
   }, [filters, updateFilters]);
 
-  const updateAssigneeFilter = useCallback((assignedTo: string) => {
+  const updateAssigneeFilter = useCallback((assignedTo: string | string[]) => {
+    let assignedToValue: string | string[] | undefined;
+    
+    if (Array.isArray(assignedTo)) {
+      // Multi-select array
+      const cleanedValue = assignedTo.filter(v => v && v.trim() !== '' && v !== 'all');
+      assignedToValue = cleanedValue.length === 0 ? undefined : cleanedValue;
+    } else {
+      // Single value
+      assignedToValue = assignedTo === 'all' ? undefined : assignedTo;
+    }
+    
     const newFilters = { 
       ...filters, 
-      assignedTo: assignedTo === 'all' ? undefined : assignedTo 
+      assignedTo: assignedToValue
     };
     updateFilters(newFilters);
   }, [filters, updateFilters]);
