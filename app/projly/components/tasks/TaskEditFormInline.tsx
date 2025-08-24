@@ -24,6 +24,8 @@ interface TaskEditFormInlineProps {
   onCancel: () => void;
   projects: any[];
   projectMembers: any[];
+  saving?: boolean; // Saving state from parent dialog
+  setSaving?: (isSaving: boolean, message?: string) => void; // Saving state setter from parent dialog
 }
 
 export function TaskEditFormInline({ 
@@ -31,7 +33,9 @@ export function TaskEditFormInline({
   onSave, 
   onCancel, 
   projects, 
-  projectMembers 
+  projectMembers, 
+  saving = false, 
+  setSaving 
 }: TaskEditFormInlineProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +61,13 @@ export function TaskEditFormInline({
 
   const handleSave = async () => {
     try {
-      setIsSubmitting(true);
+      // Use centralized saving state if available, otherwise fall back to local state
+      const setCurrentSaving = setSaving || (() => setIsSubmitting(true));
+      const isCurrentlySaving = saving || isSubmitting;
+      
+      if (!isCurrentlySaving) {
+        setCurrentSaving(true, 'Saving task...');
+      }
       
       // Prepare data for API
       const updateData = {
@@ -84,6 +94,11 @@ export function TaskEditFormInline({
       });
       
       onSave(updatedTask);
+      
+      // Clear saving state after successful save
+      if (setSaving) {
+        setSaving(false);
+      }
     } catch (error) {
       console.error('[TASK_EDIT_INLINE] Error saving task:', error);
       toast({
@@ -91,8 +106,13 @@ export function TaskEditFormInline({
         description: 'Failed to update task',
         variant: 'destructive',
       });
-    } finally {
-      setIsSubmitting(false);
+      
+      // Clear saving state on error
+      if (setSaving) {
+        setSaving(false);
+      } else {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -168,16 +188,16 @@ export function TaskEditFormInline({
           type="button"
           variant="outline"
           onClick={onCancel}
-          disabled={isSubmitting}
+          disabled={saving || isSubmitting}
         >
           Cancel
         </Button>
         <Button
           type="button"
           onClick={handleSave}
-          disabled={isSubmitting}
+          disabled={saving || isSubmitting}
         >
-          {isSubmitting ? 'Saving...' : 'Save Changes'}
+          {(saving || isSubmitting) ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
     </div>

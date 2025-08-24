@@ -81,8 +81,11 @@ interface TaskDetailsPageProps {
   id: string;
   inDialogMode?: boolean;
   onDialogClose?: () => void;
-  onTaskUpdated?: () => void;
+  onTaskUpdated?: (updatedTask?: any) => void;
   mainFilters?: any; // Filters from the main task hub to pass to subtasks
+  initialTask?: any; // Pre-fetched task data from parent dialog to prevent re-fetching
+  saving?: boolean; // Saving state from parent dialog
+  setSaving?: (isSaving: boolean, message?: string) => void; // Saving state setter from parent dialog
 }
 
 // Define type for project members
@@ -99,7 +102,16 @@ type ProjectMember = {
   };
 };
 
-export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClose, onTaskUpdated, mainFilters }: TaskDetailsPageProps) {
+export default function TaskDetailsPage({ 
+  id, 
+  inDialogMode = false, 
+  onDialogClose, 
+  onTaskUpdated, 
+  mainFilters, 
+  initialTask, 
+  saving = false, 
+  setSaving 
+}: TaskDetailsPageProps) {
   // Use useParams to get the route parameters if not in dialog mode
   const params = useParams();
   const taskId = id || (params?.id as string);
@@ -140,25 +152,49 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     }
   };
   
-  // Task form state
-  const [taskForm, setTaskForm] = useState<ProjlyTaskData>({
-    id: '',
-    title: '',
-    description: '',
-    projectId: '',
-    status: 'Not Started',
-    priority: 'Medium',
-    assignedTo: 'none',
-    startDate: null,
-    dueDate: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    project: null,
-    assignee: null,
-    parentTaskId: null,
-    percentProgress: 0,
-    label: null,
-    relatedTasks: []
+  // Task form state - initialize with initialTask if available
+  const [taskForm, setTaskForm] = useState<ProjlyTaskData>(() => {
+    if (initialTask) {
+      return {
+        id: initialTask.id || '',
+        title: initialTask.title || '',
+        description: initialTask.description || '',
+        projectId: initialTask.projectId || '',
+        status: initialTask.status || 'Not Started',
+        priority: initialTask.priority || 'Medium',
+        assignedTo: initialTask.assignedTo || 'none',
+        startDate: initialTask.startDate || null,
+        dueDate: initialTask.dueDate || null,
+        createdAt: initialTask.createdAt || new Date(),
+        updatedAt: initialTask.updatedAt || new Date(),
+        project: initialTask.project || null,
+        assignee: initialTask.assignee || null,
+        parentTaskId: initialTask.parentTaskId || null,
+        percentProgress: initialTask.percentProgress || 0,
+        label: initialTask.label || null,
+        relatedTasks: initialTask.relatedTasks || []
+      };
+    }
+    
+    return {
+      id: '',
+      title: '',
+      description: '',
+      projectId: '',
+      status: 'Not Started',
+      priority: 'Medium',
+      assignedTo: 'none',
+      startDate: null,
+      dueDate: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      project: null,
+      assignee: null,
+      parentTaskId: null,
+      percentProgress: 0,
+      label: null,
+      relatedTasks: []
+    };
   });
   
   const [projects, setProjects] = useState<any[]>([]);
@@ -179,17 +215,19 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
     }
   };
 
-  // Handle save edit function
+  // Handle save edit function with enhanced saving state coordination
   const handleSaveEdit = async (updatedTask: any) => {
     try {
+      log('Task save initiated', updatedTask?.id);
+      
       // Update the task form with the new data
       setTaskForm(updatedTask);
       setIsEditMode(false);
       setEditFormData(null);
       
-      // Call the refresh callback to update the parent table
+      // Call the refresh callback with the updated task data for optimistic updates
       if (onTaskUpdated) {
-        onTaskUpdated();
+        onTaskUpdated(updatedTask);
       }
       
       toast({
@@ -198,6 +236,11 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
       });
     } catch (error) {
       console.error('[TASK_DETAILS] Error handling save edit:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update task',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -748,10 +791,18 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
                   onCancel={() => setIsEditMode(false)}
                   projects={projects}
                   projectMembers={accessibleMembers}
+                  saving={saving}
+                  setSaving={setSaving}
                 />
               ) : (
                 <TaskDetailsContent 
-                  task={taskForm}
+                  task={{
+                    ...taskForm,
+                    priority: taskForm.priority || 'Medium',
+                    status: taskForm.status || 'Not Started',
+                    startDate: taskForm.startDate instanceof Date ? taskForm.startDate : (taskForm.startDate ? new Date(taskForm.startDate) : null),
+                    dueDate: taskForm.dueDate instanceof Date ? taskForm.dueDate : (taskForm.dueDate ? new Date(taskForm.dueDate) : null)
+                  }}
                   projects={projects}
                   projectMembers={projectMembers}
                   parentTask={parentTask}
@@ -924,6 +975,18 @@ export default function TaskDetailsPage({ id, inDialogMode = false, onDialogClos
           />
         </DialogContent>
       </Dialog>
+
+      {/* Saving overlay for TaskDetailsPage when editing in dialog */}
+      {inDialogMode && saving && (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-40">
+          <div className="flex flex-col items-center gap-3 p-6 bg-background/95 rounded-xl border shadow-lg">
+            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+            <p className="text-sm text-muted-foreground font-medium">
+              Updating task...
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );

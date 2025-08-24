@@ -47,6 +47,11 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
   const [taskNotFound, setTaskNotFound] = useState(false);
   const lastTaskIdRef = useRef<string | null>(null);
   
+  // Enhanced saving state management for anti-flashing
+  const [saving, setSaving] = useState(false);
+  const [savingMessage, setSavingMessage] = useState('Saving...');
+  const savingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Reset states when taskId changes
   useEffect(() => {
     if (taskId !== lastTaskIdRef.current) {
@@ -96,35 +101,109 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
     refetchOnWindowFocus: false
   });
   
-  // Handle task update callback with enhanced error handling
-  const handleTaskUpdated = useCallback(async () => {
-    log('Task updated callback triggered');
+  // Track recent activity to prevent flashing on close
+  const lastActivityTimeRef = useRef<number>(0);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  
+  // Enhanced saving state management with delay for flashing prevention
+  const setSavingWithDelay = useCallback((isSaving: boolean, message: string = 'Saving...') => {
+    log(`Setting saving state: ${isSaving}, message: ${message}`);
+    setSaving(isSaving);
+    setSavingMessage(message);
+    markActivity(`saving-${isSaving ? 'start' : 'end'}`);
+    
+    // Clear any existing timeout
+    if (savingTimeoutRef.current) {
+      clearTimeout(savingTimeoutRef.current);
+      savingTimeoutRef.current = null;
+    }
+    
+    // When saving ends, delay the state change to mask cascading renders
+    if (!isSaving) {
+      savingTimeoutRef.current = setTimeout(() => {
+        setSaving(false);
+        log('Saving state cleared after delay');
+      }, 800); // 800ms delay to ensure all cascading renders are complete
+    }
+  }, []);
+  
+  // Mark activity for comprehensive flashing prevention
+  const markActivity = useCallback((source: string) => {
+    lastActivityTimeRef.current = Date.now();
+    log(`Activity marked: ${source}`);
+  }, []);
+  
+  // Track various activity sources that can cause flashing
+  useEffect(() => {
+    if (isTaskLoading) markActivity('task-loading');
+  }, [isTaskLoading, markActivity]);
+  
+  useEffect(() => {
+    if (taskData) markActivity('task-data-change');
+  }, [taskData, markActivity]);
+  
+  useEffect(() => {
+    if (taskError) markActivity('task-error');
+  }, [taskError, markActivity]);
+  
+  // Track saving state changes as activity
+  useEffect(() => {
+    if (saving) markActivity('saving-active');
+  }, [saving, markActivity]);
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+      if (savingTimeoutRef.current) {
+        clearTimeout(savingTimeoutRef.current);
+        savingTimeoutRef.current = null;
+      }
+      setIsClosing(false);
+      setSaving(false);
+    };
+  }, []);
+  
+  // Handle task update callback with enhanced error handling and optimistic updates
+  const handleTaskUpdated = useCallback(async (updatedTask?: any) => {
+    log('Task updated callback triggered', updatedTask?.id);
+    markActivity('task-update');
+    
     try {
-      // Invalidate and refetch the specific task
+      if (taskId && updatedTask) {
+        // Optimistically update the cache to prevent re-fetching
+        log('Updating query cache optimistically');
+        queryClient.setQueryData(['task', taskId], updatedTask);
+        markActivity('cache-update');
+      }
+      
+      // Invalidate related queries
       if (taskId) {
+        markActivity('query-invalidation');
+        await queryClient.invalidateQueries({ queryKey: ['tasks'] });
         await queryClient.invalidateQueries({ queryKey: ['task', taskId] });
-        await refetchTask();
       }
       
       // Call parent callback
       if (onTaskUpdated) {
+        markActivity('parent-callback');
         onTaskUpdated();
       }
       
-      // Show success toast
-      toast({
-        title: 'Task Updated',
-        description: 'Task has been updated successfully.',
-      });
     } catch (error) {
       log('Error handling task update:', error);
+      markActivity('task-update-error');
       toast({
         title: 'Update Error',
         description: 'There was an error updating the task.',
         variant: 'destructive'
       });
     }
-  }, [taskId, queryClient, refetchTask, onTaskUpdated, toast]);
+  }, [taskId, queryClient, onTaskUpdated, toast, markActivity]);
   // Memoize media query results to prevent unnecessary re-renders
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isTablet = useMediaQuery("(min-width: 769px) and (max-width: 1024px)");
@@ -136,13 +215,49 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
     containerClass: isMobile ? "p-1" : "p-2"
   }), [isMobile, isTablet]);
 
-  // Handle dialog close - memoized to prevent recreation
+  // Handle dialog close with comprehensive flashing prevention
   const handleClose = useCallback(() => {
     log('Dialog close requested');
-    setIsDialogMounted(false);
-    setTaskNotFound(false);
-    onClose();
-  }, [onClose]);
+    
+    // Clear any existing close timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    
+    // Check if we should delay close to prevent flashing
+    const timeSinceActivity = Date.now() - lastActivityTimeRef.current;
+    const hasRecentActivity = timeSinceActivity < 1200; // Activity in last 1200ms (increased window)
+    const isCurrentlyLoading = isTaskLoading;
+    const isCurrentlySaving = saving;
+    
+    const shouldDelay = hasRecentActivity || isCurrentlyLoading || isClosing || isCurrentlySaving;
+    
+    if (shouldDelay && !isClosing) {
+      const delayReason = isCurrentlySaving ? 'saving' : isCurrentlyLoading ? 'loading' : 'recent activity';
+      const delay = isCurrentlySaving ? 1000 : isCurrentlyLoading ? 500 : Math.max(300, 1200 - timeSinceActivity);
+      
+      log(`Delaying close by ${delay}ms due to ${delayReason} (${timeSinceActivity}ms since activity)`);
+      
+      // Show closing overlay to mask any flashing
+      setIsClosing(true);
+      
+      closeTimeoutRef.current = setTimeout(() => {
+        log('Delayed close executing');
+        setIsDialogMounted(false);
+        setTaskNotFound(false);
+        setIsClosing(false);
+        onClose();
+        closeTimeoutRef.current = null;
+      }, delay);
+    } else if (!isClosing) {
+      log('Closing immediately - no flashing risk detected');
+      setIsDialogMounted(false);
+      setTaskNotFound(false);
+      onClose();
+    }
+    // If already closing, ignore additional close requests
+  }, [onClose, isTaskLoading, isClosing]);
   
   // Determine if we should show loading state
   const shouldShowLoading = isTaskLoading && !taskData && !taskError && !taskNotFound;
@@ -159,12 +274,12 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
     React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
   >(({ className, children, ...props }, ref) => (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-500 transition-all" />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
           // Enhanced responsive classes
-          "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-2 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+          "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-2 border bg-background shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:duration-500 transition-all",
           // Mobile optimizations
           "p-2 max-h-[85vh] max-w-[98vw] sm:p-4 sm:max-w-xl md:max-w-3xl lg:max-w-5xl sm:rounded-lg",
           className
@@ -199,9 +314,12 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
             </button>
           </DialogPrimitive.Close>
         </div>
-        {/* Required DialogTitle for accessibility */}
+        {/* Required DialogTitle and Description for accessibility */}
         <VisuallyHidden.Root>
           <DialogPrimitive.Title>Task Details</DialogPrimitive.Title>
+          <DialogPrimitive.Description>
+            View and edit task details, including title, description, status, priority, assignee, dates, and subtasks.
+          </DialogPrimitive.Description>
         </VisuallyHidden.Root>
         {children}
         {/* No close button here */}
@@ -215,7 +333,7 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
   }
   
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <CustomDialogContent 
         className={cn(
           "overflow-y-auto",
@@ -259,7 +377,8 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
         
         {shouldShowContent && taskId && (
           <div className={cn(
-            "w-full overflow-x-auto",
+            "w-full overflow-x-auto transition-all duration-500 ease-in-out",
+            (isClosing || saving) && "opacity-95 pointer-events-none",
             responsiveClasses.containerClass
           )}>
             <TaskDetailsPage 
@@ -268,7 +387,22 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
               onDialogClose={handleClose}
               onTaskUpdated={handleTaskUpdated}
               mainFilters={mainFilters}
+              initialTask={taskData}
+              saving={saving}
+              setSaving={setSavingWithDelay}
             />
+          </div>
+        )}
+        
+        {/* Enhanced anti-flashing overlay during close delay and saves */}
+        {(isClosing || saving) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/85 backdrop-blur-[2px] z-50 rounded-lg">
+            <div className="flex flex-col items-center gap-3 p-6 bg-background/95 rounded-xl border shadow-lg">
+              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+              <p className="text-sm text-muted-foreground font-medium">
+                {saving ? savingMessage : 'Closing...'}
+              </p>
+            </div>
           </div>
         )}
       </CustomDialogContent>
