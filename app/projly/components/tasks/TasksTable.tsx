@@ -1170,15 +1170,17 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                     >
                       <Maximize2 className="h-3 w-3" />
                     </button>
-                    {/* Quick view detail icon - appears on hover */}
-                    <button
-                      type="button"
-                      title="Quick view task detail"
-                      className="ml-1 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-1 rounded-sm"
-                      onClick={(e) => { e.stopPropagation(); openTaskDetailDialog(task.id); }}
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </button>
+                    {/* Quick view detail icon - appears on hover, hidden in task context to prevent multiple dialog layers */}
+                    {(context === 'project' || context === 'main') && (
+                      <button
+                        type="button"
+                        title="Quick view task detail"
+                        className="ml-1 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-1 rounded-sm"
+                        onClick={(e) => { e.stopPropagation(); openTaskDetailDialog(task.id); }}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </TableCell>
                 {context !== 'project' && (
