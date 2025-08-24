@@ -69,17 +69,24 @@ export const projlyAuthService = {
       const token = getAuthToken();
       if (!token) {
         console.log('[PROJLY:AUTH] No token found, user is not authenticated');
+        // Clear any stale cache when no token exists
+        this.clearAuthCache();
         return false;
       }
 
-      // Check session storage cache first
+      // Check session storage cache first, but only if it's not stale
       const cachedAuth = this.getAuthCache();
       if (cachedAuth !== null) {
         console.log('[PROJLY:AUTH] Using cached authentication status:', cachedAuth);
-        return cachedAuth;
+        // If cached as false but we have a token, the cache might be stale - validate with server
+        if (!cachedAuth) {
+          console.log('[PROJLY:AUTH] Cache shows false but token exists, validating with server');
+        } else {
+          return cachedAuth;
+        }
       }
 
-      // No valid cache found, validate token by making a call to the backend
+      // No valid cache found or cache shows false with token present, validate token by making a call to the backend
       console.debug('[PROJLY:AUTH] Using profile endpoint:', API_ENDPOINTS.AUTH.ME);
       const response = await fetch(API_ENDPOINTS.AUTH.ME, {
         method: 'GET',
@@ -96,9 +103,18 @@ export const projlyAuthService = {
       // Cache the authentication result
       this.setAuthCache(isAuthenticated);
       
+      // If not authenticated, clear the invalid token
+      if (!isAuthenticated) {
+        console.log('[PROJLY:AUTH] Token validation failed, clearing token');
+        clearAuthToken();
+      }
+      
       return isAuthenticated;
     } catch (error) {
       console.error('[PROJLY:AUTH] Error checking authentication:', error);
+      // Clear cache and token on error
+      this.clearAuthCache();
+      clearAuthToken();
       return false;
     }
   },
@@ -153,6 +169,28 @@ export const projlyAuthService = {
   },
 
   /**
+   * Clear authentication cache from session storage
+   */
+  clearAuthCache(): void {
+    try {
+      sessionStorage.removeItem('projly_auth_cache');
+      console.log('[PROJLY:AUTH] Authentication cache cleared');
+    } catch (error) {
+      console.error('[PROJLY:AUTH] Error clearing auth cache:', error);
+    }
+  },
+
+  /**
+   * Force refresh authentication status by clearing cache and re-validating
+   * @returns Promise resolving to current authentication status
+   */
+  async refreshAuthStatus(): Promise<boolean> {
+    console.log('[PROJLY:AUTH] Force refreshing authentication status');
+    this.clearAuthCache();
+    return await this.isAuthenticated();
+  },
+
+  /**
    * Sign in a user
    * @param credentials User credentials (email and password)
    * @returns Promise resolving to authentication result
@@ -183,6 +221,10 @@ export const projlyAuthService = {
       if (data.token) {
         setAuthToken(data.token);
         console.log('[PROJLY:AUTH] Token stored successfully after login');
+        
+        // Clear any stale authentication cache after successful login
+        this.clearAuthCache();
+        console.log('[PROJLY:AUTH] Authentication cache cleared after successful login');
       }
 
       console.log('[PROJLY:AUTH] Sign in successful');

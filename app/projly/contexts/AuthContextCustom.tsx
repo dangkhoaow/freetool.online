@@ -116,6 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.token) {
         console.log('[AUTH_CONTEXT] Setting auth token from login response');
         setAuthToken(data.token);
+        
+        // Clear any stale authentication cache after successful login
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('projly_auth_cache');
+          console.log('[AUTH_CONTEXT] Authentication cache cleared after successful login');
+        }
       } else {
         console.warn('[AUTH_CONTEXT] No token received in login response');
       }
@@ -152,6 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('profile');
         sessionStorage.removeItem('authState');
+        sessionStorage.removeItem('projly_auth_cache');
         
         console.log('[AUTH_CONTEXT] Logout successful, session cleared');
         
@@ -188,6 +195,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('profile');
       sessionStorage.removeItem('authState');
+      sessionStorage.removeItem('projly_auth_cache');
       
       console.log('[AUTH_CONTEXT] Client-side storage cleared');
       console.log('Successfully logged out');
@@ -259,6 +267,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('profile');
     sessionStorage.removeItem('authState');
+    sessionStorage.removeItem('projly_auth_cache');
     
     // Reset React Query cache
     queryClient.clear();

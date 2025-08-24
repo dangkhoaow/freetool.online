@@ -161,6 +161,12 @@ export async function signIn(provider?: string, options?: CredentialsConfig) {
           localStorage.setItem('profile', JSON.stringify(result.profile));
         }
         
+        // Clear any stale authentication cache after successful login
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('projly_auth_cache');
+          console.log('[JWT_AUTH_ADAPTER] Authentication cache cleared after successful login');
+        }
+        
         console.log('[JWT_AUTH_ADAPTER] Sign in successful');
         
         // Handle redirect if needed
