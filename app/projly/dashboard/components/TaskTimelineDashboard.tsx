@@ -179,7 +179,7 @@ export function TaskTimelineDashboard() {
 
   // Filter events by selected project
   const filteredEvents = useMemo(() => {
-    return events.filter(event => {
+    return events.filter((event: any) => {
       return selectedProject === 'all' || event.projectId === selectedProject;
     });
   }, [events, selectedProject]);
@@ -363,11 +363,11 @@ export function TaskTimelineDashboard() {
               plugins={[resourceTimelinePlugin, interactionPlugin]}
               initialView="resourceTimelineMonth"
               headerToolbar={false}
-              resources={projects.map(project => ({
+              resources={projects.map((project: any) => ({
                 id: project.id,
                 title: project.name
               }))}
-              events={filteredEvents.map(event => ({
+              events={filteredEvents.map((event: any) => ({
                 id: event.id,
                 title: event.title,
                 start: event.start,
