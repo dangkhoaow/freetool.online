@@ -81,7 +81,8 @@ export type TranslationPath =
   | 'contracts.unit' | 'contracts.position' | 'contracts.contractFiles' | 'contracts.created' | 'contracts.errorLoadingDetails'
   | 'contracts.downloadFailed' | 'contracts.errorDownloadingFile'
   | 'common.download' | 'common.downloading' | 'common.kb'
-  | 'language_support.multiLanguageReady' | 'language_support.translationSystemImplemented';
+  | 'language_support.multiLanguageReady' | 'language_support.translationSystemImplemented'
+  | 'footer.copyright';
 
 export const translations = {
   vi: viTranslations,

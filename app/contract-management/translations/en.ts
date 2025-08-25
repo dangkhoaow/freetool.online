@@ -446,5 +446,10 @@ export const enTranslations = {
   language_support: {
     multiLanguageReady: 'Multi-language system ready',
     translationSystemImplemented: 'Translation system fully implemented'
+  },
+
+  // Footer
+  footer: {
+    copyright: 'Copyright belongs to Tam Nong Regional Medical Center - Huynh Thi Tuyet Lan'
   }
 }; 

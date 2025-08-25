@@ -121,8 +121,17 @@ export default function ContractManagementLoginPage() {
   // Show loading while checking authentication
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="flex items-center justify-center min-h-screen mb-24">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+        
+        {/* Copyright Footer */}
+        <footer className="fixed bottom-0 left-0 right-0 text-center py-6 px-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-50">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {t('footer.copyright')}
+          </p>
+        </footer>
       </div>
     );
   }
@@ -130,7 +139,7 @@ export default function ContractManagementLoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
 
-      <div className="flex items-center justify-center px-4 py-16">
+      <div className="flex items-center justify-center px-4 py-16 mb-18">
         <div className="w-full max-w-6xl py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             {/* Left side - Features */}
@@ -352,6 +361,13 @@ export default function ContractManagementLoginPage() {
           </div>
         </div>
       </div>
+      
+      {/* Copyright Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 text-center py-6 px-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-50">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {t('footer.copyright')}
+        </p>
+      </footer>
     </div>
   );
 } 

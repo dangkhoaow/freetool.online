@@ -445,5 +445,10 @@ export const viTranslations = {
   language_support: {
     multiLanguageReady: 'Hệ thống đa ngôn ngữ đã sẵn sàng',
     translationSystemImplemented: 'Hệ thống dịch thuật đã được triển khai hoàn chỉnh'
+  },
+
+  // Footer
+  footer: {
+    copyright: 'Bản quyền thuộc về Trung tâm Y tế Khu vực Tam Nông - Huỳnh Thị Tuyết Lan'
   }
 }; 
