@@ -46,7 +46,7 @@ export function DescriptionField({ value, onChange }: DescriptionFieldProps) {
     content: initialContent.current,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert focus:outline-none',
+        class: 'prose prose-sm dark:prose-invert focus:outline-none max-w-none w-full',
         style: 'line-height: 1.4; outline: none;',
       },
     },
@@ -83,6 +83,8 @@ export function DescriptionField({ value, onChange }: DescriptionFieldProps) {
           outline: none !important;
           border: none !important;
           line-height: 1.4 !important;
+          max-width: none !important;
+          width: 100% !important;
         }
         .ProseMirror:focus {
           outline: none !important;
@@ -195,7 +197,7 @@ export function DescriptionField({ value, onChange }: DescriptionFieldProps) {
         <div className="p-3 w-full max-w-none">
           <EditorContent
             editor={editor}
-            className="min-h-[100px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words ProseMirror-focused"
+            className="min-h-[100px] outline-none focus-visible:outline-none focus:outline-none focus-within:outline-none break-words ProseMirror-focused w-full max-w-none"
             style={{ 
               wordBreak: 'break-word', 
               overflowWrap: 'break-word',
