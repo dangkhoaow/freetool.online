@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout'
 import { MyTaskHealthWidget } from './components/MyTaskHealthWidget';
 import { TeamActivityFeed } from './components/TeamActivityFeed';
 import { MemberActivityTable } from './components/MemberActivityTable';
+import { MemberActivityCalendar } from './components/MemberActivityCalendar';
 import { AnalyticsChartsSection } from './components/AnalyticsChartsSection';
 
 export default function Dashboard() {
@@ -29,11 +30,14 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Middle Row - Team Member Activity */}
+          {/* Team Member Activity Table */}
           <MemberActivityTable />
 
+          {/* Team Member Activity Calendar */}
+          <MemberActivityCalendar />
+
           {/* Bottom Row - Analytics Charts */}
-          <AnalyticsChartsSection />
+          {/* <AnalyticsChartsSection /> */}
         </div>
       </div>
     </DashboardLayout>

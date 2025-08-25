@@ -517,3 +517,50 @@ export function useMyTasksStatusAnalytics() {
     enabled: !!userId
   });
 }
+
+// Member activity calendar analytics - team member activities grouped by date
+export function useMemberActivityCalendarAnalytics(month?: number, year?: number) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching member activity calendar analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "member-activity-calendar", userId, month, year],
+    queryFn: async () => {
+      logAnalytics("Executing member activity calendar analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for member activity calendar analytics");
+        return { activities: [], members: [], period: null };
+      }
+      
+      try {
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (month) params.append('month', month.toString());
+        if (year) params.append('year', year.toString());
+        
+        const endpoint = `analytics/member-activity-calendar${params.toString() ? `?${params.toString()}` : ''}`;
+        const response = await projlyClient.get(endpoint);
+        logAnalytics("Member activity calendar analytics response:", response);
+        
+        // Check if we have valid data in the response
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch member activity calendar analytics');
+        }
+        
+        return response.data || { activities: [], members: [], period: null };
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching member activity calendar analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch member activity calendar analytics",
+          variant: "destructive"
+        });
+        return { activities: [], members: [], period: null };
+      }
+    },
+    enabled: !!userId
+  });
+}
