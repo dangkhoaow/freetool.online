@@ -564,3 +564,163 @@ export function useMemberActivityCalendarAnalytics(month?: number, year?: number
     enabled: !!userId
   });
 }
+
+// Team Ownership Metrics Analytics
+export function useTeamOwnershipMetrics() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching team ownership metrics");
+  
+  return useQuery({
+    queryKey: ["analytics", "team-ownership-metrics", userId],
+    queryFn: async () => {
+      logAnalytics("Executing team ownership metrics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for team ownership metrics");
+        return [];
+      }
+      
+      try {
+        const response = await projlyClient.get('analytics/team-ownership-metrics');
+        logAnalytics("Team ownership metrics response:", response);
+        
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch team ownership metrics');
+        }
+        
+        return response.data || [];
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching team ownership metrics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch team ownership metrics",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: !!userId
+  });
+}
+
+// Sprint Commitment Analytics
+export function useSprintCommitmentAnalytics(sprintDays: number = 14) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching sprint commitment analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "sprint-commitment", userId, sprintDays],
+    queryFn: async () => {
+      logAnalytics("Executing sprint commitment analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for sprint commitment analytics");
+        return [];
+      }
+      
+      try {
+        const response = await projlyClient.get(`analytics/sprint-commitment?sprintDays=${sprintDays}`);
+        logAnalytics("Sprint commitment analytics response:", response);
+        
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch sprint commitment analytics');
+        }
+        
+        return response.data || [];
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching sprint commitment analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch sprint commitment analytics",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: !!userId
+  });
+}
+
+// Daily Standup Preparation Analytics
+export function useDailyStandupPrepAnalytics() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching daily standup prep analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "daily-standup-prep", userId],
+    queryFn: async () => {
+      logAnalytics("Executing daily standup prep analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for daily standup prep analytics");
+        return [];
+      }
+      
+      try {
+        const response = await projlyClient.get('analytics/daily-standup-prep');
+        logAnalytics("Daily standup prep analytics response:", response);
+        
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch daily standup prep analytics');
+        }
+        
+        return response.data || [];
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching daily standup prep analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch daily standup prep analytics",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: !!userId
+  });
+}
+
+// Blocker Resolution Analytics
+export function useBlockerResolutionAnalytics() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
+  logAnalytics("Fetching blocker resolution analytics");
+  
+  return useQuery({
+    queryKey: ["analytics", "blocker-resolution", userId],
+    queryFn: async () => {
+      logAnalytics("Executing blocker resolution analytics query");
+      
+      if (!userId) {
+        logAnalytics("No user ID provided for blocker resolution analytics");
+        return [];
+      }
+      
+      try {
+        const response = await projlyClient.get('analytics/blocker-resolution');
+        logAnalytics("Blocker resolution analytics response:", response);
+        
+        if (response.error) {
+          throw new Error(response.error || 'Failed to fetch blocker resolution analytics');
+        }
+        
+        return response.data || [];
+      } catch (error: any) {
+        console.error("[ANALYTICS] Error fetching blocker resolution analytics:", error);
+        toast({
+          title: "Error fetching analytics",
+          description: error.message || "Failed to fetch blocker resolution analytics",
+          variant: "destructive"
+        });
+        return [];
+      }
+    },
+    enabled: !!userId
+  });
+}
