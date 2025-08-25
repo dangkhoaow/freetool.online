@@ -6,6 +6,7 @@ import { TeamActivityFeed } from './components/TeamActivityFeed';
 import { MemberActivityTable } from './components/MemberActivityTable';
 import { MemberActivityCalendar } from './components/MemberActivityCalendar';
 import { TaskTimelineDashboard } from './components/TaskTimelineDashboard';
+import { TeamMotivationMetrics } from './components/TeamMotivationMetrics';
 import { AnalyticsChartsSection } from './components/AnalyticsChartsSection';
 
 export default function Dashboard() {
@@ -39,6 +40,9 @@ export default function Dashboard() {
 
           {/* Parent Tasks Timeline */}
           <TaskTimelineDashboard />
+
+          {/* Team Motivation & Goal Setting Metrics */}
+          <TeamMotivationMetrics />
 
           {/* Bottom Row - Analytics Charts */}
           {/* <AnalyticsChartsSection /> */}
