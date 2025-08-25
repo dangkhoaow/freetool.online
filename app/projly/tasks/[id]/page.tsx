@@ -26,6 +26,9 @@ import {
   AdditionalInfoContent
 } from "@/app/projly/components/tasks/details";
 
+// Import enhanced task activity log
+import { TaskActivityLog } from "@/app/projly/components/tasks/details/TaskActivityLog";
+
 // Import task comments component
 import { TaskCommentsSection } from "@/app/projly/components/tasks/comments/TaskCommentsSection";
 import { useTaskComments } from "@/lib/services/projly/use-task-comments";
@@ -937,10 +940,11 @@ export default function TaskDetailsPage({
           <Card>
             <CardHeader>
               <CardTitle>Activity Log</CardTitle>
-              <CardDescription>Recent activity for this task</CardDescription>
+              <CardDescription>Complete history of all changes and updates for this task</CardDescription>
             </CardHeader>
             <CardContent>
-              <ActivityContent 
+              <TaskActivityLog 
+                taskId={taskId}
                 updatedAt={taskForm.updatedAt}
                 createdAt={taskForm.createdAt}
                 status={taskForm.status}

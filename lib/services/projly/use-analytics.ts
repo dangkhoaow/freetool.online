@@ -724,3 +724,19 @@ export function useBlockerResolutionAnalytics() {
     enabled: !!userId
   });
 }
+
+// Task Activities Hook
+export const useTaskActivities = (taskId: string | null) => {
+  const { data: session } = useSession();
+  
+  return useQuery({
+    queryKey: ['analytics', 'task-activities', taskId],
+    queryFn: () => {
+      if (!taskId) throw new Error('Task ID is required');
+      return projlyClient.get(`analytics/task-activities?taskId=${taskId}`);
+    },
+    enabled: !!session?.user && !!taskId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: 1
+  });
+};
