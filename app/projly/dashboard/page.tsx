@@ -5,6 +5,7 @@ import { MyTaskHealthWidget } from './components/MyTaskHealthWidget';
 import { TeamActivityFeed } from './components/TeamActivityFeed';
 import { MemberActivityTable } from './components/MemberActivityTable';
 import { MemberActivityCalendar } from './components/MemberActivityCalendar';
+import { TaskTimelineDashboard } from './components/TaskTimelineDashboard';
 import { AnalyticsChartsSection } from './components/AnalyticsChartsSection';
 
 export default function Dashboard() {
@@ -35,6 +36,9 @@ export default function Dashboard() {
 
           {/* Team Member Activity Calendar */}
           <MemberActivityCalendar />
+
+          {/* Parent Tasks Timeline */}
+          <TaskTimelineDashboard />
 
           {/* Bottom Row - Analytics Charts */}
           {/* <AnalyticsChartsSection /> */}
