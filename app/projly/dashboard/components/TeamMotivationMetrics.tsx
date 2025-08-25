@@ -122,7 +122,7 @@ export function TeamMotivationMetrics() {
   const { data: topPerformersData, isLoading: loadingPerformers } = useQuery({
     queryKey: ['motivation', 'top-performers'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/projly/analytics/top-performers', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/analytics/top-performers', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -137,7 +137,7 @@ export function TeamMotivationMetrics() {
   const { data: activityLeadersData, isLoading: loadingLeaders } = useQuery({
     queryKey: ['motivation', 'activity-leaders'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/projly/analytics/activity-leaders', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/analytics/activity-leaders', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -152,7 +152,7 @@ export function TeamMotivationMetrics() {
   const { data: missingGoalTasksData, isLoading: loadingMissingGoals } = useQuery({
     queryKey: ['motivation', 'missing-goals'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/projly/analytics/missing-goal-dates', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/analytics/missing-goal-dates', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -168,7 +168,7 @@ export function TeamMotivationMetrics() {
     queryKey: ['task-analysis', selectedTaskId],
     queryFn: async () => {
       if (!selectedTaskId) return null;
-      const response = await fetch(`http://localhost:3001/api/projly/analytics/task-analysis?taskId=${selectedTaskId}`, {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/analytics/task-analysis?taskId=' + selectedTaskId, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -184,7 +184,7 @@ export function TeamMotivationMetrics() {
     queryKey: ['performer-evidence', selectedPerformerId],
     queryFn: async () => {
       if (!selectedPerformerId) return null;
-      const response = await fetch(`http://localhost:3001/api/projly/analytics/performer-evidence?performerId=${selectedPerformerId}`, {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/analytics/performer-evidence?performerId=' + selectedPerformerId, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });

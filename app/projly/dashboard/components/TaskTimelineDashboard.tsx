@@ -57,7 +57,7 @@ export function TaskTimelineDashboard() {
   } = useQuery({
     queryKey: ['tasks', 'dashboard-timeline'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/projly/tasks?includeSubTasks=false', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/tasks?includeSubTasks=false', {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
