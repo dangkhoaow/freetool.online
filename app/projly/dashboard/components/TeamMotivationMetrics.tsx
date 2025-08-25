@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Zap, Target, AlertTriangle, Calendar, Clock, Brain, CheckCircle, XCircle, User, MessageSquare, Activity, Lightbulb, ExternalLink, Edit3, Plus } from "lucide-react";
+import { Trophy, Zap, Target, AlertTriangle, Calendar, Clock, Brain, CheckCircle, XCircle, User, MessageSquare, Activity, Lightbulb, ExternalLink, Edit3, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { format } from "date-fns";
@@ -117,6 +117,10 @@ export function TeamMotivationMetrics() {
   const [showPerformerEvidence, setShowPerformerEvidence] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [showActivityDetail, setShowActivityDetail] = useState(false);
+  
+  // Pagination state for missing goal dates
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch top performers data
   const { data: topPerformersData, isLoading: loadingPerformers } = useQuery({
@@ -194,6 +198,11 @@ export function TeamMotivationMetrics() {
     },
     enabled: !!selectedPerformerId
   });
+
+  // Reset pagination when data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [missingGoalTasksData]);
 
   const getMemberName = (member: any) => {
     return `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email;
@@ -496,7 +505,10 @@ export function TeamMotivationMetrics() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {missingGoalTasksData?.slice(0, 10).map((task: MissingGoalTask) => {
+                  {(() => {
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    return missingGoalTasksData?.slice(startIndex, endIndex).map((task: MissingGoalTask) => {
                     const recommendations = getScrumMasterRecommendation(task);
                     const primaryRecommendation = recommendations[0];
                     
@@ -573,9 +585,62 @@ export function TeamMotivationMetrics() {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
+                    });
+                  })()}
                 </TableBody>
               </Table>
+              
+              {/* Pagination Controls */}
+              {missingGoalTasksData && missingGoalTasksData.length > itemsPerPage && (
+                <div className="flex items-center justify-between px-2">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, missingGoalTasksData.length)} of {missingGoalTasksData.length} tasks
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.ceil(missingGoalTasksData.length / itemsPerPage) }, (_, i) => i + 1)
+                        .filter(page => 
+                          page === 1 || 
+                          page === Math.ceil(missingGoalTasksData.length / itemsPerPage) || 
+                          Math.abs(page - currentPage) <= 2
+                        )
+                        .map((page, index, array) => (
+                          <React.Fragment key={page}>
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <span className="px-2 text-muted-foreground">...</span>
+                            )}
+                            <Button
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          </React.Fragment>
+                        ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.min(Math.ceil(missingGoalTasksData.length / itemsPerPage), currentPage + 1))}
+                      disabled={currentPage === Math.ceil(missingGoalTasksData.length / itemsPerPage)}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
