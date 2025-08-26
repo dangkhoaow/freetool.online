@@ -449,6 +449,6 @@ export const viTranslations = {
 
   // Footer
   footer: {
-    copyright: 'Bản quyền thuộc về Trung tâm Y tế Khu vực Tam Nông - Huỳnh Thị Tuyết Lan'
+    copyright: 'Bản quyền thuộc Huỳnh Thị Tuyết Lan (Trung tâm Y tế Khu vực Tam Nông - Đồng Tháp)'
   }
 }; 

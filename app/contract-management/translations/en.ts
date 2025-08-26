@@ -450,6 +450,6 @@ export const enTranslations = {
 
   // Footer
   footer: {
-    copyright: 'Copyright belongs to Tam Nong Regional Medical Center - Huynh Thi Tuyet Lan'
+    copyright: 'Copyright belongs to Huynh Thi Tuyet Lan (Tam Nong Regional Medical Center)'
   }
 }; 
