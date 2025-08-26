@@ -132,7 +132,7 @@ interface DragItem {
 
 // Helper function to organize tasks into a complete hierarchy showing ALL nested levels
 export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; direction: "asc" | "desc" }): Task[] => {
-  console.log('[TASKS TABLE] Organizing tasks into full hierarchy with ALL nested levels');
+  // console.log('[TASKS TABLE] Organizing tasks into full hierarchy with ALL nested levels');
   
   // Create a map for tracking parent-child relationships
   const parentTaskMap = new Map<string, Task[]>();
@@ -159,13 +159,13 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
       const parentLevel = taskLevels.get(task.parentTaskId) || 0;
       taskLevels.set(task.id, parentLevel + 1);
       
-      console.log(`[TASKS TABLE] Task ${task.id} is level ${parentLevel + 1} (child of ${task.parentTaskId})`);
+      // console.log(`[TASKS TABLE] Task ${task.id} is level ${parentLevel + 1} (child of ${task.parentTaskId})`);
     } else {
-      console.log(`[TASKS TABLE] Task ${task.id} is level 0 (top level)`);
+      // console.log(`[TASKS TABLE] Task ${task.id} is level 0 (top level)`);
     }
   });
   
-  console.log(`[TASKS TABLE] Found ${parentTaskMap.size} parent-child relationships`);
+  // console.log(`[TASKS TABLE] Found ${parentTaskMap.size} parent-child relationships`);
   
   // Sort function used across different collections of tasks
   const sortTasks = (tasksToSort: Task[]) => {
@@ -237,7 +237,7 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
     
     // Include orphaned tasks (parent not in our filtered set)
     if (task.parentTaskId && !tasks.some(t => t.id === task.parentTaskId)) {
-      console.log(`[TASKS TABLE] Found orphaned task: ${task.id} with missing parent: ${task.parentTaskId}`);
+      // console.log(`[TASKS TABLE] Found orphaned task: ${task.id} with missing parent: ${task.parentTaskId}`);
       return true;
     }
     
@@ -256,7 +256,7 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
     // Get all children of this task
     const children = parentTaskMap.get(task.id) || [];
     if (children.length > 0) {
-      console.log(`[TASKS TABLE] Adding ${children.length} children of task ${task.id} at level ${parentLevel + 1}`);
+      // console.log(`[TASKS TABLE] Adding ${children.length} children of task ${task.id} at level ${parentLevel + 1}`);
       
       // Recursively add each child and its descendants
       children.forEach(child => {
@@ -274,12 +274,12 @@ export const organizeTasksHierarchy = (tasks: Task[], sortBy: { field: string; d
   // (their parent wasn't in the filtered set)
   tasks.forEach(task => {
     if (!organizedTasks.includes(task)) {
-      console.log(`[TASKS TABLE] Adding orphaned task: ${task.id}`);
+      // console.log(`[TASKS TABLE] Adding orphaned task: ${task.id}`);
       organizedTasks.push(task);
     }
   });
   
-  console.log(`[TASKS TABLE] Organized ${organizedTasks.length} tasks with full hierarchical structure`);
+  // console.log(`[TASKS TABLE] Organized ${organizedTasks.length} tasks with full hierarchical structure`);
   
   // Store the calculated levels for easier access during rendering
   organizedTasks.forEach(task => {
@@ -445,9 +445,9 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // Function to handle logging
   const log = (message: string, data?: any) => {
     if (data !== undefined) {
-      console.log(`[TASKS TABLE] ${message}`, data);
+      // console.log(`[TASKS TABLE] ${message}`, data);
     } else {
-      console.log(`[TASKS TABLE] ${message}`);
+      // console.log(`[TASKS TABLE] ${message}`);
     }
   };
   
@@ -456,12 +456,12 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // Get current user from AuthContext
   const { user } = useAuth();
   
-  console.log("[TASKS TABLE] Current user:", user?.id);
+  // console.log("[TASKS TABLE] Current user:", user?.id);
   
   // Use the filters directly from props
   const filters = initialFilters || {};
   
-  console.log('[TASKS TABLE] Using filters from props:', filters);
+  // console.log('[TASKS TABLE] Using filters from props:', filters);
   
   // Helper for debugging
   useEffect(() => {
@@ -472,7 +472,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     direction: "asc",
   });
   
-  console.log("[TASKS TABLE] Initialized with default sort by dueDate");
+  // console.log("[TASKS TABLE] Initialized with default sort by dueDate");
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   // State for Task detail dialog (rich modal)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -500,7 +500,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     }
   });
   
-  console.log(`[TASKS TABLE] Built relationship maps: ${taskRelationships.size} parents, ${subTaskParents.size} sub-tasks`);
+  // console.log(`[TASKS TABLE] Built relationship maps: ${taskRelationships.size} parents, ${subTaskParents.size} sub-tasks`);
   
   // Helper to check if any sub-task of a parent matches the filters
   const hasMatchingSubTask = (parentId: string, checkFilters: any, allTasks: Task[]): boolean => {
@@ -599,17 +599,17 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     return Array.from(userMap.values());
   }, [tasks]);
   
-  console.log(`[TASKS TABLE] Found ${uniqueUsers.length} unique users for dropdown`);
+  // console.log(`[TASKS TABLE] Found ${uniqueUsers.length} unique users for dropdown`);
   uniqueUsers.forEach(user => {
-    console.log(`[TASKS TABLE] Unique user: ${user.id} - ${user.name}`);
+    // console.log(`[TASKS TABLE] Unique user: ${user.id} - ${user.name}`);
   });
   
   // DEBUG: Log task assignment data
   tasks.forEach(task => {
-    console.log(`[TASKS TABLE] Task ${task.id} (${task.title}) assignment data:`);
-    console.log(`  - assignedTo: ${task.assignedTo || 'null'}`);
-    console.log(`  - assignee.id: ${task.assignee?.id || 'null'}`);
-    console.log(`  - assignee.email: ${task.assignee?.email || 'null'}`);
+    // console.log(`[TASKS TABLE] Task ${task.id} (${task.title}) assignment data:`);
+    // console.log(`  - assignedTo: ${task.assignedTo || 'null'}`);
+    // console.log(`  - assignee.id: ${task.assignee?.id || 'null'}`);
+    // console.log(`  - assignee.email: ${task.assignee?.email || 'null'}`);
   });
   
   // Filter tasks based on search and filters with proper type safety
@@ -641,8 +641,8 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     
     // Apply label filter
     if (filters.label && task.label !== filters.label) {
-      console.log(`[TASKS TABLE] Task ${task.id} doesn't match label filter: ${filters.label}`);
-      console.log(`  - task.label: ${task.label || 'null'}`);
+      // console.log(`[TASKS TABLE] Task ${task.id} doesn't match label filter: ${filters.label}`);
+      // console.log(`  - task.label: ${task.label || 'null'}`);
       matchesBasicFilters = false;
     }
     
@@ -669,33 +669,33 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
         }
         
         if (!matchesAssignee) {
-          console.log(`[TASKS TABLE] Task ${task.id} doesn't match any assignee in multi-select filter:`, filters.assignedTo);
-          console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
-          console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+          // console.log(`[TASKS TABLE] Task ${task.id} doesn't match any assignee in multi-select filter:`, filters.assignedTo);
+          // console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+          // console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
           matchesBasicFilters = false;
         } else {
-          console.log(`[TASKS TABLE] Task ${task.id} MATCHES multi-select assignee filter`);
+          // console.log(`[TASKS TABLE] Task ${task.id} MATCHES multi-select assignee filter`);
         }
       } else {
         // Single assignee filtering (backward compatibility)
         if (filters.assignedTo === 'current') {
           if (!user?.id || (task.assignedTo !== user.id && task.assignee?.id !== user.id)) {
-            console.log(`[TASKS TABLE] Task ${task.id} doesn't match current user filter. User ID: ${user?.id}`);
-            console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
-            console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+            // console.log(`[TASKS TABLE] Task ${task.id} doesn't match current user filter. User ID: ${user?.id}`);
+            // console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+            // console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
             matchesBasicFilters = false;
           } else {
-            console.log(`[TASKS TABLE] Task ${task.id} MATCHES current user filter. User ID: ${user?.id}`);
+            // console.log(`[TASKS TABLE] Task ${task.id} MATCHES current user filter. User ID: ${user?.id}`);
           }
         } else {
           // Normal single assignee filtering
           if (task.assignedTo !== filters.assignedTo && task.assignee?.id !== filters.assignedTo) {
-            console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
-            console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
-            console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
+            // console.log(`[TASKS TABLE] Task ${task.id} doesn't match assignee filter: ${filters.assignedTo}`);
+            // console.log(`  - task.assignedTo: ${task.assignedTo || 'null'}`);
+            // console.log(`  - task.assignee?.id: ${task.assignee?.id || 'null'}`);
             matchesBasicFilters = false;
           } else {
-            console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
+            // console.log(`[TASKS TABLE] Task ${task.id} MATCHES assignee filter: ${filters.assignedTo}`);
           }
         }
       }
@@ -709,21 +709,21 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     // Even if this task doesn't match filters, include it if:
     // 1. It's a parent task and any of its sub-tasks match the filters
     if (taskRelationships.has(task.id) && hasMatchingSubTask(task.id, filters, tasks)) {
-      console.log(`[TASKS TABLE] Including parent task ${task.id} because it has matching sub-tasks`);
+      // console.log(`[TASKS TABLE] Including parent task ${task.id} because it has matching sub-tasks`);
       return true;
     }
     
     // 2. It's a sub-task and its parent matches the filters
     if (task.parentTaskId && hasMatchingParent(task.id, filters, tasks)) {
-      console.log(`[TASKS TABLE] Including sub-task ${task.id} because its parent matches filters`);
+      // console.log(`[TASKS TABLE] Including sub-task ${task.id} because its parent matches filters`);
       return true;
     }
     
     return false;
   });
   
-  console.log("[TASKS TABLE] Filtered tasks:", filteredTasks.length);
-  console.log("[TASKS TABLE] Sub-tasks count:", filteredTasks.filter(task => task.parentTaskId).length);
+  // console.log("[TASKS TABLE] Filtered tasks:", filteredTasks.length);
+  // console.log("[TASKS TABLE] Sub-tasks count:", filteredTasks.filter(task => task.parentTaskId).length);
   
   // Sort tasks while preserving parent-child relationships
   const sortedTasks = organizeTasksHierarchy(filteredTasks, sortBy);
@@ -769,21 +769,21 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // Handle delete task
   const confirmDelete = async (id: string) => {
     try {
-      console.log(`[TASKS TABLE] Deleting task with ID: ${id}`);
+      // console.log(`[TASKS TABLE] Deleting task with ID: ${id}`);
       await projlyTasksService.deleteTask(id);
-      console.log('[TASKS TABLE] Task deleted successfully');
+      // console.log('[TASKS TABLE] Task deleted successfully');
       
       // Reset state and refresh data
       setDeleteTaskId(null);
       
       // Call callback to refresh tasks list if provided
       if (onOperationComplete) {
-        console.log('Calling onOperationComplete callback to refresh tasks with current filters');
-        console.log('Current filters:', filters);
+        // console.log('Calling onOperationComplete callback to refresh tasks with current filters');
+        // console.log('Current filters:', filters);
         onOperationComplete(filters);
       }
     } catch (error) {
-      console.log('[TASKS TABLE] Error deleting task:', error);
+      // console.log('[TASKS TABLE] Error deleting task:', error);
     }
   };
 
@@ -791,7 +791,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
   // According to backend logic: only project owners or task assignees can delete tasks
   const canDeleteTask = (task: Task): boolean => {
     if (!user || !task) {
-      console.log("[TASKS TABLE] Cannot check delete permission: missing user or task data");
+      // console.log("[TASKS TABLE] Cannot check delete permission: missing user or task data");
       return false;
     }
     
@@ -803,15 +803,15 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     // Check if the current user is assigned to the task
     const isAssigned = task.assignedTo === user.id || task.assignee?.id === user.id;
     
-    console.log(`[TASKS TABLE] Task ${task.id} delete permission check: isAssigned=${isAssigned}`);
-    console.log(`[TASKS TABLE] Task details - assignedTo: ${task.assignedTo}, assignee.id: ${task.assignee?.id}`);
+    // console.log(`[TASKS TABLE] Task ${task.id} delete permission check: isAssigned=${isAssigned}`);
+    // console.log(`[TASKS TABLE] Task details - assignedTo: ${task.assignedTo}, assignee.id: ${task.assignee?.id}`);
     
     return isAssigned;
   };
 
   // Handle edit task click - navigate to edit page
   const handleEditTask = (task: Task) => {
-    console.log("[TASKS TABLE] Navigating to edit page for task:", task.id);
+    // console.log("[TASKS TABLE] Navigating to edit page for task:", task.id);
     
     // Set a flag in localStorage to indicate a task is being edited
     // This will be used to trigger a refresh when returning to the project detail page
@@ -819,7 +819,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     localStorage.setItem('projly_last_edited_task', task.id);
     localStorage.setItem('projly_edit_timestamp', Date.now().toString());
     
-    console.log("[TASKS TABLE] Set edit flags in localStorage");
+    // console.log("[TASKS TABLE] Set edit flags in localStorage");
     
     // Navigate to the edit page
     router.push(`/projly/tasks/${task.id}/edit`);
@@ -827,7 +827,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
 
   // Handle view task details - navigate to task detail page
   const handleViewTaskDetails = (task: Task) => {
-    console.log("[TASKS TABLE] Navigating to task detail page:", task.id);
+    // console.log("[TASKS TABLE] Navigating to task detail page:", task.id);
     router.push(`/projly/tasks/${task.id}`);
   };
 
@@ -885,7 +885,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
         customClass = "bg-gray-400 text-white hover:bg-gray-500 border-gray-400";
     }
     
-    console.log(`Rendering badge for status: ${status} with class: ${customClass}`);
+    // console.log(`Rendering badge for status: ${status} with class: ${customClass}`);
     return <Badge variant={variant} className={customClass}>{status}</Badge>;
   };
 
@@ -953,16 +953,14 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
     position: "before" | "after"
   ) => {
     try {
-      console.log(
-        `[TASKS TABLE] Reordering task ${draggedTaskId} ${position} task ${targetTaskId}`
-      );
+      // console.log(`[TASKS TABLE] Reordering task ${draggedTaskId} ${position} task ${targetTaskId}`);
 
       // ---- 1. Identify dragged / target tasks -------------------------
       const draggedTask = visibleTasks.find((t) => t.id === draggedTaskId);
       const targetTask = visibleTasks.find((t) => t.id === targetTaskId);
 
       if (!draggedTask || !targetTask) {
-        console.log("[TASKS TABLE] Could not find dragged or target task");
+        // console.log("[TASKS TABLE] Could not find dragged or target task");
         return;
       }
 
@@ -992,9 +990,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
       newOrder.forEach((task, idx) => {
         const requiredOrder = idx + 1; // 1-based, small integers
         if (task.displayOrder !== requiredOrder) {
-          console.log(
-            `[TASKS TABLE]   -> ${task.id} displayOrder ${task.displayOrder} → ${requiredOrder}`
-          );
+          // console.log(`[TASKS TABLE]   -> ${task.id} displayOrder ${task.displayOrder} → ${requiredOrder}`);
           updates.push(
             projlyTasksService.updateTask(task.id, {
               title: task.title,
@@ -1013,9 +1009,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
       });
 
       await Promise.all(updates);
-      console.log(
-        `[TASKS TABLE] Re-ordering complete – ${updates.length} task(s) updated.`
-      );
+      // console.log(`[TASKS TABLE] Re-ordering complete – ${updates.length} task(s) updated.`);
 
       // ---- 5. Refresh list --------------------------------------------
       if (onOperationComplete) {
@@ -1168,6 +1162,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                         window.open(`/projly/tasks/${task.id}`, '_blank');
                       }}
                     >
+
                       <Maximize2 className="h-3 w-3" />
                     </button>
                     {/* Quick view detail icon - appears on hover, hidden in task context to prevent multiple dialog layers */}
@@ -1200,13 +1195,13 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                 )}
                 <TableCell className="whitespace-nowrap" title={formatDateForDisplay(task.startDate)}>
                   {(() => {
-                    console.log(`[TASKS TABLE] Formatting startDate for task ${task.id}: ${task.startDate || 'not set'}`);
+                    // console.log(`[TASKS TABLE] Formatting startDate for task ${task.id}: ${task.startDate || 'not set'}`);
                     return formatDateForDisplay(task.startDate);
                   })()}
                 </TableCell>
                 <TableCell className="whitespace-nowrap" title={formatDateForDisplay(task.dueDate)}>
                   {(() => {
-                    console.log(`[TASKS TABLE] Formatting dueDate for task ${task.id}: ${task.dueDate || 'not set'}`);
+                    // console.log(`[TASKS TABLE] Formatting dueDate for task ${task.id}: ${task.dueDate || 'not set'}`);
                     return formatDateForDisplay(task.dueDate);
                   })()}
                 </TableCell>

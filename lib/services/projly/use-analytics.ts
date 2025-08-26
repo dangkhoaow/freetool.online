@@ -565,6 +565,62 @@ export function useMemberActivityCalendarAnalytics(month?: number, year?: number
   });
 }
 
+// Member activity heatmap
+export function useMemberActivityHeatmap(month?: number, year?: number) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  return useQuery({
+    queryKey: ["analytics", "member-activity-heatmap", userId, month, year],
+    queryFn: async () => {
+      if (!userId) return { members: [], heatmap: {}, period: null };
+      const params = new URLSearchParams();
+      if (month) params.append('month', month.toString());
+      if (year) params.append('year', year.toString());
+      const endpoint = `analytics/member-activity-heatmap${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await projlyClient.get(endpoint);
+      if (response.error) throw new Error(response.error);
+      return response.data || { members: [], heatmap: {}, period: null };
+    },
+    enabled: !!userId
+  });
+}
+
+// Member activity streaks
+export function useMemberActivityStreaks(windowDays: number = 60) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  return useQuery({
+    queryKey: ["analytics", "member-activity-streaks", userId, windowDays],
+    queryFn: async () => {
+      if (!userId) return [];
+      const response = await projlyClient.get(`analytics/member-activity-streaks?windowDays=${windowDays}`);
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
+    },
+    enabled: !!userId
+  });
+}
+
+// Member flow efficiency
+export function useMemberFlowEfficiency(month?: number, year?: number) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  return useQuery({
+    queryKey: ["analytics", "member-flow-efficiency", userId, month, year],
+    queryFn: async () => {
+      if (!userId) return [];
+      const params = new URLSearchParams();
+      if (month) params.append('month', month.toString());
+      if (year) params.append('year', year.toString());
+      const endpoint = `analytics/member-flow-efficiency${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await projlyClient.get(endpoint);
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
+    },
+    enabled: !!userId
+  });
+}
+
 // Team Ownership Metrics Analytics
 export function useTeamOwnershipMetrics() {
   const { data: session } = useSession();

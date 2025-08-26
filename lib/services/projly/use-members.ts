@@ -8,8 +8,8 @@ import { API_ENDPOINTS } from "@/app/projly/config/apiConfig";
 import { useProjectMembers } from "./use-projects"; // Import useProjectMembers for the new hook
 
 // Log import paths for debugging
-console.log('[use-members] Importing useSession and apiClient');
-console.log('[HOOK:MEMBERS] API_ENDPOINTS.TEAMS.BASE:', API_ENDPOINTS.TEAMS.BASE);
+// console.log('[use-members] Importing useSession and apiClient');
+// console.log('[HOOK:MEMBERS] API_ENDPOINTS.TEAMS.BASE:', API_ENDPOINTS.TEAMS.BASE);
 
 // Types moved from services to avoid direct imports
 export type TeamMemberWithUser = {
@@ -30,14 +30,14 @@ export type TeamMemberWithUser = {
 };
 
 // Log initialization of hook for debugging
-console.log('[HOOK] use-members hook initialized');
+// console.log('[HOOK] use-members hook initialized');
 
 // Helper function to merge duplicate members by user ID
 const mergeDuplicateMembers = (members: any[]): any[] => {
-  console.log('[HOOK:MEMBERS] Merging duplicate members by user ID');
+  // console.log('[HOOK:MEMBERS] Merging duplicate members by user ID');
   
   if (!members || !Array.isArray(members) || members.length === 0) {
-    console.log('[HOOK:MEMBERS] No members to merge');
+    // console.log('[HOOK:MEMBERS] No members to merge');
     return [];
   }
   
@@ -59,15 +59,15 @@ const mergeDuplicateMembers = (members: any[]): any[] => {
     
     // If this user ID hasn't been seen before, add it to our map
     if (!uniqueMembers.has(userId)) {
-      console.log(`[HOOK:MEMBERS] Adding unique member with user ID: ${userId}`);
+      // console.log(`[HOOK:MEMBERS] Adding unique member with user ID: ${userId}`);
       uniqueMembers.set(userId, member);
     } else {
-      console.log(`[HOOK:MEMBERS] Duplicate member found with user ID: ${userId}, keeping first occurrence`);
+      // console.log(`[HOOK:MEMBERS] Duplicate member found with user ID: ${userId}, keeping first occurrence`);
     }
   });
   
   const result = Array.from(uniqueMembers.values());
-  console.log(`[HOOK:MEMBERS] After merging: ${members.length} members reduced to ${result.length} unique members`);
+  // console.log(`[HOOK:MEMBERS] After merging: ${members.length} members reduced to ${result.length} unique members`);
   return result;
 };
 
@@ -77,16 +77,16 @@ export const useAccessibleMembers = () => {
   return useQuery({
     queryKey: ["accessible-members"],
     queryFn: async () => {
-      console.log("[HOOK:MEMBERS] Fetching accessible members (from teams user is part of)");
+      // console.log("[HOOK:MEMBERS] Fetching accessible members (from teams user is part of)");
       if (!session?.user?.id) {
-        console.log("[HOOK:MEMBERS] No user session found in useAccessibleMembers");
+        // console.log("[HOOK:MEMBERS] No user session found in useAccessibleMembers");
         return [];
       }
       
       // Call the new API endpoint that filters members by user's team associations
-      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members/accessible');
+      // console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members/accessible');
       const response = await apiClient.get('/api/projly/members/accessible');
-      console.log("[HOOK:MEMBERS] API response received for accessible members:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received for accessible members:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error fetching accessible members:", response.error);
@@ -104,7 +104,7 @@ export const useAccessibleMembers = () => {
         throw response.error;
       }
       
-      console.log(`[HOOK:MEMBERS] Successfully fetched ${response.data?.length || 0} accessible members`);
+      // console.log(`[HOOK:MEMBERS] Successfully fetched ${response.data?.length || 0} accessible members`);
       return response.data as TeamMemberWithUser[];
     },
     enabled: !!session?.user?.id
@@ -123,21 +123,21 @@ export const useAccessibleProjectMembers = (projectId: string | undefined) => {
   return useQuery({
     queryKey: ["accessible-project-members", projectId],
     queryFn: async () => {
-      console.log(`[HOOK:MEMBERS] Fetching accessible project members for project: ${projectId}`);
+      // console.log(`[HOOK:MEMBERS] Fetching accessible project members for project: ${projectId}`);
       
       if (!projectId) {
-        console.log("[HOOK:MEMBERS] No project ID provided for useAccessibleProjectMembers");
+        // console.log("[HOOK:MEMBERS] No project ID provided for useAccessibleProjectMembers");
         return [];
       }
       
       if (!session?.user?.id) {
-        console.log("[HOOK:MEMBERS] No user session found in useAccessibleProjectMembers");
+        // console.log("[HOOK:MEMBERS] No user session found in useAccessibleProjectMembers");
         return [];
       }
       
       try {
         // Fetch project members directly
-        console.log(`[HOOK:MEMBERS] Fetching members for project: ${projectId}`);
+        // console.log(`[HOOK:MEMBERS] Fetching members for project: ${projectId}`);
         const response = await apiClient.get(`/api/projly/projects/${projectId}/members`);
         if (response.error) {
           console.error('[HOOK:MEMBERS] Error fetching project members:', response.error);
@@ -151,18 +151,18 @@ export const useAccessibleProjectMembers = (projectId: string | undefined) => {
         
         // Get members from the response and handle potential duplicates
         const members = response.data || [];
-        console.log(`[HOOK:MEMBERS] Received ${members.length} members, checking for duplicates`);
+        // console.log(`[HOOK:MEMBERS] Received ${members.length} members, checking for duplicates`);
         return mergeDuplicateMembers(members);
       } catch (error) {
         console.error('[HOOK:MEMBERS] Error in useAccessibleProjectMembers:', error);
         // Fall back to project members if there's an error
         try {
-          console.log(`[HOOK:MEMBERS] Falling back to direct project members fetch for project: ${projectId}`);
+          // console.log(`[HOOK:MEMBERS] Falling back to direct project members fetch for project: ${projectId}`);
           const fallbackResponse = await apiClient.get(`api/projly/projects/${projectId}/members`);
           
           // Handle potential duplicates in fallback response as well
           const fallbackMembers = fallbackResponse.data || [];
-          console.log(`[HOOK:MEMBERS] Received ${fallbackMembers.length} members from fallback, checking for duplicates`);
+          // console.log(`[HOOK:MEMBERS] Received ${fallbackMembers.length} members from fallback, checking for duplicates`);
           return mergeDuplicateMembers(fallbackMembers);
         } catch (fallbackError) {
           console.error('[HOOK:MEMBERS] Fallback also failed:', fallbackError);
@@ -186,17 +186,17 @@ export const useMembers = (teamId?: string) => {
   return useQuery({
     queryKey: ["members", teamId],
     queryFn: async () => {
-      console.log("[HOOK:MEMBERS] Fetching all members");
+      // console.log("[HOOK:MEMBERS] Fetching all members");
       if (!session?.user?.id) {
-        console.log("[HOOK:MEMBERS] No user session found in useMembers");
+        // console.log("[HOOK:MEMBERS] No user session found in useMembers");
         return [];
       }
       
       // Call API endpoint with optional teamId filter
       const params = teamId ? { teamId } : undefined;
-      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members');
+      // console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members');
       const response = await apiClient.get('/api/projly/members', params);
-      console.log("[HOOK:MEMBERS] API response received:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error fetching members:", response.error);
@@ -216,19 +216,19 @@ export const useMembers = (teamId?: string) => {
       
       // Extract members from teams response
       if (Array.isArray(response.data)) {
-        console.log("[HOOK:MEMBERS] Processing teams response to extract members");
-        console.log("[HOOK:MEMBERS] Response data sample:", JSON.stringify(response.data[0]).substring(0, 200) + '...');
+        // console.log("[HOOK:MEMBERS] Processing teams response to extract members");
+        // console.log("[HOOK:MEMBERS] Response data sample:", JSON.stringify(response.data[0]).substring(0, 200) + '...');
         
         // If we're filtering by teamId, first find the specific team
         if (teamId) {
-          console.log(`[HOOK:MEMBERS] Looking for team with ID: ${teamId}`);
+          // console.log(`[HOOK:MEMBERS] Looking for team with ID: ${teamId}`);
           const targetTeam = response.data.find(team => team.id === teamId);
           
           if (targetTeam && Array.isArray(targetTeam.members)) {
-            console.log(`[HOOK:MEMBERS] Found team '${targetTeam.name}' with ${targetTeam.members.length} members`);
+            // console.log(`[HOOK:MEMBERS] Found team '${targetTeam.name}' with ${targetTeam.members.length} members`);
             return targetTeam.members as TeamMemberWithUser[];
           } else {
-            console.log(`[HOOK:MEMBERS] Team with ID ${teamId} not found or has no members`);
+            // console.log(`[HOOK:MEMBERS] Team with ID ${teamId} not found or has no members`);
             return [];
           }
         }
@@ -244,7 +244,7 @@ export const useMembers = (teamId?: string) => {
             return [];
           });
           
-          console.log(`[HOOK:MEMBERS] Extracted ${allMembers.length} members from ${response.data.length} teams`);
+          // console.log(`[HOOK:MEMBERS] Extracted ${allMembers.length} members from ${response.data.length} teams`);
           return allMembers as TeamMemberWithUser[];
         }
       }
@@ -262,16 +262,16 @@ export const useMember = (id: string) => {
   return useQuery({
     queryKey: ["members", id],
     queryFn: async () => {
-      console.log("[HOOK:MEMBERS] Fetching member with ID:", id);
+      // console.log("[HOOK:MEMBERS] Fetching member with ID:", id);
       if (!id || !session?.user?.id) {
-        console.log("[HOOK:MEMBERS] No member ID or user session found in useMember");
+        // console.log("[HOOK:MEMBERS] No member ID or user session found in useMember");
         return null;
       }
       
       // Call API endpoint instead of service directly
-      console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
+      // console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
       const response = await apiClient.get(`/api/projly/members/${id}`);
-      console.log("[HOOK:MEMBERS] API response received for member details:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received for member details:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error fetching member:", response.error);
@@ -301,16 +301,16 @@ export const useCreateMember = () => {
 
   return useMutation({
     mutationFn: async (member: { userId: string; teamId: string; role?: string; department?: string }) => {
-      console.log("[HOOK:MEMBERS] Creating member:", member);
+      // console.log("[HOOK:MEMBERS] Creating member:", member);
       if (!session?.user?.id) {
         console.error("[HOOK:MEMBERS] No user session found in useCreateMember");
         throw new Error("You must be logged in to add a team member");
       }
       
       // Call API endpoint instead of service directly
-      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members');
+      // console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members');
       const response = await apiClient.post('/api/projly/members', member);
-      console.log("[HOOK:MEMBERS] API response received for member creation:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received for member creation:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error creating member:", response.error);
@@ -320,7 +320,7 @@ export const useCreateMember = () => {
       return response.data as TeamMemberWithUser;
     },
     onSuccess: () => {
-      console.log("[HOOK:MEMBERS] Member created successfully, invalidating queries");
+      // console.log("[HOOK:MEMBERS] Member created successfully, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast({
@@ -345,7 +345,7 @@ export const useUpdateMember = () => {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { role?: string; department?: string } }) => {
-      console.log("[HOOK:MEMBERS] Updating member with ID:", id, "Updates:", data);
+      // console.log("[HOOK:MEMBERS] Updating member with ID:", id, "Updates:", data);
       
       if (!session?.user?.id) {
         console.error("[HOOK:MEMBERS] No user session found in useUpdateMember");
@@ -353,9 +353,9 @@ export const useUpdateMember = () => {
       }
       
       // Call API endpoint instead of service directly
-      console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
+      // console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
       const response = await apiClient.put(`/api/projly/members/${id}`, data);
-      console.log("[HOOK:MEMBERS] API response received for member update:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received for member update:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error updating member:", response.error);
@@ -365,7 +365,7 @@ export const useUpdateMember = () => {
       return response.data as TeamMemberWithUser;
     },
     onSuccess: (_, variables) => {
-      console.log("[HOOK:MEMBERS] Member updated successfully, invalidating queries");
+      // console.log("[HOOK:MEMBERS] Member updated successfully, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["members", variables.id] });
       toast({
@@ -394,16 +394,16 @@ export const useInviteMember = () => {
 
   return useMutation({
     mutationFn: async (invitation: { email: string; teamId: string; role?: string; department?: string }) => {
-      console.log("[HOOK:MEMBERS] Inviting member by email:", invitation);
+      // console.log("[HOOK:MEMBERS] Inviting member by email:", invitation);
       if (!session?.user?.id) {
         console.error("[HOOK:MEMBERS] No user session found in useInviteMember");
         throw new Error("You must be logged in to invite a team member");
       }
       
       // Call API endpoint for invitation
-      console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members/invite');
+      // console.log('[HOOK:MEMBERS] Using API endpoint: /api/projly/members/invite');
       const response = await apiClient.post('/api/projly/members/invite', invitation);
-      console.log("[HOOK:MEMBERS] API response received for member invitation:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received for member invitation:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error inviting member:", response.error);
@@ -413,7 +413,7 @@ export const useInviteMember = () => {
       return response.data;
     },
     onSuccess: () => {
-      console.log("[HOOK:MEMBERS] Member invited successfully, invalidating queries");
+      // console.log("[HOOK:MEMBERS] Member invited successfully, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast({
@@ -438,7 +438,7 @@ export const useDeleteMember = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      console.log("[HOOK:MEMBERS] Deleting member with ID:", id);
+      // console.log("[HOOK:MEMBERS] Deleting member with ID:", id);
       
       if (!session?.user?.id) {
         console.error("[HOOK:MEMBERS] No user session found in useDeleteMember");
@@ -446,9 +446,9 @@ export const useDeleteMember = () => {
       }
       
       // Call API endpoint instead of service directly
-      console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
+      // console.log(`[HOOK:MEMBERS] Using API endpoint: /api/projly/members/${id}`);
       const response = await apiClient.delete(`/api/projly/members/${id}`);
-      console.log("[HOOK:MEMBERS] API response received for member deletion:", response.error ? 'Error' : 'Success');
+      // console.log("[HOOK:MEMBERS] API response received for member deletion:", response.error ? 'Error' : 'Success');
       
       if (response.error) {
         console.error("[HOOK:MEMBERS] Error deleting member:", response.error);
@@ -458,7 +458,7 @@ export const useDeleteMember = () => {
       return response.data;
     },
     onSuccess: () => {
-      console.log("[HOOK:MEMBERS] Member deleted successfully, invalidating queries");
+      // console.log("[HOOK:MEMBERS] Member deleted successfully, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast({

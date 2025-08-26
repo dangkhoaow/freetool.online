@@ -22,7 +22,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Users, Clock, AlertCircle, Filter } from "lucide-react";
-import { useMemberActivityCalendarAnalytics } from "@/lib/services/projly/use-analytics";
+import { useMemberActivityCalendarAnalytics, useMemberActivityHeatmap, useMemberActivityStreaks, useMemberFlowEfficiency } from "@/lib/services/projly/use-analytics";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useProfile } from "@/lib/services/projly/use-profile";
 import { ActivityDetailDialog } from '@/app/projly/components/ActivityDetailDialog';
 
@@ -389,6 +390,35 @@ export function MemberActivityCalendar() {
         </CardContent>
       </Card>
 
+      {/* Activity Insights Tabs */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Activity Insights
+          </CardTitle>
+          <CardDescription>Heatmap, streaks and flow efficiency</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="heatmap">
+            <TabsList className="mb-4">
+              <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
+              <TabsTrigger value="streaks">Streaks</TabsTrigger>
+              <TabsTrigger value="flow">Flow</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="heatmap">
+              <HeatmapView month={currentMonth.getMonth() + 1} year={currentMonth.getFullYear()} />
+            </TabsContent>
+            <TabsContent value="streaks">
+              <StreaksView />
+            </TabsContent>
+            <TabsContent value="flow">
+              <FlowEfficiencyView month={currentMonth.getMonth() + 1} year={currentMonth.getFullYear()} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
       {/* Member Activities Dialog */}
       <Dialog open={showMemberDialog} onOpenChange={setShowMemberDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -472,5 +502,83 @@ export function MemberActivityCalendar() {
         }}
       />
     </>
+  );
+}
+
+// ---- Insights subcomponents ----
+
+function HeatmapView({ month, year }: { month: number; year: number }) {
+  const { data, isLoading } = useMemberActivityHeatmap(month, year);
+  if (isLoading) return <div className="text-sm text-muted-foreground">Loading heatmap...</div>;
+  if (!data) return null;
+  const members = data.members || [];
+  const heatmap = data.heatmap || {} as Record<string, number[][]>;
+  const getName = (m: any) => `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      {members.map((m: any) => (
+        <div key={m.userId} className="p-3 border rounded-md bg-white dark:bg-gray-900 space-y-2">
+          <div className="text-sm font-medium truncate">{getName(m)}</div>
+          <div className="w-full space-y-1">
+            {Array.from({ length: 7 }).map((_, d) => (
+              <div key={d} className="flex w-full gap-1">
+                {Array.from({ length: 24 }).map((__, h) => {
+                  const v = heatmap[m.userId]?.[d]?.[h] || 0;
+                  const intensity = v === 0 ? 'bg-gray-100 dark:bg-gray-800' : v < 3 ? 'bg-blue-200' : v < 6 ? 'bg-blue-400' : 'bg-blue-600';
+                  return <div key={h} className={`flex-1 aspect-square ${intensity} rounded-sm`} title={`Day ${d} Hour ${h}: ${v} activities`}/>;
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StreaksView() {
+  const { data, isLoading } = useMemberActivityStreaks(60);
+  if (isLoading) return <div className="text-sm text-muted-foreground">Loading streaks...</div>;
+  if (!data) return null;
+  const getName = (m: any) => `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+      {data.map((m: any) => (
+        <div key={m.userId} className="p-3 border rounded-md bg-white dark:bg-gray-900">
+          <div className="font-medium text-sm">{getName(m)}</div>
+          <div className="mt-2 flex items-center gap-4 text-xs">
+            <span className="px-2 py-1 rounded bg-green-100 text-green-800">Current: {m.currentStreak}d</span>
+            <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">Longest: {m.longestStreak}d</span>
+            <span className="px-2 py-1 rounded bg-gray-100 text-gray-800">Active: {m.activeDaysInWindow}d</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FlowEfficiencyView({ month, year }: { month: number; year: number }) {
+  const { data, isLoading } = useMemberFlowEfficiency(month, year);
+  if (isLoading) return <div className="text-sm text-muted-foreground">Loading flow efficiency...</div>;
+  if (!data) return null;
+  const getName = (m: any) => `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email;
+  const rows = data.sort((a: any, b: any) => a.medianGapHours - b.medianGapHours);
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground pb-2 border-b">
+        <div className="col-span-6 ml-2 text-sm">Member</div>
+        <div className="col-span-3 text-right text-sm">Touches</div>
+        <div className="col-span-3 text-right text-sm">Median gap (h)</div>
+      </div>
+      {rows.map((m: any) => (
+        <div key={m.memberId} className="grid grid-cols-12 gap-2 items-center p-2 border rounded-md bg-white dark:bg-gray-900">
+          <div className="col-span-6 text-sm font-medium">{getName(m)}</div>
+          <div className="col-span-3 text-right text-xs text-muted-foreground">{m.touches}</div>
+          <div className="col-span-3 text-right text-xs">
+            <span className="inline-block px-2 py-1 rounded bg-purple-100 text-purple-800">{m.medianGapHours}h</span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

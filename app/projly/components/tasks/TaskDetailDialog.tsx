@@ -123,8 +123,8 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
     if (!isSaving) {
       savingTimeoutRef.current = setTimeout(() => {
         setSaving(false);
-        log('Saving state cleared after delay');
-      }, 800); // 800ms delay to ensure all cascading renders are complete
+        log('Saving state cleared after extended delay to mask parent refetch renders');
+      }, 1200); // Increased from 800ms to 1200ms to better mask parent-induced re-renders
     }
   }, []);
   
@@ -181,17 +181,21 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
         markActivity('cache-update');
       }
       
-      // Invalidate related queries
+      // Skip all query invalidation during dialog task updates to prevent re-fetches
+      // The optimistic cache update above already provides fresh data
+      // All invalidation will happen when the dialog closes
       if (taskId) {
-        markActivity('query-invalidation');
-        await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        await queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+        markActivity('query-invalidation-skipped');
+        log('Skipped all query invalidation during dialog task update to prevent flashing');
       }
       
-      // Call parent callback
+      // Skip parent callback entirely during task updates in dialog mode
+      // The optimistic cache update above already provides fresh data
+      // Parent will be refreshed when dialog is closed naturally
       if (onTaskUpdated) {
-        markActivity('parent-callback');
-        onTaskUpdated();
+        log('Skipped parent callback during dialog task update to prevent cascade flashing');
+        markActivity('parent-callback-skipped-dialog');
+        // Note: Parent will refresh when dialog closes or user navigates away
       }
       
     } catch (error) {
@@ -247,6 +251,17 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
         setIsDialogMounted(false);
         setTaskNotFound(false);
         setIsClosing(false);
+        
+        // Invalidate caches and call parent callback when dialog actually closes
+        if (taskId) {
+          log('Executing delayed cache invalidation on dialog close');
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+        if (onTaskUpdated) {
+          log('Executing delayed parent callback on dialog close');
+          onTaskUpdated();
+        }
+        
         onClose();
         closeTimeoutRef.current = null;
       }, delay);
@@ -254,10 +269,21 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
       log('Closing immediately - no flashing risk detected');
       setIsDialogMounted(false);
       setTaskNotFound(false);
+      
+      // Invalidate caches and call parent callback when dialog closes immediately
+      if (taskId) {
+        log('Executing immediate cache invalidation on dialog close');
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      }
+      if (onTaskUpdated) {
+        log('Executing immediate parent callback on dialog close');
+        onTaskUpdated();
+      }
+      
       onClose();
     }
     // If already closing, ignore additional close requests
-  }, [onClose, isTaskLoading, isClosing]);
+  }, [onClose, isTaskLoading, isClosing, taskId, queryClient, onTaskUpdated]);
   
   // Determine if we should show loading state
   const shouldShowLoading = isTaskLoading && !taskData && !taskError && !taskNotFound;
@@ -267,6 +293,27 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
   
   // Determine if we should show content
   const shouldShowContent = taskData && !shouldShowLoading && !shouldShowError;
+
+  // Memoize TaskDetailsPage props to prevent unnecessary re-renders
+  // Keep saving and setSaving out of memoization to prevent flashing during saves
+  const stableTaskDetailsProps = useMemo(() => {
+    if (!taskId) return null;
+    return {
+      id: taskId,
+      inDialogMode: true,
+      onDialogClose: handleClose,
+      onTaskUpdated: handleTaskUpdated,
+      mainFilters: mainFilters,
+      initialTask: taskData
+    };
+  }, [taskId, handleClose, handleTaskUpdated, mainFilters, taskData]);
+
+  // Combine stable props with dynamic saving props
+  const taskDetailsProps = stableTaskDetailsProps ? {
+    ...stableTaskDetailsProps,
+    saving: saving,
+    setSaving: setSavingWithDelay
+  } : null;
 
   // Custom DialogContent without close button - with enhanced responsive behavior
   const CustomDialogContent = React.forwardRef<
@@ -375,21 +422,15 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
           </div>
         )}
         
-        {shouldShowContent && taskId && (
+        {shouldShowContent && taskId && taskDetailsProps && (
           <div className={cn(
             "w-full overflow-x-auto transition-all duration-500 ease-in-out",
             (isClosing || saving) && "opacity-95 pointer-events-none",
             responsiveClasses.containerClass
           )}>
             <TaskDetailsPage 
-              id={taskId} 
-              inDialogMode={true} 
-              onDialogClose={handleClose}
-              onTaskUpdated={handleTaskUpdated}
-              mainFilters={mainFilters}
-              initialTask={taskData}
-              saving={saving}
-              setSaving={setSavingWithDelay}
+              key={`task-details-${taskId}`}
+              {...taskDetailsProps}
             />
           </div>
         )}
