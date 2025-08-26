@@ -83,17 +83,37 @@ export function MemberActivityTable() {
     const lastActivity = member.lastActivityAt ? new Date(member.lastActivityAt) : null;
     
     if (!lastActivity) {
-      return { status: 'inactive', label: 'No Activity', variant: 'secondary' as const };
+      return { 
+        status: 'no-activity', 
+        label: 'No Activity', 
+        className: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' 
+      };
     }
     
     if (lastActivity > oneDayAgo) {
-      return { status: 'active', label: 'Active', variant: 'default' as const };
+      return { 
+        status: 'active', 
+        label: 'Active', 
+        className: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700' 
+      };
     } else if (lastActivity > threeDaysAgo) {
-      return { status: 'recent', label: 'Recent', variant: 'outline' as const };
+      return { 
+        status: 'recent', 
+        label: 'Recent', 
+        className: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700' 
+      };
     } else if (lastActivity > oneWeekAgo) {
-      return { status: 'stale', label: 'Stale', variant: 'secondary' as const };
+      return { 
+        status: 'stale', 
+        label: 'Stale', 
+        className: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700' 
+      };
     } else {
-      return { status: 'inactive', label: 'Inactive', variant: 'destructive' as const };
+      return { 
+        status: 'inactive', 
+        label: 'Inactive', 
+        className: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700' 
+      };
     }
   };
 
@@ -144,7 +164,7 @@ export function MemberActivityTable() {
 
   const inactiveMembers = sortedMembers.filter(member => {
     const status = getActivityStatus(member);
-    return status.status === 'inactive' || status.status === 'stale';
+    return status.status === 'inactive' || status.status === 'stale' || status.status === 'no-activity';
   });
 
   return (
@@ -275,9 +295,9 @@ export function MemberActivityTable() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={activityStatus.variant}>
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${activityStatus.className}`}>
                           {activityStatus.label}
-                        </Badge>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

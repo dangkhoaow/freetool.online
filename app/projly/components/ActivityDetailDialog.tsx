@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, User, FileText, ArrowRight, AlertCircle } from 'lucide-react';
+import { Clock, User, FileText, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useProfile } from '@/lib/services/projly/use-profile';
 
@@ -102,6 +102,10 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
       case 'commented': return 'text-yellow-600';
       default: return 'text-gray-600';
     }
+  };
+
+  const openTaskInNewTab = (taskId: string) => {
+    window.open(`/projly/tasks/${taskId}`, '_blank');
   };
 
   const formatFieldName = (fieldName: string) => {
@@ -383,13 +387,38 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="text-2xl">{activity && getActionIcon(activity.action)}</span>
-            Activity Details
-          </DialogTitle>
-          <DialogDescription>
-            View detailed information about this activity and the changes made
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <span className="text-2xl">{activity && getActionIcon(activity.action)}</span>
+                Activity Details
+              </DialogTitle>
+              <DialogDescription>
+                View detailed information about this activity and the changes made
+              </DialogDescription>
+            </div>
+            
+            {/* Open Task in New Tab Button - only show for task activities */}
+            {activity && (activity.entityType === 'task' || (activity.entityType === 'comment' && activity.entityDetails?.task)) && (
+              <button
+                onClick={() => {
+                  const taskId = activity.entityType === 'task' 
+                    ? activity.entityId 
+                    : activity.entityDetails?.task?.id;
+                  if (taskId) openTaskInNewTab(taskId);
+                }}
+                className="p-2 rounded-md bg-blue-600 hover:bg-blue-700 transition-colors"
+                title="Open task in new tab"
+                style={{
+                  position: 'absolute',
+                  right: '50px',
+                  top: '10px',
+                }}
+              >
+                <ExternalLink className="h-4 w-4 text-white" />
+              </button>
+            )}
+          </div>
         </DialogHeader>
 
         {loading && (

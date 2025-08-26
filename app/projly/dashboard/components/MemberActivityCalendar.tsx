@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   addDays, 
   startOfMonth, 
@@ -19,8 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Users, Clock, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, Clock, AlertCircle, Filter } from "lucide-react";
 import { useMemberActivityCalendarAnalytics } from "@/lib/services/projly/use-analytics";
 import { useProfile } from "@/lib/services/projly/use-profile";
 import { ActivityDetailDialog } from '@/app/projly/components/ActivityDetailDialog';
@@ -61,6 +62,7 @@ export function MemberActivityCalendar() {
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
   const [showMemberDialog, setShowMemberDialog] = useState(false);
   const [showActivityDialog, setShowActivityDialog] = useState(false);
+  const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>('all');
 
   const { data: profile } = useProfile();
   const { data: calendarData, isLoading, error } = useMemberActivityCalendarAnalytics(
@@ -68,15 +70,49 @@ export function MemberActivityCalendar() {
     currentMonth.getFullYear()
   );
 
+  // Helper function to get member name
+  const getMemberName = (member: { firstName?: string; lastName?: string; email: string }) => {
+    return `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email;
+  };
+
+  // Filter activities by selected member
+  const filteredActivitiesByDate = useMemo(() => {
+    if (!calendarData?.activities || selectedMemberFilter === 'all') {
+      return calendarData?.activities || [];
+    }
+    
+    return calendarData.activities.map((dayActivity: DayActivity) => ({
+      ...dayActivity,
+      members: dayActivity.members.filter((member: MemberActivity) => 
+        member.userId === selectedMemberFilter
+      )
+    })).filter((dayActivity: DayActivity) => dayActivity.members.length > 0);
+  }, [calendarData?.activities, selectedMemberFilter]);
+
+  // Get available members for filter
+  const availableMembers = useMemo(() => {
+    if (!calendarData?.members) return [];
+    
+    return calendarData.members.map((member: any) => ({
+      userId: member.userId,
+      name: getMemberName(member)
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [calendarData?.members]);
+
+  // Reset filter when month changes
+  useEffect(() => {
+    setSelectedMemberFilter('all');
+  }, [currentMonth]);
+
   // Calculate days to display in the calendar
   const startDate = startOfWeek(startOfMonth(currentMonth));
   const endDate = endOfWeek(endOfMonth(currentMonth));
   const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate });
 
-  // Create a map for quick lookup of activities by date
+  // Create a map for quick lookup of activities by date (using filtered data)
   const activitiesByDate = new Map<string, MemberActivity[]>();
-  if (calendarData?.activities) {
-    calendarData.activities.forEach((dayActivity: DayActivity) => {
+  if (filteredActivitiesByDate) {
+    filteredActivitiesByDate.forEach((dayActivity: DayActivity) => {
       activitiesByDate.set(dayActivity.date, dayActivity.members);
     });
   }
@@ -131,11 +167,6 @@ export function MemberActivityCalendar() {
         "bg-green-50 dark:bg-green-900/10": members.length > 0 && isSameMonth(day, currentMonth),
       }
     );
-  };
-
-  // Get member display name
-  const getMemberName = (member: MemberActivity) => {
-    return `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email;
   };
 
   // Get member initials
@@ -203,13 +234,35 @@ export function MemberActivityCalendar() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Team Member Activity Calendar
-          </CardTitle>
-          <CardDescription>
-            Track daily team member activities • {calendarData.members.length} team members
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Team Member Activity Calendar
+              </CardTitle>
+              <CardDescription>
+                Track daily team member activities • {calendarData.members.length} team members
+              </CardDescription>
+            </div>
+            
+            {/* Member Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedMemberFilter} onValueChange={setSelectedMemberFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Members</SelectItem>
+                  {availableMembers.map((member) => (
+                    <SelectItem key={member.userId} value={member.userId}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="w-full">

@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/lib/services/projly/use-notifications';
 
 export const NotificationsMenu = () => {
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, refetch } = useNotifications(20);
+  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, refetch } = useNotifications(10);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   

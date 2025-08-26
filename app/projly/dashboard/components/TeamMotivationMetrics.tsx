@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Trophy, Zap, Target, AlertTriangle, Calendar, Clock, Brain, CheckCircle, XCircle, User, MessageSquare, Activity, Lightbulb, ExternalLink, Edit3, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -121,6 +122,9 @@ export function TeamMotivationMetrics() {
   // Pagination state for missing goal dates
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Member filter state for missing goal dates
+  const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>('all');
 
   // Fetch top performers data
   const { data: topPerformersData, isLoading: loadingPerformers } = useQuery({
@@ -199,14 +203,47 @@ export function TeamMotivationMetrics() {
     enabled: !!selectedPerformerId
   });
 
-  // Reset pagination when data changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [missingGoalTasksData]);
-
+  // Helper function to get member name
   const getMemberName = (member: any) => {
     return `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email;
   };
+
+  // Filter missing goal tasks data by selected member
+  const filteredMissingGoalTasks = React.useMemo(() => {
+    if (!missingGoalTasksData) return [];
+    if (selectedMemberFilter === 'all') return missingGoalTasksData;
+    
+    return missingGoalTasksData.filter((task: any) => {
+      const memberName = getMemberName(task.assignee || {});
+      return memberName === selectedMemberFilter;
+    });
+  }, [missingGoalTasksData, selectedMemberFilter]);
+
+  // Get unique members for filter dropdown
+  const availableMembers = React.useMemo(() => {
+    if (!missingGoalTasksData) return [];
+    
+    const membersSet = new Set();
+    const members: Array<{name: string, count: number}> = [];
+    
+    missingGoalTasksData.forEach((task: any) => {
+      const memberName = getMemberName(task.assignee || {});
+      if (!membersSet.has(memberName)) {
+        membersSet.add(memberName);
+        const count = missingGoalTasksData.filter((t: any) => 
+          getMemberName(t.assignee || {}) === memberName
+        ).length;
+        members.push({ name: memberName, count });
+      }
+    });
+    
+    return members.sort((a, b) => b.count - a.count); // Sort by count descending
+  }, [missingGoalTasksData]);
+
+  // Reset pagination when data or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredMissingGoalTasks]);
 
   // Helper functions for activity styling (from TeamActivityFeed)
   const getActivityIcon = (entityType: string, action: string) => {
@@ -489,26 +526,48 @@ export function TeamMotivationMetrics() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-orange-700 dark:text-orange-300">
-                These "In Progress" tasks need start dates and/or due dates for proper goal setting:
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-orange-700 dark:text-orange-300">
+                  These "In Progress" tasks need start dates and/or due dates for proper goal setting:
+                </p>
+                
+                {/* Member Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Filter by member:</span>
+                  <Select value={selectedMemberFilter} onValueChange={setSelectedMemberFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Members ({missingGoalTasksData?.length || 0})
+                      </SelectItem>
+                      {availableMembers.map((member) => (
+                        <SelectItem key={member.name} value={member.name}>
+                          {member.name} ({member.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Assignee</TableHead>
-                    <TableHead>Project</TableHead>
-                    <TableHead>Missing</TableHead>
-                    <TableHead>Scrum Master Advice</TableHead>
-                    <TableHead>Days Active</TableHead>
+                    <TableHead className="whitespace-nowrap">Task</TableHead>
+                    <TableHead className="whitespace-nowrap">Assignee</TableHead>
+                    <TableHead className="whitespace-nowrap">Project</TableHead>
+                    <TableHead className="whitespace-nowrap">Missing</TableHead>
+                    <TableHead className="whitespace-nowrap">Scrum Master Advice</TableHead>
+                    <TableHead className="whitespace-nowrap">Days Active</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(() => {
                     const startIndex = (currentPage - 1) * itemsPerPage;
                     const endIndex = startIndex + itemsPerPage;
-                    return missingGoalTasksData?.slice(startIndex, endIndex).map((task: MissingGoalTask) => {
+                    return filteredMissingGoalTasks?.slice(startIndex, endIndex).map((task: MissingGoalTask) => {
                     const recommendations = getScrumMasterRecommendation(task);
                     const primaryRecommendation = recommendations[0];
                     
@@ -521,12 +580,12 @@ export function TeamMotivationMetrics() {
                         <TableCell>
                           <div>
                             <p className="font-medium text-sm hover:text-blue-600">{task.title}</p>
-                            <Badge variant="outline" className="text-xs mt-1 text-orange-400 border-orange-400">
+                            <Badge variant="outline" className="text-xs mt-1 text-orange-400 border-orange-400 whitespace-nowrap">
                               {task.status}
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           {task.assignee ? (
                             <div className="flex items-center gap-2">
                               <Avatar className="h-6 w-6">
@@ -545,7 +604,7 @@ export function TeamMotivationMetrics() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <span className="text-sm">{task.project.name}</span>
                         </TableCell>
                         <TableCell>
@@ -591,51 +650,68 @@ export function TeamMotivationMetrics() {
               </Table>
               
               {/* Pagination Controls */}
-              {missingGoalTasksData && missingGoalTasksData.length > itemsPerPage && (
-                <div className="flex items-center justify-between px-2">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, missingGoalTasksData.length)} of {missingGoalTasksData.length} tasks
+              {filteredMissingGoalTasks && filteredMissingGoalTasks.length > itemsPerPage && (
+                <div className="space-y-2 px-2 sm:space-y-0">
+                  {/* Stats Row */}
+                  <div className="text-sm text-muted-foreground text-center sm:text-left">
+                    <span className="hidden sm:inline">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredMissingGoalTasks.length)} of {filteredMissingGoalTasks.length} tasks
+                    </span>
+                    <span className="sm:hidden">
+                      {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredMissingGoalTasks.length)} of {filteredMissingGoalTasks.length}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  
+                  {/* Navigation Controls */}
+                  <div className="flex items-center justify-center sm:justify-end gap-1 sm:gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
+                      className="px-2 sm:px-3"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      <span className="hidden sm:inline ml-1">Previous</span>
                     </Button>
+                    
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.ceil(missingGoalTasksData.length / itemsPerPage) }, (_, i) => i + 1)
-                        .filter(page => 
-                          page === 1 || 
-                          page === Math.ceil(missingGoalTasksData.length / itemsPerPage) || 
-                          Math.abs(page - currentPage) <= 2
-                        )
+                      {Array.from({ length: Math.ceil(filteredMissingGoalTasks.length / itemsPerPage) }, (_, i) => i + 1)
+                        .filter(page => {
+                          const totalPages = Math.ceil(filteredMissingGoalTasks.length / itemsPerPage);
+                          // Show fewer pages on mobile (only current +/- 1)
+                          const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+                          const range = isMobile ? 1 : 2;
+                          
+                          return page === 1 || 
+                                 page === totalPages || 
+                                 Math.abs(page - currentPage) <= range;
+                        })
                         .map((page, index, array) => (
                           <React.Fragment key={page}>
                             {index > 0 && array[index - 1] !== page - 1 && (
-                              <span className="px-2 text-muted-foreground">...</span>
+                              <span className="px-1 sm:px-2 text-muted-foreground text-xs">...</span>
                             )}
                             <Button
                               variant={currentPage === page ? "default" : "outline"}
                               size="sm"
                               onClick={() => setCurrentPage(page)}
-                              className="w-8 h-8 p-0"
+                              className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm"
                             >
                               {page}
                             </Button>
                           </React.Fragment>
                         ))}
                     </div>
+                    
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(Math.min(Math.ceil(missingGoalTasksData.length / itemsPerPage), currentPage + 1))}
-                      disabled={currentPage === Math.ceil(missingGoalTasksData.length / itemsPerPage)}
+                      onClick={() => setCurrentPage(Math.min(Math.ceil(filteredMissingGoalTasks.length / itemsPerPage), currentPage + 1))}
+                      disabled={currentPage === Math.ceil(filteredMissingGoalTasks.length / itemsPerPage)}
+                      className="px-2 sm:px-3"
                     >
-                      Next
+                      <span className="hidden sm:inline mr-1">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
