@@ -162,7 +162,7 @@ export default function NewTaskPage() {
       
       try {
         log('Loading parent tasks for project:', taskForm.projectId);
-        const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
+        const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId, { includeSubTasks: true });
         
         // Store all tasks for RelatedTasksField
         setAllTasks(tasks);

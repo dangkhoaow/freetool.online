@@ -27,7 +27,8 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   const router = useRouter();
   
   const { data: project, isLoading: projectLoading } = useProject(projectId);
-  const { data: projectTasks, isLoading: tasksLoading, refetch: refetchTasks } = useTasks({ projectId });
+  // Ensure sub-tasks are included so the Tasks tab can render nested tasks
+  const { data: projectTasks, isLoading: tasksLoading, refetch: refetchTasks } = useTasks({ projectId, includeSubTasks: true });
   const { data: resourcesResponse, isLoading: resourcesLoading, refetch: refetchResources } = useResources();
   
   // Function to refresh resources data

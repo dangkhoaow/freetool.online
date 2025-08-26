@@ -399,7 +399,7 @@ export function TasksContainer({
       if (uiFilters.taskHierarchy === 'parent_only') {
         apiFilters.parentOnly = true;
         apiFilters.includeSubTasks = false;
-      } else if (uiFilters.taskHierarchy === 'include_subtasks') {
+      } else if (uiFilters.taskHierarchy === 'include_subtasks' || uiFilters.taskHierarchy === 'all') {
         apiFilters.parentOnly = false;
         apiFilters.includeSubTasks = true;
       }

@@ -511,8 +511,8 @@ export default function TaskDetailsPage({
       setIsRefreshingSubTasks(true);
       log('Refreshing sub-tasks using simple approach');
 
-      // Fetch all tasks once and filter locally
-      const allTasks = await projlyTasksService.getTasks();
+      // Fetch all tasks once and filter locally - IMPORTANT: include sub-tasks
+      const allTasks = await projlyTasksService.getTasks({ includeSubTasks: true });
       log('Fetched all tasks for subtask filtering', { count: allTasks.length });
 
       // Build a recursive function to get all descendants

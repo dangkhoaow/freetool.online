@@ -106,7 +106,7 @@ export default function TaskEditPage({}: TaskEditPageProps) {
       
       try {
         log('Loading parent tasks for project:', taskForm.projectId);
-        const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId);
+        const tasks = await projlyTasksService.getProjectTasks(taskForm.projectId, { includeSubTasks: true });
         
         // Filter out the current task itself (can't be its own parent)
         const availableTasks = tasks.filter((task: any) => task.id !== taskId);
