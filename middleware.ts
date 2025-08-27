@@ -105,7 +105,8 @@ export async function middleware(request: NextRequest) {
     'privacy-media-recorder',
     'browser-design-studio',
     'client-site-builder',
-    'contract-management'
+    'contract-management',
+    'av-foundation',
   ];
   
   // Check for valid top-level routes

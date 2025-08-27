@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import Navbar from "@/components/navbar";
+import { ConditionalNavbar } from "@/components/conditional-navbar";
 import { Metadata } from "next";
 import ScrollToTop from "@/components/scroll-to-top";
 import { ProductionProvider } from "@/components/production-detector";
@@ -72,7 +72,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Navbar />
+            <ConditionalNavbar />
             {children}
             <ScrollToTop />
           </ThemeProvider>
