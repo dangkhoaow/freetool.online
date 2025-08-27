@@ -158,7 +158,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // Only certain parent segments can have child routes
-    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin' || parentSegment === 'todo-list' || parentSegment === 'projly' || parentSegment === 'contract-management') {
+    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin' || parentSegment === 'todo-list' || parentSegment === 'projly' || parentSegment === 'contract-management' || parentSegment === 'av-foundation') {
       // Special known nested routes
       if (parentSegment === 'private-ai-chat' && childSegment === 'debug') {
         return response;
@@ -183,6 +183,12 @@ export async function middleware(request: NextRequest) {
       if (parentSegment === 'contract-management') {
         // Allow all contract-management nested routes (login, dashboard, etc.)
         console.log(`Contract management nested route allowed: ${path}`);
+        return response;
+      }
+      
+      if (parentSegment === 'av-foundation') {
+        // Allow all av-foundation nested routes (artists, collection, news, shop, etc.)
+        console.log(`AV Foundation nested route allowed: ${path}`);
         return response;
       }
       
@@ -238,6 +244,12 @@ export async function middleware(request: NextRequest) {
     // Allow contract-management routes to have deeper nesting
     if (parentSegment === 'contract-management') {
       console.log(`Allowing deeper nesting for contract-management route: ${path}`);
+      return response;
+    }
+    
+    // Allow av-foundation routes to have deeper nesting
+    if (parentSegment === 'av-foundation') {
+      console.log(`Allowing deeper nesting for av-foundation route: ${path}`);
       return response;
     }
     
