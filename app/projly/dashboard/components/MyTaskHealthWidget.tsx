@@ -113,22 +113,22 @@ export function MyTaskHealthWidget() {
         {/* Urgent Tasks List */}
         {(overdue.count > 0 || dueToday.count > 0) && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-red-600">Urgent Tasks</h4>
+            <h4 className="text-sm font-semibold text-destructive">Urgent Tasks</h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {[...overdue.tasks, ...dueToday.tasks].slice(0, 5).map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between p-2 bg-red-50 rounded text-xs">
+                <div key={task.id} className="flex items-center justify-between p-2 bg-destructive/10 border border-destructive/20 rounded text-xs">
                   <div className="flex-1 min-w-0">
                     <Link 
                       href={`/projly/tasks/${task.id}`}
-                      className="font-medium text-red-700 hover:text-red-900 truncate block"
+                      className="font-medium text-destructive hover:text-destructive/80 truncate block"
                     >
                       {task.title}
                     </Link>
-                    <p className="text-red-600 truncate">{task.project?.name}</p>
+                    <p className="text-destructive/70 truncate">{task.project?.name}</p>
                   </div>
                   <div className="text-right ml-2">
                     {task.dueDate && (
-                      <p className="text-red-600">
+                      <p className="text-destructive/70">
                         {format(new Date(task.dueDate), 'MMM dd')}
                       </p>
                     )}
