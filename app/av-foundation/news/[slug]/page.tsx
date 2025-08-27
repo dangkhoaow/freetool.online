@@ -41,7 +41,7 @@ export default function AVNewsDetailPage({ params }: AVNewsDetailPageProps) {
       <AVNavigation />
       
       {/* Back Navigation */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 my-16">
         <Button asChild variant="ghost" className="mb-8">
           <Link href="/av-foundation/news" className="flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />

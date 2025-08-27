@@ -16,9 +16,14 @@ export default function ArtistsPage() {
       <AVNavigation />
       
       {/* Hero Section */}
-      <section className="pt-28 pb-16 bg-gradient-to-b from-background to-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-6 mb-16">
+      <section className="py-20 bg-gradient-to-br from-primary/5 to-secondary/5 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-secondary rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="space-y-6">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
               <Users className="w-4 h-4" />
               Vietnamese Artists Collection
@@ -34,9 +39,13 @@ export default function ArtistsPage() {
               from the Đông Dương period to contemporary times.
             </p>
           </div>
+        </div>
+      </section>
 
-          {/* Stats */}
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+      {/* Stats Section */}
+      <section className="py-4 bg-card/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-8">
             <Card className="text-center border-0 bg-gradient-to-br from-primary/10 to-primary/5">
               <CardHeader>
                 <CardTitle className="text-3xl font-bold text-primary">{totalArtists}</CardTitle>
@@ -60,7 +69,7 @@ export default function ArtistsPage() {
       </section>
 
       {/* Artists Grid */}
-      <section className="py-16">
+      <section>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Period Filters */}
           <div className="mb-12">

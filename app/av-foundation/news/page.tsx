@@ -61,7 +61,7 @@ export default function AVNewsPage() {
       </section>
 
       {/* Filter Section */}
-      <section className="py-12 bg-card/30">
+      <section className="py-4 bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2">

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { artworksData, getAllCategories, getAllPeriods } from "@/lib/av-foundation/artworks-data"
 import { artistsData } from "@/lib/av-foundation/artists-data"
-import { Search, Filter, Grid, List } from "lucide-react"
+import { Search, Filter, Grid, List, Palette } from "lucide-react"
 
 export default function AVCollectionPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -49,12 +49,26 @@ export default function AVCollectionPage() {
     <div className="min-h-screen bg-background">
       <AVNavigation />
 
-      {/* Header */}
-      <section className="bg-card py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl lg:text-5xl font-bold text-foreground">A&V Art Collection</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+      {/* Hero Section */}
+      <section className="py-20 bg-gradient-to-br from-primary/5 to-secondary/5 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-secondary rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
+              <Palette className="w-4 h-4" />
+              Vietnamese Art Collection
+            </div>
+            <h1 className="text-4xl lg:text-6xl font-bold text-foreground">
+              A&V Art
+              <span className="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Collection
+              </span>
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               Explore our comprehensive collection of Vietnamese artworks, featuring masterpieces from different periods
               and artistic movements, carefully preserved and documented for cultural heritage.
             </p>
@@ -63,7 +77,7 @@ export default function AVCollectionPage() {
       </section>
 
       {/* Filters */}
-      <section className="py-8 border-b border-border">
+      <section className="py-12 bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
             <div className="flex items-center gap-4">
