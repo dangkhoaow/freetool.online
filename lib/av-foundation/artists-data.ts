@@ -85,7 +85,7 @@ export const artistsData: Artist[] = [
     ],
     artworks: [
       {
-        id: "artwork-1",
+        id: "AV-001",
         title: "Young Woman with Lotus",
         year: 1935,
         medium: "Silk painting",
@@ -95,7 +95,7 @@ export const artistsData: Artist[] = [
           "A masterful silk painting depicting a young Vietnamese woman holding lotus flowers, showcasing the artist's skill in traditional techniques.",
       },
       {
-        id: "artwork-2",
+        id: "AV-002",
         title: "Village Scene",
         year: 1940,
         medium: "Lacquer on wood",
@@ -152,7 +152,7 @@ export const artistsData: Artist[] = [
     ],
     artworks: [
       {
-        id: "artwork-3",
+        id: "AV-003",
         title: "Old Quarter Morning",
         year: 1965,
         medium: "Oil on canvas",
@@ -209,7 +209,7 @@ export const artistsData: Artist[] = [
     ],
     artworks: [
       {
-        id: "artwork-4",
+        id: "AV-004",
         title: "Woman with Chrysanthemums",
         year: 1955,
         medium: "Silk painting",
