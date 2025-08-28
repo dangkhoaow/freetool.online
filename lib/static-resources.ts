@@ -1,5 +1,5 @@
 // Auto-generated file. DO NOT EDIT.
-// Generated on 2025-08-27T15:59:41.812Z
+// Generated on 2025-08-28T02:42:30.421Z
 
 export const STATIC_RESOURCES = [
   "/404.html",
@@ -10,9 +10,14 @@ export const STATIC_RESOURCES = [
   "/av-foundation/artist-bui-xuan-phai.png",
   "/av-foundation/artist-le-pho.png",
   "/av-foundation/artist-nguyen-phan-chanh.png",
+  "/av-foundation/artwork-old-quarter-morning-detail-1.png",
   "/av-foundation/artwork-old-quarter-morning.png",
+  "/av-foundation/artwork-village-scene-detail-1.png",
   "/av-foundation/artwork-village-scene.png",
+  "/av-foundation/artwork-woman-chrysanthemums-detail-1.png",
   "/av-foundation/artwork-woman-chrysanthemums.png",
+  "/av-foundation/artwork-young-woman-lotus-detail-1.png",
+  "/av-foundation/artwork-young-woman-lotus-detail-2.png",
   "/av-foundation/artwork-young-woman-lotus.png",
   "/av-foundation/news-community-workshops.png",
   "/av-foundation/news-contemporary-exhibition.png",
@@ -99,9 +104,14 @@ export const RESERVED_PATHS = [
   "/av-foundation/artist-bui-xuan-phai.png",
   "/av-foundation/artist-le-pho.png",
   "/av-foundation/artist-nguyen-phan-chanh.png",
+  "/av-foundation/artwork-old-quarter-morning-detail-1.png",
   "/av-foundation/artwork-old-quarter-morning.png",
+  "/av-foundation/artwork-village-scene-detail-1.png",
   "/av-foundation/artwork-village-scene.png",
+  "/av-foundation/artwork-woman-chrysanthemums-detail-1.png",
   "/av-foundation/artwork-woman-chrysanthemums.png",
+  "/av-foundation/artwork-young-woman-lotus-detail-1.png",
+  "/av-foundation/artwork-young-woman-lotus-detail-2.png",
   "/av-foundation/artwork-young-woman-lotus.png",
   "/av-foundation/news-community-workshops.png",
   "/av-foundation/news-contemporary-exhibition.png",
