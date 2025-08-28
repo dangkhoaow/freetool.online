@@ -6,6 +6,7 @@ import { addDays, format, startOfMonth } from "date-fns";
 import { DashboardLayout } from "@/app/projly/components/layout/DashboardLayout";
 import { CalendarGrid } from "@/app/projly/components/calendar/CalendarGrid";
 import ResourceTimelineView from "../components/calendar/ResourceTimelineView";
+import { TaskTimelineDashboard } from "../dashboard/components/TaskTimelineDashboard";
 import { EventDetailsDialog, CalendarEvent } from "@/app/projly/components/calendar/EventDetailsDialog";
 import { TaskDetailDialog } from "@/app/projly/components/tasks/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -400,7 +401,8 @@ export default function CalendarPage() {
         
         <Tabs defaultValue={view} value={view} onValueChange={setView} className="w-full">
           <TabsList className="mb-4">
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="dashboard">Tasks Dashboard</TabsTrigger>
             <TabsTrigger value="month">Month</TabsTrigger>
           </TabsList>
           
@@ -444,6 +446,11 @@ export default function CalendarPage() {
               }}
             />
           </TabsContent>
+          
+          <TabsContent value="dashboard" className="mt-0">
+            <TaskTimelineDashboard />
+          </TabsContent>
+          
           <TabsContent value="month" className="mt-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
               <div className="flex items-center gap-2">

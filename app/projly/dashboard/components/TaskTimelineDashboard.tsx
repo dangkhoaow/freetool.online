@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
@@ -49,15 +51,25 @@ export function TaskTimelineDashboard() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   
-  // Fetch tasks data from API - only parent tasks
+  // State declarations
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentViewTitle, setCurrentViewTitle] = useState(format(new Date(), 'MMMM yyyy'));
+  const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [taskViewMode, setTaskViewMode] = useState<string>('allTasks');
+  const [calendarApi, setCalendarApi] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [includeSubTasks, setIncludeSubTasks] = useState<boolean>(false);
+  
+  // Fetch tasks data from API - with dynamic subtask inclusion
   const { 
     data: tasksData, 
     isLoading, 
     error 
   } = useQuery({
-    queryKey: ['tasks', 'dashboard-timeline'],
+    queryKey: ['tasks', 'dashboard-timeline', includeSubTasks],
     queryFn: async () => {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/projly/tasks?includeSubTasks=false', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + `/api/projly/tasks?includeSubTasks=${includeSubTasks}`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
@@ -77,14 +89,6 @@ export function TaskTimelineDashboard() {
     },
     enabled: !!userId
   });
-
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentViewTitle, setCurrentViewTitle] = useState(format(new Date(), 'MMMM yyyy'));
-  const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [taskViewMode, setTaskViewMode] = useState<string>('allTasks');
-  const [calendarApi, setCalendarApi] = useState<any>(null);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [showTaskDialog, setShowTaskDialog] = useState(false);
 
   // Log function for debugging
   const log = (message: string, data?: any) => {
@@ -252,7 +256,7 @@ export function TaskTimelineDashboard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Parent Tasks Timeline</CardTitle>
+          <CardTitle>{includeSubTasks ? 'All Tasks Timeline' : 'Parent Tasks Timeline'}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-red-600">
@@ -268,7 +272,7 @@ export function TaskTimelineDashboard() {
       <CardHeader className="p-4 border-b">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg font-semibold">Parent Tasks Timeline</CardTitle>
+            <CardTitle className="text-lg font-semibold">{includeSubTasks ? 'All Tasks Timeline' : 'Parent Tasks Timeline'}</CardTitle>
             <div className="flex items-center gap-2 ml-4">
               <Button 
                 variant="outline" 
@@ -301,7 +305,19 @@ export function TaskTimelineDashboard() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="include-subtasks"
+                checked={includeSubTasks}
+                onCheckedChange={setIncludeSubTasks}
+                disabled={isLoading}
+              />
+              <Label htmlFor="include-subtasks" className="text-sm">
+                Include Sub-tasks
+              </Label>
+            </div>
+            
             <Select 
               value={taskViewMode} 
               onValueChange={setTaskViewMode}
@@ -355,7 +371,7 @@ export function TaskTimelineDashboard() {
           </div>
         ) : filteredEvents.length === 0 ? (
           <div className="h-64 flex items-center justify-center text-muted-foreground">
-            No parent tasks found for the selected filters
+            No {includeSubTasks ? 'tasks' : 'parent tasks'} found for the selected filters
           </div>
         ) : (
           <div className="resource-timeline-calendar overflow-x-auto">
@@ -363,9 +379,9 @@ export function TaskTimelineDashboard() {
               plugins={[resourceTimelinePlugin, interactionPlugin]}
               initialView="resourceTimelineMonth"
               headerToolbar={false}
-              resources={projects.map((project: any) => ({
+              resources={projects.map((project: any, index: number) => ({
                 id: project.id,
-                title: project.name
+                title: `${index + 1}. ${project.name}`
               }))}
               events={filteredEvents.map((event: any) => ({
                 id: event.id,
