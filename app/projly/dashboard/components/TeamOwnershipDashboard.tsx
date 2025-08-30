@@ -28,7 +28,7 @@ import {
   useTeamOwnershipMetrics,
   useSprintCommitmentAnalytics,
   useDailyStandupPrepAnalytics,
-  useBlockerResolutionAnalytics
+  useTeamCollaborationAnalytics
 } from "@/lib/services/projly/use-analytics";
 import { format } from "date-fns";
 
@@ -43,7 +43,7 @@ export function TeamOwnershipDashboard() {
   const { data: ownershipData, isLoading: loadingOwnership } = useTeamOwnershipMetrics();
   const { data: sprintData, isLoading: loadingSprint } = useSprintCommitmentAnalytics();
   const { data: standupData, isLoading: loadingStandup } = useDailyStandupPrepAnalytics();
-  const { data: blockerData, isLoading: loadingBlocker } = useBlockerResolutionAnalytics();
+  const { data: collaborationData, isLoading: loadingCollaboration } = useTeamCollaborationAnalytics();
 
   const getMemberName = (member: TeamMember) => {
     return `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email;
@@ -80,7 +80,7 @@ export function TeamOwnershipDashboard() {
       : <Badge variant="outline" className="text-red-600 border-red-300 text-xs"><Clock className="h-3 w-3 mr-1" />Unprepared</Badge>;
   };
 
-  if (loadingOwnership || loadingSprint || loadingStandup || loadingBlocker) {
+  if (loadingOwnership || loadingSprint || loadingStandup || loadingCollaboration) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {[1, 2, 3, 4].map(i => (
@@ -249,18 +249,18 @@ export function TeamOwnershipDashboard() {
           </CardContent>
         </Card>
 
-        {/* 4. Blocker Resolution Leaderboard */}
+        {/* 4. Team Collaboration Leaderboard */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-green-500" />
-              Blocker Resolution Leaderboard
+              <HeartHandshake className="h-5 w-5 text-blue-500" />
+              Team Collaboration Leaderboard
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {blockerData?.slice(0, 8).map((resolver: any, index: number) => (
-                <div key={resolver.userId} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+              {collaborationData?.slice(0, 8).map((collaborator: any, index: number) => (
+                <div key={collaborator.userId} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex items-center gap-3">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                       index === 0 ? 'bg-yellow-100 text-yellow-800' :
@@ -271,22 +271,33 @@ export function TeamOwnershipDashboard() {
                       {index + 1}
                     </div>
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs">{getMemberInitials(resolver)}</AvatarFallback>
+                      <AvatarFallback className="text-xs">{getMemberInitials(collaborator)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-sm">{getMemberName(resolver)}</p>
+                      <p className="font-medium text-sm">{getMemberName(collaborator)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {resolver.blockersResolved} blockers • {resolver.avgResolutionTime}d avg
+                        {collaborator.commentsOnOthersTasks} comments • {collaborator.tasksAssignedToOthers} tasks assigned
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {resolver.teamHelperScore}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{collaborator.collaborationScore}%</p>
+                      <Badge variant="outline" className="text-xs">
+                        {collaborator.collaborationLevel}
+                      </Badge>
+                    </div>
+                    <div className="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all bg-blue-500"
+                        style={{ width: `${collaborator.collaborationScore}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               ))}
-              {(!blockerData || blockerData.length === 0) && (
-                <p className="text-sm text-muted-foreground text-center py-4">No blocker resolution data available</p>
+              {(!collaborationData || collaborationData.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">No collaboration data available</p>
               )}
             </div>
           </CardContent>
@@ -336,12 +347,12 @@ export function TeamOwnershipDashboard() {
             
             <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Shield className="h-5 w-5 text-orange-600" />
+                <HeartHandshake className="h-5 w-5 text-orange-600" />
                 <span className="text-2xl font-bold text-orange-600">
-                  {blockerData?.reduce((sum: number, resolver: any) => sum + resolver.blockersResolved, 0) || 0}
+                  {collaborationData?.filter((c: any) => c.collaborationScore >= 60).length || 0}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">Blockers Resolved</p>
+              <p className="text-sm text-muted-foreground">Active Collaborators</p>
             </div>
           </div>
         </CardContent>

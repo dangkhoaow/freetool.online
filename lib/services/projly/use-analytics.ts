@@ -741,37 +741,37 @@ export function useDailyStandupPrepAnalytics() {
   });
 }
 
-// Blocker Resolution Analytics
-export function useBlockerResolutionAnalytics() {
+// Team Collaboration Analytics
+export function useTeamCollaborationAnalytics() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   
-  logAnalytics("Fetching blocker resolution analytics");
+  logAnalytics("Fetching team collaboration analytics");
   
   return useQuery({
-    queryKey: ["analytics", "blocker-resolution", userId],
+    queryKey: ["analytics", "team-collaboration", userId],
     queryFn: async () => {
-      logAnalytics("Executing blocker resolution analytics query");
+      logAnalytics("Executing team collaboration analytics query");
       
       if (!userId) {
-        logAnalytics("No user ID provided for blocker resolution analytics");
+        logAnalytics("No user ID provided for team collaboration analytics");
         return [];
       }
       
       try {
-        const response = await projlyClient.get('analytics/blocker-resolution');
-        logAnalytics("Blocker resolution analytics response:", response);
+        const response = await projlyClient.get('analytics/team-collaboration');
+        logAnalytics("Team collaboration analytics response:", response);
         
         if (response.error) {
-          throw new Error(response.error || 'Failed to fetch blocker resolution analytics');
+          throw new Error(response.error || 'Failed to fetch team collaboration analytics');
         }
         
         return response.data || [];
       } catch (error: any) {
-        console.error("[ANALYTICS] Error fetching blocker resolution analytics:", error);
+        console.error("[ANALYTICS] Error fetching team collaboration analytics:", error);
         toast({
           title: "Error fetching analytics",
-          description: error.message || "Failed to fetch blocker resolution analytics",
+          description: error.message || "Failed to fetch team collaboration analytics",
           variant: "destructive"
         });
         return [];
