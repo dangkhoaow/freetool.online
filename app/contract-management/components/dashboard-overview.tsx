@@ -476,19 +476,25 @@ export default function DashboardOverview() {
 
       {/* Pagination */}
       {totalCount > itemsPerPage && (
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, totalCount)} {t('common.of')} {totalCount} {t('contracts.items')}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-0 py-4">
+          <div className="text-sm text-gray-700 dark:text-gray-300 order-2 sm:order-1">
+            <span className="hidden sm:inline">
+              {t('common.showing')} {startIndex + 1} {t('common.to')} {Math.min(endIndex, totalCount)} {t('common.of')} {totalCount} {t('contracts.items')}
+            </span>
+            <span className="sm:hidden">
+              {startIndex + 1}-{Math.min(endIndex, totalCount)} / {totalCount}
+            </span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 order-1 sm:order-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
+              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              {t('common.previous')}
+              <ChevronLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">{t('common.previous')}</span>
             </Button>
             
             <div className="flex items-center space-x-1">
@@ -502,7 +508,9 @@ export default function DashboardOverview() {
                     variant={currentPage === page ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(page)}
-                    className="w-8 h-8 p-0"
+                    className={`w-8 h-8 p-0 ${
+                      Math.abs(page - currentPage) > 1 ? 'hidden sm:inline-flex' : ''
+                    } ${currentPage === page ? 'dark:bg-blue-600 dark:hover:bg-blue-700' : 'dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'}`}
                   >
                     {page}
                   </Button>
@@ -510,17 +518,17 @@ export default function DashboardOverview() {
               })}
               
               {totalPages > 5 && currentPage < totalPages - 2 && (
-                <>
-                  <span className="px-2">...</span>
+                <div className="hidden sm:flex items-center">
+                  <span className="px-2 dark:text-gray-400">...</span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handlePageChange(totalPages)}
-                    className="w-8 h-8 p-0"
+                    className="w-8 h-8 p-0 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     {totalPages}
                   </Button>
-                </>
+                </div>
               )}
             </div>
             
@@ -529,9 +537,10 @@ export default function DashboardOverview() {
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
+              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              {t('common.next')}
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">{t('common.next')}</span>
+              <ChevronRight className="h-4 w-4 sm:ml-1" />
             </Button>
           </div>
         </div>

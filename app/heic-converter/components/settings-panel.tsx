@@ -399,7 +399,7 @@ export default function SettingsPanel({
                 </CardContent>
               </Card>
               
-              <Card className={`cursor-pointer border-2 transition-all ${settings.conversionMode === 'server' ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'}`}
+              <Card className={`cursor-pointer border-2 transition-all ${settings.conversionMode === 'server' ? 'border-primary bg-primary/5' : 'hover:bg-gray-50'} pointer-events-none opacity-50`}
                 onClick={() => updateSettings({ conversionMode: 'server' })}>
                 <CardContent className="p-4 pt-4">
                   <div className="flex gap-3 items-start">
