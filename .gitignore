@@ -41,3 +41,4 @@ app/.DS_Store
 components/.DS_Store
 components/converter/.DS_Store
 lib/.DS_Store
+eb-deploy-package.zip
