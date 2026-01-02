@@ -7,6 +7,27 @@ import { STATIC_RESOURCES, RESERVED_PATHS, CUSTOM_404_HTML } from './lib/static-
 console.log(`Middleware loaded with ${STATIC_RESOURCES.length} static resources and ${RESERVED_PATHS.length} reserved paths`);
 
 export async function middleware(request: NextRequest) {
+  const method = request.method;
+  const pathname = request.nextUrl.pathname;
+
+  // SECURITY/PERF:
+  // This service should not accept large POST bodies to non-API page routes (e.g. `/`, `/admin/...`).
+  // Bots regularly probe with `POST /` and `/cgi-bin/...` traversal attempts, which can force nginx
+  // to buffer bodies to disk and correlate with upstream timeouts/hangs.
+  //
+  // We also enforce this at nginx, but keeping it here adds defense-in-depth (and protects local/dev).
+  if (!pathname.startsWith('/api/')) {
+    // Drop common CGI traversal probes.
+    if (pathname.toLowerCase().startsWith('/cgi-bin/')) {
+      return new NextResponse(null, { status: 404 });
+    }
+
+    // Only allow safe methods for page routes.
+    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+      return new NextResponse(null, { status: 405 });
+    }
+  }
+
   const path = request.nextUrl.pathname
   const response = NextResponse.next()
   
