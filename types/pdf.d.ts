@@ -1,4 +1,4 @@
-declare module 'pdfjs-dist/build/pdf.js' {
+declare module 'pdfjs-dist/webpack.mjs' {
   export function getDocument(params: any): { promise: Promise<any> };
   export const GlobalWorkerOptions: {
     workerSrc: string;
@@ -6,7 +6,7 @@ declare module 'pdfjs-dist/build/pdf.js' {
   export const version: string;
 }
 
-declare module 'pdfjs-dist/types/src/display/api' {
+declare module 'pdfjs-dist' {
   export interface PDFDocumentProxy {
     numPages: number;
     getPage(pageNumber: number): Promise<any>;

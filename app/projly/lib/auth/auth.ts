@@ -13,7 +13,7 @@ let serverPrisma: any;
 if (isServer) {
   // Dynamic imports to prevent browser issues
   const { PrismaClient } = require("@prisma/client");
-  bcrypt = require("bcrypt");
+  bcrypt = require("bcryptjs");
   jwt = require("jsonwebtoken");
   serverPrisma = new PrismaClient();
   console.log('[AUTH] Server-side auth module initialized with Node.js dependencies');

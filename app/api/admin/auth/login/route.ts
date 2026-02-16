@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateToken } from '@/lib/auth/jwt';
-import bcrypt from 'bcryptjs';
 
 console.log('Admin login route initialized');
 

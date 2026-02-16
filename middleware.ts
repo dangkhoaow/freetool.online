@@ -127,7 +127,7 @@ export async function middleware(request: NextRequest) {
     'browser-design-studio',
     'client-site-builder',
     'contract-management',
-    'av-foundation',
+    // 'av-foundation',
   ];
   
   // Check for valid top-level routes

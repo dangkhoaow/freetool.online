@@ -1,11 +1,11 @@
 import { PDFDocument, RotationTypes, PDFOperator, PDFPage } from 'pdf-lib';
 // Use browser-specific PDF.js imports
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.js';
-import { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 // Set the PDF.js worker source correctly for browser environment
 if (typeof window !== 'undefined') {
-  const pdfjsWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  const pdfjsWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
   pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
 }
 

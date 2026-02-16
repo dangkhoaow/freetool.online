@@ -5,11 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { useLanguage } from '../contexts/language-context';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.js';
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 
 // Set up PDF.js worker
 if (typeof window !== 'undefined') {
-  const pdfjsWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  const pdfjsWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
   pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
 }
 
