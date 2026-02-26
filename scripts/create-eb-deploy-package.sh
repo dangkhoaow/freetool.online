@@ -7,6 +7,7 @@ set -e
 # Parse command-line options
 SKIP_BUILD=false
 ZIP_ONLY=false
+CLEANUP_DISK=false
 for arg in "$@"; do
   case $arg in
     --skip-build)
@@ -14,6 +15,22 @@ for arg in "$@"; do
       ;;
     --zip-only)
       ZIP_ONLY=true
+      ;;
+    --cleanup-disk)
+      CLEANUP_DISK=true
+      ;;
+    --help|-h)
+      echo "EB deployment package creator (t4g.nano)"
+      echo ""
+      echo "Usage:"
+      echo "  $0                 # Build and create package"
+      echo "  $0 --skip-build   # Skip build, use existing .next"
+      echo "  $0 --zip-only     # Only create zip from current tree"
+      echo "  $0 --cleanup-disk # Before build: remove old zip, .venv, run git gc"
+      echo "  $0 --help         # Show this help"
+      echo ""
+      echo "Use --cleanup-disk to free space (e.g. .venv ~2GB, old zip, shrink .git)."
+      exit 0
       ;;
   esac
 done
@@ -30,7 +47,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Remove existing package
+# Optional disk cleanup (--cleanup-disk): remove old zip, .venv, run git gc
+if [ "$CLEANUP_DISK" = true ]; then
+  echo "===== Disk cleanup (--cleanup-disk) ====="
+  if [ -f "$ZIP_FILE" ]; then
+    echo "Removing existing $ZIP_FILE..."
+    rm -f "$ZIP_FILE"
+    echo "  $ZIP_FILE removed."
+  fi
+  if [ -d ".venv" ]; then
+    echo "Removing .venv (recreate with: python -m venv .venv if needed)..."
+    rm -rf .venv
+    echo "  .venv removed."
+  fi
+  if [ -d ".git" ]; then
+    echo "Running git gc --prune=now to shrink .git..."
+    git gc --prune=now 2>/dev/null || true
+    echo "  git gc done."
+  fi
+  echo "Disk cleanup complete."
+  echo ""
+fi
+
+# Remove existing package (if not already removed by --cleanup-disk)
 if [ -f "$ZIP_FILE" ]; then
     echo "Removing existing $ZIP_FILE..."
     rm -f "$ZIP_FILE"
