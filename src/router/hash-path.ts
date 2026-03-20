@@ -67,6 +67,17 @@ export function parseInternalHref(href: string): ParsedHref {
   };
 }
 
+export function resolveLegacyHashRouteTarget(hash: string): string | null {
+  const rawHash = hash.trim();
+
+  if (!rawHash.startsWith('#/')) {
+    return null;
+  }
+
+  const parsed = parseInternalHref(rawHash.slice(1));
+  return buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
+}
+
 export function getCurrentRouteInfo(): RouteParts {
   if (typeof window === 'undefined') {
     return {
@@ -76,23 +87,10 @@ export function getCurrentRouteInfo(): RouteParts {
     };
   }
 
-  const hashValue = window.location.hash.replace(/^#/, '');
-
-  if (hashValue.startsWith('/')) {
-    const [pathAndSearch = '', hash = ''] = hashValue.split('#', 2);
-    const [pathnamePart = '/', searchPart = ''] = pathAndSearch.split('?', 2);
-
-    return {
-      pathname: normalizeRoutePath(pathnamePart || '/'),
-      search: searchPart ? `?${searchPart}` : '',
-      hash: hash ? `#${hash}` : '',
-    };
-  }
-
   return {
     pathname: normalizeRoutePath(window.location.pathname || '/'),
     search: window.location.search || '',
-    hash: '',
+    hash: window.location.hash || '',
   };
 }
 
@@ -108,21 +106,32 @@ export function buildRouteHref(pathname: string, search = '', hash = ''): string
   const normalizedPath = normalizeRoutePath(pathname);
   const safeSearch = search && search.startsWith('?') ? search : search ? `?${search}` : '';
   const safeHash = hash && hash.startsWith('#') ? hash : hash ? `#${hash}` : '';
-  return `#${normalizedPath}${safeSearch}${safeHash}`;
+  return `${normalizedPath}${safeSearch}${safeHash}`;
 }
 
 export function buildBrowserRouteUrl(href: string): string {
-  const parsed = parseInternalHref(href);
+  const rawHref = href.trim();
+  const parsed = parseInternalHref(rawHref);
 
   if (parsed.external) {
     return href;
+  }
+
+  const legacyHashTarget = resolveLegacyHashRouteTarget(rawHref);
+  if (legacyHashTarget) {
+    return legacyHashTarget;
   }
 
   if (typeof window === 'undefined') {
     return buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
   }
 
-  return `${window.location.pathname}${window.location.search}#${parsed.pathname}${parsed.search}${parsed.hash}`;
+  const anchorOnly = rawHref.startsWith('#') && !rawHref.startsWith('#/');
+  if (anchorOnly) {
+    return `${window.location.pathname}${window.location.search}${parsed.hash}`;
+  }
+
+  return buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
 }
 
 export function scrollToHash(hash: string): void {

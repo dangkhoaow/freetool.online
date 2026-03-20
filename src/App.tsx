@@ -1,9 +1,10 @@
-import { Suspense, lazy, type ComponentType } from 'react';
-import { HashRouter, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Suspense, lazy, useEffect, type ComponentType, type ReactNode } from 'react';
+import { BrowserRouter, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import NotFoundPage from '../app/not-found';
 import { AppProviders } from './app-shell/AppProviders';
 import { AvFoundationShell, ContractManagementShell, ProjlyShell } from './app-shell/RouteShells';
 import { RouteBoundary } from './router/RouteBoundary';
+import { resolveLegacyHashRouteTarget } from './router/hash-path';
 import { useRouteMetadata } from './router/route-metadata';
 import { filePathToRoutePath } from './router/route-path';
 
@@ -76,35 +77,56 @@ function LoadingScreen() {
   );
 }
 
+function LegacyHashRouteRedirect({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const legacyHashTarget =
+    typeof window !== 'undefined' ? resolveLegacyHashRouteTarget(window.location.hash) : null;
+
+  useEffect(() => {
+    if (legacyHashTarget) {
+      console.log('[ROUTER] Redirecting legacy hash route to clean URL:', legacyHashTarget);
+      navigate(legacyHashTarget, { replace: true });
+    }
+  }, [legacyHashTarget, navigate]);
+
+  if (legacyHashTarget) {
+    return <LoadingScreen />;
+  }
+
+  return <>{children}</>;
+}
+
 export function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <AppProviders>
-        <Suspense fallback={<LoadingScreen />}>
-          <Routes>
-            {routeEntries.map(({ path, Component }) => (
+        <LegacyHashRouteRedirect>
+          <Suspense fallback={<LoadingScreen />}>
+            <Routes>
+              {routeEntries.map(({ path, Component }) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <RouteBoundary>
+                      <RouteScreen Component={Component} />
+                    </RouteBoundary>
+                  }
+                />
+              ))}
               <Route
-                key={path}
-                path={path}
+                path="*"
                 element={
                   <RouteBoundary>
-                    <RouteScreen Component={Component} />
+                    <NotFoundPage />
                   </RouteBoundary>
                 }
               />
-            ))}
-            <Route
-              path="*"
-              element={
-                <RouteBoundary>
-                  <NotFoundPage />
-                </RouteBoundary>
-              }
-            />
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
+        </LegacyHashRouteRedirect>
       </AppProviders>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 

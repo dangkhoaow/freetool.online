@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams as useRRParams } from 'react-router-dom';
-import { getCurrentRouteInfo, normalizeRoutePath, parseInternalHref, scheduleHashScroll } from '../../router/hash-path';
+import {
+  normalizeRoutePath,
+  parseInternalHref,
+  resolveLegacyHashRouteTarget,
+  scheduleHashScroll,
+} from '../../router/hash-path';
 import { NotFoundRouteError, RedirectRouteError } from '../../router/not-found-error';
 
 type SearchParamInit =
@@ -50,6 +55,7 @@ function toSearchString(init?: SearchParamInit | null): string {
 function buildSearchParamHandle(
   currentPathname: string,
   currentSearch: string,
+  currentHash: string,
   navigate: ReturnType<typeof useNavigate>,
 ) {
   const params = new URLSearchParams(currentSearch);
@@ -64,6 +70,7 @@ function buildSearchParamHandle(
       {
         pathname: currentPathname,
         search: nextSearch,
+        hash: currentHash,
       },
       {
         replace: options.replace ?? false,
@@ -86,8 +93,7 @@ function buildSearchParamHandle(
 
 export function usePathname(): string {
   const location = useLocation();
-  const routeInfo = getCurrentRouteInfo();
-  return location.pathname && location.pathname !== '/' ? location.pathname : routeInfo.pathname;
+  return location.pathname || '/';
 }
 
 export function useSearchParams(): URLSearchParams & Iterable<unknown> {
@@ -95,8 +101,8 @@ export function useSearchParams(): URLSearchParams & Iterable<unknown> {
   const navigate = useNavigate();
 
   return useMemo(
-    () => buildSearchParamHandle(location.pathname || '/', location.search || '', navigate),
-    [location.pathname, location.search, navigate],
+    () => buildSearchParamHandle(location.pathname || '/', location.search || '', location.hash || '', navigate),
+    [location.pathname, location.search, location.hash, navigate],
   );
 }
 
@@ -110,6 +116,7 @@ export function useRouter() {
 
   const pathname = location.pathname || '/';
   const search = location.search || '';
+  const hash = location.hash || '';
 
   const push = useCallback(
     (href: string, options: RouterOptions = {}) => {
@@ -120,9 +127,34 @@ export function useRouter() {
         return;
       }
 
+      const legacyRouteTarget = href.startsWith('#/') ? resolveLegacyHashRouteTarget(href) : null;
       const parsed = parseInternalHref(href);
       if (parsed.external) {
         window.location.href = href;
+        return;
+      }
+
+      if (legacyRouteTarget) {
+        const legacyParsed = parseInternalHref(href.slice(1));
+        navigate(
+          {
+            pathname: normalizeRoutePath(legacyParsed.pathname || pathname),
+            search: legacyParsed.search,
+            hash: legacyParsed.hash,
+          },
+          {
+            replace: options.replace ?? false,
+            state: options.state,
+          },
+        );
+
+        if (options.scroll !== false) {
+          if (legacyParsed.hash) {
+            scheduleHashScroll(legacyParsed.hash);
+          } else {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+          }
+        }
         return;
       }
 
@@ -131,6 +163,7 @@ export function useRouter() {
         {
           pathname: targetPathname,
           search: parsed.search,
+          hash: parsed.hash,
         },
         {
           replace: options.replace ?? false,
@@ -165,7 +198,7 @@ export function useRouter() {
     prefetch: async () => undefined,
     pathname,
     query: Object.fromEntries(new URLSearchParams(search)),
-    asPath: `${pathname}${search}`,
+    asPath: `${pathname}${search}${hash}`,
   };
 }
 

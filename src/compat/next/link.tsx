@@ -1,6 +1,13 @@
 import React, { forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildRouteHref, isExternalHref, normalizeRoutePath, parseInternalHref, scheduleHashScroll } from '../../router/hash-path';
+import {
+  buildRouteHref,
+  isExternalHref,
+  normalizeRoutePath,
+  parseInternalHref,
+  resolveLegacyHashRouteTarget,
+  scheduleHashScroll,
+} from '../../router/hash-path';
 
 type LinkHref = string | URL;
 
@@ -35,12 +42,13 @@ const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
 
   const external = isExternalHref(rawHref) || target === '_blank';
   const anchorOnly = rawHref.startsWith('#') && !rawHref.startsWith('#/');
+  const legacyRouteTarget = rawHref.startsWith('#/') ? resolveLegacyHashRouteTarget(rawHref) : null;
   const parsed = anchorOnly ? null : parseInternalHref(rawHref);
   const targetHref = external
     ? rawHref
     : anchorOnly
       ? rawHref
-      : buildRouteHref(parsed.pathname, parsed.search, '');
+      : legacyRouteTarget || buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
 
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
@@ -61,6 +69,25 @@ const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
       return;
     }
 
+    if (legacyRouteTarget) {
+      const legacyParsed = parseInternalHref(rawHref.slice(1));
+      navigate(
+        {
+          pathname: normalizeRoutePath(legacyParsed.pathname),
+          search: legacyParsed.search,
+          hash: legacyParsed.hash,
+        },
+        {
+          replace,
+        },
+      );
+
+      if (scroll && legacyParsed.hash) {
+        scheduleHashScroll(legacyParsed.hash);
+      }
+      return;
+    }
+
     if (!parsed) {
       return;
     }
@@ -70,6 +97,7 @@ const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
       {
         pathname: nextPathname,
         search: parsed.search,
+        hash: parsed.hash,
       },
       {
         replace,
