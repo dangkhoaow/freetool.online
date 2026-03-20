@@ -3,9 +3,10 @@
  * Centralized configuration for all contract management services
  */
 import { navigateToRoute } from '@/src/router/hash-path';
+import { resolveFrontendApiBaseUrl } from '@/src/runtime-env';
 
-// Get API base URL from environment variables
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Resolve the API base URL once so browser code never falls back to localhost on Pages.
+export const API_BASE_URL = resolveFrontendApiBaseUrl(true);
 
 // Contract Management API endpoints
 export const CONTRACT_MANAGEMENT_ENDPOINTS = {

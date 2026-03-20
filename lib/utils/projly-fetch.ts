@@ -3,8 +3,10 @@
  * This file centralizes fetch logic with proper error handling and logging
  */
 
+import { resolveFrontendApiBaseUrl } from '@/src/runtime-env';
+
 // Define the base API URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = resolveFrontendApiBaseUrl();
 
 /**
  * Enhanced fetch function for Projly API calls

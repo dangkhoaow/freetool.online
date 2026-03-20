@@ -1,5 +1,8 @@
 type RuntimeEnvMap = Record<string, string>;
 
+const LOCAL_API_BASE_URL = 'http://localhost:3001';
+const DEFAULT_API_BASE_URL = 'https://service.freetool.online';
+
 declare global {
   interface Window {
     process?: {
@@ -47,4 +50,25 @@ function installRuntimeEnv() {
 
 installRuntimeEnv();
 
-export { runtimeEnv as appRuntimeEnv };
+const appRuntimeEnv = runtimeEnv;
+
+export { appRuntimeEnv };
+
+function isLocalhostHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+export function resolveFrontendApiBaseUrl(preferContractManagement = false): string {
+  if (typeof window !== 'undefined' && isLocalhostHost(window.location.hostname)) {
+    return LOCAL_API_BASE_URL;
+  }
+
+  const contractManagementUrl = appRuntimeEnv.NEXT_PUBLIC_CONTRACT_MANAGEMENT_API_URL?.trim();
+  const genericApiUrl = appRuntimeEnv.NEXT_PUBLIC_API_URL?.trim();
+
+  if (preferContractManagement) {
+    return contractManagementUrl || genericApiUrl || DEFAULT_API_BASE_URL;
+  }
+
+  return genericApiUrl || contractManagementUrl || DEFAULT_API_BASE_URL;
+}
