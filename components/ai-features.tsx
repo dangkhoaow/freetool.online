@@ -1,6 +1,8 @@
 import { Zap, Image, FileDown, Sparkles } from "lucide-react"
 import { Check } from "lucide-react"
 
+const heicConverterPreview = `${import.meta.env.BASE_URL}ai-heic-converter.jpg`
+
 export default function AiFeatures() {
   return (
     <section id="features" className="py-16 px-4 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
@@ -92,7 +94,11 @@ export default function AiFeatures() {
             </div>
             <div className="md:w-1/2">
               <div className="relative rounded-lg overflow-hidden">
-                <img src="/ai-heic-converter.jpg" alt="AI Image Enhancement Visualization" className="w-full h-auto" />
+                <img
+                  src={heicConverterPreview}
+                  alt="AI Image Enhancement Visualization"
+                  className="w-full h-auto"
+                />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 pointer-events-none"></div>
               </div>
             </div>
