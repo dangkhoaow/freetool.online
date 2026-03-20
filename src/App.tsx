@@ -4,7 +4,7 @@ import NotFoundPage from '../app/not-found';
 import { AppProviders } from './app-shell/AppProviders';
 import { AvFoundationShell, ContractManagementShell, ProjlyShell } from './app-shell/RouteShells';
 import { RouteBoundary } from './router/RouteBoundary';
-import { resolveLegacyHashRouteTarget } from './router/hash-path';
+import { getVitePublicPathPrefix, resolveLegacyHashRouteTarget } from './router/hash-path';
 import { useRouteMetadata } from './router/route-metadata';
 import { filePathToRoutePath } from './router/route-path';
 
@@ -97,8 +97,10 @@ function LegacyHashRouteRedirect({ children }: { children: ReactNode }) {
 }
 
 export function App() {
+  const routerBasename = getVitePublicPathPrefix() || undefined;
+
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <AppProviders>
         <LegacyHashRouteRedirect>
           <Suspense fallback={<LoadingScreen />}>

@@ -35,6 +35,48 @@ export function normalizeRoutePath(pathname: string): string {
   return normalized || '/';
 }
 
+/**
+ * Vite `base` without trailing slash, e.g. `/freetool.online` or `` when base is `/`.
+ * Used for BrowserRouter basename and for stripping `window.location.pathname`.
+ */
+export function getVitePublicPathPrefix(): string {
+  const base = import.meta.env.BASE_URL || '/';
+  if (base === '/' || base === '') {
+    return '';
+  }
+  return base.replace(/\/+$/, '');
+}
+
+/**
+ * Strip Vite public base from a full browser pathname so route matching uses `/tools` not `/freetool.online/tools`.
+ */
+export function stripVitePublicPathPrefix(pathname: string): string {
+  const prefix = getVitePublicPathPrefix();
+  if (!prefix) {
+    return normalizeRoutePath(pathname || '/');
+  }
+  const p = pathname || '/';
+  if (p === prefix || p === `${prefix}/`) {
+    return '/';
+  }
+  if (p.startsWith(`${prefix}/`)) {
+    return normalizeRoutePath(p.slice(prefix.length));
+  }
+  return normalizeRoutePath(p);
+}
+
+/**
+ * Prefix internal app paths for real browser URLs (GitHub Pages subpath, open in new tab, window.location).
+ */
+export function withVitePublicPathPrefix(pathWithQueryHash: string): string {
+  const prefix = getVitePublicPathPrefix();
+  const raw = pathWithQueryHash.startsWith('/') ? pathWithQueryHash : `/${pathWithQueryHash}`;
+  if (!prefix) {
+    return raw;
+  }
+  return `${prefix}${raw}`;
+}
+
 export function parseInternalHref(href: string): ParsedHref {
   const rawHref = href.trim();
 
@@ -88,7 +130,7 @@ export function getCurrentRouteInfo(): RouteParts {
   }
 
   return {
-    pathname: normalizeRoutePath(window.location.pathname || '/'),
+    pathname: stripVitePublicPathPrefix(window.location.pathname || '/'),
     search: window.location.search || '',
     hash: window.location.hash || '',
   };
@@ -119,11 +161,11 @@ export function buildBrowserRouteUrl(href: string): string {
 
   const legacyHashTarget = resolveLegacyHashRouteTarget(rawHref);
   if (legacyHashTarget) {
-    return legacyHashTarget;
+    return withVitePublicPathPrefix(legacyHashTarget);
   }
 
   if (typeof window === 'undefined') {
-    return buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
+    return withVitePublicPathPrefix(buildRouteHref(parsed.pathname, parsed.search, parsed.hash));
   }
 
   const anchorOnly = rawHref.startsWith('#') && !rawHref.startsWith('#/');
@@ -131,7 +173,7 @@ export function buildBrowserRouteUrl(href: string): string {
     return `${window.location.pathname}${window.location.search}${parsed.hash}`;
   }
 
-  return buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
+  return withVitePublicPathPrefix(buildRouteHref(parsed.pathname, parsed.search, parsed.hash));
 }
 
 export function scrollToHash(hash: string): void {

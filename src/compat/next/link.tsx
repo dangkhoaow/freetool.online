@@ -7,6 +7,7 @@ import {
   parseInternalHref,
   resolveLegacyHashRouteTarget,
   scheduleHashScroll,
+  withVitePublicPathPrefix,
 } from '../../router/hash-path';
 
 type LinkHref = string | URL;
@@ -48,7 +49,7 @@ const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
     ? rawHref
     : anchorOnly
       ? rawHref
-      : legacyRouteTarget || buildRouteHref(parsed.pathname, parsed.search, parsed.hash);
+      : withVitePublicPathPrefix(legacyRouteTarget || buildRouteHref(parsed.pathname, parsed.search, parsed.hash));
 
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);

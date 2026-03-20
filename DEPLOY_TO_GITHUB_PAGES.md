@@ -1,6 +1,6 @@
 # `freetool.online` GitHub Pages Deployment
 
-Updated: 2026-03-20 17:21
+Updated: 2026-03-20 21:05
 
 ## Overview
 
@@ -8,7 +8,8 @@ This repo is now built as a static Vite + React SPA and deployed to GitHub Pages
 
 The frontend is Pages-safe:
 
-- client-side routing uses `HashRouter`
+- client-side routing uses `BrowserRouter` with `basename` derived from `import.meta.env.BASE_URL` (same as Vite `base` / `VITE_BASE_PATH`) so routes match under `https://<owner>.github.io/<repo>/`
+- `src/router/hash-path.ts` strips that public path prefix when reading `window.location` and adds it back for full-page navigations and `<a href>` targets
 - browser-only env values come from `src/runtime-env.ts`
 - backend API calls go to `https://service.freetool.online`
 - server-only Next route handlers under `app/api/**` were retired from the frontend repo
@@ -45,6 +46,23 @@ VITE_CONTRACT_MANAGEMENT_API_URL: https://service.freetool.online
 ```
 
 `VITE_BASE_PATH` should match the GitHub Pages project path. If you later move the app to a custom domain root, change that value to `/`.
+
+## CloudFront in front of GitHub Pages (optional)
+
+If you put a CloudFront distribution in front of `*.github.io`:
+
+1. **Origin domain:** `dangkhoaow.github.io` (your user/org host).
+2. **Origin path:** `/freetool.online` — **no trailing slash** (AWS: [Origin path](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesOrigin.html) must not end with `/`).
+3. **Protocol:** `HTTPS only` to the origin is recommended for GitHub Pages.
+4. **Default root object:** set to `index.html` on the distribution so viewer requests to `/` map to the SPA entry.
+5. **SPA deep links:** GitHub Pages has no server rewrite for arbitrary paths. Add a **custom error response** (404/403 → `/index.html` with 200) or a **CloudFront Function** on viewer-request that rewrites non-file paths to `/index.html` (same idea as API Gateway / S3 SPA hosting).
+
+**“There isn’t a GitHub Pages site here”** on `https://xxxx.cloudfront.net/` means CloudFront asked GitHub for the **account root** `https://dangkhoaow.github.io/` (no project path). Fix: confirm the **default cache behavior** uses the origin that has **Origin path** `/freetool.online`, set **Default root object** to `index.html`, then **invalidate** `/*`.
+
+**Build base vs viewer URL:** This workflow builds with `VITE_BASE_PATH=/freetool.online/`, so HTML references assets as `/freetool.online/assets/...`. On the GitHub Pages URL that is correct. If your **viewer** URL is the CloudFront root with **no** `/freetool.online` prefix, you either:
+
+- rebuild with `VITE_BASE_PATH=/` for that distribution (origin path still `/freetool.online` so files are fetched from the right place on GitHub), or  
+- keep the current build and ensure viewer URLs include the same prefix as the build (or add rewrite rules so `/freetool.online/*` on the viewer maps correctly).
 
 ## GitHub Pages Workflow
 
@@ -103,11 +121,13 @@ For local dev, run:
 npm run dev
 ```
 
-Because the app uses `HashRouter`, deep links stay safe on GitHub Pages. For example:
+Deep links use the path **after** the repo prefix (legacy `#/...` URLs are still redirected once to the clean path):
 
 ```text
-https://<owner>.github.io/freetool.online/#/projly/login
+https://<owner>.github.io/freetool.online/projly/login
 ```
+
+Hard refresh on a deep link still needs either GitHub Pages `404.html` tricks or CloudFront custom errors / a rewrite function, because the server must return `index.html` for unknown paths.
 
 ## Code Editor Notes
 
