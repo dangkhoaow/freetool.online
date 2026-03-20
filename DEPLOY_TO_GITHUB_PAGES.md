@@ -52,11 +52,13 @@ The workflow lives at `.github/workflows/deploy-pages.yml`.
 
 High-level flow:
 
-1. Push to `main`.
+1. Push to `migrate-fe` or `main`.
 2. GitHub Actions checks out the repo and installs dependencies.
 3. Vite builds the SPA into `dist/`.
 4. The `dist/` folder is uploaded as the Pages artifact.
 5. GitHub Pages publishes the artifact.
+
+Both branches deploy the same GitHub Pages site, so the latest successful push wins. `migrate-fe` is the working branch for migration validation, and `main` remains the release branch after merge.
 
 ## Backend Dependencies
 
