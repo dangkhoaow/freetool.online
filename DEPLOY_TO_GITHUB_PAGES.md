@@ -207,6 +207,26 @@ Supported browser-side flows:
 
 ## Troubleshooting
 
+### Push rejected: `workflow` scope / `deploy-pages.yml`
+
+If `git push` fails with:
+
+```text
+refusing to allow a Personal Access Token to create or update workflow
+`.github/workflows/deploy-pages.yml` without `workflow` scope
+```
+
+GitHub requires extra permission for any change under `.github/workflows/`.
+
+1. **Classic PAT:** [GitHub → Settings → Developer settings → PATs](https://github.com/settings/tokens) → generate new token → enable **`workflow`** (and **`repo`** for private repos).
+2. **Fine-grained PAT:** create a token for this repo with **Contents: Read and write** and **Workflows: Read and write**.
+3. **Update stored credentials on macOS:** open **Keychain Access**, search `github`, remove the old `github.com` item (or use **Git Credential Manager** / `gh auth login` to replace the password with the new token).
+4. Push again: `git push origin migrate-fe` (or your branch).
+
+**Alternative:** use **SSH** (`git@github.com:dangkhoaow/freetool.online.git`) if your machine already has a GitHub SSH key; SSH pushes are not limited by PAT scopes.
+
+---
+
 - If assets 404 (e.g. requests to `/freetool.online/assets/...` on `freetool.online`), the deployed build still used a subpath base—confirm CI logs show `VITE_BASE_PATH=/` and invalidate CloudFront. If `github.io/<repo>/` 404s assets, set repo variable `VITE_BASE_PATH` to `/<repo>/`.
 - If API calls fail from the Pages site, confirm the backend CORS allowlist includes the Pages origin.
 - If websocket or auth redirects fail, verify the backend origin matcher and cookie domain settings.
