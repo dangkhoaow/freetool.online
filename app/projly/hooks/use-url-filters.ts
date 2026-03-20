@@ -1,4 +1,4 @@
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/app/projly/contexts/AuthContextCustom';
 
@@ -20,6 +20,7 @@ export interface URLFilterParams {
 export function useURLFilters(initialFilters: URLFilterParams = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -171,13 +172,13 @@ export function useURLFilters(initialFilters: URLFilterParams = {}) {
     
     // Build the new URL
     const newURL = params.toString() ? `?${params.toString()}` : '';
-    const currentPath = window.location.pathname;
+    const currentPath = pathname || '/';
     
     // Only update if URL actually changed
-    if (window.location.search !== newURL) {
+    if ((searchParams?.toString() || '') !== params.toString()) {
       router.replace(`${currentPath}${newURL}`, { scroll: false });
     }
-  }, [router, user]);
+  }, [router, user, pathname, searchParams]);
 
   // Update filters and sync to URL
   const updateFilters = useCallback((newFilters: URLFilterParams) => {

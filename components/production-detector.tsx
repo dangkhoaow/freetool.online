@@ -26,7 +26,8 @@ export function ProductionProvider({ children }: { children: ReactNode }) {
       const hostname = window.location.hostname;
       const isProductionDomain = 
         hostname === 'freetool.online' || 
-        hostname === 'www.freetool.online';
+        hostname === 'www.freetool.online' ||
+        hostname.endsWith('.github.io');
       
       if (hasCookie || isProductionDomain) {
         // If on production domain, set cookie for future reference

@@ -131,49 +131,7 @@ const useVSCodeStore = create<VSCodeStore>()(
         
         // Save to server if file has a real path
         if (file.realPath) {
-          console.log(`File has real path: ${file.realPath}, saving to disk`);
-          // Save to server using the correct API endpoint
-          fetch('/api/filesystem', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'saveFile',
-              path: file.realPath,
-              content: content
-            }),
-          })
-          .then(response => {
-            console.log('Save file API response status:', response.status);
-            return response.json();
-          })
-          .then(data => {
-            if (data.success) {
-              console.log(`File saved successfully to disk: ${file.realPath}`);
-              // Mark file as saved in the UI
-              const rootNodeCopy = { ...get().rootNode };
-              const updateFileState = (node: ExtendedFileNode): ExtendedFileNode => {
-                if (node.id === fileId) {
-                  return { ...node, isDirty: false, updatedAt: Date.now() };
-                }
-                if (node.children) {
-                  return {
-                    ...node,
-                    children: node.children.map(child => updateFileState(child as ExtendedFileNode))
-                  };
-                }
-                return node;
-              };
-              const updatedRootNode = updateFileState(rootNodeCopy);
-              set({ rootNode: updatedRootNode });
-            } else {
-              console.error(`Error saving file to disk: ${data.error || 'Unknown error'}`);
-            }
-          })
-          .catch(error => {
-            console.error('Error saving file to disk:', error);
-          });
+          console.log(`File has real path: ${file.realPath}, but GitHub Pages cannot sync to a server filesystem`);
         } else {
           console.log(`File does not have a real path, saving to cache storage`);
           
@@ -223,52 +181,7 @@ const useVSCodeStore = create<VSCodeStore>()(
         
         // If the file has a real path, attempt to load the content from disk
         if (file.realPath && file.type === 'file') {
-          console.log(`File has real path: ${file.realPath}, loading from disk`);
-          
-          // Fetch content from disk using API
-          fetch('/api/filesystem', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'readFile',
-              path: file.realPath
-            }),
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              console.log(`File loaded successfully from disk: ${file.realPath}, size: ${data.content.length} chars`);
-              
-              // Update file content in the state
-              const rootNodeCopy = { ...get().rootNode };
-              const updateFileWithContent = (node: ExtendedFileNode): ExtendedFileNode => {
-                if (node.id === fileId) {
-                  return { ...node, content: data.content, isDirty: false, updatedAt: Date.now() };
-                }
-                if (node.children) {
-                  return {
-                    ...node,
-                    children: node.children.map(child => updateFileWithContent(child as ExtendedFileNode))
-                  };
-                }
-                return node;
-              };
-              
-              const updatedRootNode = updateFileWithContent(rootNodeCopy);
-              set({ rootNode: updatedRootNode });
-            } else {
-              console.error(`Error loading file from disk: ${data.error || 'Unknown error'}`);
-              // Fallback to local storage version
-              console.log('Falling back to localStorage version');
-            }
-          })
-          .catch(error => {
-            console.error('Error loading file from disk:', error);
-            // Fallback to local storage version
-            console.log('Falling back to localStorage version due to error');
-          });
+          console.log(`File has real path: ${file.realPath}, but GitHub Pages cannot load from a server filesystem`);
         } else {
           console.log(`File does not have a real path or is not a file, using cached version`);
         }

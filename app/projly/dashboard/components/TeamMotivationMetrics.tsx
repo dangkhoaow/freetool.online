@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { format } from "date-fns";
 import { ActivityDetailDialog } from "@/app/projly/components/ActivityDetailDialog";
+import { buildBrowserRouteUrl } from '@/src/router/hash-path';
 
 // API interfaces
 interface TopPerformer {
@@ -347,7 +348,7 @@ export function TeamMotivationMetrics() {
   };
 
   const openTaskInNewTab = (taskId: string) => {
-    window.open(`/projly/tasks/${taskId}`, '_blank');
+    window.open(buildBrowserRouteUrl(`/projly/tasks/${taskId}`), '_blank');
   };
 
   const handleActivityClick = (activityId: string) => {

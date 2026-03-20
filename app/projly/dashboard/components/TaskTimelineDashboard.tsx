@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useSession } from "@/lib/services/projly/jwt-auth-adapter";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
+import { buildBrowserRouteUrl } from '@/src/router/hash-path';
 
 // Import styles
 import "../../components/calendar/styles/resource-timeline.css";
@@ -235,7 +236,7 @@ export function TaskTimelineDashboard() {
 
   // Handle opening task in new tab
   const openTaskInNewTab = (taskId: string) => {
-    window.open(`/projly/tasks/${taskId}`, '_blank');
+    window.open(buildBrowserRouteUrl(`/projly/tasks/${taskId}`), '_blank');
   };
 
   // Handle dates set

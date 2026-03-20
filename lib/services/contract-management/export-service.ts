@@ -5,6 +5,7 @@ import {
   ContractSearchFilters,
   ApiResponse
 } from './types';
+import { CONTRACT_MANAGEMENT_CONFIG } from './config';
 import { contractManagementService } from './contract-service';
 
 class ContractManagementExportService {
@@ -34,7 +35,9 @@ class ContractManagementExportService {
       }
 
       // Call backend export API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contract-management/exports`, {
+      const response = await fetch(
+        CONTRACT_MANAGEMENT_CONFIG.buildApiUrl(CONTRACT_MANAGEMENT_CONFIG.ENDPOINTS.EXPORT.CONTRACTS),
+        {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +45,8 @@ class ContractManagementExportService {
         },
         credentials: 'include',
         body: JSON.stringify(options)
-      });
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

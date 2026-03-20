@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout';
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ const fixTimezone = (utcDateString: string, userTimezone: number = 7): Date => {
 export default function NotificationsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname() || '/projly/notifications';
   const { notifications, isLoading, markAsRead, markAllAsRead } = useNotifications();
   // Activity filters and pagination state
   const [activityPage, setActivityPage] = useState(1);
@@ -167,9 +168,9 @@ export default function NotificationsPage() {
   // Function to handle tab change with URL update
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', newTab);
-    router.push(url.pathname + url.search, { scroll: false });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', newTab);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   // Update tab when URL changes

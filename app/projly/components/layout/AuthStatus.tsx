@@ -82,7 +82,7 @@ export const AuthStatus = () => {
     } catch (error) {
       console.error('[PROJLY:AUTH_STATUS] Logout failed:', error);
       // Fallback redirect if an exception occurs
-      window.location.replace('/projly/login');
+      router.replace('/projly/login');
     }
   };
 

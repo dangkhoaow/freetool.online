@@ -22,7 +22,7 @@ export default function LoginJWT() {
   const location = useLocation();
 
   // Get the redirect path from location state, or default to dashboard
-  const from = location.state?.from || "/dashboard";
+  const from = location.state?.from || "/projly/dashboard";
   
   // Check for session error in URL params
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function LoginJWT() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-sm text-project-primary hover:underline">
+                  <Link to="/projly/forgot-password" className="text-sm text-project-primary hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -160,7 +160,7 @@ export default function LoginJWT() {
           <CardFooter className="flex justify-center">
             <p className="text-sm text-center">
               Don't have an account?{" "}
-              <Link to="/register" className="text-project-primary font-medium hover:underline">
+              <Link to="/projly/register" className="text-project-primary font-medium hover:underline">
                 Sign up
               </Link>
             </p>

@@ -588,7 +588,7 @@ export default function TaskDetailsPage({
     console.log('[TASK_DETAILS] Current user for permission check:', currentUser);
     console.log('[TASK_DETAILS] Task form for permission check:', taskForm);
     
-    // Check if user has site_owner role or admin permissions, which always gets delete permission
+    // Check if user has site_owner role or elevated permissions, which always gets delete permission
     // Look for the role in different possible locations in the user object
     const userRole = currentUser.role || currentUser.userRole;
     const isSiteOwner = userRole === 'site_owner' || userRole === 'admin';
@@ -597,13 +597,13 @@ export default function TaskDetailsPage({
     console.log(`[TASK_DETAILS] User role check: role=${userRole}, isSiteOwner=${isSiteOwner}`);
     
     if (isSiteOwner) {
-      console.log('[TASK_DETAILS] User is site_owner/admin, granting delete permission');
+      console.log('[TASK_DETAILS] User has elevated delete permission');
       return true;
     }
     
     // Handle the case where assignedTo is 'none' (meaning not assigned)
     if (taskForm.assignedTo === 'none' || taskForm.assignedTo === null || taskForm.assignedTo === undefined) {
-      // If task is not assigned to anyone, check if user is project owner or has admin privileges
+      // If task is not assigned to anyone, check if user is project owner or has elevated privileges
       // Check for project owner status in different possible fields
       const isProjectOwner = 
         !!currentUser.projectOwner || 
