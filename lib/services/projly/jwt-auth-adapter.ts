@@ -37,6 +37,7 @@ import { useContext } from 'react';
 import API_ENDPOINTS from '@/app/projly/config/apiConfig';
 // Use AuthContext from the standard location that's being used by other components
 import { AuthContext, AuthProvider, useAuth } from '@/app/projly/contexts/AuthContextCustom';
+import { navigateToRoute } from '@/src/router/hash-path';
 
 /**
  * Enhanced useSession hook that mimics NextAuth functionality
@@ -171,7 +172,7 @@ export async function signIn(provider?: string, options?: CredentialsConfig) {
         
         // Handle redirect if needed
         if (redirect && callbackUrl) {
-          window.location.href = callbackUrl;
+          navigateToRoute(callbackUrl, false);
         }
         
         return { ok: true, error: null };
@@ -269,8 +270,8 @@ export async function signOut(options?: { callbackUrl?: string; redirect?: boole
       // If redirect is not explicitly set to false, perform the redirect
       if (options?.redirect !== false) {
         console.log(`[JWT_AUTH_ADAPTER] Redirecting to ${loginUrl}`);
-        // Use window.location.replace to prevent the back button from returning to the logged-in state
-        window.location.replace(loginUrl);
+        // Use HashRouter-aware replace to prevent the back button from returning to the logged-in state
+        navigateToRoute(loginUrl, true);
       }
       
       return { ok: true, error: null };
@@ -286,7 +287,7 @@ export async function signOut(options?: { callbackUrl?: string; redirect?: boole
     if (typeof window !== 'undefined' && options?.redirect !== false) {
       const loginUrl = options?.callbackUrl || '/projly/login';
       console.log(`[JWT_AUTH_ADAPTER] Error occurred, redirecting to ${loginUrl}`);
-      window.location.replace(loginUrl);
+      navigateToRoute(loginUrl, true);
     }
     
     return { 

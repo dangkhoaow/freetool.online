@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // SECURITY/PERF:
-  // This service should not accept large POST bodies to non-API page routes (e.g. `/`, `/admin/...`).
+  // This service should not accept large POST bodies to non-API page routes (e.g. `/`).
   // Bots regularly probe with `POST /` and `/cgi-bin/...` traversal attempts, which can force nginx
   // to buffer bodies to disk and correlate with upstream timeouts/hangs.
   //
@@ -104,7 +104,6 @@ export async function middleware(request: NextRequest) {
   
   // Known valid top-level routes
   const VALID_TOP_ROUTES = [
-    'admin',
     'tools',
     'code-editor',
     'color-picker',
@@ -179,7 +178,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // Only certain parent segments can have child routes
-    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'admin' || parentSegment === 'todo-list' || parentSegment === 'projly' || parentSegment === 'contract-management' || parentSegment === 'av-foundation') {
+    if (parentSegment === 'private-ai-chat' || parentSegment === 'site-management' || parentSegment === 'todo-list' || parentSegment === 'projly' || parentSegment === 'contract-management' || parentSegment === 'av-foundation') {
       // Special known nested routes
       if (parentSegment === 'private-ai-chat' && childSegment === 'debug') {
         return response;
@@ -187,11 +186,6 @@ export async function middleware(request: NextRequest) {
       
       if (parentSegment === 'todo-list' && childSegment === 'projly') {
         console.log(`Todo-list projly route allowed: ${path}`);
-        return response;
-      }
-      
-      if (parentSegment === 'admin') {
-        // Allow all admin nested routes
         return response;
       }
       

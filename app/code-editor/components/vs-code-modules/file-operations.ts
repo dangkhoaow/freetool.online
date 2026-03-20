@@ -132,35 +132,9 @@ export function openFileById(fileId: string, maxRetries = 5, delay = 100, editor
           .catch((error: unknown) => console.error('FileOperations: Error reading file via FS API:', error));
         return true;
       }
-      
-      // Handle real path reads
-      const realPath = (fileNode as any).realPath;
-      if (realPath) {
-        console.log(`FileOperations: Loading file content from disk: ${realPath}`);
-        fetch('/api/filesystem', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({action:'readFile', path: realPath})
-        })
-        .then(res => res.json())
-        .then((data: any) => {
-          if (data.success) {
-            const content = data.content || '';
-            console.log(`FileOperations: File loaded from disk, size: ${content.length} chars`);
-            store.setEditorContent(fileId, content);
-            store.markFileAsSaved(fileId);
-            store.openFile(fileId);
-            store.setActiveFile(fileId);
-            console.log(`FileOperations: File ${fileId} opened after disk load`);
-          } else {
-            console.error(`FileOperations: Error loading file from disk: ${data.error}`);
-          }
-        })
-        .catch((error: unknown) => console.error('FileOperations: Error loading file from disk:', error));
-        return true;
-      }
-      
+
       // Fallback: just open immediately (cache or empty)
-      console.log(`FileOperations: No handle or realPath; opening file immediately`);
+      console.log(`FileOperations: No browser file handle; opening cached file immediately`);
       store.openFile(fileId);
       store.setActiveFile(fileId);
       console.log(`FileOperations: File ${fileId} opened with fallback content`);

@@ -27,6 +27,7 @@ import { SHORTCUTS, matchesShortcut } from './shortcuts';
 import { EditorInstance } from './types';
 import { cleanupMissingFiles, validateFolderPath, cleanupEditorInstances } from './folder-handler';
 import { enhancedSaveFile, openFileById, closeFileById, createFileFromUpload } from './file-operations';
+import * as BrowserFileSystem from '@/lib/services/browser-file-system-service';
 import { 
   getRecentFilesWithLimit, 
   getEditorLanguage, 
@@ -229,52 +230,29 @@ export default function VSCodeEditor() {
         const folderPath = event.detail.path;
         const forceRefresh = event.detail.forceRefresh === true;
         console.log(`VSCodeEditor: Refreshing folder with path: ${folderPath}, forceRefresh: ${forceRefresh}`);
-        
-        // Show loading state
-        // Manual fetch instead of using a helper function for clarity
-        try {
-          console.log('VSCodeEditor: Making API request to /api/filesystem');
-          
-          // Add cache-busting parameter if forceRefresh is true
-          const cacheBuster = forceRefresh ? `&_=${Date.now()}` : '';
-          const response = await fetch(`/api/filesystem?path=${encodeURIComponent(folderPath)}${cacheBuster}`);
-          
-          console.log('VSCodeEditor: API response status:', response.status);
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `API error: ${response.status}`);
+
+        const directoryHandle = BrowserFileSystem.getCurrentDirectoryHandle();
+        if (directoryHandle) {
+          try {
+            const scannedRootNode = await BrowserFileSystem.scanDirectoryToFileNode(directoryHandle);
+            if (scannedRootNode) {
+              useVSCodeStore.setState((prev) => ({
+                ...prev,
+                rootNode: {
+                  ...prev.rootNode,
+                  ...scannedRootNode,
+                },
+              }));
+
+              console.log(`VSCodeEditor: Explorer view refreshed from browser file system${forceRefresh ? ' (forced)' : ''}`);
+            } else {
+              console.warn('VSCodeEditor: Browser file system scan returned no root node');
+            }
+          } catch (error: any) {
+            console.error('VSCodeEditor: Error refreshing browser file system:', error);
           }
-          
-          const data = await response.json();
-          console.log('VSCodeEditor: File system data received:', data);
-          console.log('VSCodeEditor: Item count:', data.structure?.length || 0);
-          
-          if (data.success && Array.isArray(data.structure)) {
-            // Process the structure to ensure all items have proper paths
-            // Create a mapping of the file structure to our FileNode structure
-            const processedStructure = processFileStructure(data.structure, folderPath);
-            console.log('VSCodeEditor: Processed structure:', processedStructure);
-            
-            // Update the rootNode with the children from the API
-            useVSCodeStore.setState(prev => {
-              const updatedRootNode = { 
-                ...prev.rootNode,
-                children: processedStructure,
-                name: folderPath.split('/').pop() || 'root'
-              };
-              return { rootNode: updatedRootNode };
-            });
-            
-            console.log(`VSCodeEditor: Explorer view refreshed successfully${forceRefresh ? ' (forced from disk)' : ''}`);
-          } else {
-            console.error('VSCodeEditor: API returned unexpected data format:', data);
-            // Show error in UI if needed
-          }
-        } catch (error: any) {
-          console.error('VSCodeEditor: Error refreshing folder:', error);
-          const errorMessage = `Failed to refresh folder: ${error.message || String(error)}`;
-          console.error(errorMessage);
-          // Show error in UI if needed
+        } else {
+          console.log('VSCodeEditor: No browser directory handle available; keeping the current virtual workspace tree');
         }
       } else {
         console.log('VSCodeEditor: Neither rootNode nor path provided in refresh-explorer event');
@@ -397,41 +375,26 @@ export default function VSCodeEditor() {
         // Save folder path to storage
         const saveResult = saveCurrentFolderPath(folderPath);
         console.log(`VSCodeEditor: Saved selected folder path: ${folderPath} (${saveResult ? 'success' : 'failure'})`);
-        
-        // Directly call the API to load folder contents
-        console.log('VSCodeEditor: Directly calling filesystem API to load folder contents');
-        try {
-          const response = await fetch(`/api/filesystem?path=${encodeURIComponent(folderPath)}`);
-          console.log('VSCodeEditor: API response status:', response.status);
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `API error: ${response.status}`);
+
+        const directoryHandle = BrowserFileSystem.getCurrentDirectoryHandle();
+        if (directoryHandle) {
+          console.log('VSCodeEditor: Refreshing explorer from browser file system handle');
+          try {
+            const scannedRootNode = await BrowserFileSystem.scanDirectoryToFileNode(directoryHandle);
+            if (scannedRootNode) {
+              useVSCodeStore.setState((prev) => ({
+                ...prev,
+                rootNode: {
+                  ...prev.rootNode,
+                  ...scannedRootNode,
+                },
+              }));
+            }
+          } catch (scanError) {
+            console.error('VSCodeEditor: Error scanning browser directory:', scanError);
           }
-          
-          const data = await response.json();
-          console.log('VSCodeEditor: Direct API call - file system data received:', data);
-          console.log('VSCodeEditor: Direct API call - item count:', data.structure?.length || 0);
-          
-          if (data.success && Array.isArray(data.structure)) {
-            // Process the structure and update the store
-            const processedStructure = processFileStructure(data.structure, folderPath);
-            console.log('VSCodeEditor: Direct API call - processed structure:', processedStructure);
-            
-            // Update the rootNode with the children from the API
-            useVSCodeStore.setState(prev => {
-              const updatedRootNode = { 
-                ...prev.rootNode,
-                children: processedStructure,
-                name: folderPath.split('/').pop() || 'root'
-              };
-              return { rootNode: updatedRootNode };
-            });
-            
-            console.log('VSCodeEditor: Direct API call - Explorer view updated successfully');
-          }
-        } catch (apiError: any) {
-          console.error('VSCodeEditor: Error in direct API call:', apiError);
+        } else {
+          console.log('VSCodeEditor: No browser directory handle available; using the virtual workspace tree');
         }
         
         // Update current folder path in our component state
@@ -776,87 +739,42 @@ export default function VSCodeEditor() {
           }
           
           // Delete the node from the API
-          // Use custom attributes to handle file path
-          const nodePath = (node as any).realPath || '';
-          fetch(`/api/filesystem/delete?path=${encodeURIComponent(nodePath)}`, {
-            method: 'DELETE',
-          })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                // Refresh explorer
-                const refreshEvent = new CustomEvent('refresh-explorer', {
-                  detail: { path: currentFolderPath, forceRefresh: true }
-                });
-                document.dispatchEvent(refreshEvent);
-              } else {
-                console.error('Error deleting node:', data.error);
-              }
-            })
-            .catch(error => {
-              console.error('Error deleting node:', error);
-            });
+          useVSCodeStore.getState().deleteFile(nodeId);
+
+          const refreshEvent = new CustomEvent('refresh-explorer', {
+            detail: { path: currentFolderPath, forceRefresh: true }
+          });
+          document.dispatchEvent(refreshEvent);
         }}
         onRenameNode={(nodeId, newName) => {
           const node = findNodeById(rootNode, nodeId) as FileNode;
           if (!node) return;
           
-          // Use custom attributes to handle file path
-          const oldPath = (node as any).realPath || '';
-          if (!oldPath) return;
-          
-          const dirPath = oldPath.substring(0, oldPath.lastIndexOf('/') + 1);
-          const newPath = dirPath + newName;
-          
-          fetch(`/api/filesystem/rename?oldPath=${encodeURIComponent(oldPath)}&newPath=${encodeURIComponent(newPath)}`, {
-            method: 'POST',
-          })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                // If it's an open file, update in the store
-                if (node.type === 'file' && openFiles.includes(nodeId)) {
-                  // Use the store's renameFile method if available
-                  if (useVSCodeStore.getState().renameFile) {
-                    useVSCodeStore.getState().renameFile(nodeId, newName);
-                  }
-                }
-                
-                // Refresh explorer
-                const refreshEvent = new CustomEvent('refresh-explorer', {
-                  detail: { path: currentFolderPath, forceRefresh: true }
-                });
-                document.dispatchEvent(refreshEvent);
-              } else {
-                console.error('Error renaming node:', data.error);
-              }
-            })
-            .catch(error => {
-              console.error('Error renaming node:', error);
-            });
+          useVSCodeStore.getState().renameFile(nodeId, newName);
+
+          const refreshEvent = new CustomEvent('refresh-explorer', {
+            detail: { path: currentFolderPath, forceRefresh: true }
+          });
+          document.dispatchEvent(refreshEvent);
         }}
-        onExportFile={(node) => {
-          // Use custom attributes to handle file path
-          const nodePath = (node as any).realPath || '';
-          if (!nodePath) return;
-          
-          fetch(`/api/filesystem/read?path=${encodeURIComponent(nodePath)}`, {
-            method: 'GET',
-          })
-            .then(response => response.text())
-            .then(content => {
-              // Create a download link
-              const element = document.createElement('a');
-              const file = new Blob([content], { type: 'text/plain' });
-              element.href = URL.createObjectURL(file);
-              element.download = node.name;
-              document.body.appendChild(element);
-              element.click();
-              document.body.removeChild(element);
-            })
-            .catch(error => {
-              console.error('Error exporting file:', error);
-            });
+        onExportFile={async (node) => {
+          let content = node.content || '';
+
+          if (!content && (node as any).handle) {
+            try {
+              content = await BrowserFileSystem.readFile((node as any).handle);
+            } catch (error) {
+              console.error('Error exporting browser file handle:', error);
+            }
+          }
+
+          const element = document.createElement('a');
+          const file = new Blob([content], { type: 'text/plain' });
+          element.href = URL.createObjectURL(file);
+          element.download = node.name;
+          document.body.appendChild(element);
+          element.click();
+          document.body.removeChild(element);
         }}
         onImportFile={(parentId, file) => {
           createFileFromUpload(file, parentId, createNewFile);

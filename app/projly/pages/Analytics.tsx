@@ -81,7 +81,7 @@ export default function Analytics() {
   
   // Access denied for users without proper role
   if (!hasAnalyticsAccess) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/projly/dashboard" replace />;
   }
 
   const isLoading = 

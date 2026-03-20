@@ -2,6 +2,7 @@ import React, { createContext, useContext, ReactNode, useCallback, useState, use
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API_ENDPOINTS, createFetchOptions } from '../config/apiConfig';
 import { getAuthToken, setAuthToken, clearAuthToken } from '../utils/auth-utils';
+import { getCurrentRoutePathname, navigateToRoute } from '@/src/router/hash-path';
 
 export interface User {
   id: string;
@@ -163,13 +164,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('[AUTH_CONTEXT] Logout successful, session cleared');
         
         // Determine redirect path based on current location
-        const currentPath = window.location.pathname;
+        const currentPath = getCurrentRoutePathname();
         const redirectPath = currentPath.startsWith('/contract-management') 
           ? '/contract-management/login' 
           : '/projly/login';
         
         // Redirect to appropriate login page
-        window.location.replace(redirectPath);
+        navigateToRoute(redirectPath, true);
       } catch (error) {
         console.error('[AUTH_CONTEXT] Logout error:', error);
         throw error;
@@ -204,13 +205,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       queryClient.clear();
       
       // Determine redirect path based on current location
-      const currentPath = window.location.pathname;
+      const currentPath = getCurrentRoutePathname();
       const redirectPath = currentPath.startsWith('/contract-management') 
         ? '/contract-management/login' 
         : '/projly/login';
       
       // Redirect to appropriate login page
-      window.location.replace(redirectPath);
+      navigateToRoute(redirectPath, true);
     } catch (error) {
       console.error('[AUTH_CONTEXT] Logout error:', error);
     }
@@ -273,13 +274,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     queryClient.clear();
     
     // Determine redirect path based on current location
-    const currentPath = window.location.pathname;
+    const currentPath = getCurrentRoutePathname();
     const redirectPath = currentPath.startsWith('/contract-management') 
       ? '/contract-management/login' 
       : '/projly/login';
     
     console.log(`[AUTH_CONTEXT] Session expired, redirecting to: ${redirectPath}`);
-    window.location.replace(redirectPath);
+    navigateToRoute(redirectPath, true);
   }, [queryClient]);
 
   // Expose AuthContext instance globally for direct updates

@@ -44,7 +44,7 @@ export default function ResetPassword() {
           console.log("No reset token or active session found");
           setError("No active password reset session. Please request a password reset from the login page.");
           setTimeout(() => {
-            navigate("/forgot-password");
+            navigate("/projly/forgot-password");
           }, 3000);
         }
       } catch (err) {
@@ -97,7 +97,7 @@ export default function ResetPassword() {
         
         // Redirect to login page after successful password reset
         setTimeout(() => {
-          navigate("/login");
+          navigate("/projly/login");
         }, 2000);
       }
     } catch (err: any) {
@@ -199,7 +199,7 @@ export default function ResetPassword() {
           <CardFooter className="flex justify-center border-t p-4">
             <p className="text-sm text-gray-600">
               Remember your password?{" "}
-              <Link to="/login" className="text-project-primary hover:underline font-medium">
+              <Link to="/projly/login" className="text-project-primary hover:underline font-medium">
                 Back to login
               </Link>
             </p>

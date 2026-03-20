@@ -16,7 +16,7 @@ interface RoleProtectedRouteProps {
 export function RoleProtectedRoute({ 
   children, 
   allowedRoles, 
-  redirectTo = "/dashboard" 
+  redirectTo = "/projly/dashboard" 
 }: RoleProtectedRouteProps) {
   const { currentUserRole } = useUserRoles();
   const { refreshSession, user, isEditMode } = useAuth();
@@ -222,7 +222,7 @@ export function RoleProtectedRoute({
         });
         
         setTimeout(() => {
-          navigate('/login', { state: { from: window.location.pathname } });
+          navigate('/projly/login', { state: { from: location.pathname } });
         }, 100);
       }
     } catch (error) {
@@ -235,7 +235,7 @@ export function RoleProtectedRoute({
       
       // Don't redirect if in edit mode
       if (!(isEditMode || localEditMode || editModeChecked)) {
-        navigate('/login', { state: { from: window.location.pathname } });
+        navigate('/projly/login', { state: { from: location.pathname } });
       }
     } finally {
       setIsRefreshing(false);

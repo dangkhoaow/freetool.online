@@ -2,6 +2,7 @@
  * Contract Management Service Configuration
  * Centralized configuration for all contract management services
  */
+import { navigateToRoute } from '@/src/router/hash-path';
 
 // Get API base URL from environment variables
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -74,7 +75,7 @@ export const handleAuthError = (response: Response): void => {
     localStorage.removeItem('contractManagementToken');
     
     // Redirect to login page
-    window.location.href = '/contract-management/login';
+    navigateToRoute('/contract-management/login', false);
   }
 };
 

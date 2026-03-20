@@ -59,7 +59,7 @@ export default function ForgotPassword() {
           <CardFooter className="flex justify-center border-t p-4">
             <p className="text-sm text-gray-600">
               Remember your password?{" "}
-              <Link to="/login" className="text-project-primary hover:underline font-medium">
+              <Link to="/projly/login" className="text-project-primary hover:underline font-medium">
                 Back to login
               </Link>
             </p>

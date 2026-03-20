@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, User, FileText, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useProfile } from '@/lib/services/projly/use-profile';
+import { buildBrowserRouteUrl } from '@/src/router/hash-path';
 
 interface ActivityDetailDialogProps {
   activityId: string | null;
@@ -105,7 +106,7 @@ export function ActivityDetailDialog({ activityId, open, onOpenChange }: Activit
   };
 
   const openTaskInNewTab = (taskId: string) => {
-    window.open(`/projly/tasks/${taskId}`, '_blank');
+    window.open(buildBrowserRouteUrl(`/projly/tasks/${taskId}`), '_blank');
   };
 
   const formatFieldName = (fieldName: string) => {

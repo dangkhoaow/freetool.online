@@ -25,7 +25,7 @@ export default function Home() {
               
             </Button>
             <Button className="bg-project-primary hover:bg-indigo-600" asChild>
-              <Link to="/login">Get Started</Link>
+              <Link to="/projly/login">Get Started</Link>
             </Button>
           </div>
         </div>
@@ -171,7 +171,7 @@ export default function Home() {
             Join thousands of teams that use Projly to deliver successful projects on time and within budget.
           </p>
           <Button className="bg-white text-project-primary hover:bg-gray-100 px-8 py-6 text-lg" asChild>
-            <Link to="/login">Get Started Today</Link>
+            <Link to="/projly/login">Get Started Today</Link>
           </Button>
         </div>
       </section>

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef, useState, useEffect } from 'react'
+import JSZip from 'jszip'
 import { FileNode } from '@/lib/services/vs-code-file-system'
 import { findNodeById } from '@/lib/services/vs-code-file-system'
 import { FileSystemAccessAdapter } from './file-system-access-adapter'
@@ -30,7 +31,6 @@ import {
   FolderOpen, 
   ZoomIn, 
   ZoomOut, 
-  Download,
   Undo,
   Redo,
   Trash,
@@ -65,22 +65,63 @@ interface VSCodeMenuBarProps {
 // Utility function to download a folder as zip
 const downloadProjectAsZip = async (folderPath: string) => {
   try {
-    console.log('MenuBar: Requesting zip download for folder:', folderPath);
-    const response = await fetch(`/api/download-folder?path=${encodeURIComponent(folderPath)}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `API error: ${response.status}`);
+    console.log('MenuBar: Building zip archive for folder:', folderPath);
+
+    const store = useVSCodeStore.getState();
+    const rootNode = store.rootNode;
+    const zipName = folderPath.split('/').pop() || rootNode.name || 'project';
+    const zip = new JSZip();
+
+    const addNodeToZip = (node: FileNode, zipFolder: JSZip) => {
+      if (node.type === 'file') {
+        zipFolder.file(node.name, node.content || '');
+        return;
+      }
+
+      node.children?.forEach((child) => {
+        if (child.type === 'directory') {
+          const childFolder = zipFolder.folder(child.name);
+          if (childFolder) {
+            addNodeToZip(child, childFolder);
+          }
+          return;
+        }
+
+        zipFolder.file(child.name, child.content || '');
+      });
+    };
+
+    const projectFolder = zip.folder(zipName);
+    if (!projectFolder) {
+      throw new Error('Unable to create zip archive');
     }
-    
-    // Create a blob from the response
-    const blob = await response.blob();
+
+    if (rootNode.type === 'directory') {
+      if (rootNode.children?.length) {
+        rootNode.children.forEach((child) => {
+          if (child.type === 'directory') {
+            const childFolder = projectFolder.folder(child.name);
+            if (childFolder) {
+              addNodeToZip(child, childFolder);
+            }
+            return;
+          }
+
+          projectFolder.file(child.name, child.content || '');
+        });
+      }
+    } else {
+      projectFolder.file(rootNode.name, rootNode.content || '');
+    }
+
+    // Create a blob from the archive
+    const blob = await zip.generateAsync({ type: 'blob' });
     
     // Create a download link
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${folderPath.split('/').pop() || 'project'}.zip`;
+    link.download = `${zipName}.zip`;
     
     // Trigger download
     document.body.appendChild(link);

@@ -10,7 +10,7 @@ module.exports = {
       'https://freetool.online/sitemap.xml',
     ],
   },
-  exclude: ['/api/*', '/admin/*', '/health'],
+  exclude: ['/api/*', '/health'],
   generateIndexSitemap: false,
   outDir: 'public',
   transform: async (config, path) => {

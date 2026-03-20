@@ -26,7 +26,7 @@ export default function Register() {
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
     if (user) {
-      navigate('/dashboard');
+      navigate('/projly/dashboard');
     }
   }, [user, navigate]);
   
@@ -63,7 +63,7 @@ export default function Register() {
         description: "Your account has been created. You can now log in.",
       });
       
-      navigate('/login');
+      navigate('/projly/login');
     } catch (err: any) {
       console.error("[REGISTER] Registration error:", err);
       setError(err?.message || "Failed to register. Please try again.");
@@ -200,7 +200,7 @@ export default function Register() {
           <CardFooter className="flex justify-center border-t p-4">
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
-              <Link to="/login" className="text-project-primary hover:underline font-medium">
+              <Link to="/projly/login" className="text-project-primary hover:underline font-medium">
                 Login
               </Link>
             </p>

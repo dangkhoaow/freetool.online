@@ -10,6 +10,7 @@ import { API_ENDPOINTS } from '@/app/projly/config/apiConfig';
 import { getAuthToken, setAuthToken, clearAuthToken } from '@/app/projly/utils/auth-utils';
 import { signIn, signOut, useSession, getSession } from './jwt-auth-adapter';
 import apiClient, { ApiResponse } from '@/lib/api-client';
+import { navigateToRoute } from '@/src/router/hash-path';
 
 // Define Project type
 interface Project {
@@ -373,7 +374,7 @@ export const projlyAuthService = {
       if (typeof window !== 'undefined') {
         const loginPath = '/projly/login';
         const encodedError = encodeURIComponent(errorMessage);
-        window.location.href = `${loginPath}?sessionError=${encodedError}`;
+        navigateToRoute(`${loginPath}?sessionError=${encodedError}`, false);
       }
       
       return {

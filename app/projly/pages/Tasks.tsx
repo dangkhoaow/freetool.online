@@ -23,7 +23,7 @@ const Tasks = () => {
       <div className="container mx-auto py-6 flex flex-col items-center gap-4">
         <h1 className="text-2xl font-bold">Authentication Required</h1>
         <p>You need to be logged in to view and manage tasks.</p>
-        <Button onClick={() => navigate('/login')}>Go to Login</Button>
+        <Button onClick={() => navigate('/projly/login')}>Go to Login</Button>
       </div>
     );
   }

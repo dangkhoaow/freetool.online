@@ -325,10 +325,8 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
           description: 'You have been successfully logged out.',
         });
         
-        // Manually redirect to login page using window.location.replace
-        // This is more reliable than router.push for auth redirects
         log('Redirecting to login page');
-        window.location.replace('/projly/login');
+        router.replace('/projly/login');
       } else {
         log('Logout failed:', response.message);
         toast({
@@ -347,7 +345,7 @@ export function Sidebar({ isOpen = true, toggleSidebar }: SidebarProps) {
       
       // Force redirect to login page even if there's an error
       log('Error occurred, forcing redirect to login page');
-      window.location.replace('/projly/login');
+      router.replace('/projly/login');
     }
   };
 

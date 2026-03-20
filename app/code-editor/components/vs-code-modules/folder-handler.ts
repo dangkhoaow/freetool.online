@@ -52,58 +52,12 @@ export async function validateFolderPath(folderPath: string, directoryHandle?: a
     };
   }
   
-  // Fall back to server-side API validation for regular folder paths
-  try {
-    console.log(`FolderHandler: Using server-side API validation for ${folderPath}`);
-    const response = await fetch(`/api/filesystem/validate?path=${encodeURIComponent(folderPath)}`);
-    
-    if (!response.ok) {
-      console.error(`FolderHandler: Folder validation API error:`, response.status);
-      return {
-        valid: false,
-        exists: false,
-        isDirectory: false,
-        error: `Server returned ${response.status}`
-      };
-    }
-    
-    const data = await response.json();
-    console.log(`FolderHandler: Folder validation response:`, data);
-    
-    if (!data.exists) {
-      console.error(`FolderHandler: Folder ${folderPath} does not exist`);
-      return {
-        valid: false,
-        exists: false,
-        isDirectory: false,
-        error: `The folder "${folderPath}" does not exist`
-      };
-    }
-    
-    if (!data.isDirectory) {
-      console.error(`FolderHandler: Path ${folderPath} is not a directory`);
-      return {
-        valid: false,
-        exists: true,
-        isDirectory: false,
-        error: `The path "${folderPath}" is not a directory`
-      };
-    }
-    
-    return {
-      valid: true,
-      exists: true,
-      isDirectory: true
-    };
-  } catch (error: any) {
-    console.error(`FolderHandler: Error in server-side folder validation:`, error);
-    return {
-      valid: false,
-      exists: false,
-      isDirectory: false,
-      error: error?.message || 'Unknown error'
-    };
-  }
+  console.log(`FolderHandler: No browser directory handle available; treating "${folderPath}" as a virtual workspace label`);
+  return {
+    valid: true,
+    exists: true,
+    isDirectory: true
+  };
 }
 
 /**

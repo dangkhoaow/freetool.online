@@ -31,7 +31,7 @@ export const ProtectedRouteJWT = ({ children }: ProtectedRouteProps) => {
 
   if (!user) {
     // Redirect to login with the current location for redirect after login
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/projly/login" state={{ from: location.pathname }} replace />;
   }
 
   return <>{children}</>;
