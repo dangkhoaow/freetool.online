@@ -44,7 +44,7 @@ export const CONTRACT_MANAGEMENT_ENDPOINTS = {
   
   // Export endpoints  
   EXPORT: {
-    CONTRACTS: '/api/contract-management/exports/contracts',
+    CONTRACTS: '/api/contract-management/exports',
     STATUS: (jobId: string) => `/api/contract-management/exports/${jobId}/status`,
   }
 } as const;

@@ -59,12 +59,15 @@ function isLocalhostHost(hostname: string): boolean {
 }
 
 export function resolveFrontendApiBaseUrl(preferContractManagement = false): string {
-  if (typeof window !== 'undefined' && isLocalhostHost(window.location.hostname)) {
-    return LOCAL_API_BASE_URL;
-  }
-
   const contractManagementUrl = appRuntimeEnv.NEXT_PUBLIC_CONTRACT_MANAGEMENT_API_URL?.trim();
   const genericApiUrl = appRuntimeEnv.NEXT_PUBLIC_API_URL?.trim();
+
+  if (typeof window !== 'undefined' && isLocalhostHost(window.location.hostname)) {
+    if (preferContractManagement) {
+      return contractManagementUrl || genericApiUrl || LOCAL_API_BASE_URL;
+    }
+    return genericApiUrl || contractManagementUrl || LOCAL_API_BASE_URL;
+  }
 
   if (preferContractManagement) {
     return contractManagementUrl || genericApiUrl || DEFAULT_API_BASE_URL;
