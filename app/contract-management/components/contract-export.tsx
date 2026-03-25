@@ -13,6 +13,11 @@ import { Download, FileText, Table2, AlertCircle, CheckCircle2, Upload, FileSpre
 import { contractManagementExportService, contractManagementService, ExportOptions } from '@/lib/services/contract-management';
 import { useLanguage } from '../contexts/language-context';
 
+// Contract management API base is resolved centrally so production never falls back to localhost.
+const CONTRACT_MANAGEMENT_API_BASE_URL = process.env.NEXT_PUBLIC_CONTRACT_MANAGEMENT_API_URL
+  || process.env.NEXT_PUBLIC_API_URL
+  || 'https://service.freetool.online';
+
 export default function ContractExport() {
   const { t, currentLanguage } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
@@ -110,7 +115,7 @@ export default function ContractExport() {
     try {
       console.log('[ContractDeleteAll] Starting delete all contracts...');
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contract-management/contracts`, {
+      const response = await fetch(`${CONTRACT_MANAGEMENT_API_BASE_URL}/api/contract-management/contracts`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('contractManagementToken')}`,
@@ -154,7 +159,7 @@ export default function ContractExport() {
       formData.append('file', selectedFile);
       formData.append('format', importFormat);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/contract-management/imports`, {
+      const response = await fetch(`${CONTRACT_MANAGEMENT_API_BASE_URL}/api/contract-management/imports`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('contractManagementToken')}`

@@ -19,7 +19,7 @@ export default function TasksHubPage() {
   const checkAuth = async () => {
     const isAuthenticated = await projlyAuthService.isAuthenticated();
     if (!isAuthenticated) {
-      router.push("/projly/auth/login");
+      router.push("/projly/login");
     }
   };
 

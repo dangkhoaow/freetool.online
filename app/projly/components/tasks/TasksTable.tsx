@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/app/projly/contexts/AuthContextCustom";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
+import { buildBrowserRouteUrl } from '@/src/router/hash-path';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -1159,7 +1160,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                       className="ml-2 opacity-0 group-hover:opacity-100 group-hover:bg-primary group-hover:text-white transition-colors duration-200 ease-in-out p-1 rounded-sm"
                       onClick={(e) => { 
                         e.stopPropagation(); 
-                        window.open(`/projly/tasks/${task.id}`, '_blank');
+                        window.open(buildBrowserRouteUrl(`/projly/tasks/${task.id}`), '_blank');
                       }}
                     >
 
@@ -1184,7 +1185,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                       <Button 
                         variant="link" 
                         className="p-0 h-auto font-normal" 
-                        onClick={() => window.location.href = `/projly/projects/${task.project?.id}`}
+                        onClick={() => router.push(`/projly/projects/${task.project?.id}`)}
                       >
                         {task.project?.name || "-"}
                       </Button>
@@ -1238,7 +1239,7 @@ export function TasksTable({ tasks, onOperationComplete, initialFilters = {}, co
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => window.open(`/projly/tasks/${task.id}`, '_blank')}>
+                      <DropdownMenuItem onSelect={() => window.open(buildBrowserRouteUrl(`/projly/tasks/${task.id}`), '_blank')}>
                         <Maximize2 className="mr-2 h-4 w-4" /> Open in new tab
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => openTaskDetailDialog(task.id)}>

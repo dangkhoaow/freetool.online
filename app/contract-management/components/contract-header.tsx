@@ -22,9 +22,8 @@ export default function ContractHeader() {
     }
   }, []);
 
-  const handleLogout = () => {
-    contractManagementAuthService.logout();
-    router.push('/contract-management');
+  const handleLogout = async () => {
+    await contractManagementAuthService.logout();
   };
 
   const handleProfile = () => {
@@ -37,7 +36,7 @@ export default function ContractHeader() {
   };
 
   const goToHome = () => {
-    window.location.href = '/';
+    router.push('/contract-management');
   };
 
   return (

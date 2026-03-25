@@ -6,6 +6,7 @@
  */
 
 import { API_ENDPOINTS } from '@/app/projly/config/apiConfig';
+import { resolveFrontendApiBaseUrl } from '@/src/runtime-env';
 
 // Log initialization for debugging
 console.log('[API_CLIENT] Initializing API client');
@@ -33,18 +34,8 @@ const getAuthToken = (): string | null => {
 };
 
 // Build the API base URL
-const getBaseUrl = () => {
-  // In the browser, use the public API URL from environment variables
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  }
-  
-  // For server-side rendering, use the environment variable or default
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-};
-
 // Get the base URL for API requests
-const API_BASE_URL = getBaseUrl();
+const API_BASE_URL = resolveFrontendApiBaseUrl();
 
 // Log the API base URL for debugging
 console.log('[API_CLIENT] Environment:', process.env.NODE_ENV);

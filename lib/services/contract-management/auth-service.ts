@@ -7,6 +7,7 @@ import {
   ApiResponse 
 } from './types';
 import { CONTRACT_MANAGEMENT_CONFIG } from './config';
+import { getCurrentRoutePathname, navigateToRoute } from '@/src/router/hash-path';
 
 // Mock users for development
 const MOCK_USERS: User[] = [
@@ -357,7 +358,7 @@ class ContractManagementAuthService {
       // Redirect to appropriate login page
       if (typeof window !== 'undefined') {
         console.log(`[ContractManagementAuth] Redirecting to: ${finalRedirectPath}`);
-        window.location.replace(finalRedirectPath);
+        navigateToRoute(finalRedirectPath, true);
       }
 
       return {
@@ -426,7 +427,7 @@ class ContractManagementAuthService {
     if (typeof window !== 'undefined') {
       const redirectPath = this.getAppropriateLoginPath();
       console.log(`[ContractManagementAuth] Session expired, redirecting to: ${redirectPath}`);
-      window.location.replace(redirectPath);
+      navigateToRoute(redirectPath, true);
     }
   }
 
@@ -438,7 +439,7 @@ class ContractManagementAuthService {
       return '/contract-management/login'; // Default for SSR
     }
     
-    const currentPath = window.location.pathname;
+    const currentPath = getCurrentRoutePathname();
     
     // Check if we're in Projly context
     if (currentPath.startsWith('/projly')) {

@@ -1,5 +1,5 @@
 // Auto-generated file. DO NOT EDIT.
-// Generated on 2025-11-08T10:42:13.131Z
+// Generated on 2026-03-20T13:27:54.039Z
 
 export const STATIC_RESOURCES = [
   "/404.html",
@@ -85,6 +85,7 @@ export const STATIC_RESOURCES = [
   "/select.png",
   "/select.webp",
   "/settings.png",
+  "/sitemap.xml",
   "/static-resources.json",
   "/steganography-preview.png",
   "/uploads.png",
@@ -179,6 +180,7 @@ export const RESERVED_PATHS = [
   "/select.png",
   "/select.webp",
   "/settings.png",
+  "/sitemap.xml",
   "/static-resources.json",
   "/steganography-preview.png",
   "/uploads.png",

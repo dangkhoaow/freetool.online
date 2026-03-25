@@ -14,8 +14,8 @@ export default function Navbar() {
   const isHomePage = pathname === "/"
   const isToolsPage = pathname === "/tools"
   
-  // Check if the current path is a tool page (any app page that's not home or admin)
-  const isToolPage = !isHomePage && !isToolsPage && !pathname.startsWith("/admin") && !pathname.startsWith("/health")
+  // Check if the current path is a tool page (any app page that's not home)
+  const isToolPage = !isHomePage && !isToolsPage && !pathname.startsWith("/health")
 
   // Determine the tool section ID based on the pathname
   const getToolSectionId = () => {
@@ -78,16 +78,6 @@ export default function Navbar() {
                 </Link>
                 <Link href="#features" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
                   Features
-                </Link>
-              </>
-            ) : pathname.startsWith("/admin") ? (
-              /* Admin page navigation */
-              <>
-                <Link href="/admin/dashboard" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
-                  Dashboard
-                </Link>
-                <Link href="/admin/settings" className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
-                  Settings
                 </Link>
               </>
             ) : isToolPage ? (
@@ -188,24 +178,6 @@ export default function Navbar() {
                     Explore Tools
                   </Link>
                 </Button>
-              </>
-            ) : pathname.startsWith("/admin") ? (
-              /* Admin page mobile navigation */
-              <>
-                <Link
-                  href="/admin/dashboard"
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/admin/settings"
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Settings
-                </Link>
               </>
             ) : isToolPage ? (
               /* Tool page mobile navigation (standardized for all tools) */

@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { projlyTasksService } from '@/lib/services/projly';
 import { PageLoading } from '@/app/projly/components/ui/PageLoading';
 import { useToast } from '@/components/ui/use-toast';
+import { buildBrowserRouteUrl } from '@/src/router/hash-path';
 
 // Dynamically import the TaskDetailsPage component with loading fallback
 const TaskDetailsPage = dynamic(
@@ -343,7 +344,7 @@ export function TaskDetailDialog({ taskId, isOpen, onClose, onTaskUpdated, mainF
             title="Open full task detail in new tab"
             onClick={() => {
               if (taskId) {
-                window.open(`/projly/tasks/${taskId}`, '_blank');
+                window.open(buildBrowserRouteUrl(`/projly/tasks/${taskId}`), '_blank');
               }
             }}
           >

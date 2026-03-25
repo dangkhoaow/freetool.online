@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { contractManagementAuthService, User } from '@/lib/services/contract-management';
+import { navigateToRoute } from '@/src/router/hash-path';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -90,7 +91,7 @@ export function useContractManagementAuth() {
     try {
       await contractManagementAuthService.logout();
       setUser(null);
-      window.location.href = '/contract-management/login';
+      navigateToRoute('/contract-management/login', false);
     } catch (error) {
       console.error('[useContractManagementAuth] Logout error:', error);
     }

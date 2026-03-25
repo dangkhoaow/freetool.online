@@ -67,8 +67,9 @@ export const saveCurrentFolderPath = (path: string): boolean => {
 };
 
 /**
- * Validates if a folder path exists by making an API call
- * Returns a promise that resolves to a boolean indicating if the path exists
+ * Validates a folder path for the browser-only editor flow.
+ * On GitHub Pages there is no server filesystem to query, so any non-empty
+ * path is treated as a valid workspace label.
  */
 export const validateFolderPath = async (path: string): Promise<boolean> => {
   if (!path || path.trim() === '') {
@@ -76,17 +77,8 @@ export const validateFolderPath = async (path: string): Promise<boolean> => {
     return false;
   }
   
-  try {
-    console.log(`StorageUtils: Validating folder path: ${path}`);
-    const response = await fetch(`/api/filesystem/validate?path=${encodeURIComponent(path)}`);
-    const data = await response.json();
-    
-    console.log(`StorageUtils: Path validation result for ${path}:`, data.exists);
-    return data.exists === true;
-  } catch (error) {
-    console.error(`StorageUtils: Error validating folder path:`, error);
-    return false;
-  }
+  console.log(`StorageUtils: Treating folder path as valid workspace label: ${path}`);
+  return true;
 };
 
 /**

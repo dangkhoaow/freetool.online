@@ -24,7 +24,6 @@ import { DashboardLayout } from '@/app/projly/components/layout/DashboardLayout'
 import { useSession } from '@/lib/services/projly/jwt-auth-adapter';
 import { PageLoading } from "@/app/projly/components/ui/PageLoading";
 import { projlyAuthService } from '@/lib/services/projly';
-import { use } from 'react';
 
 type ProjectFormValues = {
   name: string;
@@ -70,10 +69,8 @@ interface User {
 const LOG_PREFIX = "[PROJLY:EDIT_PROJECT_PAGE]";
 const log = (...args: any[]) => console.log(LOG_PREFIX, ...args);
 
-export default function EditProjectPage({ params }: { params: { id: string } | Promise<{ id: string }> }) {
-  // Unwrap params using React.use() to handle it as a Promise
-  const unwrappedParams = use(params as Promise<{ id: string }>);
-  const projectId = unwrappedParams.id;
+export default function EditProjectPage({ params }: { params: { id: string } }) {
+  const projectId = params.id;
   
   const router = useRouter();
   const { toast } = useToast();
@@ -95,7 +92,7 @@ export default function EditProjectPage({ params }: { params: { id: string } | P
   const checkAuth = async () => {
     const isAuthenticated = await projlyAuthService.isAuthenticated();
     if (!isAuthenticated) {
-      router.push("/projly/auth/login");
+      router.push("/projly/login");
     }
   };
 

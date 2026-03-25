@@ -2,9 +2,11 @@
  * Contract Management Service Configuration
  * Centralized configuration for all contract management services
  */
+import { navigateToRoute } from '@/src/router/hash-path';
+import { resolveFrontendApiBaseUrl } from '@/src/runtime-env';
 
-// Get API base URL from environment variables
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Resolve the API base URL once so browser code never falls back to localhost on Pages.
+export const API_BASE_URL = resolveFrontendApiBaseUrl(true);
 
 // Contract Management API endpoints
 export const CONTRACT_MANAGEMENT_ENDPOINTS = {
@@ -42,7 +44,7 @@ export const CONTRACT_MANAGEMENT_ENDPOINTS = {
   
   // Export endpoints  
   EXPORT: {
-    CONTRACTS: '/api/contract-management/exports/contracts',
+    CONTRACTS: '/api/contract-management/exports',
     STATUS: (jobId: string) => `/api/contract-management/exports/${jobId}/status`,
   }
 } as const;
@@ -74,7 +76,7 @@ export const handleAuthError = (response: Response): void => {
     localStorage.removeItem('contractManagementToken');
     
     // Redirect to login page
-    window.location.href = '/contract-management/login';
+    navigateToRoute('/contract-management/login', false);
   }
 };
 
